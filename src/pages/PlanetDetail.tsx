@@ -1,0 +1,196 @@
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, Briefcase, Home, ShoppingBag } from "lucide-react";
+import { toast } from "sonner";
+
+const PlanetDetail = () => {
+  const { systemId, planetId } = useParams();
+  const [plotsToBuy, setPlotsToBuy] = useState(1);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+
+  const totalPlots = 10000;
+  const availablePlots = 7342;
+  const plotPrice = 50; // xBGL
+
+  const handlePurchase = () => {
+    toast.success(`Successfully purchased ${plotsToBuy} plot(s)!`, {
+      description: `Transaction complete. Ownership document issued via IPFS.`,
+    });
+  };
+
+  return (
+    <div className="min-h-screen pt-20">
+      <div className="container mx-auto px-4 py-12 max-w-6xl">
+        <Link to={`/star-system/${systemId}`}>
+          <Button variant="glass" className="mb-8">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to {systemId}
+          </Button>
+        </Link>
+
+        <div className="mb-12">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
+            Sarakt Prime
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            Choose your path and begin your journey in the Octavia Universe
+          </p>
+        </div>
+
+        {/* Path Selection */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <Card 
+            className={`glass p-8 cursor-pointer transition-all ${
+              selectedPath === 'career' 
+                ? 'border-primary shadow-glow-primary' 
+                : 'border-primary/30 hover:border-primary/60'
+            }`}
+            onClick={() => setSelectedPath('career')}
+          >
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-4 rounded-full bg-primary/10 border border-primary/30">
+                <Briefcase className="h-8 w-8 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold mb-2">Career Path</h3>
+                <p className="text-muted-foreground">Start as a Jobee - no prerequisites required</p>
+              </div>
+            </div>
+            <ul className="space-y-2 text-sm text-muted-foreground mb-6">
+              <li>• No land ownership required</li>
+              <li>• Access to job marketplace</li>
+              <li>• Build skills and reputation</li>
+              <li>• Earn xBGL tokens</li>
+            </ul>
+            <Button 
+              variant={selectedPath === 'career' ? 'cosmic' : 'outline'} 
+              className="w-full"
+            >
+              {selectedPath === 'career' ? 'Selected' : 'Choose Career Path'}
+            </Button>
+          </Card>
+
+          <Card 
+            className={`glass p-8 cursor-pointer transition-all ${
+              selectedPath === 'citizen' 
+                ? 'border-accent shadow-glow-accent' 
+                : 'border-primary/30 hover:border-primary/60'
+            }`}
+            onClick={() => setSelectedPath('citizen')}
+          >
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-4 rounded-full bg-accent/10 border border-accent/30">
+                <Home className="h-8 w-8 text-accent" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold mb-2">Citizen Path</h3>
+                <p className="text-muted-foreground">Become a Landowner - requires at least 1 plot</p>
+              </div>
+            </div>
+            <ul className="space-y-2 text-sm text-muted-foreground mb-6">
+              <li>• Own and develop land</li>
+              <li>• Generate passive income</li>
+              <li>• Voting rights and governance</li>
+              <li>• Premium marketplace access</li>
+            </ul>
+            <Button 
+              variant={selectedPath === 'citizen' ? 'cosmic' : 'outline'} 
+              className="w-full"
+            >
+              {selectedPath === 'citizen' ? 'Selected' : 'Choose Citizen Path'}
+            </Button>
+          </Card>
+        </div>
+
+        {/* Land Purchase Section */}
+        <Card className="glass p-8 mb-8">
+          <div className="flex items-center gap-4 mb-6">
+            <ShoppingBag className="h-8 w-8 text-primary" />
+            <div>
+              <h2 className="text-3xl font-bold">Purchase Land</h2>
+              <p className="text-muted-foreground">Secure your plot in Sarakt Prime</p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Available Plots</span>
+                <span className="text-foreground font-medium">
+                  {availablePlots.toLocaleString()} / {totalPlots.toLocaleString()}
+                </span>
+              </div>
+              <Progress value={(availablePlots / totalPlots) * 100} className="h-3 mb-6" />
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Number of Plots</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={availablePlots}
+                    value={plotsToBuy}
+                    onChange={(e) => setPlotsToBuy(parseInt(e.target.value) || 1)}
+                    className="glass"
+                  />
+                </div>
+                
+                <div className="glass p-4 rounded-lg">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-muted-foreground">Price per plot</span>
+                    <span className="font-medium">{plotPrice} xBGL</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Total Price</span>
+                    <span className="text-primary">{plotPrice * plotsToBuy} xBGL</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass p-6 rounded-lg">
+              <h3 className="text-lg font-bold mb-4">Purchase Benefits</h3>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2"></div>
+                  <span>Ownership documented on IPFS</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2"></div>
+                  <span>Tradable on secondary marketplace</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2"></div>
+                  <span>Generate passive income from development</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2"></div>
+                  <span>Access to citizen-only features</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2"></div>
+                  <span>Treasury fund allocation rights</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <Button 
+            variant="cosmic" 
+            size="lg" 
+            className="w-full text-lg"
+            onClick={handlePurchase}
+          >
+            Purchase {plotsToBuy} Plot{plotsToBuy > 1 ? 's' : ''} for {plotPrice * plotsToBuy} xBGL
+          </Button>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default PlanetDetail;
