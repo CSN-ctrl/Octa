@@ -14,15 +14,37 @@ const planetsData = {
       isLocked: false,
     },
     {
-      id: "Zythera",
-      name: "Zythera",
-      status: "Isolated",
+      id: "sarakt-beta",
+      name: "Sarakt Beta",
+      status: "Development",
       population: 12,
       coverage: 8,
       isLocked: false,
     },
-    
-  Xeno: [
+    {
+      id: "sarakt-gamma",
+      name: "Sarakt Gamma",
+      status: "Exploration",
+      isLocked: true,
+    },
+  ],
+  zythera: [
+    {
+      id: "zythera-station",
+      name: "Zythera R&D Station",
+      status: "Chaotic",
+      population: 28,
+      coverage: 15,
+      isLocked: false,
+    },
+    {
+      id: "zythera-outpost",
+      name: "Zythera Outpost",
+      status: "Experimental",
+      isLocked: true,
+    },
+  ],
+  nexus: [
     {
       id: "nexus-hub",
       name: "Nexus Hub",
