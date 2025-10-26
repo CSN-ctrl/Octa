@@ -12,9 +12,9 @@ const PlanetDetail = () => {
   const [plotsToBuy, setPlotsToBuy] = useState(1);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
 
-  const totalPlots = 100000;
-  const availablePlots = 10000;
-  const plotPrice = 100; // xBGL
+  const totalPlots = 10000;
+  const availablePlots = 7342;
+  const plotPrice = 50; // xBGL
 
   const handlePurchase = () => {
     toast.success(`Successfully purchased ${plotsToBuy} plot(s)!`, {
