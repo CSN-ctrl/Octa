@@ -8,15 +8,10 @@ const starSystems = [
     description: "A vibrant star system with diverse habitable planets and advanced infrastructure. Home to the thriving Sarakt Prime.",
     planetCount: 3,
   },
+  
   {
-    id: "zythera",
-    name: "Zythera System",
-    description: "A chaotic research hub with experimental R&D stations. Known for cutting-edge technology and innovation.",
-    planetCount: 2,
-  },
-  {
-    id: "nexus",
-    name: "Nexus System",
+    id: "Xeno",
+    name: "Tanaria star system",
     description: "A strategic trading hub connecting multiple star systems. Central location for commerce and diplomacy.",
     planetCount: 4,
   },
