@@ -16,11 +16,12 @@ export const Navigation = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-primary/30">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <Globe className="h-8 w-8 text-primary glow-primary" />
-            <span className="text-xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
-              Octavia Universe
-            </span>
+          <Link to="/" className="flex items-center gap-2">            
+            <img
+              src="/logo.png"
+              alt="Octavia Nebula"
+              className="h-8 w-auto"
+            />  
           </Link>
           
           <div className="flex items-center gap-2">
