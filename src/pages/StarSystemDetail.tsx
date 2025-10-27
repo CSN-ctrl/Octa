@@ -21,7 +21,7 @@ const planetsData = {
       coverage: 8,
       isLocked: false,
     },
-    
+  ],
   Xeno: [
     {
       id: "nexus-hub",
