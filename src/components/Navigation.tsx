@@ -19,8 +19,7 @@ export const Navigation = () => {
           <Link to="/" className="flex items-center gap-2">            
             <img
               src="src/assets/logo.png"
-              alt="Octavia Nebula"
-              className="h-8 w-auto"
+              className="h-8 w-8"
             />  
           </Link>
           
