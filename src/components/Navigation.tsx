@@ -19,8 +19,8 @@ export const Navigation = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">            
             <img
-              src=logo.jpg
-              alt=logo
+              src="/logo.jpg"
+              alt="logo"
               className="h-8 w-8"
             />  
           </Link>
