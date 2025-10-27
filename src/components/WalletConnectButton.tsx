@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button"; // adjust to your path
+import { Button } from "@/components/ui/button";
 import { connectWallet, getConnectedAddress } from "@/lib/wallet";
+import { toast } from "sonner";
 
-export function WalletConnectButton() {
+export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) => void }) {
   const [address, setAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if wallet already connected
     getConnectedAddress().then((addr) => {
       if (addr) setAddress(addr);
     });
@@ -16,22 +16,17 @@ export function WalletConnectButton() {
     try {
       const { address } = await connectWallet();
       setAddress(address);
-      console.log("Wallet connected:", address);
+      toast.success(`Connected: ${address}`);
+      if (onConnect) onConnect(address);
     } catch (error) {
       console.error(error);
-      alert("Failed to connect wallet. See console for details.");
+      toast.error("Failed to connect wallet");
     }
   };
 
   return (
-    <Button
-      variant="cosmic"
-      size="lg"
-      onClick={handleConnect}
-    >
-      {address
-        ? `${address.slice(0, 6)}...${address.slice(-4)}`
-        : "Connect Wallet"}
+    <Button variant="cosmic" size="sm" onClick={handleConnect}>
+      {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Connect Wallet"}
     </Button>
   );
 }
