@@ -16,6 +16,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    sourcemap: mode === "development", // generate source maps only in dev
+    sourcemap: mode === "production", // generate source maps only in dev
   },
 }));
