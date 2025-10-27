@@ -1,15 +1,26 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, TrendingUp, User } from "lucide-react";
+import { ShoppingCart, TrendingUp, User, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ethers } from "ethers";
 import ContractABI from "@/abi/YourContractABI.json";
 import { connectWallet, getContract } from "@/lib/wallet";
-import { uploadDeedToPinata } from "@/lib/pinata";
+import { uploadDeedToPinata, uploadPDFToPinata } from "@/lib/pinata";
 import { generateDeedPDF } from "@/lib/deedPdf";
 
-const listings = [
+interface Listing {
+  id: number;
+  plotId: string;
+  location: string;
+  owner: string;
+  price: number;
+  priceChange: string;
+  jsonCID?: string; // IPFS CID for JSON
+  pdfCID?: string;  // IPFS CID for PDF
+}
+
+const initialListings: Listing[] = [
   { id: 1, plotId: "SP-0042", location: "Sarakt Prime - District A", owner: "0x1234...5678", price: 75, priceChange: "+12%" },
   { id: 2, plotId: "SP-0156", location: "Sarakt Prime - District B", owner: "0x9876...4321", price: 68, priceChange: "+8%" },
   { id: 3, plotId: "SP-0891", location: "Sarakt Prime - District C", owner: "0xabcd...ef01", price: 82, priceChange: "+15%" },
@@ -22,6 +33,7 @@ const Marketplace = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [listings, setListings] = useState<Listing[]>(initialListings);
 
   const handleConnectWallet = async () => {
     try {
@@ -36,11 +48,10 @@ const Marketplace = () => {
     }
   };
 
-  const handlePurchase = async (listing: typeof listings[0]) => {
+  const handlePurchase = async (listing: Listing) => {
     if (!signer || !contract || !walletAddress) return toast.error("Connect wallet first");
 
     try {
-      // 1️⃣ Create deed JSON
       const deedJson = {
         plotId: listing.plotId,
         owner: walletAddress,
@@ -49,13 +60,10 @@ const Marketplace = () => {
         date: new Date().toLocaleDateString(),
       };
 
-      // 2️⃣ Upload deed JSON to Pinata
-      const deedIPFS = await uploadDeedToPinata(deedJson);
+      const jsonCID = await uploadDeedToPinata(deedJson);
+      const pdfBytes = await generateDeedPDF("/deed-template.pdf", { ...deedJson, ipfs: `ipfs://${jsonCID}` });
+      const pdfCID = await uploadPDFToPinata(pdfBytes, `${listing.plotId}-deed.pdf`);
 
-      // 3️⃣ Generate PDF deed
-      const pdfBytes = await generateDeedPDF("/deed-template.pdf", { ...deedJson, ipfs: `ipfs://${deedIPFS}` });
-
-      // 4️⃣ Trigger PDF download
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -64,16 +72,21 @@ const Marketplace = () => {
       a.click();
       URL.revokeObjectURL(url);
 
-      // 5️⃣ Send transaction to contract with IPFS hash
-      const tx = await contract.buyPlot(listing.plotId, deedIPFS, {
+      const tx = await contract.buyPlot(listing.plotId, jsonCID, pdfCID, {
         value: ethers.parseUnits(listing.price.toString(), "ether"),
       });
       await tx.wait();
 
-      toast.success(`Purchased plot ${listing.plotId}! Deed issued and downloadable.`, {
-        description: `IPFS: ipfs://${deedIPFS}`,
+      toast.success(`Purchased ${listing.plotId}! Deed pinned on IPFS.`, {
+        description: `JSON: ipfs://${jsonCID}\nPDF: ipfs://${pdfCID}`,
       });
 
+      // Update local state with IPFS links
+      setListings((prev) =>
+        prev.map((l) =>
+          l.id === listing.id ? { ...l, owner: walletAddress, jsonCID, pdfCID } : l
+        )
+      );
     } catch (err) {
       console.error(err);
       toast.error("Purchase failed");
@@ -161,11 +174,23 @@ const Marketplace = () => {
 
                 <Button 
                   variant="cosmic" 
-                  className="w-full"
+                  className="w-full mb-2"
                   onClick={() => handlePurchase(listing)}
                 >
                   Purchase Plot
                 </Button>
+
+                {/* Show IPFS links if available */}
+                {listing.jsonCID && listing.pdfCID && (
+                  <div className="text-sm text-muted-foreground mt-2 flex flex-col gap-1">
+                    <a href={`https://ipfs.io/ipfs/${listing.jsonCID}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:underline">
+                      JSON Deed <ExternalLink className="h-3 w-3" />
+                    </a>
+                    <a href={`https://ipfs.io/ipfs/${listing.pdfCID}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:underline">
+                      PDF Deed <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
               </div>
             </Card>
           ))}
