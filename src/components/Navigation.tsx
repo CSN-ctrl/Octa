@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Rocket, Globe, ShoppingCart, IdCard, Wallet } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export const Navigation = () => {
   const location = useLocation();
@@ -18,7 +19,8 @@ export const Navigation = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">            
             <img
-              src="src/assets/logo.png"
+              src=logo
+              alt={logo}
               className="h-8 w-8"
             />  
           </Link>
