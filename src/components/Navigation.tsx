@@ -21,7 +21,7 @@ export const Navigation = () => {
             <img
               src="/logo.jpg"
               alt="logo"
-              className="h-11 w-11"
+              className="h-15 w-15"
             />  
           </Link>
           
