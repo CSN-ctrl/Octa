@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Rocket, Globe, ShoppingCart, IdCard, Wallet } from "lucide-react";
-import logo from "@/src/assets/logo.png";
+import logo from "@/assets/logo.png";
 
 export const Navigation = () => {
   const location = useLocation();
