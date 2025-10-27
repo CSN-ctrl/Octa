@@ -17,11 +17,7 @@ export const Navigation = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img 
-               src="src/assets/logo.png" 
-               alt="Octavia Universe" 
-               className="h-8 w-8 object-contain"
-           />
+            <Globe className="h-8 w-8 text-primary glow-primary" />
             <span className="text-xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
               Octavia Universe
             </span>
