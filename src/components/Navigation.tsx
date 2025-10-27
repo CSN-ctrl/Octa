@@ -18,7 +18,7 @@ export const Navigation = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">            
             <img
-              src="/logo.png"
+              src="src/assets/logo.png"
               alt="Octavia Nebula"
               className="h-8 w-auto"
             />  
