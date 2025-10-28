@@ -4,9 +4,17 @@ import config
 from supabase_client import get_users, add_user
 from ipfs_handler import upload_to_ipfs
 from blockchain import BlockchainService  # your blockchain.py
+from verify_contract import verify_contract_status
+
+
 
 app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
 bc = BlockchainService()
+
+@app.route("/api/verify-contract")
+def verify_contract():
+    status = verify_contract_status()
+    return jsonify(status)
 
 # -------------------------
 # Health check
