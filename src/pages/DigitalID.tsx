@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,17 +13,91 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const DigitalID = () => {
   const [idType, setIdType] = useState<'personal' | 'corporate' | 'organization' | null>(null);
   const [hasID, setHasID] = useState(false);
 
-  const handleCreateID = () => {
-    setHasID(true);
-    toast.success("Digital ID Created!", {
-      description: "Your identity has been registered on the blockchain.",
-    });
+  const [name, setName] = useState("");
+  const [wallet, setWallet] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [plots, setPlots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (hasID) fetchPlots();
+  }, [hasID]);
+
+  // Upload avatar to IPFS via Flask
+  const uploadAvatar = async () => {
+    if (!avatarFile) return null;
+    const formData = new FormData();
+    formData.append("file", avatarFile);
+
+    try {
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      return data.ipfs_hash;
+    } catch (err) {
+      toast.error("Failed to upload avatar");
+      return null;
+    }
   };
 
+  // Create Digital ID
+  const handleCreateID = async () => {
+    if (!idType || !name) {
+      toast.error("Name and ID type are required");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const avatarHash = await uploadAvatar();
+
+      const body = {
+        name,
+        idType,
+        wallet,
+        avatar: avatarHash,
+      };
+
+      const res = await fetch(`${API_URL}/api/create-digital-id`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      if (data.status === "success") {
+        toast.success("Digital ID created!");
+        setHasID(true);
+        fetchPlots();
+      } else {
+        toast.error("Failed to create Digital ID");
+      }
+    } catch (err) {
+      toast.error("Error creating Digital ID");
+    }
+    setLoading(false);
+  };
+
+  // Fetch user land ownership
+  const fetchPlots = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/land-ownership`);
+      const data = await res.json();
+      setPlots(data);
+    } catch (err) {
+      toast.error("Failed to fetch land ownership");
+    }
+  };
+
+  // Render ID creation view
   if (!hasID) {
     return (
       <div className="min-h-screen pt-20">
@@ -38,72 +112,56 @@ const DigitalID = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Card 
-              className={`glass p-8 cursor-pointer transition-all text-center ${
-                idType === 'personal' 
-                  ? 'border-primary shadow-glow-primary' 
-                  : 'border-primary/30 hover:border-primary/60'
-              }`}
-              onClick={() => setIdType('personal')}
-            >
-              <div className="inline-flex items-center justify-center p-4 rounded-full bg-primary/10 border border-primary/30 mb-4">
-                <User className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Personal</h3>
-              <p className="text-sm text-muted-foreground">
-                Individual citizen identity
-              </p>
-            </Card>
-
-            <Card 
-              className={`glass p-8 cursor-pointer transition-all text-center ${
-                idType === 'corporate' 
-                  ? 'border-accent shadow-glow-accent' 
-                  : 'border-primary/30 hover:border-primary/60'
-              }`}
-              onClick={() => setIdType('corporate')}
-            >
-              <div className="inline-flex items-center justify-center p-4 rounded-full bg-accent/10 border border-accent/30 mb-4">
-                <Building2 className="h-8 w-8 text-accent" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Corporate</h3>
-              <p className="text-sm text-muted-foreground">
-                Business entity registration
-              </p>
-            </Card>
-
-            <Card 
-              className={`glass p-8 cursor-pointer transition-all text-center ${
-                idType === 'organization' 
-                  ? 'border-secondary shadow-glow-primary' 
-                  : 'border-primary/30 hover:border-primary/60'
-              }`}
-              onClick={() => setIdType('organization')}
-            >
-              <div className="inline-flex items-center justify-center p-4 rounded-full bg-secondary/10 border border-secondary/30 mb-4">
-                <Users className="h-8 w-8 text-secondary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Organization</h3>
-              <p className="text-sm text-muted-foreground">
-                Group or collective identity
-              </p>
-            </Card>
+            {["personal", "corporate", "organization"].map((type) => {
+              const label = type.charAt(0).toUpperCase() + type.slice(1);
+              const Icon = type === "personal" ? User : type === "corporate" ? Building2 : Users;
+              const border = idType === type ? "border-primary shadow-glow-primary" : "border-primary/30 hover:border-primary/60";
+              return (
+                <Card
+                  key={type}
+                  className={`glass p-8 cursor-pointer transition-all text-center ${border}`}
+                  onClick={() => setIdType(type as any)}
+                >
+                  <div className="inline-flex items-center justify-center p-4 rounded-full bg-primary/10 border border-primary/30 mb-4">
+                    <Icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">{label}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {type === "personal"
+                      ? "Individual citizen identity"
+                      : type === "corporate"
+                      ? "Business entity registration"
+                      : "Group or collective identity"}
+                  </p>
+                </Card>
+              );
+            })}
           </div>
 
           {idType && (
             <Card className="glass p-8">
               <h2 className="text-2xl font-bold mb-6">Setup Your {idType} ID</h2>
-              
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" placeholder="Enter your name" className="glass mt-2" />
+                  <Input
+                    id="name"
+                    placeholder="Enter your name"
+                    className="glass mt-2"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
                 </div>
 
                 <div>
                   <Label htmlFor="avatar">NFT Avatar</Label>
                   <div className="flex gap-4 mt-2">
-                    <Input id="avatar" placeholder="Upload or paste NFT URL" className="glass flex-1" />
+                    <Input
+                      id="avatar"
+                      type="file"
+                      className="glass flex-1"
+                      onChange={(e) => e.target.files && setAvatarFile(e.target.files[0])}
+                    />
                     <Button variant="outline">
                       <ImageIcon className="h-4 w-4 mr-2" />
                       Browse
@@ -113,20 +171,23 @@ const DigitalID = () => {
 
                 <div>
                   <Label htmlFor="wallet">Cold Wallet (Optional)</Label>
-                  <Input 
-                    id="wallet" 
-                    placeholder="0x..." 
+                  <Input
+                    id="wallet"
+                    placeholder="0x..."
                     className="glass mt-2"
+                    value={wallet}
+                    onChange={(e) => setWallet(e.target.value)}
                   />
                 </div>
 
-                <Button 
-                  variant="cosmic" 
-                  size="lg" 
+                <Button
+                  variant="cosmic"
+                  size="lg"
                   className="w-full mt-8"
                   onClick={handleCreateID}
+                  disabled={loading}
                 >
-                  Create Digital ID
+                  {loading ? "Creating..." : "Create Digital ID"}
                 </Button>
               </div>
             </Card>
@@ -136,7 +197,7 @@ const DigitalID = () => {
     );
   }
 
-  // ID Dashboard View
+  // Render dashboard view
   return (
     <div className="min-h-screen pt-20">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
@@ -156,11 +217,9 @@ const DigitalID = () => {
               <div className="w-24 h-24 rounded-full bg-gradient-cosmic mb-4 flex items-center justify-center">
                 <User className="h-12 w-12 text-primary-foreground" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Citizen #1337</h2>
-              <p className="text-sm text-muted-foreground mb-4">Personal ID</p>
-              <div className="glass px-3 py-1 rounded-full text-xs">
-                0x1234...5678
-              </div>
+              <h2 className="text-2xl font-bold mb-2">{name}</h2>
+              <p className="text-sm text-muted-foreground mb-4">{idType} ID</p>
+              <div className="glass px-3 py-1 rounded-full text-xs">{wallet || "No wallet connected"}</div>
             </div>
           </Card>
 
@@ -171,6 +230,7 @@ const DigitalID = () => {
               Assets Overview
             </h3>
             <div className="grid grid-cols-3 gap-4">
+              {/* Replace these with real balances fetched from blockchain or Supabase */}
               <div className="glass p-4 rounded-lg text-center">
                 <p className="text-sm text-muted-foreground mb-1">xBGL Balance</p>
                 <p className="text-2xl font-bold text-primary">1,250</p>
@@ -194,17 +254,17 @@ const DigitalID = () => {
             Land Ownership
           </h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { id: 'SP-0042', location: 'Sarakt Prime - District A', value: 75 },
-              { id: 'SP-0156', location: 'Sarakt Prime - District B', value: 68 },
-              { id: 'NX-0334', location: 'Nexus Hub - Central', value: 120 },
-            ].map((plot) => (
-              <div key={plot.id} className="glass p-4 rounded-lg">
-                <p className="font-bold mb-1">{plot.id}</p>
-                <p className="text-sm text-muted-foreground mb-2">{plot.location}</p>
-                <p className="text-primary font-medium">{plot.value} xBGL</p>
-              </div>
-            ))}
+            {plots.length > 0 ? (
+              plots.map((plot) => (
+                <div key={plot.id} className="glass p-4 rounded-lg">
+                  <p className="font-bold mb-1">{plot.id}</p>
+                  <p className="text-sm text-muted-foreground mb-2">{plot.location}</p>
+                  <p className="text-primary font-medium">{plot.value} xBGL</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground">No plots owned yet</p>
+            )}
           </div>
         </Card>
       </div>
