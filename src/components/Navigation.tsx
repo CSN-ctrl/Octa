@@ -43,9 +43,9 @@ export const Navigation = () => {
               );
             })}
             
-            <Button variant="cosmic" size="sm" className="ml-4">
-              Connect Wallet
-            </Button>
+            <div className="ml-4">
+              <WalletConnectButton />
+            </div>
           </div>
         </div>
       </div>
