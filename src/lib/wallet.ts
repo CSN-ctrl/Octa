@@ -1,6 +1,8 @@
 import { ethers } from "ethers";
+import contractABI from "@/abi/YourContractABI.json";
 
 const RPC_URL = import.meta.env.VITE_AVALANCHE_RPC;
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
 export const provider = new ethers.JsonRpcProvider(RPC_URL);
 
 export async function connectWallet() {
@@ -22,4 +24,8 @@ export async function getConnectedAddress(): Promise<string | null> {
 
   const accounts = await ethereum.request({ method: "eth_accounts" });
   return accounts.length ? accounts[0] : null;
+}
+
+export function getContract(signer: ethers.Signer) {
+  return new ethers.Contract(CONTRACT_ADDRESS, contractABI.abi, signer);
 }

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ethers } from "ethers";
 import ContractABI from "@/abi/YourContractABI.json";
 import { connectWallet, getContract } from "@/lib/wallet";
-import { uploadDeedToPinata, uploadPDFToPinata } from "@/lib/pinata";
+import { uploadJSONToPinata, uploadPDFToPinata } from "@/lib/pinata";
 import { generateDeedPDF } from "@/lib/deedPdf";
 
 interface Listing {
@@ -41,7 +41,7 @@ export default function Marketplace() {
       const { signer, address } = await connectWallet();
       setWalletAddress(address);
       setSigner(signer);
-      setContract(getContract(signer, ContractABI, import.meta.env.VITE_CONTRACT_ADDRESS));
+      setContract(getContract(signer));
       toast.success(`Wallet connected: ${address}`);
     } catch (err) {
       console.error(err);
@@ -63,12 +63,12 @@ export default function Marketplace() {
         date: new Date().toLocaleDateString(),
       };
 
-      const jsonCID = await uploadDeedToPinata(deedJson);
-      const pdfBytes = await generateDeedPDF("/deed-template.pdf", { ...deedJson, ipfs: `ipfs://${jsonCID}` });
+      const jsonCID = await uploadJSONToPinata(deedJson, `${listing.plotId}-deed.json`);
+      const pdfBytes = await generateDeedPDF("/documents/LandOwnershipTitleCertificate.pdf", { ...deedJson, ipfs: `ipfs://${jsonCID}` });
       const pdfCID = await uploadPDFToPinata(pdfBytes, `${listing.plotId}-deed.pdf`);
 
       // Auto-download PDF
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
