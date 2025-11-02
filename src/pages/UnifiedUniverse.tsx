@@ -338,18 +338,6 @@ export default function UnifiedUniverse() {
             <TabsTrigger value="phases" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
               Phases
             </TabsTrigger>
-            <TabsTrigger value="economy" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
-              Economy
-            </TabsTrigger>
-            <TabsTrigger value="ancient" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
-              Ancient Era
-            </TabsTrigger>
-            <TabsTrigger value="cataclysm" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
-              Cataclysm
-            </TabsTrigger>
-            <TabsTrigger value="modern" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
-              Modern Age
-            </TabsTrigger>
             <TabsTrigger value="worlds" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
               Planets
             </TabsTrigger>
