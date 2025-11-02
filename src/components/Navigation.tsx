@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, CreditCard, Wallet, Globe } from "lucide-react";
+import { ShoppingCart, CreditCard, Globe } from "lucide-react";
 import { WalletConnectButton } from "./WalletConnectButton";
 
 export const Navigation = () => {
@@ -8,9 +8,8 @@ export const Navigation = () => {
   
   const navItems = [
     { path: "/", label: "Universe", icon: Globe },
-    { path: "/marketplace", label: "Marketplace", icon: ShoppingCart },
+    { path: "/economy", label: "Economy", icon: ShoppingCart },
     { path: "/digital-id", label: "Digital ID", icon: CreditCard },
-    { path: "/treasury", label: "Treasury", icon: Wallet },
   ];
 
   return (
