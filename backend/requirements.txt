@@ -6,3 +6,4 @@ eth-account
 python-dotenv
 reportlab
 qrcode[pil]
+alchemy-sdk

@@ -9,96 +9,88 @@ import {
   Users, 
   Wallet, 
   Image as ImageIcon,
-  MapPin 
+  MapPin,
+  Loader2,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { toast } from "sonner";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { useWallet } from "@/contexts/WalletContext";
+import { useDigitalID } from "@/hooks/useDigitalID";
+import { useLandPlots } from "@/hooks/useLandPlots";
+import { ethers } from "ethers";
+import { formatEther } from "ethers";
 
 const DigitalID = () => {
+  const { address, signer, isConnected, balance, connect } = useWallet();
+  const { digitalID, hasDigitalID, loading: idLoading, registerDigitalID } = useDigitalID();
+  const { userPlots, loading: plotsLoading } = useLandPlots();
+  
   const [idType, setIdType] = useState<'personal' | 'corporate' | 'organization' | null>(null);
-  const [hasID, setHasID] = useState(false);
-
-  const [name, setName] = useState("");
-  const [wallet, setWallet] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [plots, setPlots] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [registering, setRegistering] = useState(false);
 
-  useEffect(() => {
-    if (hasID) fetchPlots();
-  }, [hasID]);
-
-  // Upload avatar to IPFS via Flask
-  const uploadAvatar = async () => {
-    if (!avatarFile) return null;
-    const formData = new FormData();
-    formData.append("file", avatarFile);
-
-    try {
-      const res = await fetch(`${API_URL}/api/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      return data.ipfs_hash;
-    } catch (err) {
-      toast.error("Failed to upload avatar");
-      return null;
-    }
+  // Email hash function (simple hash for demo - in production use proper hashing)
+  const hashEmail = (email: string): string => {
+    // Simple hash - in production use proper cryptographic hash
+    return ethers.id(email.toLowerCase().trim());
   };
 
-  // Create Digital ID
   const handleCreateID = async () => {
-    if (!idType || !name) {
-      toast.error("Name and ID type are required");
+    if (!isConnected || !signer) {
+      toast.error("Please connect your wallet first");
+      await connect();
       return;
     }
 
-    setLoading(true);
-    try {
-      const avatarHash = await uploadAvatar();
-
-      const body = {
-        name,
-        idType,
-        wallet,
-        avatar: avatarHash,
-      };
-
-      const res = await fetch(`${API_URL}/api/create-digital-id`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-
-      if (data.status === "success") {
-        toast.success("Digital ID created!");
-        setHasID(true);
-        fetchPlots();
-      } else {
-        toast.error("Failed to create Digital ID");
-      }
-    } catch (err) {
-      toast.error("Error creating Digital ID");
+    if (!idType || !username || !email) {
+      toast.error("All fields are required");
+      return;
     }
-    setLoading(false);
-  };
 
-  // Fetch user land ownership
-  const fetchPlots = async () => {
+    setRegistering(true);
     try {
-      const res = await fetch(`${API_URL}/api/land-ownership`);
-      const data = await res.json();
-      setPlots(data);
-    } catch (err) {
-      toast.error("Failed to fetch land ownership");
+      const emailHash = hashEmail(email);
+      const txHash = await registerDigitalID(username, emailHash);
+      toast.success(`Digital ID registered! TX: ${txHash.slice(0, 10)}...`);
+      setUsername("");
+      setEmail("");
+      setIdType(null);
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast.error(error.message || "Failed to register Digital ID");
+    } finally {
+      setRegistering(false);
     }
   };
 
-  // Render ID creation view
-  if (!hasID) {
+  // Render wallet connection prompt
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen pt-20">
+        <div className="container mx-auto px-4 py-12 max-w-4xl">
+          <Card className="glass p-12 text-center">
+            <Wallet className="h-16 w-16 mx-auto mb-4 text-primary" />
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
+              Connect Your Wallet
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8">
+              Connect your wallet to create and manage your Digital ID
+            </p>
+            <Button variant="cosmic" size="lg" onClick={connect}>
+              <Wallet className="h-5 w-5 mr-2" />
+              Connect Wallet
+            </Button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Render ID creation view if no ID exists
+  if (!hasDigitalID) {
     return (
       <div className="min-h-screen pt-20">
         <div className="container mx-auto px-4 py-12 max-w-4xl">
@@ -107,8 +99,11 @@ const DigitalID = () => {
               Create Your Digital ID
             </h1>
             <p className="text-xl text-muted-foreground">
-              Choose your identity type to get started in the Octavia Universe
+              Register your identity on-chain to participate in the Sarakt Universe
             </p>
+            <div className="mt-4 text-sm text-muted-foreground">
+              Wallet: {address?.slice(0, 10)}...{address?.slice(-8)}
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -143,41 +138,47 @@ const DigitalID = () => {
               <h2 className="text-2xl font-bold mb-6">Setup Your {idType} ID</h2>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    id="name"
-                    placeholder="Enter your name"
+                    id="username"
+                    placeholder="Enter your username"
                     className="glass mt-2"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="avatar">NFT Avatar</Label>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your.email@example.com"
+                    className="glass mt-2"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your email will be hashed and stored on-chain for privacy
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="avatar">Avatar (Optional)</Label>
                   <div className="flex gap-4 mt-2">
                     <Input
                       id="avatar"
                       type="file"
+                      accept="image/*"
                       className="glass flex-1"
                       onChange={(e) => e.target.files && setAvatarFile(e.target.files[0])}
                     />
-                    <Button variant="outline">
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Browse
-                    </Button>
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="wallet">Cold Wallet (Optional)</Label>
-                  <Input
-                    id="wallet"
-                    placeholder="0x..."
-                    className="glass mt-2"
-                    value={wallet}
-                    onChange={(e) => setWallet(e.target.value)}
-                  />
+                  {avatarFile && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Selected: {avatarFile.name}
+                    </p>
+                  )}
                 </div>
 
                 <Button
@@ -185,9 +186,16 @@ const DigitalID = () => {
                   size="lg"
                   className="w-full mt-8"
                   onClick={handleCreateID}
-                  disabled={loading}
+                  disabled={registering || !username || !email}
                 >
-                  {loading ? "Creating..." : "Create Digital ID"}
+                  {registering ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Registering...
+                    </>
+                  ) : (
+                    "Register Digital ID"
+                  )}
                 </Button>
               </div>
             </Card>
@@ -197,14 +205,20 @@ const DigitalID = () => {
     );
   }
 
-  // Render dashboard view
+  // Render dashboard view if ID exists
   return (
     <div className="min-h-screen pt-20">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
-            Digital ID Dashboard
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-5xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
+              Digital ID Dashboard
+            </h1>
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <span className="text-muted-foreground">ID Active</span>
+            </div>
+          </div>
           <p className="text-xl text-muted-foreground">
             Manage your identity, assets, and land ownership
           </p>
@@ -217,9 +231,16 @@ const DigitalID = () => {
               <div className="w-24 h-24 rounded-full bg-gradient-cosmic mb-4 flex items-center justify-center">
                 <User className="h-12 w-12 text-primary-foreground" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">{name}</h2>
-              <p className="text-sm text-muted-foreground mb-4">{idType} ID</p>
-              <div className="glass px-3 py-1 rounded-full text-xs">{wallet || "No wallet connected"}</div>
+              <h2 className="text-2xl font-bold mb-2">{digitalID?.username || "Unknown"}</h2>
+              <p className="text-sm text-muted-foreground mb-4">Digital ID</p>
+              <div className="glass px-3 py-1 rounded-full text-xs mb-2">
+                {address?.slice(0, 10)}...{address?.slice(-8)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Registered: {digitalID?.registeredAt 
+                  ? new Date(Number(digitalID.registeredAt) * 1000).toLocaleDateString()
+                  : "N/A"}
+              </div>
             </div>
           </Card>
 
@@ -230,18 +251,23 @@ const DigitalID = () => {
               Assets Overview
             </h3>
             <div className="grid grid-cols-3 gap-4">
-              {/* Replace these with real balances fetched from blockchain or Supabase */}
               <div className="glass p-4 rounded-lg text-center">
-                <p className="text-sm text-muted-foreground mb-1">xBGL Balance</p>
-                <p className="text-2xl font-bold text-primary">1,250</p>
+                <p className="text-sm text-muted-foreground mb-1">AVAX Balance</p>
+                <p className="text-2xl font-bold text-primary">
+                  {parseFloat(balance).toFixed(4)}
+                </p>
               </div>
               <div className="glass p-4 rounded-lg text-center">
-                <p className="text-sm text-muted-foreground mb-1">AVAX</p>
-                <p className="text-2xl font-bold text-accent">12.5</p>
+                <p className="text-sm text-muted-foreground mb-1">Land Plots</p>
+                <p className="text-2xl font-bold text-accent">
+                  {userPlots.length}
+                </p>
               </div>
               <div className="glass p-4 rounded-lg text-center">
-                <p className="text-sm text-muted-foreground mb-1">USDC</p>
-                <p className="text-2xl font-bold text-secondary">5,000</p>
+                <p className="text-sm text-muted-foreground mb-1">Status</p>
+                <p className="text-2xl font-bold text-green-500">
+                  {hasDigitalID ? "Active" : "Inactive"}
+                </p>
               </div>
             </div>
           </Card>
@@ -251,21 +277,29 @@ const DigitalID = () => {
         <Card className="glass p-6 mb-8">
           <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
             <MapPin className="h-5 w-5 text-primary" />
-            Land Ownership
+            Land Ownership ({userPlots.length} plots)
           </h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {plots.length > 0 ? (
-              plots.map((plot) => (
-                <div key={plot.id} className="glass p-4 rounded-lg">
-                  <p className="font-bold mb-1">{plot.id}</p>
-                  <p className="text-sm text-muted-foreground mb-2">{plot.location}</p>
-                  <p className="text-primary font-medium">{plot.value} xBGL</p>
+          {plotsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : userPlots.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {userPlots.map((plotId) => (
+                <div key={plotId} className="glass p-4 rounded-lg">
+                  <p className="font-bold mb-1">SP-{String(plotId).padStart(4, "0")}</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Sarakt Prime - District {((plotId - 1) % 10) + 1}
+                  </p>
+                  <p className="text-primary font-medium">Plot #{plotId}</p>
                 </div>
-              ))
-            ) : (
-              <p className="text-muted-foreground">No plots owned yet</p>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">
+              No plots owned yet. Visit the Marketplace to purchase land.
+            </p>
+          )}
         </Card>
       </div>
     </div>

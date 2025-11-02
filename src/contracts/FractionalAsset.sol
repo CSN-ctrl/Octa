@@ -24,7 +24,7 @@ contract FractionalAsset is ERC20, Ownable {
         uint256 _assetId,
         uint256 _totalShares,
         address owner_
-    ) ERC20(name_, symbol_) {
+    ) ERC20(name_, symbol_) Ownable(owner_) {
         require(_assetContract != address(0), "Invalid asset");
         require(_totalShares > 0, "Shares > 0");
 
@@ -33,7 +33,6 @@ contract FractionalAsset is ERC20, Ownable {
         totalShares = _totalShares;
 
         _mint(owner_, _totalShares);
-        transferOwnership(owner_);
     }
 
     // Distribute AVAX to shareholders

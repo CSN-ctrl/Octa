@@ -1,7 +1,13 @@
 from web3 import Web3
 from eth_account import Account
-import json, requests
-from .config import AVALANCHE_RPC, LAND_CONTRACT, PRIVATE_KEY, CONTRACT_ABI_PATH, CHAIN_ID, GAS_LIMIT, PLOT_PRICE
+import json
+import requests
+from pathlib import Path
+from typing import Optional
+from .config import (
+    AVALANCHE_RPC, LAND_CONTRACT, PRIVATE_KEY, CONTRACT_ABI_PATH,
+    CHAIN_ID, GAS_LIMIT, PLOT_PRICE
+)
 
 class BlockchainService:
     def __init__(self):
@@ -9,14 +15,38 @@ class BlockchainService:
         if not self.w3.is_connected():
             raise Exception("Not connected to subnet")
 
-        with open(CONTRACT_ABI_PATH, 'r') as f:
-            self.abi = json.load(f)['abi']
+        # Load ABI with fallback
+        self.abi = self._load_abi(CONTRACT_ABI_PATH)
+        if not self.abi:
+            raise Exception(f"Could not load ABI from {CONTRACT_ABI_PATH}")
+
+        if not LAND_CONTRACT:
+            raise Exception("LAND_CONTRACT address not set. Deploy contracts first.")
 
         self.contract = self.w3.eth.contract(
             address=Web3.to_checksum_address(LAND_CONTRACT),
             abi=self.abi
         )
         self.deployer = Account.from_key(PRIVATE_KEY)
+    
+    def _load_abi(self, abi_path: str) -> Optional[list]:
+        """Load ABI from file with fallback paths"""
+        project_root = Path(__file__).parent.parent
+        paths_to_try = [
+            project_root / abi_path,
+            project_root / "backend" / "abi" / "SaraktLandV2ABI.json",
+            project_root / "backend" / "abi" / "YourContractABI.json",
+        ]
+        
+        for path in paths_to_try:
+            if path.exists():
+                try:
+                    with open(path, 'r') as f:
+                        data = json.load(f)
+                        return data.get('abi', data) if isinstance(data, dict) else data
+                except Exception as e:
+                    continue
+        return None
 
     # --- Buy a plot ---
     def buy_plot_tx(self, plot_id: int, value_eth: float):

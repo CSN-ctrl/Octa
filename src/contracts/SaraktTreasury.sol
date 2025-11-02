@@ -12,7 +12,7 @@ contract SaraktTreasury is Ownable {
     event WithdrawalAVAX(address indexed to, uint256 amount);
     event WithdrawalERC20(address indexed to, address indexed token, uint256 amount);
 
-    constructor(address[] memory _tokens) {
+    constructor(address[] memory _tokens) Ownable(msg.sender) {
         for (uint i = 0; i < _tokens.length; i++) {
             supportedTokens[_tokens[i]] = true;
         }

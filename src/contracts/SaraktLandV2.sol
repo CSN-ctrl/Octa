@@ -35,10 +35,10 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
         uint256 timestamp
     );
 
-    constructor(address _treasury, address _digitalID) ERC1155("ipfs://QmSarakt/{id}.json") {
+    constructor(address _treasury, address _digitalID) ERC1155("ipfs://QmSarakt/{id}.json") Ownable(msg.sender) {
         require(_treasury != address(0), "Invalid treasury");
         require(_digitalID != address(0), "Invalid digitalID");
-        treasury = ITreasury(_treasury);
+        treasury = ITreasury(payable(_treasury));
         digitalID = IDigitalID(_digitalID);
     }
 

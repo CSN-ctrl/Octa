@@ -1,4 +1,90 @@
-# Welcome to your Lovable project
+# Sarakt Land Registry - Octavia Nebula Core
+
+A decentralized land registry system built on Avalanche, featuring digital identity management, fractional asset ownership, and an integrated treasury system.
+
+## Project Overview
+
+This project consists of:
+- **Frontend**: React + TypeScript + Vite + shadcn-ui
+- **Backend**: FastAPI Python backend with blockchain integration
+- **Smart Contracts**: Solidity contracts deployed on Avalanche subnet
+  - SaraktLandV2: ERC1155 land registry (10,000 plots)
+  - SaraktDigitalID: Digital identity management
+  - SaraktTreasury: Payment collection system
+  - FractionalAsset: Fractional ownership of assets
+  - DummyToken: Test ERC20 token
+
+## Quick Start
+
+### Prerequisites
+
+1. **Node.js & npm** - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. **Python 3.11+** - For backend services
+3. **Foundry** - For smart contract compilation
+4. **Avalanche CLI** - For subnet management
+
+### Setup
+
+```bash
+# 1. Install frontend dependencies
+npm install
+
+# 2. Install backend dependencies
+cd backend
+pip install -r requirements.txt
+
+# 3. Install OpenZeppelin contracts (if not already done)
+cd ..
+forge install OpenZeppelin/openzeppelin-contracts
+
+# 4. Configure environment (optional - keys auto-load from Avalanche CLI)
+cp .env.example .env
+# Edit .env if you need custom settings (PRIVATE_KEY auto-loads from Avalanche CLI)
+```
+
+### Running the Application
+
+**Quick Start (Recommended)**:
+```bash
+# Linux/Mac
+./start.sh
+
+# Windows
+start.bat
+
+# Or using npm
+npm start        # Linux/Mac
+npm run start:win # Windows
+```
+
+This will:
+- ✅ Check and install dependencies automatically
+- ✅ Start backend server on port 5001
+- ✅ Start frontend server on port 8080
+- ✅ Open browser automatically
+- ✅ Show server logs
+
+**Manual Start**:
+```bash
+# Terminal 1 - Backend
+cd backend && uvicorn app:app --reload
+
+# Terminal 2 - Frontend
+npm run dev
+```
+
+### Smart Contract Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
+
+Quick deployment:
+```bash
+# Check contract status
+python3 scripts/manage_contracts.py status
+
+# Deploy all contracts
+python3 scripts/manage_contracts.py deploy
+```
 
 ## Project info
 
