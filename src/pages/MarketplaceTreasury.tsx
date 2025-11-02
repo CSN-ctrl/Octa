@@ -1,15 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ethers } from "ethers";
-import { connectWallet, getContract } from "@/lib/wallet";
-import { uploadJSONToPinata, uploadPDFToPinata } from "@/lib/pinata";
-import { generateDeedPDF } from "@/lib/deedPdf";
-import { 
-  ShoppingCart, TrendingUp, User, Wallet, DollarSign, Activity, ArrowUpRight, ArrowDownRight, ExternalLink 
-} from "lucide-react";
+import { ShoppingCart, TrendingUp, User, Wallet, DollarSign, Activity, ArrowUpRight, ArrowDownRight, ExternalLink } from "lucide-react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -43,10 +37,8 @@ interface TradeRecord {
   time: string;
 }
 
-export default function FinancialHub() {
+export default function FinancialHubMock() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [signer, setSigner] = useState<ethers.Signer | null>(null);
-  const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
   const [listings, setListings] = useState<Listing[]>([
@@ -65,61 +57,36 @@ export default function FinancialHub() {
 
   const totalValue = treasuryData.avax.balance * 45 + treasuryData.usdc.balance + treasuryData.xbgl.balance * 0.05;
 
-  /** ---------------- Wallet ---------------- **/
-  const handleConnectWallet = async () => {
-    try {
-      const { signer, address } = await connectWallet();
-      setWalletAddress(address);
-      setSigner(signer);
-      setContract(getContract(signer));
-      toast.success(`Wallet connected: ${address}`);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to connect wallet");
-    }
+  const handleConnectWallet = () => {
+    setWalletAddress("0xFAKE...WALLET");
+    toast.success("Mock wallet connected: 0xFAKE...WALLET");
   };
 
-  /** ---------------- Purchase / Trade ---------------- **/
-  const handlePurchase = async (listing: Listing) => {
-    if (!signer || !contract || !walletAddress) return toast.error("Connect wallet first");
+  const handlePurchase = (listing: Listing) => {
+    if (!walletAddress) return toast.error("Connect wallet first");
     setLoadingId(listing.id);
-    try {
-      const deedJson = {
-        type: listing.type,
-        name: listing.name,
-        plotId: listing.plotId,
-        location: listing.location,
-        owner: walletAddress,
-        price: listing.price,
-        date: new Date().toLocaleDateString(),
-      };
 
-      const jsonCID = await uploadJSONToPinata(deedJson, `${listing.name}-deed.json`);
-      const pdfBytes = await generateDeedPDF("/documents/LandOwnershipTitleCertificate.pdf", { ...deedJson, ipfs: `ipfs://${jsonCID}` });
-      const pdfCID = await uploadPDFToPinata(pdfBytes, `${listing.name}-deed.pdf`);
+    setTimeout(() => {
+      // Simulate mock IPFS
+      const jsonCID = `MOCK_JSON_${listing.id}`;
+      const pdfCID = `MOCK_PDF_${listing.id}`;
 
-      const tx = await contract.buyAsset(listing.id, jsonCID, pdfCID, { value: ethers.parseUnits(listing.price.toString(), "ether") });
-      await tx.wait();
-
-      toast.success(`Purchased ${listing.name}!`, { description: `JSON: ipfs://${jsonCID} | PDF: ipfs://${pdfCID}` });
+      toast.success(`Purchased ${listing.name} (Mock Deed)`, {
+        description: `JSON: ${jsonCID}\nPDF: ${pdfCID}`,
+      });
 
       setListings(prev => prev.map(l => l.id === listing.id ? { ...l, owner: walletAddress, jsonCID, pdfCID } : l));
       setTradeHistory(prev => [...prev, { id: prev.length + 1, listingId: listing.id, price: listing.price, time: new Date().toLocaleTimeString() }]);
-    } catch (err) {
-      console.error(err);
-      toast.error("Purchase failed");
-    } finally {
       setLoadingId(null);
-    }
+    }, 1000);
   };
 
   const handleTrade = (listing: Listing, newPrice: number) => {
     setListings(prev => prev.map(l => l.id === listing.id ? { ...l, price: newPrice, priceChange: `${Math.floor(Math.random()*20)-10}%` } : l));
     setTradeHistory(prev => [...prev, { id: prev.length + 1, listingId: listing.id, price: newPrice, time: new Date().toLocaleTimeString() }]);
-    toast.success(`Traded ${listing.name} at new price: ${newPrice} xBGL`);
+    toast.success(`Traded ${listing.name} at mock price: ${newPrice} xBGL`);
   };
 
-  /** ---------------- Chart Data ---------------- **/
   const chartData = {
     labels: tradeHistory.map(t => t.time),
     datasets: listings.map(listing => ({
@@ -131,19 +98,14 @@ export default function FinancialHub() {
     }))
   };
 
-  const chartOptions = {
-    responsive: true,
-    plugins: { legend: { position: 'top' } },
-    scales: { y: { beginAtZero: true } }
-  };
+  const chartOptions = { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } };
 
-  /** ---------------- UI ---------------- **/
   return (
     <div className="min-h-screen pt-20 bg-background">
       <div className="container mx-auto px-4 py-12 max-w-7xl">
-        <h1 className="text-5xl font-bold mb-6">Financial Hub</h1>
+        <h1 className="text-5xl font-bold mb-6">Financial Hub (Mock)</h1>
         <Button className="mb-6" onClick={handleConnectWallet}>
-          {walletAddress ? `Connected: ${walletAddress.slice(0,6)}...` : "Connect Wallet"}
+          {walletAddress ? `Connected: ${walletAddress}` : "Connect Wallet"}
         </Button>
 
         {/* Treasury */}
@@ -182,8 +144,8 @@ export default function FinancialHub() {
 
               {listing.jsonCID && listing.pdfCID && (
                 <div className="mt-2 flex flex-col gap-1 text-sm">
-                  <a href={`https://ipfs.io/ipfs/${listing.jsonCID}`} target="_blank" rel="noreferrer" className="hover:underline">JSON Deed <ExternalLink className="inline w-3 h-3"/></a>
-                  <a href={`https://ipfs.io/ipfs/${listing.pdfCID}`} target="_blank" rel="noreferrer" className="hover:underline">PDF Deed <ExternalLink className="inline w-3 h-3"/></a>
+                  <a href="#" className="hover:underline">JSON Deed (Mock) <ExternalLink className="inline w-3 h-3"/></a>
+                  <a href="#" className="hover:underline">PDF Deed (Mock) <ExternalLink className="inline w-3 h-3"/></a>
                 </div>
               )}
             </Card>
