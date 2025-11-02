@@ -14,7 +14,292 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      black_market_invites: {
+        Row: {
+          invite_code: string
+          invited_at: string | null
+          invited_by: string | null
+          used: boolean | null
+          wallet_address: string
+        }
+        Insert: {
+          invite_code: string
+          invited_at?: string | null
+          invited_by?: string | null
+          used?: boolean | null
+          wallet_address: string
+        }
+        Update: {
+          invite_code?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          used?: boolean | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      digital_identities: {
+        Row: {
+          avatar_cid: string | null
+          created_at: string | null
+          id: string
+          identity_type: string | null
+          metadata_cid: string | null
+          name: string
+          wallet_address: string
+        }
+        Insert: {
+          avatar_cid?: string | null
+          created_at?: string | null
+          id?: string
+          identity_type?: string | null
+          metadata_cid?: string | null
+          name: string
+          wallet_address: string
+        }
+        Update: {
+          avatar_cid?: string | null
+          created_at?: string | null
+          id?: string
+          identity_type?: string | null
+          metadata_cid?: string | null
+          name?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      economy_ticks: {
+        Row: {
+          chaos_tokens_generated: number | null
+          id: string
+          plot_id: number | null
+          processed_at: string | null
+          resources_generated: Json | null
+          tick_number: number
+        }
+        Insert: {
+          chaos_tokens_generated?: number | null
+          id?: string
+          plot_id?: number | null
+          processed_at?: string | null
+          resources_generated?: Json | null
+          tick_number: number
+        }
+        Update: {
+          chaos_tokens_generated?: number | null
+          id?: string
+          plot_id?: number | null
+          processed_at?: string | null
+          resources_generated?: Json | null
+          tick_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "economy_ticks_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      factions: {
+        Row: {
+          created_at: string | null
+          founder_wallet: string
+          governance_model: string | null
+          id: string
+          member_wallets: string[] | null
+          name: string
+          plot_ids: number[] | null
+          treasury_balance: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          founder_wallet: string
+          governance_model?: string | null
+          id?: string
+          member_wallets?: string[] | null
+          name: string
+          plot_ids?: number[] | null
+          treasury_balance?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          founder_wallet?: string
+          governance_model?: string | null
+          id?: string
+          member_wallets?: string[] | null
+          name?: string
+          plot_ids?: number[] | null
+          treasury_balance?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      npcs: {
+        Row: {
+          assigned_plot_id: number | null
+          created_at: string | null
+          employer_wallet: string | null
+          employment_history: Json | null
+          id: string
+          loyalty_score: number | null
+          nft_id: number | null
+          personality_vector: Json | null
+          skills: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_plot_id?: number | null
+          created_at?: string | null
+          employer_wallet?: string | null
+          employment_history?: Json | null
+          id?: string
+          loyalty_score?: number | null
+          nft_id?: number | null
+          personality_vector?: Json | null
+          skills?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_plot_id?: number | null
+          created_at?: string | null
+          employer_wallet?: string | null
+          employment_history?: Json | null
+          id?: string
+          loyalty_score?: number | null
+          nft_id?: number | null
+          personality_vector?: Json | null
+          skills?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npcs_assigned_plot_id_fkey"
+            columns: ["assigned_plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plots: {
+        Row: {
+          building_stage: number | null
+          coord_x: number
+          coord_y: number
+          created_at: string | null
+          id: number
+          last_tick: string | null
+          metadata_cid: string | null
+          owner_wallet: string | null
+          production_rate: number | null
+          updated_at: string | null
+          workers: Json | null
+          zone_type: string | null
+        }
+        Insert: {
+          building_stage?: number | null
+          coord_x: number
+          coord_y: number
+          created_at?: string | null
+          id: number
+          last_tick?: string | null
+          metadata_cid?: string | null
+          owner_wallet?: string | null
+          production_rate?: number | null
+          updated_at?: string | null
+          workers?: Json | null
+          zone_type?: string | null
+        }
+        Update: {
+          building_stage?: number | null
+          coord_x?: number
+          coord_y?: number
+          created_at?: string | null
+          id?: number
+          last_tick?: string | null
+          metadata_cid?: string | null
+          owner_wallet?: string | null
+          production_rate?: number | null
+          updated_at?: string | null
+          workers?: Json | null
+          zone_type?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number | null
+          block_number: number | null
+          created_at: string | null
+          from_address: string
+          id: string
+          metadata: Json | null
+          status: string | null
+          to_address: string | null
+          token_type: string | null
+          tx_hash: string
+          type: string
+        }
+        Insert: {
+          amount?: number | null
+          block_number?: number | null
+          created_at?: string | null
+          from_address: string
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          to_address?: string | null
+          token_type?: string | null
+          tx_hash: string
+          type: string
+        }
+        Update: {
+          amount?: number | null
+          block_number?: number | null
+          created_at?: string | null
+          from_address?: string
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          to_address?: string | null
+          token_type?: string | null
+          tx_hash?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      user_balances: {
+        Row: {
+          avax_balance: number | null
+          chaos_balance: number | null
+          last_synced: string | null
+          sc_balance: number | null
+          wallet_address: string
+          xbgl_balance: number | null
+        }
+        Insert: {
+          avax_balance?: number | null
+          chaos_balance?: number | null
+          last_synced?: string | null
+          sc_balance?: number | null
+          wallet_address: string
+          xbgl_balance?: number | null
+        }
+        Update: {
+          avax_balance?: number | null
+          chaos_balance?: number | null
+          last_synced?: string | null
+          sc_balance?: number | null
+          wallet_address?: string
+          xbgl_balance?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
