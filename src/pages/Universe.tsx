@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Scroll, Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin } from "lucide-react";
+import { Scroll, Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, TrendingUp, Coins, Factory, Home } from "lucide-react";
 import heroImage from "@/assets/hero-space.jpg";
 
 const planetsData = {
