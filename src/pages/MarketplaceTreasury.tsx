@@ -37,7 +37,7 @@ interface TradeRecord {
   time: string;
 }
 
-export default function FinancialHubMock() {
+export default function FinancialHubDemo() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
@@ -47,7 +47,7 @@ export default function FinancialHubMock() {
     { id: 3, type: "star", name: "Alpha Sarakt", owner: "0xabcd...ef01", price: 400, priceChange: "+30%" },
   ]);
 
-  const [treasuryData, setTreasuryData] = useState({
+  const [treasuryData] = useState({
     avax: { balance: 15420.5, change: 12.4, trend: 'up' },
     usdc: { balance: 284650.0, change: -2.1, trend: 'down' },
     xbgl: { balance: 1847320.0, change: 8.7, trend: 'up' },
@@ -58,8 +58,8 @@ export default function FinancialHubMock() {
   const totalValue = treasuryData.avax.balance * 45 + treasuryData.usdc.balance + treasuryData.xbgl.balance * 0.05;
 
   const handleConnectWallet = () => {
-    setWalletAddress("0xFAKE...WALLET");
-    toast.success("Mock wallet connected: 0xFAKE...WALLET");
+    setWalletAddress("0xDEMO...WALLET");
+    toast.success("Mock wallet connected: 0xDEMO...WALLET");
   };
 
   const handlePurchase = (listing: Listing) => {
@@ -67,7 +67,6 @@ export default function FinancialHubMock() {
     setLoadingId(listing.id);
 
     setTimeout(() => {
-      // Simulate mock IPFS
       const jsonCID = `MOCK_JSON_${listing.id}`;
       const pdfCID = `MOCK_PDF_${listing.id}`;
 
@@ -103,12 +102,12 @@ export default function FinancialHubMock() {
   return (
     <div className="min-h-screen pt-20 bg-background">
       <div className="container mx-auto px-4 py-12 max-w-7xl">
-        <h1 className="text-5xl font-bold mb-6">Financial Hub (Mock)</h1>
+        <h1 className="text-5xl font-bold mb-6">Financial Hub Demo</h1>
         <Button className="mb-6" onClick={handleConnectWallet}>
           {walletAddress ? `Connected: ${walletAddress}` : "Connect Wallet"}
         </Button>
 
-        {/* Treasury */}
+        {/* Treasury Overview */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           {Object.entries(treasuryData).map(([key, data]) => (
             <Card key={key} className="p-6 glass">
@@ -152,13 +151,13 @@ export default function FinancialHubMock() {
           ))}
         </div>
 
-        {/* Price Chart */}
+        {/* Market Trends Chart */}
         <Card className="glass p-6 mb-12">
           <h2 className="text-2xl font-bold mb-4">Market Trends</h2>
           <Line data={chartData} options={chartOptions} />
         </Card>
 
-        {/* Historical Trades */}
+        {/* Trade History */}
         <Card className="glass p-6">
           <h2 className="text-2xl font-bold mb-4">Trade History</h2>
           <div className="space-y-2">
