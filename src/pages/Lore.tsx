@@ -2,10 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Scroll, Skull, Sprout, Building2, Zap, Mountain } from "lucide-react";
-
 export default function Lore() {
-  return (
-    <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
+  return <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -67,7 +65,7 @@ export default function Lore() {
                     "They gave us tools to dig. We used them to fight."
                   </p>
                   <p className="mt-3">
-                    Led by the warrior-philosopher <span className="text-primary font-semibold">Octavia the Unbroken</span>, 
+                    Led by the warrior-philosopher <span className="text-primary font-semibold">Octavian</span>, 
                     humans organized a coordinated uprising across all mining colonies. Using stolen alien technology and 
                     guerrilla tactics, they overwhelmed their captors in a single night of fury. The rebellion succeeded—
                     but at tremendous cost. Of the millions who fought, only thousands survived.
@@ -299,6 +297,5 @@ export default function Lore() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </div>;
 }
