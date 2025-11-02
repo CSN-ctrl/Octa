@@ -4,13 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, 
-  Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, 
-  Flame, Droplets, Wind, TreePine, Hammer, Book
-} from "lucide-react";
+import { Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, Flame, Droplets, Wind, TreePine, Hammer, Book } from "lucide-react";
 import heroImage from "@/assets/hero-space.jpg";
-
 const planetsData = {
   "sarakt-prime": {
     name: "Sarakt Prime",
@@ -20,14 +15,43 @@ const planetsData = {
     tier: "Capital",
     color: "primary",
     description: "Cliff-carved capital overlooking the Sapphire Sea. Vertical architecture, Treasury Tower, xBGL economy hub.",
-    districts: [
-      { name: "District A", plots: 423, price: 75, type: "Residential", icon: Home },
-      { name: "District B", plots: 289, price: 68, type: "Commercial", icon: Factory },
-      { name: "District C", plots: 356, price: 82, type: "Industrial", icon: Hammer },
-      { name: "District D", plots: 198, price: 65, type: "Residential", icon: Home },
-      { name: "Harbor District", plots: 145, price: 95, type: "Trading", icon: Droplets },
-      { name: "Mining Tunnels", plots: 234, price: 55, type: "Resource", icon: Mountain }
-    ],
+    districts: [{
+      name: "District A",
+      plots: 423,
+      price: 75,
+      type: "Residential",
+      icon: Home
+    }, {
+      name: "District B",
+      plots: 289,
+      price: 68,
+      type: "Commercial",
+      icon: Factory
+    }, {
+      name: "District C",
+      plots: 356,
+      price: 82,
+      type: "Industrial",
+      icon: Hammer
+    }, {
+      name: "District D",
+      plots: 198,
+      price: 65,
+      type: "Residential",
+      icon: Home
+    }, {
+      name: "Harbor District",
+      plots: 145,
+      price: 95,
+      type: "Trading",
+      icon: Droplets
+    }, {
+      name: "Mining Tunnels",
+      plots: 234,
+      price: 55,
+      type: "Resource",
+      icon: Mountain
+    }],
     features: ["Treasury Tower", "Vertical Architecture", "Sapphire Sea Access", "Underground Mines"]
   },
   "zythera": {
@@ -38,12 +62,31 @@ const planetsData = {
     tier: "Frontier",
     color: "destructive",
     description: "Bioluminescent nanofiber ecosystem. Black market research, ShadowCoin trades, chaotic frontier.",
-    districts: [
-      { name: "Research Outpost Alpha", plots: 89, price: 120, type: "Research", icon: Book },
-      { name: "Nanofiber Web Zone", plots: 156, price: 95, type: "Experimental", icon: Sparkles },
-      { name: "Underground Labs", plots: 67, price: 140, type: "Science", icon: Zap },
-      { name: "Black Market Hub", plots: 203, price: 110, type: "Trading", icon: Shield }
-    ],
+    districts: [{
+      name: "Research Outpost Alpha",
+      plots: 89,
+      price: 120,
+      type: "Research",
+      icon: Book
+    }, {
+      name: "Nanofiber Web Zone",
+      plots: 156,
+      price: 95,
+      type: "Experimental",
+      icon: Sparkles
+    }, {
+      name: "Underground Labs",
+      plots: 67,
+      price: 140,
+      type: "Science",
+      icon: Zap
+    }, {
+      name: "Black Market Hub",
+      plots: 203,
+      price: 110,
+      type: "Trading",
+      icon: Shield
+    }],
     features: ["Nanofiber Web", "Bioluminescent Flora", "Black Market", "Chaos Energy"]
   },
   "nexus-hub": {
@@ -54,11 +97,25 @@ const planetsData = {
     tier: "Commercial",
     color: "accent",
     description: "Primary commerce node. Multi-species marketplace, diplomatic quarters, high-frequency trading.",
-    districts: [
-      { name: "Central Market", plots: 512, price: 125, type: "Commercial", icon: Factory },
-      { name: "Diplomatic Quarter", plots: 234, price: 150, type: "Governance", icon: Shield },
-      { name: "Trade Docks", plots: 389, price: 110, type: "Trading", icon: Droplets }
-    ],
+    districts: [{
+      name: "Central Market",
+      plots: 512,
+      price: 125,
+      type: "Commercial",
+      icon: Factory
+    }, {
+      name: "Diplomatic Quarter",
+      plots: 234,
+      price: 150,
+      type: "Governance",
+      icon: Shield
+    }, {
+      name: "Trade Docks",
+      plots: 389,
+      price: 110,
+      type: "Trading",
+      icon: Droplets
+    }],
     features: ["Multi-Species Hub", "Diplomatic Center", "High-Frequency Trading", "Transit Node"]
   },
   "nexus-port": {
@@ -69,11 +126,25 @@ const planetsData = {
     tier: "Logistics",
     color: "secondary",
     description: "Logistics center. Cargo processing, ship maintenance, customs enforcement.",
-    districts: [
-      { name: "Cargo Terminal", plots: 445, price: 85, type: "Industrial", icon: Hammer },
-      { name: "Ship Yards", plots: 267, price: 95, type: "Manufacturing", icon: Factory },
-      { name: "Customs District", plots: 178, price: 75, type: "Governance", icon: Shield }
-    ],
+    districts: [{
+      name: "Cargo Terminal",
+      plots: 445,
+      price: 85,
+      type: "Industrial",
+      icon: Hammer
+    }, {
+      name: "Ship Yards",
+      plots: 267,
+      price: 95,
+      type: "Manufacturing",
+      icon: Factory
+    }, {
+      name: "Customs District",
+      plots: 178,
+      price: 75,
+      type: "Governance",
+      icon: Shield
+    }],
     features: ["Cargo Processing", "Ship Maintenance", "Customs Enforcement", "Warehouse Complex"]
   },
   "nexus-depot": {
@@ -93,28 +164,19 @@ const planetsData = {
     description: "Planned settlement. Agricultural domes, residential sectors, terraforming projects."
   }
 };
-
 export default function UnifiedUniverse() {
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
-
   const handlePlanetSelect = (planetId: string) => {
     const planet = planetsData[planetId];
     if (!planet.locked) {
       setSelectedPlanet(planetId);
     }
   };
-
   if (selectedPlanet) {
     const planet = planetsData[selectedPlanet];
-    
-    return (
-      <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
+    return <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
         <div className="container mx-auto px-4 py-12 max-w-7xl">
-          <Button 
-            variant="glass" 
-            className="mb-8 gap-2"
-            onClick={() => setSelectedPlanet(null)}
-          >
+          <Button variant="glass" className="mb-8 gap-2" onClick={() => setSelectedPlanet(null)}>
             <ChevronLeft className="h-4 w-4" />
             Back to Universe
           </Button>
@@ -132,11 +194,9 @@ export default function UnifiedUniverse() {
               <p className="text-xl text-muted-foreground mb-6">{planet.description}</p>
               
               <div className="flex flex-wrap gap-2">
-                {planet.features?.map((feature, idx) => (
-                  <Badge key={idx} variant="outline" className="px-3 py-1">
+                {planet.features?.map((feature, idx) => <Badge key={idx} variant="outline" className="px-3 py-1">
                     {feature}
-                  </Badge>
-                ))}
+                  </Badge>)}
               </div>
             </div>
 
@@ -187,8 +247,7 @@ export default function UnifiedUniverse() {
             </Card>
           </div>
 
-          {planet.districts && planet.districts.length > 0 && (
-            <div>
+          {planet.districts && planet.districts.length > 0 && <div>
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-4xl font-bold">Available Districts</h2>
                 <Badge variant="outline" className="text-lg px-4 py-2">
@@ -198,9 +257,8 @@ export default function UnifiedUniverse() {
               
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {planet.districts.map((district, idx) => {
-                  const Icon = district.icon;
-                  return (
-                    <Card key={idx} className="glass border-primary/30 hover:border-primary hover:shadow-glow-accent transition-all group">
+              const Icon = district.icon;
+              return <Card key={idx} className="glass border-primary/30 hover:border-primary hover:shadow-glow-accent transition-all group">
                       <CardHeader>
                         <div className="flex items-start justify-between mb-3">
                           <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 group-hover:bg-primary/20 transition-colors">
@@ -230,22 +288,17 @@ export default function UnifiedUniverse() {
                           View Plots <ArrowRight className="h-4 w-4" />
                         </Button>
                       </CardContent>
-                    </Card>
-                  );
-                })}
+                    </Card>;
+            })}
               </div>
-            </div>
-          )}
+            </div>}
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
+  return <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
       <div className="relative h-[500px] overflow-hidden mb-16">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-40"/>
+          <img src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-40" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background"></div>
         </div>
         <div className="relative container mx-auto px-4 h-full flex items-center justify-center text-center">
@@ -254,9 +307,7 @@ export default function UnifiedUniverse() {
               <Sparkles className="w-5 h-5 mr-2" />
               Genesis Phase Active
             </Badge>
-            <h1 className="text-8xl font-bold mb-6 bg-gradient-cosmic bg-clip-text text-transparent">
-              Octavia Universe
-            </h1>
+            <h1 className="font-bold mb-6 bg-gradient-cosmic bg-clip-text text-transparent text-7xl">Chaos Star Universe</h1>
             <p className="text-2xl text-muted-foreground mb-8">
               From rebellion to renaissance. Explore lore, claim land, build empires.
             </p>
@@ -373,13 +424,8 @@ export default function UnifiedUniverse() {
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-6">
                   {["sarakt-prime", "zythera"].map(id => {
-                    const planet = planetsData[id];
-                    return (
-                      <Card 
-                        key={id} 
-                        className="border-primary/10 hover:border-primary hover:shadow-glow-accent transition-all cursor-pointer group"
-                        onClick={() => handlePlanetSelect(id)}
-                      >
+                  const planet = planetsData[id];
+                  return <Card key={id} className="border-primary/10 hover:border-primary hover:shadow-glow-accent transition-all cursor-pointer group" onClick={() => handlePlanetSelect(id)}>
                         <CardHeader>
                           <div className="flex items-center justify-between mb-3">
                             <Badge variant={planet.status === "Habitable" ? "default" : "destructive"} className="text-sm">
@@ -395,14 +441,14 @@ export default function UnifiedUniverse() {
                           <div className="grid grid-cols-2 gap-3">
                             <div className="glass p-3 rounded-lg">
                               <div className="flex items-center gap-2 mb-1">
-                                <Users className="w-4 h-4 text-primary"/>
+                                <Users className="w-4 h-4 text-primary" />
                                 <span className="text-xs text-muted-foreground">Population</span>
                               </div>
                               <p className="text-xl font-bold">{planet.population}k</p>
                             </div>
                             <div className="glass p-3 rounded-lg">
                               <div className="flex items-center gap-2 mb-1">
-                                <MapPin className="w-4 h-4 text-primary"/>
+                                <MapPin className="w-4 h-4 text-primary" />
                                 <span className="text-xs text-muted-foreground">Mapped</span>
                               </div>
                               <p className="text-xl font-bold">{planet.coverage}%</p>
@@ -413,9 +459,8 @@ export default function UnifiedUniverse() {
                             Select Planet <ArrowRight className="h-4 w-4" />
                           </Button>
                         </CardContent>
-                      </Card>
-                    );
-                  })}
+                      </Card>;
+                })}
                 </div>
               </CardContent>
             </Card>
@@ -440,13 +485,8 @@ export default function UnifiedUniverse() {
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-6">
                   {["nexus-hub", "nexus-port", "nexus-depot", "nexus-colony"].map(id => {
-                    const planet = planetsData[id];
-                    return (
-                      <Card 
-                        key={id} 
-                        className={`border-primary/10 ${planet.locked ? 'opacity-60' : 'hover:border-primary hover:shadow-glow-accent cursor-pointer'} transition-all group`}
-                        onClick={() => !planet.locked && handlePlanetSelect(id)}
-                      >
+                  const planet = planetsData[id];
+                  return <Card key={id} className={`border-primary/10 ${planet.locked ? 'opacity-60' : 'hover:border-primary hover:shadow-glow-accent cursor-pointer'} transition-all group`} onClick={() => !planet.locked && handlePlanetSelect(id)}>
                         <CardHeader>
                           <div className="flex items-center justify-between mb-3">
                             <Badge variant={planet.locked ? "outline" : "default"} className="text-sm">
@@ -455,26 +495,25 @@ export default function UnifiedUniverse() {
                             <Badge variant="outline" className="text-sm">{planet.tier}</Badge>
                           </div>
                           <CardTitle className="text-2xl flex items-center gap-2">
-                            {planet.locked && <Lock className="w-5 h-5"/>}
+                            {planet.locked && <Lock className="w-5 h-5" />}
                             {planet.name}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <p className="text-sm text-muted-foreground">{planet.description}</p>
                           
-                          {!planet.locked ? (
-                            <>
+                          {!planet.locked ? <>
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="glass p-3 rounded-lg">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <Users className="w-4 h-4 text-primary"/>
+                                    <Users className="w-4 h-4 text-primary" />
                                     <span className="text-xs text-muted-foreground">Population</span>
                                   </div>
                                   <p className="text-xl font-bold">{planet.population}k</p>
                                 </div>
                                 <div className="glass p-3 rounded-lg">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <MapPin className="w-4 h-4 text-primary"/>
+                                    <MapPin className="w-4 h-4 text-primary" />
                                     <span className="text-xs text-muted-foreground">Mapped</span>
                                   </div>
                                   <p className="text-xl font-bold">{planet.coverage}%</p>
@@ -484,17 +523,13 @@ export default function UnifiedUniverse() {
                               <Button variant="cosmic" className="w-full gap-2 group-hover:shadow-glow-accent transition-all">
                                 Select Planet <ArrowRight className="h-4 w-4" />
                               </Button>
-                            </>
-                          ) : (
-                            <div className="glass p-4 rounded-lg text-center">
+                            </> : <div className="glass p-4 rounded-lg text-center">
                               <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                               <p className="text-sm text-muted-foreground">Unlocks in Phase 2</p>
-                            </div>
-                          )}
+                            </div>}
                         </CardContent>
-                      </Card>
-                    );
-                  })}
+                      </Card>;
+                })}
                 </div>
               </CardContent>
             </Card>
@@ -669,14 +704,7 @@ export default function UnifiedUniverse() {
           <TabsContent value="worlds" className="space-y-8">
             <h2 className="text-4xl font-bold mb-8">Explore the Planets</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(planetsData).map(([id, planet]) => (
-                <Card
-                  key={id}
-                  onClick={() => handlePlanetSelect(id)}
-                  className={`glass cursor-pointer border-primary/30 hover:border-primary hover:shadow-glow-accent transition-all ${
-                    planet.locked ? "opacity-40 pointer-events-none" : ""
-                  }`}
-                >
+              {Object.entries(planetsData).map(([id, planet]) => <Card key={id} onClick={() => handlePlanetSelect(id)} className={`glass cursor-pointer border-primary/30 hover:border-primary hover:shadow-glow-accent transition-all ${planet.locked ? "opacity-40 pointer-events-none" : ""}`}>
                   <CardHeader>
                     <CardTitle className="text-2xl flex justify-between items-center">
                       {planet.name}
@@ -689,21 +717,14 @@ export default function UnifiedUniverse() {
                       <span>Tier</span>
                       <Badge variant="outline">{planet.tier}</Badge>
                     </div>
-                    {!planet.locked && (
-                      <Button variant="cosmic" className="w-full mt-2 gap-2">
+                    {!planet.locked && <Button variant="cosmic" className="w-full mt-2 gap-2">
                         View Planet <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    )}
+                      </Button>}
                   </CardContent>
-                </Card>
-              ))}
+                </Card>)}
             </div>
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </div>;
 }
-  
-
-
