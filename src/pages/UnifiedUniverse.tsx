@@ -1,139 +1,20 @@
-'use client';
-
-import React, { useMemo, useReducer, useState, useContext, createContext, useCallback, useEffect } from "react";
+import React, { useMemo, useReducer, useState, useContext, createContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin,
   Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield,
-  Droplets, TreePine, Hammer, Book, X, Check, ShoppingCart, Wallet,
-  Star, TrendingUp, Package, AlertCircle, Loader2
+  Droplets, TreePine, Hammer, Book, X, Check
 } from "lucide-react";
 import heroImage from "/assets/hero-space.jpg";
 
 // ----------------------------
-// Types & Constants
+// Data (default) - single source of truth
 // ----------------------------
-type DistrictType = "Residential" | "Commercial" | "Industrial" | "Trading" | "Research" | "Science" | "Experimental" | "Governance" | "Manufacturing" | "Resource";
-
-interface District {
-  id: string;
-  name: string;
-  plots: number;
-  price: number;
-  type: DistrictType;
-  icon: React.FC<any>;
-}
-
-interface Planet {
-  id: string;
-  name: string;
-  status: string;
-  population: number;
-  coverage: number;
-  tier: string;
-  color: string;
-  description: string;
-  districts: District[];
-  features: string[];
-  locked?: boolean;
-}
-
-interface UniverseState {
-  planets: Record<string, Planet>;
-  selectedPlanetId: string | null;
-  wallet: number;
-}
-
-type Action =
-  | { type: "SELECT_PLANET"; payload: string }
-  | { type: "CLOSE_PLANET" }
-  | { type: "BUY_PLOT"; payload: { planetId: string; districtId: string; quantity: number } }
-  | { type: "SET_WALLET"; payload: number };
-
-// ----------------------------
-// Context + Reducer
-// ----------------------------
-const UniverseContext = createContext<{
-  state: UniverseState;
-  dispatch: React.Dispatch<Action>;
-} | null>(null);
-
-const INITIAL_WALLET = 2500;
-
-function universeReducer(state: UniverseState, action: Action): UniverseState {
-  switch (action.type) {
-    case "SELECT_PLANET":
-      return { ...state, selectedPlanetId: action.payload };
-    case "CLOSE_PLANET":
-      return { ...state, selectedPlanetId: null };
-    case "BU:BUY_PLOT": {
-      const { planetId, districtId, quantity } = action.payload;
-      if (planetId !== "sarakt-prime" || quantity <= 0) return state;
-
-      const planet = state.planets[planetId];
-      if (!planet) return state;
-
-      let totalCost = 0;
-      const newDistricts = planet.districts.map(d => {
-        if (d.id !== districtId) return d;
-        const district = { ...d };
-        const available = district.plots;
-        const buy = Math.min(quantity, available);
-        totalCost += buy * district.price;
-        district.plots = available - buy;
-        return district;
-      });
-
-      if (totalCost > state.wallet) return state;
-
-      const newPlanets = {
-        ...state.planets,
-        [planetId]: { ...planet, districts: newDistricts }
-      };
-
-      return {
-        ...state,
-        planets: newPlanets,
-        wallet: state.wallet - totalCost
-      };
-    }
-    case "SET_WALLET":
-      return { ...state, wallet: action.payload };
-    default:
-      return state;
-  }
-}
-
-function UniverseProvider({ children, initialPlanets }: { children: React.ReactNode; initialPlanets: Record<string, Planet> }) {
-  const [state, dispatch] = useReducer(universeReducer, {
-    planets: initialPlanets,
-    selectedPlanetId: null,
-    wallet: INITIAL_WALLET
-  });
-
-  const value = useMemo(() => ({ state, dispatch }), [state]);
-
-  return <UniverseContext.Provider value={value}>{children}</UniverseContext.Provider>;
-}
-
-function useUniverse() {
-  const ctx = useContext(UniverseContext);
-  if (!ctx) throw new Error("useUniverse must be used within UniverseProvider");
-  return ctx;
-}
-
-// ----------------------------
-// Data
-// ----------------------------
-const DEFAULT_PLANETS: Record<string, Planet> = {
+const DEFAULT_PLANETS = {
   "sarakt-prime": {
     id: "sarakt-prime",
     name: "Sarakt Prime",
@@ -202,345 +83,301 @@ const DEFAULT_PLANETS: Record<string, Planet> = {
     ],
     features: ["Cargo Processing", "Ship Maintenance", "Customs Enforcement", "Warehouse Complex"]
   },
-  "nexus-depot": { id: "nexus-depot", name: "Nexus Depot", status: "Coming Soon", locked: true, tier: "Storage", color: "muted", description: "Future storage facility.", districts: [], features: [], population: 0, coverage: 0 },
-  "nexus-colony": { id: "nexus-colony", name: "Nexus Colony", status: "Coming Soon", locked: true, tier: "Settlement", color: "muted", description: "Planned settlement.", districts: [], features: [], population: 0, coverage: 0 }
+  "nexus-depot": { id: "nexus-depot", name: "Nexus Depot", status: "Coming Soon", locked: true, tier: "Storage", color: "muted", description: "Future storage facility.", districts: [], features: [] },
+  "nexus-colony": { id: "nexus-colony", name: "Nexus Colony", status: "Coming Soon", locked: true, tier: "Settlement", color: "muted", description: "Planned settlement.", districts: [], features: [] }
 };
 
 // ----------------------------
-// UI Components
+// Context + Reducer (lightweight state management)
 // ----------------------------
-function SafeIcon({ Icon, ...props }: { Icon: React.FC<any>; [key: string]: any }) {
-  return Icon ? <Icon {...props} /> : null;
+const UniverseContext = createContext(null);
+
+function universeReducer(state, action) {
+  switch (action.type) {
+    case "SELECT_PLANET":
+      return { ...state, selectedPlanetId: action.payload };
+    case "CLOSE_PLANET":
+      return { ...state, selectedPlanetId: null };
+    case "BUY_PLOT": {
+      const { planetId, districtId, quantity = 1 } = action.payload;
+      // only sarakt-prime sells for now
+      if (planetId !== "sarakt-prime") return state;
+
+      const planets = { ...state.planets };
+      const planet = { ...planets[planetId] };
+      planet.districts = planet.districts.map(d => {
+        if (d.id !== districtId) return d;
+        const available = typeof d.plots === "number" ? d.plots : 0;
+        const bought = Math.min(quantity, available);
+        return { ...d, plots: available - bought };
+      });
+      planets[planetId] = planet;
+      return { ...state, planets };
+    }
+    default:
+      return state;
+  }
 }
 
-function FloatingParticles() {
+function UniverseProvider({ children, initial = DEFAULT_PLANETS }) {
+  const initialState = { planets: initial, selectedPlanetId: null };
+  const [state, dispatch] = React.useReducer(universeReducer, initialState);
+  const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
+  return <UniverseContext.Provider value={value}>{children}</UniverseContext.Provider>;
+}
+
+function useUniverse() {
+  const ctx = useContext(UniverseContext);
+  if (!ctx) throw new Error("useUniverse must be used within UniverseProvider");
+  return ctx;
+}
+
+// ----------------------------
+// UI Primitives (no world-ending side effects)
+// ----------------------------
+function SafeIcon({ Icon, className = "w-6 h-6" }) {
+  if (!Icon || typeof Icon !== "function") return null;
+  return <Icon className={className} />;
+}
+
+function Modal({ open, onClose, children }) {
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {[...Array(20)].map((_, i) => (
+    <AnimatePresence>
+      {open && (
         <motion.div
-          key={i}
-          className="absolute w-1 h-1 bg-primary/20 rounded-full"
-          initial={{ x: Math.random() * window.innerWidth, y: -10 }}
-          animate={{ y: window.innerHeight + 10 }}
-          transition={{ duration: 15 + Math.random() * 10, repeat: Infinity, ease: "linear" }}
-          style={{ left: `${Math.random() * 100}%` }}
-        />
-      ))}
-    </div>
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+          <motion.div
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 12, opacity: 0 }}
+            className="relative w-full max-w-2xl bg-card rounded-2xl p-6 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
+// ----------------------------
+// Components
+// ----------------------------
 function Hero() {
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative h-[500px] rounded-3xl overflow-hidden mb-16 shadow-2xl"
-    >
-      <div className="absolute inset-0">
-        <img src={heroImage} alt="Octavia Universe" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-      </div>
-
-      <div className="relative h-full flex items-end pb-16 px-8 max-w-7xl mx-auto">
-        <div className="max-w-4xl">
-          <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ delay: 0.2 }}>
-            <Badge className="mb-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0 text-lg px-8 py-3 inline-flex items-center gap-3 shadow-lg">
-              <Sparkles className="w-6 h-6 animate-pulse" />
-              Genesis Phase Active
-            </Badge>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-7xl font-black mb-6 bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent leading-tight"
-          >
-            Octavia Universe
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-xl text-white/80 max-w-2xl"
-          >
-            From rebellion to renaissance. Explore alien worlds, claim digital land, build empires in the first on-chain metaverse.
-          </motion.p>
+    <div className="relative h-[420px] overflow-hidden mb-12">
+      <img src={heroImage} alt="Cosmic" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
+      <div className="relative container mx-auto px-4 h-full flex items-center">
+        <div className="max-w-3xl">
+          <Badge className="mb-6 bg-gradient-cosmic text-white border-primary text-lg px-6 py-2 inline-flex items-center gap-2">
+            <Sparkles className="w-5 h-5" /> Genesis Phase Active
+          </Badge>
+          <h1 className="text-6xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">Octavia Universe</h1>
+          <p className="text-lg text-muted-foreground">From rebellion to renaissance. Explore lore, claim land, build empires.</p>
         </div>
       </div>
-    </motion.section>
-  );
-}
-
-function QuickStats({ planets }: { planets: Record<string, Planet> }) {
-  const stats = useMemo(() => {
-    const totalPlanets = Object.keys(planets).length;
-    const active = Object.values(planets).filter(p => !p.locked).length;
-    const totalDistricts = Object.values(planets).reduce((acc, p) => acc + p.districts.length, 0);
-    const totalPlots = Object.values(planets).reduce((acc, p) => acc + p.districts.reduce((a, d) => a + d.plots, 0), 0);
-
-    return { totalPlanets, active, totalDistricts, totalPlots };
-  }, [planets]);
-
-  const statItems = [
-    { label: "Total Planets", value: stats.totalPlanets, icon: Globe, color: "text-blue-400" },
-    { label: "Active Worlds", value: stats.active, icon: Star, color: "text-yellow-400" },
-    { label: "Total Districts", value: stats.totalDistricts, icon: Building2, color: "text-purple-400" },
-    { label: "Available Plots", value: stats.totalPlots, icon: Package, color: "text-green-400" }
-  ];
-
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-      {statItems.map((stat, i) => (
-        <motion.div
-          key={stat.label}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.1 }}
-        >
-          <Card className="glass border-white/10 backdrop-blur-xl hover:shadow-2xl hover:shadow-purple-500/20 transition-all group">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white/60 mb-1">{stat.label}</p>
-                  <p className="text-4xl font-black bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-                    {stat.value}
-                  </p>
-                </div>
-                <div className={`p-3 rounded-2xl bg-white/5 group-hover:scale-110 transition-transform ${stat.color}`}>
-                  <stat.icon className="w-8 h-8" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
     </div>
   );
 }
 
-function PlanetCard({ planet, onSelect }: { planet: Planet; onSelect: (id: string) => void }) {
-  const locked = planet.locked;
+function QuickStats({ planets }) {
+  const planetCount = Object.keys(planets).length;
+  const totalDistricts = Object.values(planets).reduce((acc, p) => acc + (Array.isArray(p.districts) ? p.districts.length : 0), 0);
+  const locked = Object.values(planets).filter(p => p.locked).length;
 
   return (
-    <motion.div
-      whileHover={!locked ? { y: -8, scale: 1.02 } : {}}
-      whileTap={!locked ? { scale: 0.98 } : {}}
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: "spring", stiffness: 300 }}
-    >
-      <Card
-        className={`relative overflow-hidden glass backdrop-blur-xl border-white/10 cursor-pointer transition-all ${
-          locked ? "opacity-50 grayscale" : "hover:border-purple-500 hover:shadow-2xl hover:shadow-purple-500/30"
-        }`}
-        onClick={() => !locked && onSelect(planet.id)}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-pink-600/10 opacity-0 hover:opacity-100 transition-opacity" />
-        
-        <CardHeader className="relative">
-          <div className="flex items-center justify-between mb-2">
-            <CardTitle className="text-2xl font-bold text-white">{planet.name}</CardTitle>
-            {locked && <Lock className="w-5 h-5 text-white/50" />}
+    <div className="grid md:grid-cols-4 gap-4 mb-8">
+      <Card className="glass border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Total Planets</p>
+              <p className="text-3xl font-bold">{planetCount}</p>
+            </div>
+            <Globe className="w-10 h-10 text-primary opacity-50" />
           </div>
-          <Badge className={`text-sm ${locked ? "bg-white/10" : "bg-gradient-to-r from-purple-500 to-pink-500"} text-white border-0`}>
-            {planet.tier}
-          </Badge>
-        </CardHeader>
-
-        <CardContent className="relative space-y-3">
-          <p className="text-sm text-white/70 line-clamp-2">{planet.description}</p>
-          
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-white/60">Status</span>
-            <Badge variant="outline" className="text-white/80 border-white/30">
-              {planet.status}
-            </Badge>
-          </div>
-
-          {!locked && (
-            <Button
-              variant="ghost"
-              className="w-full mt-4 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(planet.id);
-              }}
-            >
-              Explore World <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          )}
         </CardContent>
       </Card>
-    </motion.div>
+
+      <Card className="glass border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Active Systems</p>
+              <p className="text-3xl font-bold">2</p>
+            </div>
+            <Sparkles className="w-10 h-10 text-accent opacity-50" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="glass border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Total Districts</p>
+              <p className="text-3xl font-bold">{totalDistricts}</p>
+            </div>
+            <Building2 className="w-10 h-10 text-secondary opacity-50" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="glass border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Locked Worlds</p>
+              <p className="text-3xl font-bold">{locked}</p>
+            </div>
+            <Lock className="w-10 h-10 text-muted-foreground opacity-50" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
-function PlanetStats({ planet }: { planet: Planet | null }) {
-  const stats = planet ? [
-    { label: "Population", value: `${planet.population}k`, icon: Users, progress: planet.population },
-    { label: "Coverage", value: `${planet.coverage}%`, icon: MapPin, progress: planet.coverage },
-    { label: "Districts", value: planet.districts.length, icon: Building2, progress: 0 }
-  ] : [];
-
+function PlanetCard({ planet, onSelect }) {
+  const locked = Boolean(planet.locked);
   return (
-    <Card className="glass backdrop-blur-xl border-white/10">
+    <Card
+      className={`glass cursor-pointer border-primary/20 hover:border-primary hover:shadow-glow-accent transition-all ${locked ? "opacity-50 pointer-events-none" : ""}`} 
+      onClick={() => !locked && onSelect(planet.id)}
+      role="button"
+      aria-disabled={locked}
+    >
       <CardHeader>
-        <CardTitle className="text-xl text-white flex items-center gap-2">
-          <Globe className="w-5 h-5" />
-          Planet Overview
+        <CardTitle className="text-2xl flex justify-between items-center">
+          {String(planet.name)}
+          {locked && <Lock className="w-5 h-5 text-muted-foreground" />}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-white/60 flex items-center gap-2">
-                <stat.icon className="w-4 h-4" />
-                {stat.label}
-              </span>
-              <span className="font-bold text-white">{stat.value}</span>
-            </div>
-            {stat.progress > 0 && (
-              <Progress value={stat.progress} className="h-2 bg-white/10">
-                <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" style={{ width: `${stat.progress}%` }} />
-              </Progress>
-            )}
-          </motion.div>
-        ))}
-
-        {planet && (
-          <>
-            <Separator className="bg-white/10" />
-            <div className="flex flex-wrap gap-2">
-              {planet.features.map((f, i) => (
-                <Badge key={i} variant="outline" className="text-white/70 border-white/20 text-xs">
-                  {f}
-                </Badge>
-              ))}
-            </div>
-          </>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">{String(planet.description || '')}</p>
+        <div className="flex items-center justify-between text-sm">
+          <span>Tier</span>
+          <Badge variant="outline">{String(planet.tier || '—')}</Badge>
+        </div>
+        {!locked && (
+          <Button variant="cosmic" className="w-full mt-2 gap-2" onClick={() => onSelect(planet.id)}>
+            View Planet <ArrowRight className="h-4 w-4" />
+          </Button>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function DistrictCard({
-  planetId,
-  district,
-  onBuy
-}: {
-  planetId: string;
-  district: District;
-  onBuy: (districtId: string, qty: number) => void;
-}) {
-  const [quantity, setQuantity] = useState(1);
-  const canBuy = planetId === "sarakt-prime" && district.plots > 0;
-  const totalPrice = district.price * quantity;
+function PlanetStats({ planet }) {
+  const safePopulation = typeof planet.population === "number" ? planet.population : 0;
+  const safeCoverage = typeof planet.coverage === "number" ? planet.coverage : 0;
+  const numDistricts = Array.isArray(planet.districts) ? planet.districts.length : 0;
 
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <Card className="glass backdrop-blur-xl border-white/10 hover:border-purple-500 hover:shadow-xl hover:shadow-purple-500/20 transition-all">
-        <CardHeader>
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
-              <SafeIcon Icon={district.icon} className="w-6 h-6 text-purple-300" />
-            </div>
-            <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0 text-xs">
-              {district.type}
-            </Badge>
+    <Card className="glass border-primary/20">
+      <CardHeader>
+        <CardTitle className="text-2xl">Planet Stats</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground flex items-center gap-2"><Users className="w-4 h-4" /> Population</span>
+            <span className="font-bold">{safePopulation}k</span>
           </div>
-          <CardTitle className="text-xl text-white">{district.name}</CardTitle>
-        </CardHeader>
+          <Progress value={Math.min(100, safePopulation)} className="h-2" />
+        </div>
 
-        <CardContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/5 rounded-xl p-4 backdrop-blur">
-              <p className="text-xs text-white/60 mb-1">Available Plots</p>
-              <p className="text-2xl font-bold text-white">{district.plots}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4 backdrop-blur">
-              <p className="text-xs text-white/60 mb-1">Price per Plot</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                {district.price} xBGL
-              </p>
-            </div>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground flex items-center gap-2"><MapPin className="w-4 h-4" /> Mapped</span>
+            <span className="font-bold">{safeCoverage}%</span>
           </div>
+          <Progress value={Math.min(100, safeCoverage)} className="h-2" />
+        </div>
 
-          {canBuy ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-white border-white/20"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
-                >
-                  -
-                </Button>
-                <Input
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Math.min(district.plots, parseInt(e.target.value) || 1)))}
-                  className="w-20 text-center bg-white/10 border-white/20 text-white"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-white border-white/20"
-                  onClick={() => setQuantity(Math.min(district.plots, quantity + 1))}
-                  disabled={quantity >= district.plots}
-                >
-                  +
-                </Button>
-              </div>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground flex items-center gap-2"><Building2 className="w-4 h-4" /> Districts</span>
+            <span className="font-bold">{numDistricts}</span>
+          </div>
+        </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white/60">Total Cost</span>
-                <span className="font-bold text-lg text-white">{totalPrice} xBGL</span>
-              </div>
+        <div className="pt-4 border-t border-primary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Tier</span>
+            <Badge className="bg-gradient-cosmic text-white">{String(planet.tier || "—")}</Badge>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-              <Button
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold"
-                onClick={() => onBuy(district.id, quantity)}
-              >
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Buy {quantity} Plot{quantity > 1 ? "s" : ""}
-              </Button>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-white/50 flex items-center justify-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {planetId !== "sarakt-prime" ? "Sales not active yet" : "Sold out"}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
+function DistrictCard({ planetId, district, onBuy }) {
+  const Icon = district.icon;
+  const plots = typeof district.plots === 'number' ? district.plots : 0;
+  const price = typeof district.price === 'number' ? district.price : '—';
+
+  const canBuy = planetId === 'sarakt-prime' && plots > 0;
+
+  return (
+    <Card className="glass border-primary/30 hover:border-primary hover:shadow-glow-accent transition-all group">
+      <CardHeader>
+        <div className="flex items-start justify-between mb-3">
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 group-hover:bg-primary/20 transition-colors">
+            <SafeIcon Icon={Icon} className="w-6 h-6 text-primary" />
+          </div>
+          <Badge variant="outline">{String(district.type || '—')}</Badge>
+        </div>
+        <CardTitle className="text-xl">{String(district.name || 'Unknown')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="glass p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-1">Available</p>
+            <p className="text-xl font-bold">{plots}</p>
+          </div>
+          <div className="glass p-3 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-1">Price</p>
+            <p className="text-xl font-bold text-primary">{price}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-sm text-muted-foreground">xBGL per plot</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => onBuy(district.id, 1)} disabled={!canBuy} aria-disabled={!canBuy}>
+              Buy 1
+            </Button>
+            <Button variant="cosmic" onClick={() => onBuy(district.id, 5)} disabled={!canBuy} aria-disabled={!canBuy}>
+              Buy 5
+            </Button>
+          </div>
+        </div>
+
+        {!canBuy && (
+          <div className="text-sm text-muted-foreground">{planetId !== 'sarakt-prime' ? 'Only Sarakt sells plots currently.' : 'No plots available.'}</div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 // ----------------------------
-// Main App
+// Main App (UnifiedUniverse)
 // ----------------------------
-export default function UnifiedUniverse({ planets = DEFAULT_PLANETS }: { planets?: Record<string, Planet> }) {
+export default function UnifiedUniverse({ planets = DEFAULT_PLANETS }) {
   return (
-    <UniverseProvider initialPlanets={planets}>
+    <UniverseProvider initial={planets}>
       <UnifiedUniverseInner />
     </UniverseProvider>
   );
@@ -548,268 +385,128 @@ export default function UnifiedUniverse({ planets = DEFAULT_PLANETS }: { planets
 
 function UnifiedUniverseInner() {
   const { state, dispatch } = useUniverse();
-  const [buyDialog, setBuyDialog] = useState<{ open: boolean; district?: District; quantity: number; planet?: Planet }>({
-    open: false,
-    quantity: 1
-  });
-  const [isProcessing, setIsProcessing] = useState(false);
-
+  const [buyModal, setBuyModal] = useState({ open: false, districtId: null, qty: 0 });
   const selectedPlanet = state.selectedPlanetId ? state.planets[state.selectedPlanetId] : null;
-  const planetEntries = Object.entries(state.planets);
 
-  const openPlanet = useCallback((id: string) => {
-    dispatch({ type: "SELECT_PLANET", payload: id });
-  }, [dispatch]);
+  const planetEntries = useMemo(() => Object.entries(state.planets), [state.planets]);
 
-  const closePlanet = useCallback(() => {
-    dispatch({ type: "CLOSE_PLANET" });
-  }, [dispatch]);
+  const openPlanet = (id) => dispatch({ type: 'SELECT_PLANET', payload: id });
+  const closePlanet = () => dispatch({ type: 'CLOSE_PLANET' });
 
-  const handleBuy = useCallback((districtId: string, qty: number) => {
-    if (!selectedPlanet) return;
-    const district = selectedPlanet.districts.find(d => d.id === districtId);
-    if (!district) return;
-
-    setBuyDialog({ open: true, district, quantity: qty, planet: selectedPlanet });
-  }, [selectedPlanet]);
-
-  const confirmPurchase = async () => {
-    if (!buyDialog.district || !buyDialog.planet || !selectedPlanet) return;
-
-    setIsProcessing(true);
-    // Simulate blockchain transaction
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const totalCost = buyDialog.district.price * buyDialog.quantity;
-    if (totalCost > state.wallet) {
-      setIsProcessing(false);
-      return;
-    }
-
-    dispatch({
-      type: "BUY_PLOT",
-      payload: {
-        planetId: selectedPlanet.id,
-        districtId: buyDialog.district.id,
-        quantity: buyDialog.quantity
-      }
-    });
-
-    setIsProcessing(false);
-    setBuyDialog({ open: false, quantity: 1 });
+  const handleBuyClick = (districtId, qty) => {
+    setBuyModal({ open: true, districtId, qty });
   };
 
+  const confirmBuy = () => {
+    if (!selectedPlanet) return setBuyModal({ open: false, districtId: null, qty: 0 });
+    dispatch({ type: 'BUY_PLOT', payload: { planetId: selectedPlanet.id, districtId: buyModal.districtId, quantity: buyModal.qty } });
+    setBuyModal({ open: false, districtId: null, qty: 0 });
+  };
+
+  // helper to find district details from selectedPlanet
+  const currentDistrict = selectedPlanet && selectedPlanet.districts.find(d => d.id === buyModal.districtId);
+
   return (
-    <>
-      <FloatingParticles />
-      
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white pt-20">
-        <div className="container mx-auto px-4 pb-24 max-w-7xl">
-          <Hero />
-          <QuickStats planets={state.planets} />
+    <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
+      <div className="container mx-auto px-4 pb-16 max-w-7xl">
+        <Hero />
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-12">
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {planetEntries.map(([id, planet]) => (
-                  <PlanetCard key={id} planet={planet} onSelect={openPlanet} />
-                ))}
-              </div>
+        <QuickStats planets={state.planets} />
 
-              <AnimatePresence mode="wait">
-                {selectedPlanet && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="space-y-8"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h2 className="text-5xl font-black mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                          {selectedPlanet.name}
-                        </h2>
-                        <p className="text-lg text-white/70 max-w-3xl">{selectedPlanet.description}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={closePlanet}
-                        className="text-white/70 hover:text-white hover:bg-white/10"
-                      >
-                        <X className="w-5 h-5" />
-                      </Button>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3">
-                      {selectedPlanet.features.map((f, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ delay: i * 0.05 }}
-                        >
-                          <Badge className="bg-white/10 text-white border-white/20 backdrop-blur">
-                            {f}
-                          </Badge>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {selectedPlanet.districts.map(district => (
-                        <DistrictCard
-                          key={district.id}
-                          planetId={selectedPlanet.id}
-                          district={district}
-                          onBuy={handleBuy}
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {!selectedPlanet && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-20"
-                >
-                  <div className="bg-white/5 rounded-3xl p-12 backdrop-blur">
-                    <Globe className="w-20 h-20 mx-auto mb-6 text-white/30" />
-                    <p className="text-xl text-white/60">Select a planet to explore districts and claim land</p>
-                    <p className="text-sm text-white/40 mt-2">Only Sarakt Prime is currently accepting land purchases</p>
-                  </div>
-                </motion.div>
-              )}
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {planetEntries.map(([id, planet]) => (
+                <PlanetCard key={id} planet={planet} onSelect={openPlanet} />
+              ))}
             </div>
 
-            <aside className="space-y-6">
-              <div className="sticky top-28">
-                <PlanetStats planet={selectedPlanet || null} />
+            {selectedPlanet ? (
+              <div className="mb-12">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-4xl font-bold">{selectedPlanet.name}</h2>
+                    <p className="text-sm text-muted-foreground">{selectedPlanet.description}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge className="text-lg">{selectedPlanet.status}</Badge>
+                    <Button variant="ghost" onClick={closePlanet}><X className="w-4 h-4" /></Button>
+                  </div>
+                </div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <Card className="glass backdrop-blur-xl border-white/10 mt-6">
-                    <CardHeader>
-                      <CardTitle className="text-xl text-white flex items-center gap-2">
-                        <Wallet className="w-5 h-5" />
-                        xBGL Wallet
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white/60">Available Balance</p>
-                          <p className="text-3xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                            {state.wallet.toLocaleString()}
-                          </p>
-                        </div>
-                        <Coins className="w-10 h-10 text-yellow-400 opacity-70" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {(Array.isArray(selectedPlanet.features) ? selectedPlanet.features : []).map((f, i) => (
+                    <Badge key={i} variant="outline">{String(f)}</Badge>
+                  ))}
+                </div>
 
-                <Card className="glass backdrop-blur-xl border-white/10 mt-6">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-white">Developer Notes</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-white/60 space-y-2">
-                    <p>• Only <code className="bg-white/10 px-2 py-1 rounded">sarakt-prime</code> sells plots</p>
-                    <p>• Wallet updates on purchase</p>
-                    <p>• Ready for blockchain integration</p>
-                    <p>• Responsive & animated UI</p>
-                  </CardContent>
-                </Card>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {(Array.isArray(selectedPlanet.districts) ? selectedPlanet.districts : []).map(d => (
+                    <DistrictCard key={d.id} planetId={selectedPlanet.id} district={d} onBuy={(districtId, qty) => handleBuyClick(districtId, qty)} />
+                  ))}
+                </div>
               </div>
-            </aside>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">Select a planet to view districts and buy plots. Only Sarakt Prime sells plots currently.</div>
+            )}
           </div>
+
+          <aside>
+            <div className="sticky top-28 space-y-6">
+              <div>
+                <PlanetStats planet={selectedPlanet || { population: 0, coverage: 0, districts: [] }} />
+              </div>
+
+              <Card className="glass border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-xl">Wallet (Simulated)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Balance</p>
+                      <p className="text-2xl font-bold">1200 xBGL</p>
+                    </div>
+                    <Coins className="w-8 h-8 text-primary opacity-60" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="glass border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-xl">Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Only Sarakt Prime (id: "sarakt-prime") can sell plots at the moment. Buying updates the in-memory state. Hook this to your backend or smart contract flow when ready.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <Modal open={buyModal.open} onClose={() => setBuyModal({ open: false, districtId: null, qty: 0 })}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-semibold">Confirm Purchase</h3>
+          <Button variant="ghost" onClick={() => setBuyModal({ open: false, districtId: null, qty: 0 })}><X className="w-4 h-4" /></Button>
         </div>
 
-        <Dialog open={buyDialog.open} onOpenChange={(open) => !open && setBuyDialog({ ...buyDialog, open })}>
-          <DialogContent className="glass backdrop-blur-2xl border-white/20 text-white max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Confirm Land Purchase
-              </DialogTitle>
-            </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">You are about to purchase <strong>{buyModal.qty}</strong> plot(s) from <strong>{selectedPlanet ? selectedPlanet.name : '—'}</strong>.</p>
 
-            {buyDialog.district && buyDialog.planet && (
-              <div className="space-y-6">
-                <div className="bg-white/5 rounded-xl p-6 backdrop-blur">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                      <SafeIcon Icon={buyDialog.district.icon} className="w-5 h-5 text-purple-300" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{buyDialog.district.name}</p>
-                      <p className="text-sm text-white/60">{buyDialog.planet.name}</p>
-                    </div>
-                  </div>
+          <div className="bg-muted/10 p-4 rounded-lg">
+            <p className="text-sm">District: <strong>{currentDistrict ? currentDistrict.name : '—'}</strong></p>
+            <p className="text-sm">Available: <strong>{currentDistrict ? currentDistrict.plots : '—'}</strong></p>
+            <p className="text-sm">Price per plot: <strong>{currentDistrict ? currentDistrict.price : '—'} xBGL</strong></p>
+            <p className="text-sm">Total: <strong>{currentDistrict ? (currentDistrict.price * buyModal.qty) : '—'} xBGL</strong></p>
+          </div>
 
-                  <Separator className="bg-white/10" />
-
-                  <div className="space-y-3 mt-4">
-                    <div className="flex justify-between">
-                      <span className="text-white/70">Quantity</span>
-                      <span className="font-bold">{buyDialog.quantity} plot{buyDialog.quantity > 1 ? "s" : ""}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/70">Price per plot</span>
-                      <span className="font-bold">{buyDialog.district.price} xBGL</span>
-                    </div>
-                    <div className="flex justify-between text-lg">
-                      <span className="text-white/80">Total Cost</span>
-                      <span className="font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        {(buyDialog.district.price * buyDialog.quantity).toLocaleString()} xBGL
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-white/60">Wallet Balance</span>
-                  <span className={state.wallet >= (buyDialog.district.price * buyDialog.quantity) ? "text-green-400" : "text-red-400"}>
-                    {state.wallet.toLocaleString()} xBGL
-                  </span>
-                </div>
-
-                <DialogFooter className="gap-3">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setBuyDialog({ ...buyDialog, open: false })}
-                    className="text-white/70 hover:text-white"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={confirmPurchase}
-                    disabled={isProcessing || state.wallet < (buyDialog.district.price * buyDialog.quantity)}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Confirm Purchase
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setBuyModal({ open: false, districtId: null, qty: 0 })}>Cancel</Button>
+            <Button variant="cosmic" onClick={confirmBuy}><Check className="w-4 h-4" /> Confirm Purchase</Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 }
