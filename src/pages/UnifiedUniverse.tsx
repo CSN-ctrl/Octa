@@ -585,3 +585,125 @@ export default function UnifiedUniverse() {
               </Card>
             </div>
           </TabsContent>
+                    <TabsContent value="universe" className="space-y-8">
+            {/* Quick Stats */}
+            <div className="grid md:grid-cols-4 gap-4 mb-8">
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  Population
+                </div>
+                <p className="text-3xl font-bold">5,247</p>
+                <p className="text-sm text-muted-foreground">Active citizens</p>
+              </Card>
+
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <MapPin className="w-5 h-5 text-primary" />
+                  Plots
+                </div>
+                <p className="text-3xl font-bold">10,000</p>
+                <p className="text-sm text-muted-foreground">Land units</p>
+              </Card>
+
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <Coins className="w-5 h-5 text-primary" />
+                  Currencies
+                </div>
+                <p className="text-3xl font-bold">2</p>
+                <p className="text-sm text-muted-foreground">xBGL & SC</p>
+              </Card>
+
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <Globe className="w-5 h-5 text-primary" />
+                  Worlds
+                </div>
+                <p className="text-3xl font-bold">6</p>
+                <p className="text-sm text-muted-foreground">Planets & hubs</p>
+              </Card>
+            </div>
+          </TabsContent>
+                              <TabsContent value="universe" className="space-y-8">
+            {/* Quick Stats */}
+            <div className="grid md:grid-cols-4 gap-4 mb-8">
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  Population
+                </div>
+                <p className="text-3xl font-bold">5,247</p>
+                <p className="text-sm text-muted-foreground">Active citizens</p>
+              </Card>
+
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <MapPin className="w-5 h-5 text-primary" />
+                  Plots
+                </div>
+                <p className="text-3xl font-bold">10,000</p>
+                <p className="text-sm text-muted-foreground">Land units</p>
+              </Card>
+
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <Coins className="w-5 h-5 text-primary" />
+                  Currencies
+                </div>
+                <p className="text-3xl font-bold">2</p>
+                <p className="text-sm text-muted-foreground">xBGL & SC</p>
+              </Card>
+
+              <Card className="glass p-6 border-primary/20">
+                <div className="flex items-center gap-2 text-xl font-bold mb-2">
+                  <Globe className="w-5 h-5 text-primary" />
+                  Worlds
+                </div>
+                <p className="text-3xl font-bold">6</p>
+                <p className="text-sm text-muted-foreground">Planets & hubs</p>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="worlds" className="space-y-8">
+            <h2 className="text-4xl font-bold mb-8">Explore the Planets</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(planetsData).map(([id, planet]) => (
+                <Card
+                  key={id}
+                  onClick={() => handlePlanetSelect(id)}
+                  className={`glass cursor-pointer border-primary/30 hover:border-primary hover:shadow-glow-accent transition-all ${
+                    planet.locked ? "opacity-40 pointer-events-none" : ""
+                  }`}
+                >
+                  <CardHeader>
+                    <CardTitle className="text-2xl flex justify-between items-center">
+                      {planet.name}
+                      {planet.locked && <Lock className="w-5 h-5 text-muted-foreground" />}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">{planet.description}</p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Tier</span>
+                      <Badge variant="outline">{planet.tier}</Badge>
+                    </div>
+                    {!planet.locked && (
+                      <Button variant="cosmic" className="w-full mt-2 gap-2">
+                        View Planet <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+  
+
+
