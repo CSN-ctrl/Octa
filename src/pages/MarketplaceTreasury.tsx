@@ -3,258 +3,232 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { 
-  ShoppingCart, 
-  TrendingUp, 
-  User, 
-  ExternalLink,
-  Wallet,
-  DollarSign,
-  Activity,
-  ArrowUpRight,
-  ArrowDownRight
-} from "lucide-react";
+import { ShoppingCart, TrendingUp, User, Wallet, DollarSign, Activity, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { toast } from "sonner";
+import { Pie } from "react-chartjs-2";
 
-interface Listing {
-  id: number;
-  plotId: string;
-  location: string;
-  owner: string;
-  price: number;
-  priceChange: string;
-  jsonCID?: string;
-  pdfCID?: string;
-}
+// ---------------- MOCK DATA ----------------
+interface Listing { id:number; plotId:string; location:string; owner:string; price:number; priceChange:string; }
+interface Loan { id:number; type:string; amount:number; status:'Pending'|'Approved'|'Rejected'; }
+interface Bond { id:number; name:string; price:number; yield:number; purchased:boolean; }
+interface UniverseAsset { id:number; type:'Planet'|'Star System'; name:string; price:number; booked:boolean; consultantEmail?:string; }
 
-interface TreasuryAsset {
-  balance: number;
-  change: number;
-  trend: 'up' | 'down';
-}
-
-// Initial mock data
 const initialListings: Listing[] = [
-  { id: 1, plotId: "SP-0042", location: "Sarakt Prime - District A", owner: "0x1234...5678", price: 75, priceChange: "+12%" },
-  { id: 2, plotId: "SP-0156", location: "Sarakt Prime - District B", owner: "0x9876...4321", price: 68, priceChange: "+8%" },
-  { id: 3, plotId: "SP-0891", location: "Sarakt Prime - District C", owner: "0xabcd...ef01", price: 82, priceChange: "+15%" },
+  { id:1, plotId:"SP-0042", location:"Sarakt Prime - District A", owner:"0x1234...5678", price:75, priceChange:"+12%" },
+  { id:2, plotId:"SP-0156", location:"Sarakt Prime - District B", owner:"0x9876...4321", price:68, priceChange:"+8%" },
+  { id:3, plotId:"SP-0891", location:"Sarakt Prime - District C", owner:"0xabcd...ef01", price:82, priceChange:"+15%" },
 ];
 
-const initialTreasury: Record<string, TreasuryAsset> = {
-  avax: { balance: 15420.5, change: 12.4, trend: 'up' },
-  usdc: { balance: 284650.0, change: -2.1, trend: 'down' },
-  xbgl: { balance: 1847320.0, change: 8.7, trend: 'up' },
+const treasuryData = {
+  avax: { balance: 15420.5, change: 12.4, trend:'up' },
+  usdc: { balance: 284650.0, change: -2.1, trend:'down' },
+  xbgl: { balance: 1847320.0, change: 8.7, trend:'up' },
 };
 
-export default function DynamicMockHub() {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [listings, setListings] = useState<Listing[]>(initialListings);
-  const [treasury, setTreasury] = useState(initialTreasury);
-  const [transactions, setTransactions] = useState([
-    { id: 1, type: 'Land Sale', amount: '+1,250 xBGL', time: '2 hours ago' },
-    { id: 2, type: 'Market Fee', amount: '+45 USDC', time: '4 hours ago' },
-  ]);
-  const [loadingId, setLoadingId] = useState<number | null>(null);
+const initialLoans: Loan[] = [
+  {id:1,type:'Personal Loan',amount:500,status:'Pending'},
+  {id:2,type:'Asset-Backed Loan',amount:1500,status:'Approved'},
+];
 
-  // Connect wallet (mock)
-  const handleConnectWallet = () => {
-    setWalletAddress("0xFAKE...WALLET");
-    toast.success("Wallet connected: 0xFAKE...WALLET");
+const initialBonds: Bond[] = [
+  {id:1,name:'Sarakt Treasury Bond',price:2000,yield:5,purchased:false},
+  {id:2,name:'Zythera Corp Bond',price:1200,yield:7,purchased:false},
+];
+
+const universeAssets: UniverseAsset[] = [
+  { id:1, type:'Planet', name:'Sarakt Prime', price:50000, booked:false },
+  { id:2, type:'Planet', name:'Zythera Station', price:75000, booked:false },
+  { id:3, type:'Star System', name:'Nexus Cluster', price:200000, booked:false },
+];
+
+export default function UniverseFinancialHub() {
+  const [listings,setListings] = useState<Listing[]>(initialListings);
+  const [loans,setLoans] = useState<Loan[]>(initialLoans);
+  const [bonds,setBonds] = useState<Bond[]>(initialBonds);
+  const [universePortfolio,setUniversePortfolio] = useState<UniverseAsset[]>([]);
+  const [transactions,setTransactions] = useState<{id:number,type:string,amount:string,time:string}[]>([]);
+
+  // ---------------- HELPER FUNCTIONS ----------------
+  const totalValue = treasuryData.avax.balance*45 + treasuryData.usdc.balance + treasuryData.xbgl.balance*0.05;
+
+  const requestLoan = (loan:Loan)=>{
+    loan.status='Pending';
+    setLoans([...loans]);
+    setTransactions(prev=>[{id:prev.length+1,type:`Loan Requested: ${loan.type}`,amount:`-${loan.amount} xBGL`,time:'Just now'}, ...prev.slice(0,4)]);
+    toast.success(`Loan request submitted for ${loan.type} (demo)`);
   };
 
-  // Mock purchase
-  const handlePurchase = async (listing: Listing) => {
-    if (!walletAddress) return toast.error("Connect wallet first");
-    setLoadingId(listing.id);
-
-    try {
-      await new Promise((res) => setTimeout(res, 1000));
-      const fakeJsonCID = "QmFAKEJSONCID123";
-      const fakePdfCID = "QmFAKEPDFCID456";
-
-      toast.success(`Purchased ${listing.plotId}!`, {
-        description: `JSON: ipfs://${fakeJsonCID}\nPDF: ipfs://${fakePdfCID}`,
-      });
-
-      setListings((prev) =>
-        prev.map((l) =>
-          l.id === listing.id ? { ...l, owner: walletAddress, jsonCID: fakeJsonCID, pdfCID: fakePdfCID } : l
-        )
-      );
-
-      setTransactions((prev) => [
-        { id: prev.length + 1, type: 'Land Sale', amount: `+${listing.price} xBGL`, time: 'Just now' },
-        ...prev.slice(0, 4),
-      ]);
-
-      // Simulate treasury update
-      setTreasury((prev) => ({
-        ...prev,
-        xbgl: { ...prev.xbgl, balance: prev.xbgl.balance + listing.price, trend: 'up', change: +(Math.random()*5).toFixed(1) },
-      }));
-    } catch {
-      toast.error("Purchase failed (mock)");
-    } finally {
-      setLoadingId(null);
-    }
+  const purchaseBond = (bond:Bond)=>{
+    bond.purchased = true;
+    setBonds([...bonds]);
+    setTransactions(prev=>[{id:prev.length+1,type:`Bond Purchased: ${bond.name}`,amount:`-${bond.price} xBGL`,time:'Just now'}, ...prev.slice(0,4)]);
+    toast.success(`Purchased bond ${bond.name} (demo)`);
   };
 
-  // Simulate dynamic treasury changes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTreasury((prev) => {
-        const updated: Record<string, TreasuryAsset> = {};
-        for (const [key, asset] of Object.entries(prev)) {
-          const delta = (Math.random() * 2000 - 1000); // +/- random
-          const newBalance = Math.max(asset.balance + delta, 0);
-          updated[key] = {
-            balance: newBalance,
-            change: +(Math.random()*10-5).toFixed(1),
-            trend: delta >= 0 ? 'up' : 'down',
-          };
-        }
-        return updated;
-      });
+  const bookUniverseAsset = (asset:UniverseAsset)=>{
+    asset.booked=true;
+    asset.consultantEmail='advisor@saraktuniverse.com';
+    setUniversePortfolio(prev=>[...prev,asset]);
+    setTransactions(prev=>[{id:prev.length+1,type:`Booked ${asset.type}: ${asset.name}`,amount:`-${asset.price} xBGL`,time:'Just now'}, ...prev.slice(0,4)]);
+    toast.success(`Booked ${asset.type} ${asset.name}. Consultant: ${asset.consultantEmail}`);
+  };
 
-      // Random new transaction
-      const newTx = {
-        id: transactions.length + 1,
-        type: ['Land Sale', 'Market Fee', 'Treasury Allocation'][Math.floor(Math.random()*3)],
-        amount: `+${Math.floor(Math.random()*5000)} xBGL`,
-        time: 'Just now',
-      };
-      setTransactions((prev) => [newTx, ...prev.slice(0,4)]);
-    }, 5000); // every 5 seconds
-    return () => clearInterval(interval);
-  }, [transactions.length]);
-
-  const totalValue = treasury.avax.balance * 45 + treasury.usdc.balance + treasury.xbgl.balance * 0.05;
+  // ---------------- PORTFOLIO MOCK ----------------
+  const portfolioAssets = [...listings.map(l=>({name:l.plotId,value:l.price})), ...universePortfolio.map(u=>({name:u.name,value:u.price}))];
+  const totalInvested = portfolioAssets.reduce((acc,v)=>acc+v.value,0);
+  const portfolioData = {
+    labels: portfolioAssets.map(a=>a.name),
+    datasets:[{data:portfolioAssets.map(a=>a.value),backgroundColor:['#f43f5e','#3b82f6','#facc15','#22c55e','#a855f7']}]
+  };
 
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
       <div className="container mx-auto px-4 py-12 max-w-7xl">
-        <div className="mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
-            Dynamic Mock Financial Hub
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Simulated treasury, transactions, and marketplace
-          </p>
-          {!walletAddress && (
-            <Button className="mt-4" onClick={handleConnectWallet}>
-              Connect Wallet (Mock)
-            </Button>
-          )}
-        </div>
+        <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">Sarakt Universe Financial Hub</h1>
+        <p className="text-xl text-muted-foreground mb-12">Demo banking sector: Treasury, Markets, Land, Loans, Bonds, Universe Assets</p>
 
-        <Tabs defaultValue="marketplace" className="mb-12">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
+        <Tabs defaultValue="treasury">
+          <TabsList className="grid w-full grid-cols-6 mb-8">
             <TabsTrigger value="treasury">Treasury</TabsTrigger>
+            <TabsTrigger value="markets">Markets</TabsTrigger>
+            <TabsTrigger value="marketplace">Land</TabsTrigger>
+            <TabsTrigger value="universe">Universe Market</TabsTrigger>
+            <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+            <TabsTrigger value="investbank">Investment Banking</TabsTrigger>
           </TabsList>
 
+          {/* ---------------- TREASURY ---------------- */}
+          <TabsContent value="treasury">
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <Card className="glass p-6">
+                <p className="text-sm text-muted-foreground mb-1">AVAX Balance</p>
+                <p className="text-3xl font-bold">{treasuryData.avax.balance.toLocaleString()}</p>
+              </Card>
+              <Card className="glass p-6">
+                <p className="text-sm text-muted-foreground mb-1">USDC Balance</p>
+                <p className="text-3xl font-bold">{treasuryData.usdc.balance.toLocaleString()}</p>
+              </Card>
+              <Card className="glass p-6">
+                <p className="text-sm text-muted-foreground mb-1">xBGL Balance</p>
+                <p className="text-3xl font-bold">{treasuryData.xbgl.balance.toLocaleString()}</p>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ---------------- MARKETS ---------------- */}
+          <TabsContent value="markets">
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <Card className="glass p-6">Markets demo placeholder</Card>
+            </div>
+          </TabsContent>
+
+          {/* ---------------- LAND ---------------- */}
           <TabsContent value="marketplace">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {listings.map((listing) => (
-                <Card key={listing.id} className="glass border-primary/30 hover:border-primary transition-all">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold mb-1">{listing.plotId}</h3>
-                        <p className="text-sm text-muted-foreground">{listing.location}</p>
-                      </div>
-                      <div className="glass px-2 py-1 rounded text-xs font-medium text-accent">
-                        {listing.priceChange}
-                      </div>
-                    </div>
-
-                    <div className="glass p-3 rounded-lg mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Owner</span>
-                      </div>
-                      <p className="text-sm font-mono">{listing.owner}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-muted-foreground">Price</span>
-                      <span className="text-2xl font-bold text-primary">
-                        {listing.price} xBGL
-                      </span>
-                    </div>
-
-                    <Button
-                      variant="cosmic"
-                      className="w-full mb-2"
-                      onClick={() => handlePurchase(listing)}
-                      disabled={loadingId === listing.id}
-                    >
-                      {loadingId === listing.id ? "Processing..." : "Purchase Plot"}
-                    </Button>
-                  </div>
+              {listings.map(l=>(
+                <Card key={l.id} className="glass p-6">
+                  <h3 className="text-xl font-bold">{l.plotId}</h3>
+                  <p className="text-sm text-muted-foreground">{l.location}</p>
+                  <p className="text-lg font-bold mt-2">{l.price} xBGL</p>
                 </Card>
               ))}
             </div>
           </TabsContent>
 
-          <TabsContent value="treasury">
-            <Card className="glass p-8 mb-8 border-animated">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground mb-2">Total Treasury Value</p>
-                  <p className="text-5xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
-                    ${totalValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                  </p>
-                </div>
-                <div className="p-6 rounded-full bg-primary/10 border border-primary/30">
-                  <Wallet className="h-12 w-12 text-primary" />
-                </div>
-              </div>
+          {/* ---------------- UNIVERSE ---------------- */}
+          <TabsContent value="universe">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {universeAssets.map(asset=>(
+                <Card key={asset.id} className="glass p-6 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">{asset.name}</h3>
+                    <p className="text-sm text-muted-foreground">{asset.type}</p>
+                    <p className="text-lg font-bold mt-2">{asset.price} xBGL</p>
+                    <p className="text-sm text-muted-foreground">{asset.booked ? `Booked with: ${asset.consultantEmail}` : 'Available for booking'}</p>
+                  </div>
+                  <Button className="mt-4" disabled={asset.booked} onClick={()=>bookUniverseAsset(asset)}>
+                    {asset.booked?'Booked':'Book with Consultant'}
+                  </Button>
+                </Card>
+              ))}
+            </div>
+            <Card className="glass p-6 mt-6">
+              <h3 className="text-xl font-bold mb-4">Universe Portfolio</h3>
+              {universePortfolio.length===0 ? <p className="text-muted-foreground">No high-end assets booked yet.</p> : 
+                <ul className="space-y-2">{universePortfolio.map(a=>(
+                  <li key={a.id} className="flex justify-between"><span>{a.type}: {a.name}</span><span>{a.price} xBGL</span></li>
+                ))}</ul>
+              }
+            </Card>
+            <Card className="glass p-6 mt-6">
+              <h3 className="text-xl font-bold mb-4">Advisory Alerts</h3>
+              <p className="text-muted-foreground">Demo advisory: High-demand planets have +20% projected growth. Star systems recommended for strategic investment.</p>
+            </Card>
+          </TabsContent>
 
-              <div className="mt-6 grid grid-cols-3 gap-4">
-                {Object.entries(treasury).map(([key, asset]) => (
-                  <Card key={key} className="glass p-4 rounded-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="p-3 rounded-full bg-primary/10 border border-primary/30">
-                        <Activity className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className={`flex items-center gap-1 text-sm ${
-                        asset.trend === 'up' ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {asset.trend === 'up' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-                        {Math.abs(asset.change)}%
-                      </div>
+          {/* ---------------- PORTFOLIO ---------------- */}
+          <TabsContent value="portfolio">
+            <Card className="glass p-6">
+              <h3 className="text-xl font-bold mb-4">Portfolio Overview</h3>
+              <p>Total Invested: {totalInvested} xBGL</p>
+              {portfolioAssets.length===0 ? <p className="text-muted-foreground">No assets yet</p> :
+                <Pie data={portfolioData} />
+              }
+            </Card>
+          </TabsContent>
+
+          {/* ---------------- INVESTMENT BANKING ---------------- */}
+          <TabsContent value="investbank">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="glass p-6">
+                <h3 className="text-xl font-bold mb-4">Loans</h3>
+                {loans.map(l=>(
+                  <div key={l.id} className="glass p-4 rounded-lg flex justify-between items-center mb-2">
+                    <div>
+                      <p className="font-medium">{l.type}</p>
+                      <p className="text-sm text-muted-foreground">{l.amount} xBGL - {l.status}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">{key.toUpperCase()} Balance</p>
-                    <p className="text-3xl font-bold mb-4">
-                      {asset.balance.toLocaleString()}
-                    </p>
-                    <Progress value={Math.floor(Math.random() * 100)} className="h-2" />
-                  </Card>
+                    <Button disabled={l.status!=='Pending'} onClick={()=>requestLoan(l)}>Request</Button>
+                  </div>
                 ))}
-              </div>
-
-              <Card className="glass p-6 mt-6">
-                <h2 className="text-2xl font-bold mb-6">Recent Transactions</h2>
-                <div className="space-y-4">
-                  {transactions.map((tx) => (
-                    <div key={tx.id} className="glass p-4 rounded-lg flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{tx.type}</p>
-                        <p className="text-sm text-muted-foreground">{tx.time}</p>
-                      </div>
-                      <div className={`text-lg font-bold ${
-                        tx.amount.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {tx.amount}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </Card>
+              <Card className="glass p-6">
+                <h3 className="text-xl font-bold mb-4">Bonds & IPOs</h3>
+                {bonds.map(b=>(
+                  <div key={b.id} className="glass p-4 rounded-lg flex justify-between items-center mb-2">
+                    <div>
+                      <p className="font-medium">{b.name}</p>
+                      <p className="text-sm text-muted-foreground">Price: {b.price} xBGL | Yield: {b.yield}%</p>
+                    </div>
+                    <Button disabled={b.purchased} onClick={()=>purchaseBond(b)}>{b.purchased?'Purchased':'Buy'}</Button>
+                  </div>
+                ))}
+              </Card>
+            </div>
+            <Card className="glass p-6 mt-6">
+              <h3 className="text-xl font-bold mb-4">Wealth Management (Demo)</h3>
+              <p className="text-muted-foreground">Simulated advice: Diversify holdings across land, planets, bonds, and treasury assets. High-end investors should consider universe assets for long-term growth.</p>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* ---------------- RECENT TRANSACTIONS ---------------- */}
+        <Card className="glass p-6 mt-12">
+          <h2 className="text-2xl font-bold mb-6">Recent Transactions</h2>
+          <div className="space-y-4">
+            {transactions.length===0 ? <p className="text-muted-foreground">No transactions yet.</p> :
+              transactions.map(tx=>(
+                <div key={tx.id} className="glass p-4 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{tx.type}</p>
+                    <p className="text-sm text-muted-foreground">{tx.time}</p>
+                  </div>
+                  <div className={`text-lg font-bold ${tx.amount.startsWith('+')?'text-green-400':'text-red-400'}`}>{tx.amount}</div>
+                </div>
+              ))
+            }
+          </div>
+        </Card>
       </div>
     </div>
   );
