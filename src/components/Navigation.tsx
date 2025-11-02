@@ -8,7 +8,7 @@ export const Navigation = () => {
   
   const navItems = [
     { path: "/", label: "Universe", icon: Globe },
-    { path: "/economy", label: "Economy", icon: ShoppingCart },
+    { path: "/economy", label: "Financial Hub", icon: ShoppingCart },
     { path: "/digital-id", label: "Digital ID", icon: CreditCard },
   ];
 
