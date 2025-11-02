@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Rocket, Globe, ShoppingCart, IdCard, Wallet } from "lucide-react";
+import { Rocket, Globe, ShoppingCart, IdCard, Wallet, Info, Scroll } from "lucide-react";
 import { WalletConnectButton } from "./WalletConnectButton";
 
 export const Navigation = () => {
@@ -11,6 +11,8 @@ export const Navigation = () => {
     { path: "/marketplace", label: "Marketplace", icon: ShoppingCart },
     { path: "/digital-id", label: "Digital ID", icon: IdCard },
     { path: "/treasury", label: "Treasury", icon: Wallet },
+    { path: "/about", label: "About", icon: Info },
+    { path: "/lore", label: "Lore", icon: Scroll },
   ];
 
   return (

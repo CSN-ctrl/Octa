@@ -10,6 +10,8 @@ import PlanetDetail from "./pages/PlanetDetail";
 import Marketplace from "./pages/Marketplace";
 import DigitalID from "./pages/DigitalID";
 import Treasury from "./pages/Treasury";
+import About from "./pages/About";
+import Lore from "./pages/Lore";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/digital-id" element={<DigitalID />} />
           <Route path="/treasury" element={<Treasury />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/lore" element={<Lore />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
