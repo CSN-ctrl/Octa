@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Scroll, Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, TrendingUp, Coins, Factory, Home } from "lucide-react";
+import { Scroll, Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, TrendingUp, Coins, Factory, Home, ArrowRight, ChevronLeft } from "lucide-react";
 import heroImage from "@/assets/hero-space.jpg";
 
 const planetsData = {
@@ -10,14 +12,16 @@ const planetsData = {
     status: "Habitable",
     population: 65,
     coverage: 42,
-    description: "Cliff-carved capital overlooking the Sapphire Sea. Vertical architecture, Treasury Tower, xBGL economy hub."
+    description: "Cliff-carved capital overlooking the Sapphire Sea. Vertical architecture, Treasury Tower, xBGL economy hub.",
+    districts: ["District A", "District B", "District C", "District D", "Harbor District", "Mining Tunnels"]
   },
   "zythera": {
     name: "Zythera",
     status: "Isolated",
     population: 12,
     coverage: 8,
-    description: "Bioluminescent nanofiber ecosystem. Black market research, ShadowCoin trades, chaotic frontier."
+    description: "Bioluminescent nanofiber ecosystem. Black market research, ShadowCoin trades, chaotic frontier.",
+    districts: ["Research Outpost Alpha", "Nanofiber Web Zone", "Underground Labs", "Black Market Hub"]
   },
   "nexus-hub": {
     name: "Nexus Hub",
@@ -48,9 +52,114 @@ const planetsData = {
 };
 
 export default function UnifiedUniverse() {
+  const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
+
+  const handlePlanetSelect = (planetId: string) => {
+    const planet = planetsData[planetId];
+    if (!planet.locked) {
+      setSelectedPlanet(planetId);
+    }
+  };
+
+  const handleBackToUniverse = () => {
+    setSelectedPlanet(null);
+  };
+
+  if (selectedPlanet) {
+    const planet = planetsData[selectedPlanet];
+    
+    return (
+      <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
+        <div className="container mx-auto px-4 py-12 max-w-7xl">
+          <Button 
+            variant="glass" 
+            className="mb-8 gap-2"
+            onClick={handleBackToUniverse}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to Universe
+          </Button>
+
+          <div className="mb-12">
+            <div className="flex items-center gap-4 mb-4">
+              <h1 className="text-5xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
+                {planet.name}
+              </h1>
+              <Badge variant={planet.status === "Habitable" ? "default" : "destructive"}>
+                {planet.status}
+              </Badge>
+            </div>
+            <p className="text-xl text-muted-foreground">{planet.description}</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            <Card className="glass p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Population</p>
+                  <p className="text-3xl font-bold">{planet.population}k</p>
+                </div>
+                <Users className="h-8 w-8 text-primary" />
+              </div>
+            </Card>
+
+            <Card className="glass p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Coverage</p>
+                  <p className="text-3xl font-bold">{planet.coverage}%</p>
+                </div>
+                <MapPin className="h-8 w-8 text-accent" />
+              </div>
+            </Card>
+
+            <Card className="glass p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Districts</p>
+                  <p className="text-3xl font-bold">{planet.districts?.length || 0}</p>
+                </div>
+                <Building2 className="h-8 w-8 text-secondary" />
+              </div>
+            </Card>
+          </div>
+
+          {planet.districts && planet.districts.length > 0 && (
+            <div>
+              <h2 className="text-3xl font-bold mb-6">Available Districts</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {planet.districts.map((district, idx) => (
+                  <Card key={idx} className="glass border-primary/30 hover:border-primary transition-all">
+                    <CardHeader>
+                      <CardTitle className="text-xl">{district}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="glass p-3 rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-1">Available Plots</p>
+                        <p className="text-2xl font-bold">{Math.floor(Math.random() * 500) + 100}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Starting Price</span>
+                        <span className="text-lg font-bold text-primary">
+                          {Math.floor(Math.random() * 50) + 50} xBGL
+                        </span>
+                      </div>
+                      <Button variant="cosmic" className="w-full gap-2">
+                        View Plots <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
-      {/* Hero */}
       <div className="relative h-[400px] overflow-hidden mb-16">
         <div className="absolute inset-0">
           <img src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-40"/>
@@ -70,18 +179,18 @@ export default function UnifiedUniverse() {
 
       <div className="container mx-auto px-4 pb-16 max-w-7xl">
         <Tabs defaultValue="universe" className="mb-12">
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-7 mb-8">
             <TabsTrigger value="universe">Universe</TabsTrigger>
+            <TabsTrigger value="phases">Phases</TabsTrigger>
+            <TabsTrigger value="economy">Economy</TabsTrigger>
             <TabsTrigger value="ancient">Ancient Era</TabsTrigger>
             <TabsTrigger value="cataclysm">Cataclysm</TabsTrigger>
             <TabsTrigger value="modern">Modern Age</TabsTrigger>
             <TabsTrigger value="worlds">Planets</TabsTrigger>
           </TabsList>
 
-          {/* Universe Map */}
           <TabsContent value="universe">
             <div className="space-y-8">
-              {/* Sarakt System */}
               <Card className="border-primary/20 bg-card/50 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="text-3xl flex items-center justify-between">
@@ -98,7 +207,7 @@ export default function UnifiedUniverse() {
                     {["sarakt-prime", "zythera"].map(id => {
                       const planet = planetsData[id];
                       return (
-                        <Card key={id} className="border-primary/10 hover:border-primary/30 transition-all">
+                        <Card key={id} className="border-primary/10 hover:border-primary/30 transition-all cursor-pointer" onClick={() => handlePlanetSelect(id)}>
                           <CardHeader>
                             <CardTitle className="text-xl flex items-center justify-between">
                               {planet.name}
@@ -119,6 +228,9 @@ export default function UnifiedUniverse() {
                                 {planet.coverage}% mapped
                               </span>
                             </div>
+                            <Button variant="cosmic" className="w-full gap-2 mt-4">
+                              Select Planet <ArrowRight className="h-4 w-4" />
+                            </Button>
                           </CardContent>
                         </Card>
                       );
@@ -127,7 +239,6 @@ export default function UnifiedUniverse() {
                 </CardContent>
               </Card>
 
-              {/* Tanaria System */}
               <Card className="border-primary/20 bg-card/50 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="text-3xl flex items-center justify-between">
@@ -144,7 +255,11 @@ export default function UnifiedUniverse() {
                     {["nexus-hub", "nexus-port", "nexus-depot", "nexus-colony"].map(id => {
                       const planet = planetsData[id];
                       return (
-                        <Card key={id} className={`border-primary/10 ${planet.locked ? 'opacity-60' : 'hover:border-primary/30'} transition-all`}>
+                        <Card 
+                          key={id} 
+                          className={`border-primary/10 ${planet.locked ? 'opacity-60' : 'hover:border-primary/30 cursor-pointer'} transition-all`}
+                          onClick={() => !planet.locked && handlePlanetSelect(id)}
+                        >
                           <CardHeader>
                             <CardTitle className="text-xl flex items-center justify-between">
                               <span className="flex items-center gap-2">
@@ -159,16 +274,21 @@ export default function UnifiedUniverse() {
                           <CardContent className="space-y-3">
                             <p className="text-sm text-muted-foreground">{planet.description}</p>
                             {!planet.locked && (
-                              <div className="flex gap-4 text-sm">
-                                <span className="flex items-center gap-1">
-                                  <Users className="w-4 h-4 text-primary"/>
-                                  {planet.population}k
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-4 h-4 text-primary"/>
-                                  {planet.coverage}% mapped
-                                </span>
-                              </div>
+                              <>
+                                <div className="flex gap-4 text-sm">
+                                  <span className="flex items-center gap-1">
+                                    <Users className="w-4 h-4 text-primary"/>
+                                    {planet.population}k
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-4 h-4 text-primary"/>
+                                    {planet.coverage}% mapped
+                                  </span>
+                                </div>
+                                <Button variant="cosmic" className="w-full gap-2 mt-4">
+                                  Select Planet <ArrowRight className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                           </CardContent>
                         </Card>
@@ -180,7 +300,192 @@ export default function UnifiedUniverse() {
             </div>
           </TabsContent>
 
-          {/* Ancient Era */}
+          <TabsContent value="phases">
+            <div className="space-y-6">
+              <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                <CardHeader>
+                  <CardTitle className="text-3xl flex items-center gap-3">
+                    <Home className="w-8 h-8 text-primary" />
+                    Phase 1: Tribal Stage
+                  </CardTitle>
+                  <Badge className="w-fit">10,000 Plots</Badge>
+                </CardHeader>
+                <CardContent className="space-y-4 text-muted-foreground text-lg leading-relaxed">
+                  <div className="bg-primary/10 border-l-4 border-primary p-6 rounded">
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Settlement Foundation</h3>
+                    <p>10,000 plots minted for initial settlers and tribes. Each plot must be developed within one Octavian year or face consequences.</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">NPC Economy Launch</h3>
+                    <ul className="space-y-2 ml-6">
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <span><span className="font-semibold text-foreground">Hunting & Gathering</span>: NPCs forage resources from wilderness</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <span><span className="font-semibold text-foreground">Farming</span>: Agricultural plots produce food supplies</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <span><span className="font-semibold text-foreground">Water Collection</span>: Infrastructure for clean water distribution</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Basic Infrastructure</h3>
+                    <p>Huts, workshops, water systems, and sewage. Villages form along trade routes. Dual currency activates: <span className="text-primary font-semibold">xBGL</span> for land/treasury, <span className="text-primary font-semibold">Chaos</span> for wages/commerce.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                <CardHeader>
+                  <CardTitle className="text-3xl flex items-center gap-3">
+                    <Building2 className="w-8 h-8 text-primary" />
+                    Phase 2: Civilization Stage
+                  </CardTitle>
+                  <Badge className="w-fit bg-destructive">Unlocks at 100,000 Developed Plots</Badge>
+                </CardHeader>
+                <CardContent className="space-y-4 text-muted-foreground text-lg leading-relaxed">
+                  <div className="bg-primary/10 border-l-4 border-primary p-6 rounded">
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Advanced Structures</h3>
+                    <p>Detached houses, schools, universities, industrial complexes. Full-scale economy with wages, rents, and production loops.</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Secondary Market Opens</h3>
+                    <p>Property trading with refunds based on net value. Building improvements directly increase property worth and rental income tied to valuation.</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Player Faction Control</h3>
+                    <p>After owning and developing 100 plots, form a faction. Manage population within your loyalty sphere. NPCs choose allegiance based on trust and benefits.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="economy">
+            <div className="space-y-6">
+              <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                <CardHeader>
+                  <CardTitle className="text-3xl flex items-center gap-3">
+                    <Coins className="w-8 h-8 text-primary" />
+                    Dual Currency Model
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-primary/10 border-l-4 border-primary p-6 rounded">
+                      <h3 className="text-xl font-semibold text-foreground mb-3">xBGL Token</h3>
+                      <p className="mb-3">Sovereign currency for:</p>
+                      <ul className="space-y-2">
+                        <li>• Land purchases and sales</li>
+                        <li>• Treasury operations</li>
+                        <li>• Rent payments</li>
+                        <li>• Major infrastructure</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-destructive/10 border-l-4 border-destructive p-6 rounded">
+                      <h3 className="text-xl font-semibold text-foreground mb-3">Chaos Token</h3>
+                      <p className="mb-3">Commerce currency for:</p>
+                      <ul className="space-y-2">
+                        <li>• Worker wages</li>
+                        <li>• Product sales</li>
+                        <li>• Daily commerce</li>
+                        <li>• Free-floating exchange rate</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-2xl font-semibold text-foreground mb-3">Treasury Flow</h3>
+                    <p>City → Planet (10% tribute) → Star System (10% tribute)</p>
+                    <div className="mt-4 space-y-2">
+                      <p><span className="font-semibold text-foreground">Sarakt Treasury Reserves:</span></p>
+                      <ul className="ml-6 space-y-1">
+                        <li>• 30% BTC</li>
+                        <li>• 20% Stablecoins (lending/liquidity)</li>
+                        <li>• 50% Basket (ETH/XRP/AVAX/MATIC)</li>
+                      </ul>
+                      <p className="mt-3">Up to 30% of xBGL reserves fund Octavia infrastructure projects.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                <CardHeader>
+                  <CardTitle className="text-3xl flex items-center gap-3">
+                    <Factory className="w-8 h-8 text-primary" />
+                    Business Loop
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-muted-foreground text-lg leading-relaxed">
+                  <div className="bg-primary/10 border-l-4 border-primary p-6 rounded">
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Production Chain</h3>
+                    <ol className="space-y-3">
+                      <li><span className="text-primary font-bold">1.</span> Planet buys raw materials in <span className="font-semibold">xBGL</span></li>
+                      <li><span className="text-primary font-bold">2.</span> Refineries convert to components</li>
+                      <li><span className="text-primary font-bold">3.</span> Manufacturers produce finished goods</li>
+                      <li><span className="text-primary font-bold">4.</span> Products sold in <span className="font-semibold">Chaos</span></li>
+                      <li><span className="text-primary font-bold">5.</span> Workers earn Chaos wages</li>
+                      <li><span className="text-primary font-bold">6.</span> Rent paid in xBGL</li>
+                    </ol>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Property Value Dynamics</h3>
+                    <p>Building improvements increase net value. Rent is tied to property valuation. Better buildings = higher rents = more xBGL income for landowners.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/20 bg-card/50 backdrop-blur">
+                <CardHeader>
+                  <CardTitle className="text-3xl flex items-center gap-3">
+                    <Users className="w-8 h-8 text-primary" />
+                    NPCs & Population
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-muted-foreground text-lg leading-relaxed">
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">NPC System</h3>
+                    <p>NPCs spawn dynamically, choose jobs based on opportunities, develop skills over time, and build loyalty to factions. Loyalty gates faction influence. Modular design ready for AI integration.</p>
+                  </div>
+
+                  <div className="bg-primary/10 border-l-4 border-primary p-6 rounded">
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Job Paths</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="font-semibold text-foreground">Tribal Era:</p>
+                        <p className="text-sm">Hunting, Gathering, Farming, Water Collection</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">Economic Era:</p>
+                        <p className="text-sm">Workshops, Industry, Schools, Healthcare, Trade</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">Special Paths:</p>
+                        <p className="text-sm">Martial Arts Dens, Chaos Magick Temples, Invite-Only Black Market</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">Player Control</h3>
+                    <p>Unlocks after owning and developing <span className="text-primary font-semibold">100 plots</span>. Form a faction to manage population within your loyalty sphere. Compete for NPC allegiance through wages, benefits, and ideology.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           <TabsContent value="ancient">
             <Card className="border-primary/20 bg-card/50 backdrop-blur">
               <CardHeader>
@@ -236,7 +541,6 @@ export default function UnifiedUniverse() {
             </Card>
           </TabsContent>
 
-          {/* Cataclysm */}
           <TabsContent value="cataclysm">
             <Card className="border-primary/20 bg-card/50 backdrop-blur">
               <CardHeader>
@@ -279,176 +583,4 @@ export default function UnifiedUniverse() {
                   </p>
                   <p className="mt-3">
                     The survivors retreated underground, back into the ancient mines their ancestors had once 
-                    fought to escape. For decades, humanity lived in darkness, rationing supplies and plotting 
-                    their next move. The aliens left, believing humanity extinct.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Modern Age */}
-          <TabsContent value="modern">
-            <Card className="border-primary/20 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="text-3xl flex items-center gap-3">
-                  <Building2 className="w-8 h-8 text-primary" />
-                  The Renaissance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
-                <div>
-                  <h3 className="text-2xl font-semibold text-foreground mb-3">Founding of Octavia Capital City</h3>
-                  <p>
-                    Twenty years ago, the first humans emerged from the underground shelters. They chose a cliff face 
-                    overlooking the Sapphire Sea and began carving a new city directly into the rock—
-                    <span className="text-primary font-semibold"> Octavia Capital City</span>, named after the legendary rebel leader.
-                  </p>
-                  <p className="mt-3">
-                    The city is built vertically, with districts stacked upon one another and connected by massive 
-                    stone elevators. The architecture blends brutalist functionality with organic curves, mimicking 
-                    the nanofiber structures of Zythera. At its heart stands the <span className="text-primary font-semibold">Treasury Tower</span>, 
-                    housing the new economy powered by <span className="text-primary font-semibold">xBGL</span> cryptocurrency.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-semibold text-foreground mb-3">The Hybrid Companions</h3>
-                  <p>
-                    During the underground years, scientists experimented with genetic engineering to create 
-                    companions and workers. The results were three new species:
-                  </p>
-                  <ul className="space-y-2 mt-3 ml-6">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      <span>
-                        <span className="font-semibold text-foreground">Horse-sized Dogs</span>: Loyal beasts of burden with 
-                        the intelligence of dolphins and the strength of draft horses
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      <span>
-                        <span className="font-semibold text-foreground">Sky Horses</span>: Winged equines capable of 
-                        short-range flight, used as aerial mounts and scouts
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      <span>
-                        <span className="font-semibold text-foreground">Falcons</span>: Enhanced raptors with near-human 
-                        problem-solving abilities, serving as messengers and hunters
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-primary/10 border-l-4 border-primary p-6 rounded">
-                  <h3 className="text-2xl font-semibold text-foreground mb-3">The New Economy</h3>
-                  <p>
-                    With the discovery of <span className="font-semibold">Chaos Energy</span>—a byproduct of refining 
-                    nanofiber materials—humanity developed two currencies:
-                  </p>
-                  <ul className="space-y-2 mt-3 ml-6">
-                    <li><span className="text-primary font-semibold">xBGL</span>: The primary currency for land, major transactions, and governance</li>
-                    <li><span className="text-primary font-semibold">Chaos Token</span>: Earned from production, used to pay workers and trade refined goods</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-semibold text-foreground mb-3">The Present Day</h3>
-                  <p>
-                    Today, Octavia Capital City is opening its first districts to settlers. <span className="text-primary font-semibold">10,000 land plots</span> are 
-                    available for purchase, and the race to build the future has begun. Factions are forming, NPCs are 
-                    being employed, and the Treasury is establishing financial instruments like bonds and lending.
-                  </p>
-                  <p className="mt-3">
-                    But tensions simmer beneath the surface. Zythera's black market thrives on illegal nanofiber research. 
-                    Some whisper of alien scouts returning to the system. And deep in the nanofiber web, something stirs—
-                    watching, waiting, learning.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Planets Detail */}
-          <TabsContent value="worlds">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card className="border-primary/20 bg-card/50 backdrop-blur">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center gap-3">
-                    <Building2 className="w-6 h-6 text-primary" />
-                    Sarakt Prime
-                  </CardTitle>
-                  <Badge className="bg-gradient-cosmic text-white border-primary">Habitable</Badge>
-                </CardHeader>
-                <CardContent className="space-y-4 text-muted-foreground">
-                  <p>
-                    <span className="font-semibold text-foreground">Type:</span> Terrestrial, Earth-like atmosphere
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Population:</span> ~50,000 humans, growing rapidly
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Capital:</span> Octavia Capital City (cliff-carved vertical city)
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Geography:</span> Sapphire Sea coastline, mountain ranges, 
-                    ancient mining tunnels beneath the surface
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Economy:</span> Land development, resource extraction, 
-                    hybrid animal breeding, governance hub
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-destructive/20 bg-card/50 backdrop-blur">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center gap-3">
-                    <Sprout className="w-6 h-6 text-destructive" />
-                    Zythera
-                  </CardTitle>
-                  <Badge variant="destructive">Chaotic</Badge>
-                </CardHeader>
-                <CardContent className="space-y-4 text-muted-foreground">
-                  <p>
-                    <span className="font-semibold text-foreground">Type:</span> Bioluminescent nanofiber ecosystem
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Population:</span> Unknown (no official census)
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Capital:</span> None (anarchic research outposts)
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Geography:</span> Living nanofiber web covering 80% of surface, 
-                    crystalline forests, underground laboratories
-                  </p>
-                  <p>
-                    <span className="font-semibold text-foreground">Economy:</span> Black market hub, illegal nanofiber research, 
-                    ShadowCoin (XMR-pegged) trades, biotech development
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="mt-6 border-primary/20 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="text-2xl">Future Worlds</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground">
-                <p>
-                  As the Sarakt civilization expands, new planets await discovery and terraforming. 
-                  Orbital research stations study distant star systems, searching for habitable worlds 
-                  and alien technologies. The universe is vast—and humanity's story is just beginning.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-}
+                    fought to escape. For decades, humanity lived in darkness
