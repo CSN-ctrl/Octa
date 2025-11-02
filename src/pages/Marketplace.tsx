@@ -102,9 +102,7 @@ export default function Marketplace() {
     <div className="min-h-screen pt-20">
       <div className="container mx-auto px-4 py-12">
         <div className="flex justify-end mb-4">
-          <Button variant="cosmic" onClick={handleConnectWallet}>
-            {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Connect Wallet"}
-          </Button>
+          
         </div>
 
         <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
