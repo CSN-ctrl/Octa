@@ -5,10 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import UnifiedUniverse from "./pages/UnifiedUniverse";
-import PlanetDetail from "./pages/PlanetDetail";
-import Marketplace from "./pages/Marketplace";
+import MarketplaceTreasury from "./pages/MarketplaceTreasury";
 import DigitalID from "./pages/DigitalID";
-import Treasury from "./pages/Treasury";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,10 +20,8 @@ const App = () => (
         <Navigation />
         <Routes>
           <Route path="/" element={<UnifiedUniverse />} />
-          <Route path="/planet/:planetId" element={<PlanetDetail />} />
-          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/economy" element={<MarketplaceTreasury />} />
           <Route path="/digital-id" element={<DigitalID />} />
-          <Route path="/treasury" element={<Treasury />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
