@@ -186,6 +186,53 @@ export type Database = {
           },
         ]
       }
+      planets: {
+        Row: {
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          name: string
+          node_type: string | null
+          owner_wallet: string
+          planet_type: string | null
+          star_system_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          name: string
+          node_type?: string | null
+          owner_wallet: string
+          planet_type?: string | null
+          star_system_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          name?: string
+          node_type?: string | null
+          owner_wallet?: string
+          planet_type?: string | null
+          star_system_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planets_star_system_id_fkey"
+            columns: ["star_system_id"]
+            isOneToOne: false
+            referencedRelation: "star_systems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plots: {
         Row: {
           building_stage: number | null
@@ -228,6 +275,51 @@ export type Database = {
           updated_at?: string | null
           workers?: Json | null
           zone_type?: string | null
+        }
+        Relationships: []
+      }
+      star_systems: {
+        Row: {
+          chain_id: number | null
+          created_at: string | null
+          id: string
+          name: string
+          owner_wallet: string
+          planets: string[] | null
+          rpc_url: string | null
+          status: string | null
+          subnet_id: string | null
+          treasury_balance: Json | null
+          tribute_percent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          chain_id?: number | null
+          created_at?: string | null
+          id?: string
+          name: string
+          owner_wallet: string
+          planets?: string[] | null
+          rpc_url?: string | null
+          status?: string | null
+          subnet_id?: string | null
+          treasury_balance?: Json | null
+          tribute_percent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          chain_id?: number | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          owner_wallet?: string
+          planets?: string[] | null
+          rpc_url?: string | null
+          status?: string | null
+          subnet_id?: string | null
+          treasury_balance?: Json | null
+          tribute_percent?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -305,7 +397,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_wallet_owner: { Args: { wallet_addr: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

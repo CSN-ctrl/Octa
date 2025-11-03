@@ -19,7 +19,10 @@ import {
   Globe,
   Mountain,
   Zap,
-  Coins
+  Coins,
+  Sparkles,
+  Rocket,
+  Network
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +38,7 @@ import { useLandPlots } from "@/hooks/useLandPlots";
 import { useTreasury } from "@/hooks/useTreasury";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import { useMarketStats } from "@/hooks/useMarketStats";
+import { useCelestialForge } from "@/hooks/useCelestialForge";
 import { ethers } from "ethers";
 
 // Register Chart.js components
@@ -58,10 +62,25 @@ export default function MarketplaceTreasury() {
   const { balances, loading: treasuryLoading } = useTreasury();
   const { transactions, loading: txLoading } = useTransactionHistory(address);
   const { stats, loading: statsLoading } = useMarketStats();
+  const {
+    starSystems,
+    userStarSystems,
+    STAR_SYSTEM_COST,
+    PLANET_COST,
+    spawnStarSystem,
+    spawnPlanet,
+    loading: forgeLoading,
+    fetchStarSystems
+  } = useCelestialForge();
 
   const [selectedPlots, setSelectedPlots] = useState<number[]>([]);
   const [buying, setBuying] = useState(false);
   const [availablePlots, setAvailablePlots] = useState<number[]>([]);
+  const [starSystemName, setStarSystemName] = useState("");
+  const [tributePercent, setTributePercent] = useState(5);
+  const [planetName, setPlanetName] = useState("");
+  const [selectedStarSystem, setSelectedStarSystem] = useState<string>("");
+  const [planetType, setPlanetType] = useState<"habitable" | "resource" | "research" | "military">("habitable");
 
   // Fetch available plots (plots 1-100 that aren't sold)
   useEffect(() => {
@@ -92,6 +111,11 @@ export default function MarketplaceTreasury() {
       fetchAvailablePlots();
     }
   }, [totalPlots, isConnected]);
+
+  // Fetch star systems on mount
+  useEffect(() => {
+    fetchStarSystems();
+  }, [fetchStarSystems]);
 
   // Calculate portfolio data from user's plots
   const portfolioAssets = userPlots.map(plotId => ({
@@ -682,6 +706,276 @@ export default function MarketplaceTreasury() {
                     <p className="text-muted-foreground">
                       No fractional assets yet. Invest in universe assets above to get started.
                     </p>
+                  </div>
+                )}
+              </Card>
+
+              {/* ---------------- CELESTIAL FORGE ---------------- */}
+              <Card className="glass p-6 border-2 border-primary/30">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                      <h3 className="text-2xl font-bold">Celestial Forge</h3>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Spawn new star systems and planets • Deploy Avalanche subnets and master nodes
+                    </p>
+                  </div>
+                  <Badge className="bg-gradient-cosmic text-white text-sm px-4 py-2">
+                    <Rocket className="h-4 w-4 mr-2 inline" />
+                    Active
+                  </Badge>
+                </div>
+
+                {!isConnected ? (
+                  <div className="text-center py-12">
+                    <Wallet className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                    <h4 className="text-xl font-bold mb-2">Connect Wallet Required</h4>
+                    <p className="text-muted-foreground mb-6">
+                      Connect your wallet to access the Celestial Forge
+                    </p>
+                    <Button variant="cosmic" onClick={connect}>
+                      Connect Wallet
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {/* Star System Spawner */}
+                    <div className="border border-primary/30 rounded-lg p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h4 className="text-xl font-bold mb-2 flex items-center gap-2">
+                            <Globe className="h-6 w-6 text-primary" />
+                            Spawn Star System
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Deploy a new Avalanche subnet with its own economy
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-primary">
+                          {STAR_SYSTEM_COST.toLocaleString()} AVAX
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Star System Name</label>
+                          <Input
+                            placeholder="e.g., Nova Centauri"
+                            value={starSystemName}
+                            onChange={(e) => setStarSystemName(e.target.value)}
+                            className="glass"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">
+                            Tribute to Sarakt (%) • {tributePercent}%
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="20"
+                            value={tributePercent}
+                            onChange={(e) => setTributePercent(Number(e.target.value))}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Treasury contribution to Sarakt Star System
+                          </p>
+                        </div>
+
+                        <Button
+                          variant="cosmic"
+                          className="w-full"
+                          disabled={forgeLoading || !starSystemName || starSystemName.length < 3}
+                          onClick={async () => {
+                            try {
+                              await spawnStarSystem(starSystemName, tributePercent);
+                              setStarSystemName("");
+                              setTributePercent(5);
+                            } catch (error) {
+                              console.error(error);
+                            }
+                          }}
+                        >
+                          {forgeLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Spawning...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Spawn Star System
+                            </>
+                          )}
+                        </Button>
+
+                        <div className="bg-primary/10 border border-primary/30 rounded p-3">
+                          <p className="text-xs text-muted-foreground">
+                            <strong>Note:</strong> Spawning a star system creates a new Avalanche subnet 
+                            tied to the primary network. Deployment takes 10-15 minutes. Your wallet balance: {parseFloat(balance).toFixed(2)} AVAX
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Planet Spawner */}
+                    {userStarSystems.length > 0 && (
+                      <div className="border border-accent/30 rounded-lg p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h4 className="text-xl font-bold mb-2 flex items-center gap-2">
+                              <Mountain className="h-6 w-6 text-accent" />
+                              Spawn Planet
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              Deploy a master node in your star system
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-accent">
+                            {PLANET_COST.toLocaleString()} AVAX
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">Select Star System</label>
+                            <select
+                              className="w-full glass p-2 rounded border border-muted"
+                              value={selectedStarSystem}
+                              onChange={(e) => setSelectedStarSystem(e.target.value)}
+                            >
+                              <option value="">Choose a star system...</option>
+                              {userStarSystems.map((sys) => (
+                                <option key={sys.id} value={sys.id}>
+                                  {sys.name} ({sys.planets?.length || 0} planets)
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">Planet Name</label>
+                            <Input
+                              placeholder="e.g., Terra Nova"
+                              value={planetName}
+                              onChange={(e) => setPlanetName(e.target.value)}
+                              className="glass"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">Planet Type</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(["habitable", "resource", "research", "military"] as const).map((type) => (
+                                <Button
+                                  key={type}
+                                  variant={planetType === type ? "default" : "outline"}
+                                  className="capitalize"
+                                  onClick={() => setPlanetType(type)}
+                                >
+                                  {type}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="cosmic"
+                            className="w-full"
+                            disabled={forgeLoading || !planetName || !selectedStarSystem}
+                            onClick={async () => {
+                              try {
+                                await spawnPlanet(selectedStarSystem, planetName, planetType);
+                                setPlanetName("");
+                                setSelectedStarSystem("");
+                              } catch (error) {
+                                console.error(error);
+                              }
+                            }}
+                          >
+                            {forgeLoading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Spawning...
+                              </>
+                            ) : (
+                              <>
+                                <Rocket className="h-4 w-4 mr-2" />
+                                Spawn Planet
+                              </>
+                            )}
+                          </Button>
+
+                          <div className="bg-accent/10 border border-accent/30 rounded p-3">
+                            <p className="text-xs text-muted-foreground">
+                              <strong>Note:</strong> Spawning a planet deploys a master node validator 
+                              in your star system's subnet. Synchronization takes 5-10 minutes.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Your Star Systems */}
+                    {userStarSystems.length > 0 && (
+                      <div>
+                        <h4 className="text-xl font-bold mb-4 flex items-center gap-2">
+                          <Network className="h-6 w-6" />
+                          Your Star Systems
+                        </h4>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {userStarSystems.map((system) => (
+                            <Card key={system.id} className="glass p-4 border border-primary/30">
+                              <div className="flex items-start justify-between mb-3">
+                                <div>
+                                  <h5 className="font-bold text-lg">{system.name}</h5>
+                                  <p className="text-xs text-muted-foreground">
+                                    {system.subnet_id || "Deploying..."}
+                                  </p>
+                                </div>
+                                <Badge 
+                                  variant={system.status === 'active' ? 'default' : 'outline'}
+                                  className="capitalize"
+                                >
+                                  {system.status}
+                                </Badge>
+                              </div>
+                              
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Planets</span>
+                                  <span className="font-bold">{system.planets?.length || 0}</span>
+                                </div>
+                                {system.chain_id && (
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Chain ID</span>
+                                    <span className="font-mono text-xs">{system.chain_id}</span>
+                                  </div>
+                                )}
+                                {system.rpc_url && (
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    RPC: {system.rpc_url}
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {userStarSystems.length === 0 && (
+                      <div className="text-center py-8 border border-dashed border-muted-foreground/30 rounded-lg">
+                        <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          You haven't spawned any star systems yet. Create your first one above!
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
