@@ -16,6 +16,7 @@ const planetsData = {
     coverage: 42,
     tier: "Capital",
     color: "primary",
+    locked: false,
     description: "Cliff-carved capital overlooking the Sapphire Sea. Vertical architecture, Treasury Tower, xBGL economy hub.",
     districts: [{
       name: "District A",
@@ -63,6 +64,7 @@ const planetsData = {
     coverage: 8,
     tier: "Frontier",
     color: "destructive",
+    locked: false,
     description: "Bioluminescent nanofiber ecosystem. Black market research, ShadowCoin trades, chaotic frontier.",
     districts: [{
       name: "Research Outpost Alpha",
@@ -98,6 +100,7 @@ const planetsData = {
     coverage: 91,
     tier: "Commercial",
     color: "accent",
+    locked: false,
     description: "Primary commerce node. Multi-species marketplace, diplomatic quarters, high-frequency trading.",
     districts: [{
       name: "Central Market",
@@ -127,6 +130,7 @@ const planetsData = {
     coverage: 52,
     tier: "Logistics",
     color: "secondary",
+    locked: false,
     description: "Logistics center. Cargo processing, ship maintenance, customs enforcement.",
     districts: [{
       name: "Cargo Terminal",
