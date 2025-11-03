@@ -379,15 +379,9 @@ export default function UnifiedUniverse() {
       </div>
       <div className="container mx-auto px-4 pb-16 max-w-7xl">
         <Tabs defaultValue="universe" className="mb-12">
-          <TabsList className="grid w-full grid-cols-7 mb-8 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-1 mb-8 h-auto p-1">
             <TabsTrigger value="universe" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
               Universe
-            </TabsTrigger>
-            <TabsTrigger value="phases" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
-              Phases
-            </TabsTrigger>
-            <TabsTrigger value="worlds" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
-              Planets
             </TabsTrigger>
           </TabsList>
           <TabsContent value="universe" className="space-y-8">
@@ -745,121 +739,6 @@ export default function UnifiedUniverse() {
                 </div>
               )}
             </Card>
-          </TabsContent>
-          <TabsContent value="phases">
-            <div className="space-y-6">
-              <Card className="border-primary/20 bg-card/50 backdrop-blur overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10" />
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
-                      <Home className="w-10 h-10 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-4xl mb-2">Phase 1: Tribal Stage</CardTitle>
-                      <Badge className="bg-gradient-cosmic text-white text-lg px-4 py-2">
-                        {totalPlots.toLocaleString()} Plots • {plotsSold} Sold
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
-                  <div className="bg-primary/10 border-l-4 border-primary p-6 rounded-lg">
-                    <h3 className="text-2xl font-semibold text-foreground mb-3">Settlement Foundation</h3>
-                    <p>10,000 plots minted for initial settlers and tribes. Each plot must be developed within one Octavian year or face consequences.</p>
-                  </div>
-                 
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <Card className="glass border-primary/20">
-                      <CardContent className="p-6">
-                        <TreePine className="w-8 h-8 text-primary mb-3" />
-                        <h4 className="font-semibold text-foreground mb-2">Hunting & Gathering</h4>
-                        <p className="text-sm">NPCs forage resources from wilderness</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="glass border-primary/20">
-                      <CardContent className="p-6">
-                        <Sprout className="w-8 h-8 text-primary mb-3" />
-                        <h4 className="font-semibold text-foreground mb-2">Farming</h4>
-                        <p className="text-sm">Agricultural plots produce food supplies</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="glass border-primary/20">
-                      <CardContent className="p-6">
-                        <Droplets className="w-8 h-8 text-primary mb-3" />
-                        <h4 className="font-semibold text-foreground mb-2">Water Collection</h4>
-                        <p className="text-sm">Infrastructure for clean water distribution</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-semibold text-foreground mb-3">Basic Infrastructure</h3>
-                    <p>Huts, workshops, water systems, and sewage. Villages form along trade routes. Dual currency activates: <span className="text-primary font-semibold">xBGL</span> for land/treasury, <span className="text-primary font-semibold">Chaos</span> for wages/commerce.</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-destructive/20 bg-card/50 backdrop-blur overflow-hidden">
-                <div className="absolute top-0 left-0 w-96 h-96 bg-destructive/5 rounded-full blur-3xl -z-10" />
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30">
-                      <Building2 className="w-10 h-10 text-destructive" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-4xl mb-2">Phase 2: Civilization Stage</CardTitle>
-                      <Badge variant="destructive" className="text-lg px-4 py-2">Unlocks at 100,000 Developed Plots</Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
-                  <div className="bg-destructive/10 border-l-4 border-destructive p-6 rounded-lg">
-                    <h3 className="text-2xl font-semibold text-foreground mb-3">Advanced Structures</h3>
-                    <p>Detached houses, schools, universities, industrial complexes. Full-scale economy with wages, rents, and production loops.</p>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-xl font-semibold text-foreground mb-3">Secondary Market Opens</h3>
-                      <p>Property trading with refunds based on net value. Building improvements directly increase property worth and rental income tied to valuation.</p>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-foreground mb-3">Player Faction Control</h3>
-                      <p>After owning and developing 100 plots, form a faction. Manage population within your loyalty sphere. NPCs choose allegiance based on trust and benefits.</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          <TabsContent value="worlds" className="space-y-8">
-            <h2 className="text-4xl font-bold mb-8">Explore the Planets</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(planetsData).map(([id, planet]) => (
-                <Card
-                  key={id}
-                  onClick={() => handlePlanetSelect(id)}
-                  className={`glass cursor-pointer border-primary/30 hover:border-primary hover:shadow-glow-accent transition-all ${planet.locked ? "opacity-40 pointer-events-none" : ""}`}
-                >
-                  <CardHeader>
-                    <CardTitle className="text-2xl flex justify-between items-center">
-                      {planet.name}
-                      {planet.locked && <Lock className="w-5 h-5 text-muted-foreground" />}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground">{planet.description}</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Tier</span>
-                      <Badge variant="outline">{planet.tier}</Badge>
-                    </div>
-                    {!planet.locked && (
-                      <Button variant="cosmic" className="w-full mt-2 gap-2">
-                        View Planet <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           </TabsContent>
         </Tabs>
       </div>
