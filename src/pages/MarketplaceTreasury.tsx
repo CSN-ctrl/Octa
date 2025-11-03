@@ -4,33 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { 
-  ShoppingCart, 
-  TrendingUp, 
-  User, 
-  Wallet, 
-  DollarSign, 
-  Activity, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  Globe,
-  Mountain,
-  Zap,
-  Coins,
-  Sparkles,
-  Rocket,
-  Network
-} from "lucide-react";
+import { ShoppingCart, TrendingUp, User, Wallet, DollarSign, Activity, ArrowUpRight, ArrowDownRight, Loader2, CheckCircle2, AlertCircle, Globe, Mountain, Zap, Coins, Sparkles, Rocket, Network } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from "react-chartjs-2";
 import { useWallet } from "@/contexts/WalletContext";
 import { useDigitalID } from "@/hooks/useDigitalID";
@@ -43,25 +19,42 @@ import { ethers } from "ethers";
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
-
 export default function MarketplaceTreasury() {
-  const { address, signer, isConnected, connect, balance } = useWallet();
-  const { hasDigitalID, loading: idLoading } = useDigitalID();
-  const { 
-    userPlots, 
-    plotsSold, 
-    totalPlots, 
+  const {
+    address,
+    signer,
+    isConnected,
+    connect,
+    balance
+  } = useWallet();
+  const {
+    hasDigitalID,
+    loading: idLoading
+  } = useDigitalID();
+  const {
+    userPlots,
+    plotsSold,
+    totalPlots,
     plotsRemaining,
-    priceInAVAX, 
-    salesActive, 
-    loading: plotsLoading, 
-    buyPlot, 
+    priceInAVAX,
+    salesActive,
+    loading: plotsLoading,
+    buyPlot,
     buyPlotsBatch,
     refresh: refreshPlots
   } = useLandPlots();
-  const { balances, loading: treasuryLoading } = useTreasury();
-  const { transactions, loading: txLoading } = useTransactionHistory(address);
-  const { stats, loading: statsLoading } = useMarketStats();
+  const {
+    balances,
+    loading: treasuryLoading
+  } = useTreasury();
+  const {
+    transactions,
+    loading: txLoading
+  } = useTransactionHistory(address);
+  const {
+    stats,
+    loading: statsLoading
+  } = useMarketStats();
   const {
     starSystems,
     userStarSystems,
@@ -72,7 +65,6 @@ export default function MarketplaceTreasury() {
     loading: forgeLoading,
     fetchStarSystems
   } = useCelestialForge();
-
   const [selectedPlots, setSelectedPlots] = useState<number[]>([]);
   const [buying, setBuying] = useState(false);
   const [availablePlots, setAvailablePlots] = useState<number[]>([]);
@@ -86,19 +78,17 @@ export default function MarketplaceTreasury() {
   useEffect(() => {
     const fetchAvailablePlots = async () => {
       if (!isConnected) return;
-      
       try {
-        const { getLandContract } = await import("@/lib/contracts");
+        const {
+          getLandContract
+        } = await import("@/lib/contracts");
         const contract = getLandContract();
-        
+
         // Check first 100 plots for availability
         const plotChecks = [];
         for (let i = 1; i <= Math.min(100, totalPlots); i++) {
-          plotChecks.push(
-            contract.plotMinted(i).then((minted: boolean) => !minted ? i : null)
-          );
+          plotChecks.push(contract.plotMinted(i).then((minted: boolean) => !minted ? i : null));
         }
-        
         const results = await Promise.all(plotChecks);
         const available = results.filter((id): id is number => id !== null);
         setAvailablePlots(available.slice(0, 50)); // Show first 50 available
@@ -106,7 +96,6 @@ export default function MarketplaceTreasury() {
         console.error("Error fetching available plots:", error);
       }
     };
-
     if (totalPlots > 0) {
       fetchAvailablePlots();
     }
@@ -122,20 +111,14 @@ export default function MarketplaceTreasury() {
     name: `SP-${String(plotId).padStart(4, "0")}`,
     value: parseFloat(priceInAVAX) || 0
   }));
-
   const totalInvested = portfolioAssets.reduce((acc, v) => acc + v.value, 0);
   const portfolioData = {
-    labels: portfolioAssets.length > 0 
-      ? portfolioAssets.map(a => a.name)
-      : ["No assets"],
+    labels: portfolioAssets.length > 0 ? portfolioAssets.map(a => a.name) : ["No assets"],
     datasets: [{
-      data: portfolioAssets.length > 0 
-        ? portfolioAssets.map(a => a.value)
-        : [1],
+      data: portfolioAssets.length > 0 ? portfolioAssets.map(a => a.value) : [1],
       backgroundColor: ['#f43f5e', '#3b82f6', '#facc15', '#22c55e', '#a855f7', '#ec4899', '#14b8a6']
     }]
   };
-
   const handleSelectPlot = (plotId: number) => {
     if (selectedPlots.includes(plotId)) {
       setSelectedPlots(selectedPlots.filter(id => id !== plotId));
@@ -143,24 +126,20 @@ export default function MarketplaceTreasury() {
       setSelectedPlots([...selectedPlots, plotId]);
     }
   };
-
   const handleBuyPlot = async (plotId: number) => {
     if (!isConnected || !signer) {
       toast.error("Please connect your wallet");
       await connect();
       return;
     }
-
     if (!hasDigitalID) {
       toast.error("Digital ID required. Please register your Digital ID first.");
       return;
     }
-
     if (!salesActive) {
       toast.error("Sales are not currently active");
       return;
     }
-
     setBuying(true);
     try {
       const txHash = await buyPlot(plotId);
@@ -173,26 +152,21 @@ export default function MarketplaceTreasury() {
       setBuying(false);
     }
   };
-
   const handleBuySelectedPlots = async () => {
     if (selectedPlots.length === 0) return;
-    
     if (!isConnected || !signer) {
       toast.error("Please connect your wallet");
       await connect();
       return;
     }
-
     if (!hasDigitalID) {
       toast.error("Digital ID required. Please register your Digital ID first.");
       return;
     }
-
     if (!salesActive) {
       toast.error("Sales are not currently active");
       return;
     }
-
     setBuying(true);
     try {
       const txHash = await buyPlotsBatch(selectedPlots);
@@ -205,12 +179,8 @@ export default function MarketplaceTreasury() {
       setBuying(false);
     }
   };
-
-  const treasuryTotalValue = parseFloat(balances.avax) + 
-    Object.values(balances.tokens).reduce((sum, token) => sum + parseFloat(token.balance), 0);
-
-  return (
-    <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
+  const treasuryTotalValue = parseFloat(balances.avax) + Object.values(balances.tokens).reduce((sum, token) => sum + parseFloat(token.balance), 0);
+  return <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
@@ -219,12 +189,10 @@ export default function MarketplaceTreasury() {
           <p className="text-xl text-muted-foreground mb-4">
             Real-time blockchain-powered financial services
           </p>
-          {!isConnected && (
-            <div className="flex items-center gap-2 text-sm text-yellow-500">
+          {!isConnected && <div className="flex items-center gap-2 text-sm text-yellow-500">
               <AlertCircle className="h-4 w-4" />
               <span>Connect your wallet to interact with contracts</span>
-            </div>
-          )}
+            </div>}
         </div>
 
         <Tabs defaultValue="treasury">
@@ -239,12 +207,9 @@ export default function MarketplaceTreasury() {
 
           {/* ---------------- TREASURY ---------------- */}
           <TabsContent value="treasury">
-            {treasuryLoading ? (
-              <div className="flex items-center justify-center py-12">
+            {treasuryLoading ? <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <>
+              </div> : <>
                 <div className="grid md:grid-cols-3 gap-6 mb-8">
                   <Card className="glass p-6">
                     <div className="flex items-center justify-between mb-2">
@@ -255,19 +220,16 @@ export default function MarketplaceTreasury() {
                     <p className="text-xs text-muted-foreground mt-2">Live on-chain balance</p>
                   </Card>
                   
-                  {Object.entries(balances.tokens).map(([address, token]) => (
-                    <Card key={address} className="glass p-6">
+                  {Object.entries(balances.tokens).map(([address, token]) => <Card key={address} className="glass p-6">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm text-muted-foreground">{token.symbol} Balance</p>
                         <Wallet className="h-5 w-5 text-accent" />
                       </div>
                       <p className="text-3xl font-bold">{parseFloat(token.balance).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground mt-2">Live on-chain balance</p>
-                    </Card>
-                  ))}
+                    </Card>)}
                   
-                  {Object.keys(balances.tokens).length === 0 && (
-                    <>
+                  {Object.keys(balances.tokens).length === 0 && <>
                       <Card className="glass p-6 opacity-50">
                         <p className="text-sm text-muted-foreground mb-1">USDC Balance</p>
                         <p className="text-3xl font-bold">—</p>
@@ -278,8 +240,7 @@ export default function MarketplaceTreasury() {
                         <p className="text-3xl font-bold">—</p>
                         <p className="text-xs text-muted-foreground mt-2">Not configured</p>
                       </Card>
-                    </>
-                  )}
+                    </>}
                 </div>
                 
                 <Card className="glass p-6">
@@ -295,18 +256,14 @@ export default function MarketplaceTreasury() {
                     </div>
                   </div>
                 </Card>
-              </>
-            )}
+              </>}
           </TabsContent>
 
           {/* ---------------- MARKETS ---------------- */}
           <TabsContent value="markets">
-            {statsLoading ? (
-              <div className="flex items-center justify-center py-12">
+            {statsLoading ? <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <>
+              </div> : <>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                   <Card className="glass p-6">
                     <div className="flex items-center justify-between mb-2">
@@ -333,17 +290,13 @@ export default function MarketplaceTreasury() {
                     </div>
                     <p className="text-3xl font-bold">{stats.recentSales}</p>
                     <div className="flex items-center gap-1 text-xs mt-2">
-                      {stats.volumeChange24h >= 0 ? (
-                        <>
+                      {stats.volumeChange24h >= 0 ? <>
                           <ArrowUpRight className="h-3 w-3 text-green-500" />
                           <span className="text-green-500">+{stats.volumeChange24h.toFixed(1)}%</span>
-                        </>
-                      ) : (
-                        <>
+                        </> : <>
                           <ArrowDownRight className="h-3 w-3 text-red-500" />
                           <span className="text-red-500">{stats.volumeChange24h.toFixed(1)}%</span>
-                        </>
-                      )}
+                        </>}
                     </div>
                   </Card>
                   
@@ -360,27 +313,12 @@ export default function MarketplaceTreasury() {
                 <Card className="glass p-6 mb-8">
                   <h3 className="text-xl font-bold mb-4">Live Market Activity</h3>
                   <div className="space-y-4">
-                    {txLoading ? (
-                      <div className="text-center py-4">
+                    {txLoading ? <div className="text-center py-4">
                         <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                      </div>
-                    ) : transactions.length > 0 ? (
-                      transactions.slice(0, 10).map((tx) => (
-                        <div
-                          key={tx.hash}
-                          className="flex items-center justify-between p-3 rounded-lg glass border border-primary/10"
-                        >
+                      </div> : transactions.length > 0 ? transactions.slice(0, 10).map(tx => <div key={tx.hash} className="flex items-center justify-between p-3 rounded-lg glass border border-primary/10">
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${
-                              tx.type === "land_purchase" 
-                                ? "bg-primary/10" 
-                                : "bg-accent/10"
-                            }`}>
-                              {tx.type === "land_purchase" ? (
-                                <ShoppingCart className="h-4 w-4 text-primary" />
-                              ) : (
-                                <Wallet className="h-4 w-4 text-accent" />
-                              )}
+                            <div className={`p-2 rounded-lg ${tx.type === "land_purchase" ? "bg-primary/10" : "bg-accent/10"}`}>
+                              {tx.type === "land_purchase" ? <ShoppingCart className="h-4 w-4 text-primary" /> : <Wallet className="h-4 w-4 text-accent" />}
                             </div>
                             <div>
                               <p className="font-medium">
@@ -393,22 +331,13 @@ export default function MarketplaceTreasury() {
                           </div>
                           <div className="text-right">
                             <p className="font-bold">{parseFloat(tx.value).toFixed(4)} AVAX</p>
-                            <a
-                              href={`https://explorer.avax.network/tx/${tx.hash}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline"
-                            >
+                            <a href={`https://explorer.avax.network/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
                               View TX
                             </a>
                           </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">
+                        </div>) : <p className="text-center text-muted-foreground py-8">
                         No recent market activity
-                      </p>
-                    )}
+                      </p>}
                   </div>
                 </Card>
                 
@@ -420,14 +349,12 @@ export default function MarketplaceTreasury() {
                     </p>
                   </div>
                 </Card>
-              </>
-            )}
+              </>}
           </TabsContent>
 
           {/* ---------------- LAND MARKETPLACE ---------------- */}
           <TabsContent value="marketplace">
-            {!isConnected ? (
-              <Card className="glass p-12 text-center">
+            {!isConnected ? <Card className="glass p-12 text-center">
                 <Wallet className="h-16 w-16 mx-auto mb-4 text-primary" />
                 <h2 className="text-2xl font-bold mb-4">Connect Wallet</h2>
                 <p className="text-muted-foreground mb-8">
@@ -436,9 +363,7 @@ export default function MarketplaceTreasury() {
                 <Button variant="cosmic" onClick={connect}>
                   Connect Wallet
                 </Button>
-              </Card>
-            ) : (
-              <>
+              </Card> : <>
                 <div className="mb-6">
                   <Card className="glass p-6">
                     <div className="grid md:grid-cols-4 gap-4 mb-4">
@@ -460,29 +385,22 @@ export default function MarketplaceTreasury() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {salesActive ? (
-                        <div className="flex items-center gap-2 text-green-500">
+                      {salesActive ? <div className="flex items-center gap-2 text-green-500">
                           <CheckCircle2 className="h-4 w-4" />
                           <span className="text-sm font-medium">Sales Active</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-red-500">
+                        </div> : <div className="flex items-center gap-2 text-red-500">
                           <AlertCircle className="h-4 w-4" />
                           <span className="text-sm font-medium">Sales Inactive</span>
-                        </div>
-                      )}
-                      {!hasDigitalID && (
-                        <div className="flex items-center gap-2 text-yellow-500 ml-4">
+                        </div>}
+                      {!hasDigitalID && <div className="flex items-center gap-2 text-yellow-500 ml-4">
                           <AlertCircle className="h-4 w-4" />
                           <span className="text-sm">Digital ID required to purchase</span>
-                        </div>
-                      )}
+                        </div>}
                     </div>
                   </Card>
                 </div>
 
-                {selectedPlots.length > 0 && (
-                  <Card className="glass p-4 mb-6">
+                {selectedPlots.length > 0 && <Card className="glass p-4 mb-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{selectedPlots.length} plot(s) selected</p>
@@ -494,89 +412,50 @@ export default function MarketplaceTreasury() {
                         <Button variant="outline" onClick={() => setSelectedPlots([])}>
                           Clear
                         </Button>
-                        <Button
-                          variant="cosmic"
-                          onClick={handleBuySelectedPlots}
-                          disabled={buying || !hasDigitalID || !salesActive}
-                        >
-                          {buying ? (
-                            <>
+                        <Button variant="cosmic" onClick={handleBuySelectedPlots} disabled={buying || !hasDigitalID || !salesActive}>
+                          {buying ? <>
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                               Purchasing...
-                            </>
-                          ) : (
-                            `Buy ${selectedPlots.length} Plot(s)`
-                          )}
+                            </> : `Buy ${selectedPlots.length} Plot(s)`}
                         </Button>
                       </div>
                     </div>
-                  </Card>
-                )}
+                  </Card>}
 
-                {plotsLoading ? (
-                  <div className="flex items-center justify-center py-12">
+                {plotsLoading ? <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {availablePlots.map((plotId) => (
-                      <Card
-                        key={plotId}
-                        className={`glass p-6 cursor-pointer transition-all ${
-                          selectedPlots.includes(plotId)
-                            ? "border-primary border-2 shadow-glow-primary"
-                            : "hover:border-primary/50"
-                        }`}
-                        onClick={() => handleSelectPlot(plotId)}
-                      >
+                  </div> : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {availablePlots.map(plotId => <Card key={plotId} className={`glass p-6 cursor-pointer transition-all ${selectedPlots.includes(plotId) ? "border-primary border-2 shadow-glow-primary" : "hover:border-primary/50"}`} onClick={() => handleSelectPlot(plotId)}>
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-xl font-bold">SP-{String(plotId).padStart(4, "0")}</h3>
-                          {selectedPlots.includes(plotId) && (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                          )}
+                          {selectedPlots.includes(plotId) && <CheckCircle2 className="h-5 w-5 text-primary" />}
                         </div>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Sarakt Prime - District {((plotId - 1) % 10) + 1}
+                          Sarakt Prime - District {(plotId - 1) % 10 + 1}
                         </p>
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-lg font-bold">{priceInAVAX} AVAX</p>
                             <p className="text-xs text-muted-foreground">Per plot</p>
                           </div>
-                          <Button
-                            size="sm"
-                            variant={selectedPlots.includes(plotId) ? "outline" : "default"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (selectedPlots.includes(plotId)) {
-                                handleSelectPlot(plotId);
-                              } else {
-                                handleBuyPlot(plotId);
-                              }
-                            }}
-                            disabled={buying || !hasDigitalID || !salesActive}
-                          >
-                            {buying ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : selectedPlots.includes(plotId) ? (
-                              "Selected"
-                            ) : (
-                              "Buy"
-                            )}
+                          <Button size="sm" variant={selectedPlots.includes(plotId) ? "outline" : "default"} onClick={e => {
+                    e.stopPropagation();
+                    if (selectedPlots.includes(plotId)) {
+                      handleSelectPlot(plotId);
+                    } else {
+                      handleBuyPlot(plotId);
+                    }
+                  }} disabled={buying || !hasDigitalID || !salesActive}>
+                            {buying ? <Loader2 className="h-4 w-4 animate-spin" /> : selectedPlots.includes(plotId) ? "Selected" : "Buy"}
                           </Button>
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                      </Card>)}
+                  </div>}
 
-                {availablePlots.length === 0 && !plotsLoading && (
-                  <Card className="glass p-12 text-center">
+                {availablePlots.length === 0 && !plotsLoading && <Card className="glass p-12 text-center">
                     <p className="text-muted-foreground">No available plots in this range. Check other plot IDs.</p>
-                  </Card>
-                )}
-              </>
-            )}
+                  </Card>}
+              </>}
           </TabsContent>
 
           {/* ---------------- UNIVERSE ---------------- */}
@@ -696,305 +575,31 @@ export default function MarketplaceTreasury() {
               
               <Card className="glass p-6">
                 <h3 className="text-xl font-bold mb-4">Your Fractional Holdings</h3>
-                {!isConnected ? (
-                  <div className="text-center py-8">
+                {!isConnected ? <div className="text-center py-8">
                     <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                     <p className="text-muted-foreground">Connect wallet to view holdings</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
+                  </div> : <div className="text-center py-8">
                     <p className="text-muted-foreground">
                       No fractional assets yet. Invest in universe assets above to get started.
                     </p>
-                  </div>
-                )}
+                  </div>}
               </Card>
 
               {/* ---------------- CELESTIAL FORGE ---------------- */}
-              <Card className="glass p-6 border-2 border-primary/30">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-                      <h3 className="text-2xl font-bold">Celestial Forge</h3>
-                    </div>
-                    <p className="text-muted-foreground">
-                      Spawn new star systems and planets • Deploy Avalanche subnets and master nodes
-                    </p>
-                  </div>
-                  <Badge className="bg-gradient-cosmic text-white text-sm px-4 py-2">
-                    <Rocket className="h-4 w-4 mr-2 inline" />
-                    Active
-                  </Badge>
-                </div>
-
-                {!isConnected ? (
-                  <div className="text-center py-12">
-                    <Wallet className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                    <h4 className="text-xl font-bold mb-2">Connect Wallet Required</h4>
-                    <p className="text-muted-foreground mb-6">
-                      Connect your wallet to access the Celestial Forge
-                    </p>
-                    <Button variant="cosmic" onClick={connect}>
-                      Connect Wallet
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {/* Star System Spawner */}
-                    <div className="border border-primary/30 rounded-lg p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h4 className="text-xl font-bold mb-2 flex items-center gap-2">
-                            <Globe className="h-6 w-6 text-primary" />
-                            Spawn Star System
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Deploy a new Avalanche subnet with its own economy
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="text-primary">
-                          {STAR_SYSTEM_COST.toLocaleString()} AVAX
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Star System Name</label>
-                          <Input
-                            placeholder="e.g., Nova Centauri"
-                            value={starSystemName}
-                            onChange={(e) => setStarSystemName(e.target.value)}
-                            className="glass"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">
-                            Tribute to Sarakt (%) • {tributePercent}%
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="20"
-                            value={tributePercent}
-                            onChange={(e) => setTributePercent(Number(e.target.value))}
-                            className="w-full"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Treasury contribution to Sarakt Star System
-                          </p>
-                        </div>
-
-                        <Button
-                          variant="cosmic"
-                          className="w-full"
-                          disabled={forgeLoading || !starSystemName || starSystemName.length < 3}
-                          onClick={async () => {
-                            try {
-                              await spawnStarSystem(starSystemName, tributePercent);
-                              setStarSystemName("");
-                              setTributePercent(5);
-                            } catch (error) {
-                              console.error(error);
-                            }
-                          }}
-                        >
-                          {forgeLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Spawning...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="h-4 w-4 mr-2" />
-                              Spawn Star System
-                            </>
-                          )}
-                        </Button>
-
-                        <div className="bg-primary/10 border border-primary/30 rounded p-3">
-                          <p className="text-xs text-muted-foreground">
-                            <strong>Note:</strong> Spawning a star system creates a new Avalanche subnet 
-                            tied to the primary network. Deployment takes 10-15 minutes. Your wallet balance: {parseFloat(balance).toFixed(2)} AVAX
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Planet Spawner */}
-                    {userStarSystems.length > 0 && (
-                      <div className="border border-accent/30 rounded-lg p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h4 className="text-xl font-bold mb-2 flex items-center gap-2">
-                              <Mountain className="h-6 w-6 text-accent" />
-                              Spawn Planet
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              Deploy a master node in your star system
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-accent">
-                            {PLANET_COST.toLocaleString()} AVAX
-                          </Badge>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">Select Star System</label>
-                            <select
-                              className="w-full glass p-2 rounded border border-muted"
-                              value={selectedStarSystem}
-                              onChange={(e) => setSelectedStarSystem(e.target.value)}
-                            >
-                              <option value="">Choose a star system...</option>
-                              {userStarSystems.map((sys) => (
-                                <option key={sys.id} value={sys.id}>
-                                  {sys.name} ({sys.planets?.length || 0} planets)
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">Planet Name</label>
-                            <Input
-                              placeholder="e.g., Terra Nova"
-                              value={planetName}
-                              onChange={(e) => setPlanetName(e.target.value)}
-                              className="glass"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-sm font-medium mb-2 block">Planet Type</label>
-                            <div className="grid grid-cols-2 gap-2">
-                              {(["habitable", "resource", "research", "military"] as const).map((type) => (
-                                <Button
-                                  key={type}
-                                  variant={planetType === type ? "default" : "outline"}
-                                  className="capitalize"
-                                  onClick={() => setPlanetType(type)}
-                                >
-                                  {type}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <Button
-                            variant="cosmic"
-                            className="w-full"
-                            disabled={forgeLoading || !planetName || !selectedStarSystem}
-                            onClick={async () => {
-                              try {
-                                await spawnPlanet(selectedStarSystem, planetName, planetType);
-                                setPlanetName("");
-                                setSelectedStarSystem("");
-                              } catch (error) {
-                                console.error(error);
-                              }
-                            }}
-                          >
-                            {forgeLoading ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Spawning...
-                              </>
-                            ) : (
-                              <>
-                                <Rocket className="h-4 w-4 mr-2" />
-                                Spawn Planet
-                              </>
-                            )}
-                          </Button>
-
-                          <div className="bg-accent/10 border border-accent/30 rounded p-3">
-                            <p className="text-xs text-muted-foreground">
-                              <strong>Note:</strong> Spawning a planet deploys a master node validator 
-                              in your star system's subnet. Synchronization takes 5-10 minutes.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Your Star Systems */}
-                    {userStarSystems.length > 0 && (
-                      <div>
-                        <h4 className="text-xl font-bold mb-4 flex items-center gap-2">
-                          <Network className="h-6 w-6" />
-                          Your Star Systems
-                        </h4>
-                        <div className="grid md:grid-cols-2 gap-4">
-                          {userStarSystems.map((system) => (
-                            <Card key={system.id} className="glass p-4 border border-primary/30">
-                              <div className="flex items-start justify-between mb-3">
-                                <div>
-                                  <h5 className="font-bold text-lg">{system.name}</h5>
-                                  <p className="text-xs text-muted-foreground">
-                                    {system.subnet_id || "Deploying..."}
-                                  </p>
-                                </div>
-                                <Badge 
-                                  variant={system.status === 'active' ? 'default' : 'outline'}
-                                  className="capitalize"
-                                >
-                                  {system.status}
-                                </Badge>
-                              </div>
-                              
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Planets</span>
-                                  <span className="font-bold">{system.planets?.length || 0}</span>
-                                </div>
-                                {system.chain_id && (
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Chain ID</span>
-                                    <span className="font-mono text-xs">{system.chain_id}</span>
-                                  </div>
-                                )}
-                                {system.rpc_url && (
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    RPC: {system.rpc_url}
-                                  </div>
-                                )}
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {userStarSystems.length === 0 && (
-                      <div className="text-center py-8 border border-dashed border-muted-foreground/30 rounded-lg">
-                        <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                        <p className="text-muted-foreground">
-                          You haven't spawned any star systems yet. Create your first one above!
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Card>
+              
             </div>
           </TabsContent>
 
           {/* ---------------- PORTFOLIO ---------------- */}
           <TabsContent value="portfolio">
-            {!isConnected ? (
-              <Card className="glass p-12 text-center">
+            {!isConnected ? <Card className="glass p-12 text-center">
                 <Wallet className="h-16 w-16 mx-auto mb-4 text-primary" />
                 <h2 className="text-2xl font-bold mb-4">Connect Wallet</h2>
                 <p className="text-muted-foreground mb-8">Connect your wallet to view your portfolio</p>
                 <Button variant="cosmic" onClick={connect}>
                   Connect Wallet
                 </Button>
-              </Card>
-            ) : (
-              <Card className="glass p-6">
+              </Card> : <Card className="glass p-6">
                 <h3 className="text-xl font-bold mb-4">Portfolio Overview</h3>
                 <div className="grid md:grid-cols-2 gap-6 mb-6">
                   <div>
@@ -1007,22 +612,17 @@ export default function MarketplaceTreasury() {
                   </div>
                 </div>
                 
-                {portfolioAssets.length > 0 ? (
-                  <div>
+                {portfolioAssets.length > 0 ? <div>
                     <p className="text-sm text-muted-foreground mb-4">
                       Portfolio Distribution ({totalInvested.toFixed(4)} AVAX invested)
                     </p>
                     <div className="h-64">
                       <Pie data={portfolioData} />
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">
+                  </div> : <p className="text-muted-foreground text-center py-8">
                     No assets in your portfolio yet. Purchase land plots to get started!
-                  </p>
-                )}
-              </Card>
-            )}
+                  </p>}
+              </Card>}
           </TabsContent>
 
           {/* ---------------- INVESTMENT BANKING ---------------- */}
@@ -1191,13 +791,10 @@ export default function MarketplaceTreasury() {
                 {/* Your Banking Dashboard */}
                 <Card className="glass p-6 border-primary/20">
                   <h4 className="text-lg font-bold mb-4">Your Banking Dashboard</h4>
-                  {!isConnected ? (
-                    <div className="text-center py-8">
+                  {!isConnected ? <div className="text-center py-8">
                       <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                       <p className="text-muted-foreground">Connect wallet to access banking services</p>
-                    </div>
-                  ) : (
-                    <div className="grid md:grid-cols-3 gap-6">
+                    </div> : <div className="grid md:grid-cols-3 gap-6">
                       <div className="glass p-4 rounded-lg">
                         <p className="text-sm text-muted-foreground mb-1">Active Loans</p>
                         <p className="text-2xl font-bold">0</p>
@@ -1213,8 +810,7 @@ export default function MarketplaceTreasury() {
                         <p className="text-2xl font-bold">0</p>
                         <p className="text-xs text-muted-foreground mt-1">No bonds yet</p>
                       </div>
-                    </div>
-                  )}
+                    </div>}
                 </Card>
               </Card>
               
@@ -1235,6 +831,5 @@ export default function MarketplaceTreasury() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </div>;
 }
