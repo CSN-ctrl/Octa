@@ -1,6 +1,3 @@
-// src/pages/UnifiedUniverse.tsx
-"use client";
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
