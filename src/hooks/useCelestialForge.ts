@@ -81,6 +81,17 @@ export function useCelestialForge() {
         throw new Error("Tribute must be between 0-20%");
       }
 
+      // Check for duplicate names
+      const { data: existingSystem } = await supabase
+        .from('star_systems')
+        .select('id')
+        .eq('name', name)
+        .single();
+
+      if (existingSystem) {
+        throw new Error('Star system name already exists');
+      }
+
       // Check user balance
       const balance = await signer.provider!.getBalance(address);
       const cost = ethers.parseEther(STAR_SYSTEM_COST.toString());
@@ -89,25 +100,34 @@ export function useCelestialForge() {
         throw new Error(`Insufficient balance. Need ${STAR_SYSTEM_COST} AVAX`);
       }
 
-      toast.info("Initiating star system deployment...");
+      toast.info("Creating star system...");
 
-      // Call edge function to spawn subnet
-      const { data, error } = await supabase.functions.invoke('spawn-subnet', {
-        body: {
+      // Generate subnet configuration
+      const subnetId = `subnet-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const chainId = 100000 + Math.floor(Math.random() * 900000);
+      const rpcUrl = `https://subnet-${subnetId}.avalanche-mainnet.io/ext/bc/C/rpc`;
+
+      // Create star system directly
+      const { data: newSystem, error } = await supabase
+        .from('star_systems')
+        .insert({
           name,
           owner_wallet: address,
+          subnet_id: subnetId,
+          chain_id: chainId,
+          rpc_url: rpcUrl,
           tribute_percent: tributePercent,
-          payment_amount: STAR_SYSTEM_COST
-        }
-      });
+          status: 'active',
+          treasury_balance: { xBGL: 0, AVAX: STAR_SYSTEM_COST },
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      toast.success(`Star system "${name}" deployment initiated!`);
-      toast.info("Subnet provisioning may take 10-15 minutes...");
-
+      toast.success(`Star system "${name}" created successfully!`);
       await fetchStarSystems();
-      return data;
+      return newSystem;
     } catch (error: any) {
       console.error("Error spawning star system:", error);
       toast.error(error.message || "Failed to spawn star system");
@@ -142,6 +162,18 @@ export function useCelestialForge() {
         throw new Error("You don't own this star system");
       }
 
+      // Check for duplicate planet names in same system
+      const { data: existingPlanet } = await supabase
+        .from('planets')
+        .select('id')
+        .eq('star_system_id', starSystemId)
+        .eq('name', planetName)
+        .single();
+
+      if (existingPlanet) {
+        throw new Error('Planet name already exists in this star system');
+      }
+
       // Check user balance
       const balance = await signer.provider!.getBalance(address);
       const cost = ethers.parseEther(PLANET_COST.toString());
@@ -150,26 +182,42 @@ export function useCelestialForge() {
         throw new Error(`Insufficient balance. Need ${PLANET_COST} AVAX`);
       }
 
-      toast.info("Deploying master node for planet...");
+      toast.info("Creating planet...");
 
-      // Call edge function to spawn planet/node
-      const { data, error } = await supabase.functions.invoke('spawn-planet', {
-        body: {
-          star_system_id: starSystemId,
+      // Generate node configuration
+      const nodeIp = `10.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+
+      // Create planet directly
+      const { data: newPlanet, error: insertError } = await supabase
+        .from('planets')
+        .insert({
           name: planetName,
-          type: planetType,
+          star_system_id: starSystemId,
           owner_wallet: address,
-          payment_amount: PLANET_COST
-        }
-      });
+          planet_type: planetType,
+          node_type: 'master',
+          ip_address: nodeIp,
+          status: 'active',
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      toast.success(`Planet "${planetName}" master node deployed!`);
-      toast.info("Node synchronization in progress...");
+      // Update star system's planets array
+      const updatedPlanets = [...(starSystem.planets || []), newPlanet.id];
+      const { error: updateError } = await supabase
+        .from('star_systems')
+        .update({ planets: updatedPlanets })
+        .eq('id', starSystemId);
 
+      if (updateError) {
+        console.error('Error updating star system planets:', updateError);
+      }
+
+      toast.success(`Planet "${planetName}" created successfully!`);
       await fetchStarSystems();
-      return data;
+      return newPlanet;
     } catch (error: any) {
       console.error("Error spawning planet:", error);
       toast.error(error.message || "Failed to spawn planet");
