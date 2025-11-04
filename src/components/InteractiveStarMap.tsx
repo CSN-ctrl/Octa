@@ -23,7 +23,7 @@ export default function InteractiveStarMap() {
   const [price, setPrice] = useState("");
   const [isListing, setIsListing] = useState(false);
 
-  const { userStarSystems, spawnStarSystem, STAR_SYSTEM_COST, listStarSystemForSale, loading } = useCelestialForge();
+  const { userStarSystems, spawnStarSystem, STAR_SYSTEM_COST, loading } = useCelestialForge();
   const { address, isConnected } = useWallet();
 
   // Drag & Zoom (same as before)
@@ -64,20 +64,6 @@ export default function InteractiveStarMap() {
     setZoom(prev => Math.min(Math.max(prev * (e.deltaY > 0 ? 0.9 : 1.1), 0.5), 4));
   };
 
-  const handleListForSale = async () => {
-    if (!price || !selectedSystem) return;
-    setIsListing(true);
-    try {
-      await listStarSystemForSale(selectedSystem.id, ethers.parseEther(price));
-      toast.success(`${selectedSystem.name} listed for ${price} AVAX!`);
-      setPrice("");
-      setSelectedSystem(null);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to list");
-    }
-    setIsListing(false);
-  };
-
   return (
     <div ref={containerRef} className="fixed inset-0 bg-black overflow-hidden cursor-grab active:cursor-grabbing" onWheel={handleWheel}>
       {/* Nebula & Stars */}
@@ -109,18 +95,8 @@ export default function InteractiveStarMap() {
               <div className="relative">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 blur-xl animate-ping" />
                 <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-blue-600 shadow-2xl border-4 border-white/30 flex items-center justify-center">
-                  {sys.forSale ? (
-                    <DollarSign className="w-8 h-8 text-yellow-300 animate-pulse" />
-                  ) : (
-                    <Globe className="w-8 h-8 text-white" />
-                  )}
+                  <Globe className="w-8 h-8 text-white" />
                 </div>
-                {/* For Sale Badge */}
-                {sys.forSale && (
-                  <Badge className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs">
-                    {sys.price} AVAX
-                  </Badge>
-                )}
               </div>
             </motion.button>
           );
@@ -143,7 +119,7 @@ export default function InteractiveStarMap() {
 
       {/* HUD */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-10">
-        <Button size="sm" variant="glass" onClick={() => setZoom(1) && setPan({ x: 0, y: 0 })}>Reset</Button>
+        <Button size="sm" variant="glass" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Reset</Button>
         <Button size="sm" variant="glass" onClick={() => setZoom(z => z * 1.3)}>+</Button>
         <Button size="sm" variant="glass" onClick={() => setZoom(z => z * 0.7)}>-</Button>
       </div>
@@ -164,6 +140,8 @@ export default function InteractiveStarMap() {
               <Button size="icon" variant="ghost" onClick={() => setSelectedSystem(null)}>×</Button>
             </div>
 
+            {/* Commented out - Trading functionality not yet implemented */}
+            {/*
             {selectedSystem.forSale ? (
               <div className="space-y-4">
                 <Badge className="w-full justify-center text-lg py-3 bg-yellow-500 text-black">
@@ -211,6 +189,14 @@ export default function InteractiveStarMap() {
                 </Button>
               </div>
             )}
+            */}
+
+            <div className="space-y-4">
+              <div>
+                <Label>Planets</Label>
+                <p className="text-2xl font-bold">{selectedSystem.planets?.length || 0}</p>
+              </div>
+            </div>
 
             <Button variant="outline" className="w-full mt-3" onClick={() => setSelectedSystem(null)}>
               Enter System
@@ -218,13 +204,6 @@ export default function InteractiveStarMap() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style jsx>{`
-        @keyframes orbit {
-          from { transform: rotate(0deg) translateX(40px) rotate(0deg); }
-          to { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
-        }
-      `}</style>
     </div>
   );
 }

@@ -378,13 +378,40 @@ export default function UnifiedUniverse() {
         </div>
       </div>
       <div className="container mx-auto px-4 pb-16 max-w-7xl">
-        <Tabs defaultValue="universe" className="mb-12">
-          <TabsList className="grid w-full grid-cols-1 mb-8 h-auto p-1">
-            <TabsTrigger value="universe" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white">
-              Universe
+        <Tabs defaultValue="starmap" className="mb-12">
+          <TabsList className="grid w-full grid-cols-2 mb-8 h-auto p-1">
+            <TabsTrigger value="starmap" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
+              <Globe className="w-5 h-5 mr-2" />
+              Star Map
+            </TabsTrigger>
+            <TabsTrigger value="forge" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
+              <Sparkles className="w-5 h-5 mr-2" />
+              Celestial Forge
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="universe" className="space-y-8">
+
+          {/* STAR MAP TAB - Universe-Level Navigation & Control */}
+          <TabsContent value="starmap" className="space-y-8">
+            {/* Star Map Header */}
+            <Card className="glass border-2 border-primary/30 p-8 mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-4 rounded-xl bg-primary/20 border-2 border-primary">
+                  <Globe className="w-12 h-12 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-4xl font-bold mb-2">Galactic Dashboard</h2>
+                  <p className="text-lg text-muted-foreground">
+                    Multi-subnet admin panel • Navigate star systems, planets, and infrastructure
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <span>• Each star system = blockchain subnet</span>
+                <span>• Each planet = node on subnet</span>
+                <span>• Click to drill down into simulations</span>
+              </div>
+            </Card>
+
             {/* Quick Stats */}
             <div className="grid md:grid-cols-4 gap-4 mb-8">
               <Card className="glass p-6 border-primary/20">
@@ -427,11 +454,12 @@ export default function UnifiedUniverse() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
-                      <Globe className="w-10 h-10 text-primary" />
+                      <Network className="w-10 h-10 text-primary" />
                     </div>
                     <div>
                       <CardTitle className="text-4xl mb-2">Sarakt System</CardTitle>
-                      <p className="text-muted-foreground">Humanity's stronghold. Advanced infrastructure, vertical cities, hybrid companions.</p>
+                      <Badge variant="outline" className="text-xs">Primary Network • Bulgarian Subnet</Badge>
+                      <p className="text-muted-foreground mt-2">Humanity's stronghold. Advanced infrastructure, vertical cities, hybrid companions.</p>
                     </div>
                   </div>
                   <Badge className="bg-gradient-cosmic text-white text-lg px-4 py-2">2 Planets</Badge>
@@ -484,22 +512,143 @@ export default function UnifiedUniverse() {
                 </div>
               </CardContent>
             </Card>
-            {/* Celestial Forge */}
-            <Card className="glass p-6 border-2 border-primary/30">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-                    <h3 className="text-2xl font-bold">Celestial Forge</h3>
+
+            {/* User-Created Star Systems */}
+            {userStarSystems.length > 0 && (
+              <Card className="border-accent/20 bg-card/50 backdrop-blur overflow-hidden">
+                <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -z-10" />
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-4 rounded-xl bg-accent/10 border border-accent/30">
+                        <Rocket className="w-10 h-10 text-accent" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-4xl mb-2">Your Star Systems</CardTitle>
+                        <p className="text-muted-foreground">Avalanche subnets you've deployed</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-gradient-cosmic text-white text-lg px-4 py-2">
+                      {userStarSystems.length} System{userStarSystems.length !== 1 ? 's' : ''}
+                    </Badge>
                   </div>
-                  <p className="text-muted-foreground">
-                    Spawn new star systems and planets • Deploy Avalanche subnets and master nodes
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userStarSystems.map((system) => (
+                      <Card
+                        key={system.id}
+                        className="border-accent/10 hover:border-accent hover:shadow-glow-accent transition-all cursor-pointer group"
+                      >
+                        <CardHeader>
+                          <div className="flex items-center justify-between mb-3">
+                            <Badge 
+                              variant={system.status === 'active' ? 'default' : 'outline'}
+                              className="text-sm capitalize"
+                            >
+                              {system.status}
+                            </Badge>
+                            {system.chain_id && (
+                              <Badge variant="outline" className="text-xs font-mono">
+                                #{system.chain_id}
+                              </Badge>
+                            )}
+                          </div>
+                          <CardTitle className="text-2xl">{system.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="text-xs text-muted-foreground truncate">
+                            {system.subnet_id || "Deploying subnet..."}
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="glass p-3 rounded-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Globe className="w-4 h-4 text-accent" />
+                                <span className="text-xs text-muted-foreground">Planets</span>
+                              </div>
+                              <p className="text-xl font-bold">{system.planets?.length || 0}</p>
+                            </div>
+                            <div className="glass p-3 rounded-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Coins className="w-4 h-4 text-accent" />
+                                <span className="text-xs text-muted-foreground">Treasury</span>
+                              </div>
+                              <p className="text-sm font-bold">
+                                {system.treasury_balance?.AVAX || 0} AVAX
+                              </p>
+                            </div>
+                          </div>
+                          {system.rpc_url && (
+                            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                              <strong>RPC:</strong> {system.rpc_url.substring(0, 40)}...
+                            </div>
+                          )}
+                          <Button variant="cosmic" className="w-full gap-2 group-hover:shadow-glow-accent transition-all">
+                            Manage System <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* All Star Systems Network Visualization - Could integrate InteractiveStarMap here */}
+            {starSystems.length > 0 && (
+              <Card className="glass p-6 border-primary/20">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <Network className="w-6 h-6" />
+                    Network Topology
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    All star systems across the universe • {starSystems.length} active subnet{starSystems.length !== 1 ? 's' : ''}
                   </p>
+                </CardHeader>
+                <CardContent className="px-0 pb-0">
+                  <div className="text-muted-foreground text-center py-8">
+                    <p className="mb-2">Interactive 3D star map coming soon</p>
+                    <p className="text-xs">View all subnets, planets, and infrastructure topology</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* CELESTIAL FORGE TAB - Internal Universe Constructor */}
+          <TabsContent value="forge" className="space-y-8">
+            {/* Forge Header */}
+            <Card className="glass p-6 border-2 border-primary/30">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 rounded-xl bg-primary/20 border-2 border-primary animate-pulse">
+                  <Sparkles className="w-12 h-12 text-primary" />
                 </div>
-                <Badge className="bg-gradient-cosmic text-white text-sm px-4 py-2">
-                  <Rocket className="h-4 w-4 mr-2 inline" />
-                  Active
-                </Badge>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-4xl font-bold">Celestial Forge</h2>
+                    <Badge className="bg-gradient-cosmic text-white text-lg px-4 py-2">
+                      <Rocket className="h-5 h-5 mr-2 inline" />
+                      Operational
+                    </Badge>
+                  </div>
+                  <p className="text-lg text-muted-foreground mb-3">
+                    Internal universe provisioning engine • Build star systems, deploy planets, bootstrap economies
+                  </p>
+                  <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                    <span>• Create new Avalanche subnets</span>
+                    <span>• Spawn master node planets</span>
+                    <span>• Initialize NPC logic & resources</span>
+                    <span>• Register into universe index</span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-primary/10 border-l-4 border-primary p-4 rounded">
+                <p className="text-sm">
+                  <strong>You are the cloud.</strong> The Forge is your internal provisioning engine. 
+                  When you forge a world, you allocate blockchain resources, deploy contracts, bootstrap economies, 
+                  and drop living simulations into existence. No external dependencies.
+                </p>
               </div>
               {!isConnected ? (
                 <div className="text-center py-12">
@@ -682,59 +831,49 @@ export default function UnifiedUniverse() {
                       </div>
                     </div>
                   )}
-                  {/* Your Star Systems */}
+
+                  {/* Forge Success Summary */}
                   {userStarSystems.length > 0 && (
-                    <div>
-                      <h4 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        <Network className="h-6 w-6" />
-                        Your Star Systems
-                      </h4>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        {userStarSystems.map((system) => (
-                          <Card key={system.id} className="glass p-4 border border-primary/30">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h5 className="font-bold text-lg">{system.name}</h5>
-                                <p className="text-xs text-muted-foreground">
-                                  {system.subnet_id || "Deploying..."}
-                                </p>
-                              </div>
-                              <Badge
-                                variant={system.status === 'active' ? 'default' : 'outline'}
-                                className="capitalize"
-                              >
-                                {system.status}
-                              </Badge>
-                            </div>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Planets</span>
-                                <span className="font-bold">{system.planets?.length || 0}</span>
-                              </div>
-                              {system.chain_id && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Chain ID</span>
-                                  <span className="font-mono text-xs">{system.chain_id}</span>
-                                </div>
-                              )}
-                              {system.rpc_url && (
-                                <div className="text-xs text-muted-foreground truncate">
-                                  RPC: {system.rpc_url}
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-                        ))}
+                    <Card className="bg-primary/10 border-primary/30 p-6">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Sparkles className="w-6 h-6 text-primary" />
+                        <h4 className="text-xl font-bold">Forged Creations</h4>
                       </div>
-                    </div>
-                  )}
-                  {userStarSystems.length === 0 && (
-                    <div className="text-center py-8 border border-dashed border-muted-foreground/30 rounded-lg">
-                      <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-muted-foreground">
-                        You haven't spawned any star systems yet. Create your first one above!
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Star Systems</p>
+                          <p className="text-3xl font-bold text-primary">{userStarSystems.length}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Total Planets</p>
+                          <p className="text-3xl font-bold text-primary">
+                            {userStarSystems.reduce((sum, sys) => sum + (sys.planets?.length || 0), 0)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Active Subnets</p>
+                          <p className="text-3xl font-bold text-primary">
+                            {userStarSystems.filter(sys => sys.status === 'active').length}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-4">
+                        View all your creations in the <strong>Star Map</strong> tab
                       </p>
-                    </div>
+                    </Card>
+                  )}
+
+                  {userStarSystems.length === 0 && (
+                    <Card className="bg-muted/30 border-muted p-8 text-center">
+                      <Rocket className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                      <h4 className="text-xl font-bold mb-2">Ready to Forge</h4>
+                      <p className="text-muted-foreground mb-4">
+                        You haven't created any star systems yet. Spawn your first universe above!
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Cost: {STAR_SYSTEM_COST.toLocaleString()} AVAX for subnet deployment
+                      </p>
+                    </Card>
                   )}
                 </div>
               )}
