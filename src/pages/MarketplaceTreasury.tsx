@@ -360,7 +360,7 @@ export default function MarketplaceTreasury() {
                 <p className="text-muted-foreground mb-8">
                   Connect your wallet to browse and purchase land plots
                 </p>
-                <Button variant="cosmic" onClick={connect}>
+                <Button variant="cosmic" onClick={() => connect()}>
                   Connect Wallet
                 </Button>
               </Card> : <>
@@ -596,7 +596,7 @@ export default function MarketplaceTreasury() {
                 <Wallet className="h-16 w-16 mx-auto mb-4 text-primary" />
                 <h2 className="text-2xl font-bold mb-4">Connect Wallet</h2>
                 <p className="text-muted-foreground mb-8">Connect your wallet to view your portfolio</p>
-                <Button variant="cosmic" onClick={connect}>
+                <Button variant="cosmic" onClick={() => connect()}>
                   Connect Wallet
                 </Button>
               </Card> : <Card className="glass p-6">

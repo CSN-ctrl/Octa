@@ -79,7 +79,7 @@ const DigitalID = () => {
             <p className="text-xl text-muted-foreground mb-8">
               Connect your wallet to create and manage your Digital ID
             </p>
-            <Button variant="cosmic" size="lg" onClick={connect}>
+            <Button variant="cosmic" size="lg" onClick={() => connect()}>
               <Wallet className="h-5 w-5 mr-2" />
               Connect Wallet
             </Button>

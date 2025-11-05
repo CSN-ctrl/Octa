@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { ethers } from "ethers";
-import { connectWallet, getConnectedAddress, provider } from "@/lib/wallet";
+import { connectWallet, getConnectedAddress, provider, disconnectWalletConnect } from "@/lib/wallet";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WalletContextType {
   address: string | null;
@@ -9,8 +10,8 @@ interface WalletContextType {
   provider: ethers.JsonRpcProvider;
   isConnected: boolean;
   balance: string;
-  connect: () => Promise<void>;
-  disconnect: () => void;
+  connect: (useWalletConnect?: boolean) => Promise<void>;
+  disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
 }
 
@@ -20,24 +21,49 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [balance, setBalance] = useState<string>("0");
+  const [walletProvider, setWalletProvider] = useState<any>(null);
+  const isMobile = useIsMobile();
 
-  const connect = async () => {
+  const connect = async (useWalletConnect?: boolean) => {
     try {
-      const { signer: newSigner, address: newAddress } = await connectWallet();
+      const shouldUseWalletConnect = useWalletConnect ?? isMobile;
+      const { signer: newSigner, address: newAddress, provider: newProvider } = await connectWallet(shouldUseWalletConnect);
       setSigner(newSigner);
       setAddress(newAddress);
+      setWalletProvider(newProvider);
       await refreshBalance(newAddress);
       toast.success("Wallet connected!");
+
+      // Listen to WalletConnect events
+      if (newProvider && newProvider.on) {
+        newProvider.on("accountsChanged", (accounts: string[]) => {
+          if (accounts.length === 0) {
+            disconnect();
+          } else {
+            setAddress(accounts[0]);
+            refreshBalance(accounts[0]);
+          }
+        });
+
+        newProvider.on("disconnect", () => {
+          disconnect();
+        });
+      }
     } catch (error: any) {
       console.error("Failed to connect wallet:", error);
       toast.error(error.message || "Failed to connect wallet");
     }
   };
 
-  const disconnect = () => {
+  const disconnect = async () => {
+    await disconnectWalletConnect();
+    if (walletProvider && walletProvider.disconnect) {
+      await walletProvider.disconnect();
+    }
     setAddress(null);
     setSigner(null);
     setBalance("0");
+    setWalletProvider(null);
     toast.info("Wallet disconnected");
   };
 

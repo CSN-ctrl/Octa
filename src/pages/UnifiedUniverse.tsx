@@ -657,7 +657,7 @@ export default function UnifiedUniverse() {
                   <p className="text-muted-foreground mb-6">
                     Connect your wallet to access the Celestial Forge
                   </p>
-                  <Button variant="cosmic" onClick={connect}>
+                  <Button variant="cosmic" onClick={() => connect()}>
                     Connect Wallet
                   </Button>
                 </div>
