@@ -8,6 +8,7 @@ import { Navigation } from "./components/Navigation";
 import UnifiedUniverse from "./pages/UnifiedUniverse";
 import MarketplaceTreasury from "./pages/MarketplaceTreasury";
 import DigitalID from "./pages/DigitalID";
+import FinancialHub from "./pages/FinancialHub";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<UnifiedUniverse />} />
             <Route path="/economy" element={<MarketplaceTreasury />} />
+            <Route path="/financial-hub" element={<FinancialHub />} />
             <Route path="/digital-id" element={<DigitalID />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_settings: {
+        Row: {
+          automation_type: Database["public"]["Enums"]["automation_type"]
+          config: Json | null
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          last_executed: string | null
+          owner_wallet: string
+          portfolio_id: string | null
+        }
+        Insert: {
+          automation_type: Database["public"]["Enums"]["automation_type"]
+          config?: Json | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_executed?: string | null
+          owner_wallet: string
+          portfolio_id?: string | null
+        }
+        Update: {
+          automation_type?: Database["public"]["Enums"]["automation_type"]
+          config?: Json | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_executed?: string | null
+          owner_wallet?: string
+          portfolio_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_settings_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       black_market_invites: {
         Row: {
           invite_code: string
@@ -136,6 +177,51 @@ export type Database = {
           plot_ids?: number[] | null
           treasury_balance?: Json | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_listings: {
+        Row: {
+          asset_id: string
+          asset_type: string
+          buyer_wallet: string | null
+          description: string | null
+          id: string
+          listed_at: string | null
+          metadata: Json | null
+          price: number
+          seller_wallet: string
+          sold_at: string | null
+          status: string | null
+          token_type: string | null
+        }
+        Insert: {
+          asset_id: string
+          asset_type: string
+          buyer_wallet?: string | null
+          description?: string | null
+          id?: string
+          listed_at?: string | null
+          metadata?: Json | null
+          price: number
+          seller_wallet: string
+          sold_at?: string | null
+          status?: string | null
+          token_type?: string | null
+        }
+        Update: {
+          asset_id?: string
+          asset_type?: string
+          buyer_wallet?: string | null
+          description?: string | null
+          id?: string
+          listed_at?: string | null
+          metadata?: Json | null
+          price?: number
+          seller_wallet?: string
+          sold_at?: string | null
+          status?: string | null
+          token_type?: string | null
         }
         Relationships: []
       }
@@ -278,6 +364,180 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_followers: {
+        Row: {
+          active: boolean | null
+          allocation_amount: number | null
+          copy_percent: number | null
+          follower_wallet: string
+          id: string
+          manager_wallet: string
+          started_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          allocation_amount?: number | null
+          copy_percent?: number | null
+          follower_wallet: string
+          id?: string
+          manager_wallet: string
+          started_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          allocation_amount?: number | null
+          copy_percent?: number | null
+          follower_wallet?: string
+          id?: string
+          manager_wallet?: string
+          started_at?: string | null
+        }
+        Relationships: []
+      }
+      portfolio_managers: {
+        Row: {
+          applied_at: string | null
+          approval_status: Database["public"]["Enums"]["manager_status"] | null
+          approved_at: string | null
+          bio: string | null
+          display_name: string
+          id: string
+          management_fee_percent: number | null
+          performance_start_date: string | null
+          roi_annualized: number | null
+          sharpe_ratio: number | null
+          total_followers: number | null
+          track_record: Json | null
+          verified: boolean | null
+          wallet_address: string
+        }
+        Insert: {
+          applied_at?: string | null
+          approval_status?: Database["public"]["Enums"]["manager_status"] | null
+          approved_at?: string | null
+          bio?: string | null
+          display_name: string
+          id?: string
+          management_fee_percent?: number | null
+          performance_start_date?: string | null
+          roi_annualized?: number | null
+          sharpe_ratio?: number | null
+          total_followers?: number | null
+          track_record?: Json | null
+          verified?: boolean | null
+          wallet_address: string
+        }
+        Update: {
+          applied_at?: string | null
+          approval_status?: Database["public"]["Enums"]["manager_status"] | null
+          approved_at?: string | null
+          bio?: string | null
+          display_name?: string
+          id?: string
+          management_fee_percent?: number | null
+          performance_start_date?: string | null
+          roi_annualized?: number | null
+          sharpe_ratio?: number | null
+          total_followers?: number | null
+          track_record?: Json | null
+          verified?: boolean | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      portfolios: {
+        Row: {
+          auto_reinvest_enabled: boolean | null
+          auto_reinvest_percent: number | null
+          created_at: string | null
+          current_value: number | null
+          description: string | null
+          id: string
+          initial_investment: number | null
+          name: string
+          owner_wallet: string
+          performance_history: Json | null
+          risk_level: string | null
+          roi_percent: number | null
+          status: Database["public"]["Enums"]["portfolio_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_reinvest_enabled?: boolean | null
+          auto_reinvest_percent?: number | null
+          created_at?: string | null
+          current_value?: number | null
+          description?: string | null
+          id?: string
+          initial_investment?: number | null
+          name: string
+          owner_wallet: string
+          performance_history?: Json | null
+          risk_level?: string | null
+          roi_percent?: number | null
+          status?: Database["public"]["Enums"]["portfolio_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_reinvest_enabled?: boolean | null
+          auto_reinvest_percent?: number | null
+          created_at?: string | null
+          current_value?: number | null
+          description?: string | null
+          id?: string
+          initial_investment?: number | null
+          name?: string
+          owner_wallet?: string
+          performance_history?: Json | null
+          risk_level?: string | null
+          roi_percent?: number | null
+          status?: Database["public"]["Enums"]["portfolio_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      recurring_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          enabled: boolean | null
+          frequency: string
+          from_wallet: string
+          id: string
+          last_payment_date: string | null
+          next_payment_date: string
+          payment_count: number | null
+          to_wallet: string | null
+          token_type: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency: string
+          from_wallet: string
+          id?: string
+          last_payment_date?: string | null
+          next_payment_date: string
+          payment_count?: number | null
+          to_wallet?: string | null
+          token_type?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency?: string
+          from_wallet?: string
+          id?: string
+          last_payment_date?: string | null
+          next_payment_date?: string
+          payment_count?: number | null
+          to_wallet?: string | null
+          token_type?: string | null
+        }
+        Relationships: []
+      }
       star_systems: {
         Row: {
           chain_id: number | null
@@ -400,7 +660,9 @@ export type Database = {
       is_wallet_owner: { Args: { wallet_addr: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      automation_type: "auto_reinvest" | "recurring_deposit" | "rebalance"
+      manager_status: "pending" | "approved" | "rejected"
+      portfolio_status: "active" | "paused" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -527,6 +789,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      automation_type: ["auto_reinvest", "recurring_deposit", "rebalance"],
+      manager_status: ["pending", "approved", "rejected"],
+      portfolio_status: ["active", "paused", "closed"],
+    },
   },
 } as const
