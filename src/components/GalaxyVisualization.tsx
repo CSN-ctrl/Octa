@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 interface GalaxyVisualizationProps {
   systemProgress?: number;
@@ -7,30 +8,30 @@ interface GalaxyVisualizationProps {
   zytheraProgress?: number;
 }
 
-export default function GalaxyVisualization({
-  systemProgress = 0,
+export const GalaxyVisualization = ({ 
+  systemProgress = 0, 
   octaviaProgress = 0,
-  zytheraProgress = 0
-}: GalaxyVisualizationProps) {
+  zytheraProgress = 0 
+}: GalaxyVisualizationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
   const galaxyRef = useRef<THREE.Points | null>(null);
   const saraktStarRef = useRef<THREE.Mesh | null>(null);
   const octaviaRef = useRef<THREE.Mesh | null>(null);
   const zytheraRef = useRef<THREE.Mesh | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const [isZoomed, setIsZoomed] = useState(false);
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const raycasterRef = useRef(new THREE.Raycaster());
 
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Scene setup
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    // Camera
     const camera = new THREE.PerspectiveCamera(
       75,
       containerRef.current.clientWidth / containerRef.current.clientHeight,
@@ -40,11 +41,18 @@ export default function GalaxyVisualization({
     camera.position.set(3, 3, 3);
     cameraRef.current = camera;
 
+    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
+
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controlsRef.current = controls;
 
     // Galaxy parameters
     const parameters = {
@@ -112,7 +120,6 @@ export default function GalaxyVisualization({
       opacity: 0.9
     });
     const saraktStar = new THREE.Mesh(saraktGeometry, saraktMaterial);
-    saraktStar.userData.clickable = true;
     scene.add(saraktStar);
     saraktStarRef.current = saraktStar;
 
@@ -140,45 +147,13 @@ export default function GalaxyVisualization({
     scene.add(zythera);
     zytheraRef.current = zythera;
 
-    // Mouse interaction
-    const onMouseMove = (event: MouseEvent) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    };
-
-    const onClick = () => {
-      raycasterRef.current.setFromCamera(mouseRef.current, camera);
-      const intersects = raycasterRef.current.intersectObjects([saraktStar], true);
-      
-      if (intersects.length > 0) {
-        setIsZoomed(prev => !prev);
-      }
-    };
-
-    const onPointerMove = (event: MouseEvent) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      
-      raycasterRef.current.setFromCamera({ x, y }, camera);
-      const intersects = raycasterRef.current.intersectObjects([saraktStar], true);
-      
-      if (containerRef.current) {
-        containerRef.current.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
-      }
-    };
-
-    containerRef.current.addEventListener('mousemove', onMouseMove);
-    containerRef.current.addEventListener('click', onClick);
-    containerRef.current.addEventListener('pointermove', onPointerMove);
-
     // Animation
     const clock = new THREE.Clock();
     const tick = () => {
       const elapsedTime = clock.getElapsedTime();
+
+      // Update controls
+      controls.update();
 
       // Rotate galaxy slowly
       if (galaxyRef.current) {
@@ -214,19 +189,14 @@ export default function GalaxyVisualization({
         zytheraRef.current.position.z = Math.sin(branchAngle + spinAngle + zytheraAngle) * zytheraRadius;
       }
 
-      // Camera motion
-      if (!isZoomed) {
-        camera.position.x = Math.cos(elapsedTime * 0.05) * 4;
-        camera.position.z = Math.sin(elapsedTime * 0.05) * 4;
-        camera.lookAt(0, 0, 0);
-      } else {
-        // Zoom to Sarakt star
-        const targetPos = new THREE.Vector3(0.5, 0.3, 1);
-        camera.position.lerp(targetPos, 0.02);
-        camera.lookAt(0, 0, 0);
-      }
+      // Camera circular motion
+      camera.position.x = Math.cos(elapsedTime * 0.05) * 4;
+      camera.position.z = Math.sin(elapsedTime * 0.05) * 4;
+      camera.lookAt(0, 0, 0);
 
+      // Render
       renderer.render(scene, camera);
+
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -235,6 +205,7 @@ export default function GalaxyVisualization({
     // Handle resize
     const handleResize = () => {
       if (!containerRef.current) return;
+
       camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
@@ -243,17 +214,16 @@ export default function GalaxyVisualization({
 
     window.addEventListener('resize', handleResize);
 
+    // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('mousemove', onMouseMove);
-        containerRef.current.removeEventListener('click', onClick);
-        containerRef.current.removeEventListener('pointermove', onPointerMove);
-      }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      if (rendererRef.current && containerRef.current && containerRef.current.contains(rendererRef.current.domElement)) {
+      if (controlsRef.current) {
+        controlsRef.current.dispose();
+      }
+      if (rendererRef.current && containerRef.current) {
         containerRef.current.removeChild(rendererRef.current.domElement);
         rendererRef.current.dispose();
       }
@@ -268,32 +238,13 @@ export default function GalaxyVisualization({
       zytheraGeometry.dispose();
       zytheraMaterial.dispose();
     };
-  }, [systemProgress, octaviaProgress, zytheraProgress, isZoomed]);
+  }, [systemProgress, octaviaProgress, zytheraProgress]);
 
   return (
-    <div className="relative w-full h-[600px] rounded-2xl overflow-hidden bg-black">
-      <div ref={containerRef} className="w-full h-full" />
-      
-      <div className="absolute top-4 left-4 text-white font-mono text-xs space-y-1 bg-black/70 p-3 rounded backdrop-blur border border-purple-500/30">
-        <div className="font-bold text-sm mb-2">Sarakt Galaxy</div>
-        <div>System: {Math.round(systemProgress * 100)}%</div>
-        <div className="text-green-400">Octavia: {Math.round(octaviaProgress * 100)}%</div>
-        <div className="text-red-400">Zythera: {Math.round(zytheraProgress * 100)}%</div>
-      </div>
-
-      {isZoomed && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div className="bg-purple-900/80 backdrop-blur-sm border border-purple-500/60 rounded-lg px-4 py-3 text-white text-center text-sm">
-            <div className="font-bold text-base mb-1">Sarakt Star System</div>
-            <div className="text-green-300 text-xs">• Octavia (Sarakt Prime)</div>
-            <div className="text-red-300 text-xs">• Zythera</div>
-          </div>
-        </div>
-      )}
-      
-      <div className="absolute bottom-4 left-4 text-purple-300 text-xs opacity-60 bg-black/50 px-3 py-2 rounded">
-        {isZoomed ? 'Click star to zoom out' : 'Click purple star to zoom in'}
-      </div>
-    </div>
+    <div 
+      ref={containerRef} 
+      className="w-full h-full"
+      style={{ minHeight: '600px' }}
+    />
   );
-}
+};
