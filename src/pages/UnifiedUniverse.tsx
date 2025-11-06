@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, Flame, Droplets, Wind, TreePine, Hammer, Book, Loader2, Network, Wallet, Rocket } from "lucide-react";
+import { Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, Flame, Droplets, Wind, TreePine, Hammer, Book, Loader2, Network, Wallet, Rocket, Orbit } from "lucide-react";
 import heroImage from "@/assets/hero-space.jpg";
 import { useLandPlots } from "@/hooks/useLandPlots";
 import { useTreasury } from "@/hooks/useTreasury";
@@ -13,6 +13,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { ethers } from "ethers";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { GalaxyVisualization } from "@/components/GalaxyVisualization";
 
 const planetsData = {
   "sarakt-prime": {
@@ -379,10 +380,14 @@ export default function UnifiedUniverse() {
       </div>
       <div className="container mx-auto px-4 pb-16 max-w-7xl">
         <Tabs defaultValue="starmap" className="mb-12">
-          <TabsList className="grid w-full grid-cols-2 mb-8 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-3 mb-8 h-auto p-1">
             <TabsTrigger value="starmap" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
               <Globe className="w-5 h-5 mr-2" />
               Star Map
+            </TabsTrigger>
+            <TabsTrigger value="galaxy" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
+              <Orbit className="w-5 h-5 mr-2" />
+              Galaxy View
             </TabsTrigger>
             <TabsTrigger value="forge" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
               <Sparkles className="w-5 h-5 mr-2" />
@@ -614,6 +619,76 @@ export default function UnifiedUniverse() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* GALAXY VIEW TAB - 3D Visualization */}
+          <TabsContent value="galaxy" className="space-y-8">
+            <Card className="glass border-2 border-primary/30 overflow-hidden">
+              <CardHeader>
+                <div className="flex items-center gap-4">
+                  <div className="p-4 rounded-xl bg-primary/20 border-2 border-primary">
+                    <Orbit className="w-12 h-12 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-4xl mb-2">Sarakt Galaxy</CardTitle>
+                    <p className="text-lg text-muted-foreground">
+                      100,000 particle spiral with Sarakt star at the core
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="bg-black/90" style={{ height: '700px' }}>
+                  <GalaxyVisualization
+                    systemProgress={starSystems.length / 10}
+                    octaviaProgress={planetsData["sarakt-prime"].population / 100}
+                    zytheraProgress={planetsData["zythera"].population / 100}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Galaxy Info */}
+            <div className="grid md:grid-cols-3 gap-6">
+              <Card className="glass border-primary/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-4 h-4 rounded-full bg-purple-500 animate-pulse" />
+                    <h3 className="text-xl font-bold">Sarakt Star</h3>
+                  </div>
+                  <p className="text-muted-foreground mb-2">Purple pulsing core at galaxy center</p>
+                  <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/50">
+                    Progress: {Math.round((starSystems.length / 10) * 100)}%
+                  </Badge>
+                </CardContent>
+              </Card>
+
+              <Card className="glass border-primary/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-4 h-4 rounded-full bg-green-500" />
+                    <h3 className="text-xl font-bold">Octavia</h3>
+                  </div>
+                  <p className="text-muted-foreground mb-2">Orbits within first galaxy arm</p>
+                  <Badge className="bg-green-500/20 text-green-300 border-green-500/50">
+                    Population: {planetsData["sarakt-prime"].population}k
+                  </Badge>
+                </CardContent>
+              </Card>
+
+              <Card className="glass border-primary/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-4 h-4 rounded-full bg-red-500" />
+                    <h3 className="text-xl font-bold">Zythera</h3>
+                  </div>
+                  <p className="text-muted-foreground mb-2">Orbits within second galaxy arm</p>
+                  <Badge className="bg-red-500/20 text-red-300 border-red-500/50">
+                    Population: {planetsData["zythera"].population}k
+                  </Badge>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* CELESTIAL FORGE TAB - Internal Universe Constructor */}
