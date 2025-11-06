@@ -299,6 +299,52 @@ const DigitalID = () => {
             <p className="text-muted-foreground text-center py-8">
               No plots owned yet. Visit the Marketplace to purchase land.
             </p>
+      {/* Citizenship & Worker DAO Section */}
+<Card className="glass p-6 mb-8">
+  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+    <Users className="h-5 w-5 text-primary" />
+    Sarakt DAO Membership
+  </h3>
+
+  {userPlots.length > 0 ? (
+    // Eligible for citizenship
+    <div className="text-center py-8">
+      <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-3" />
+      <p className="text-muted-foreground mb-4">
+        You own land and are eligible to join the <strong>Citizenship DAO</strong>.
+      </p>
+      <Button
+        variant="cosmic"
+        size="lg"
+        onClick={() => toast.success("Citizenship application submitted to DAO!")}
+      >
+        Apply for Citizenship
+      </Button>
+      <p className="text-xs text-muted-foreground mt-3">
+        Members can vote on policies, resource allocation, and future city expansion.
+      </p>
+    </div>
+  ) : (
+    // Eligible for Worker Visa
+    <div className="text-center py-8">
+      <Loader2 className="h-8 w-8 text-primary mx-auto mb-3 animate-pulse" />
+      <p className="text-muted-foreground mb-4">
+        You don’t own land yet, but you can apply for a <strong>Worker Visa DAO</strong>.
+      </p>
+      <Button
+        variant="outline"
+        size="lg"
+        onClick={() => toast.success("Worker visa application submitted to DAO!")}
+      >
+        Apply for Worker Visa
+      </Button>
+      <p className="text-xs text-muted-foreground mt-3">
+        Workers contribute to city development and earn DAO reputation tokens.
+      </p>
+    </div>
+  )}
+</Card>
+
           )}
         </Card>
       </div>
