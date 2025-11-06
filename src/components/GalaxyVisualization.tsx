@@ -1,4 +1,3 @@
-import GalaxyVisualization from './components/GalaxyVisualization';
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
