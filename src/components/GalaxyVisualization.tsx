@@ -193,4 +193,5 @@ function ClickableSaraktStar() {
       )}
     </group>
   );
+}
         
