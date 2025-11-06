@@ -41,27 +41,13 @@ export const GalaxyVisualization = ({
     camera.position.set(3, 3, 3);
     cameraRef.current = camera;
 
-    
-    // Renderer with safe initialization
-let renderer: THREE.WebGLRenderer | null = null;
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
 
-try {
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  containerRef.current.appendChild(renderer.domElement);
-  rendererRef.current = renderer;
-} catch (err) {
-  console.error("WebGL initialization failed:", err);
-  const fallback = document.createElement("div");
-  fallback.style.cssText =
-    "color: #ff4d4d; font-family: monospace; text-align: center; padding: 20px;";
-  fallback.innerText =
-    "⚠️ WebGL not supported or context creation failed.\nTry another browser or enable hardware acceleration.";
-  containerRef.current.appendChild(fallback);
-  return; // bail out so nothing else runs
-}
-    
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
