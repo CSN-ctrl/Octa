@@ -1,209 +1,321 @@
-// components/InteractiveStarMap.tsx
-"use client";
+import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 
-import { useRef, useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Globe, Rocket, Zap, Users, Sparkles, DollarSign, Loader2 } from "lucide-react";
-import { useCelestialForge } from "@/hooks/useCelestialForge";
-import { useWallet } from "@/contexts/WalletContext";
-import { ethers } from "ethers";
+interface GalaxyVisualizationProps {
+  validators?: Array<{
+    id: string;
+    stake: number;
+    uptime: number;
+    status: 'active' | 'inactive' | 'slashing';
+  }>;
+  blockHeight?: number;
+  networkHealth?: number;
+}
 
-export default function InteractiveStarMap() {
+export const GalaxyVisualization = ({ 
+  validators = [],
+  blockHeight = 0,
+  networkHealth = 1
+}: GalaxyVisualizationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [selectedSystem, setSelectedSystem] = useState<any>(null);
-  const [price, setPrice] = useState("");
-  const [isListing, setIsListing] = useState(false);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const galaxyRef = useRef<THREE.Points | null>(null);
+  const validatorMeshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
+  const saraktSystemRef = useRef<THREE.Group | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const mouseRef = useRef({ x: 0, y: 0 });
 
-  const { userStarSystems, spawnStarSystem, STAR_SYSTEM_COST, loading } = useCelestialForge();
-  const { address, isConnected } = useWallet();
-
-  // Drag & Zoom (same as before)
+  // Initialize scene once
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let startX = 0, startY = 0;
+    if (!containerRef.current) return;
 
-    const onDown = (e: any) => {
-      setIsDragging(true);
-      startX = ("touches" in e ? e.touches[0].clientX : e.clientX) - pan.x;
-      startY = ("touches" in e ? e.touches[0].clientY : e.clientY) - pan.y;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000510);
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      containerRef.current.clientWidth / containerRef.current.clientHeight,
+      0.1,
+      100
+    );
+    camera.position.set(0, 4, 8);
+    camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // Galaxy core (immutable center)
+    const coreGeo = new THREE.IcosahedronGeometry(0.2, 2);
+    const coreMat = new THREE.MeshBasicMaterial({ 
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.9
+    });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    scene.add(core);
+
+    // Galaxy particles
+    const count = 50000;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const colorInside = new THREE.Color(0x4f46e5);
+    const colorOutside = new THREE.Color(0x06b6d4);
+
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      const radius = Math.pow(Math.random(), 0.5) * 3;
+      const spin = radius * 2;
+      const branch = ((i % 3) / 3) * Math.PI * 2;
+      
+      const randomPower = Math.pow(Math.random(), 3);
+      const randomSign = () => (Math.random() - 0.5) * 2;
+
+      positions[i3] = Math.cos(branch + spin) * radius + randomSign() * randomPower * 0.5;
+      positions[i3 + 1] = randomSign() * randomPower * 0.3;
+      positions[i3 + 2] = Math.sin(branch + spin) * radius + randomSign() * randomPower * 0.5;
+
+      const mixedColor = colorInside.clone().lerp(colorOutside, radius / 3);
+      colors[i3] = mixedColor.r;
+      colors[i3 + 1] = mixedColor.g;
+      colors[i3 + 2] = mixedColor.b;
+    }
+
+    const galaxyGeo = new THREE.BufferGeometry();
+    galaxyGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    galaxyGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const galaxyMat = new THREE.PointsMaterial({
+      size: 0.015,
+      sizeAttenuation: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexColors: true
+    });
+
+    const galaxy = new THREE.Points(galaxyGeo, galaxyMat);
+    scene.add(galaxy);
+    galaxyRef.current = galaxy;
+
+    // Sarakt system (positioned in galaxy arm)
+    const saraktSystem = new THREE.Group();
+    
+    // Sarakt star
+    const starGeo = new THREE.IcosahedronGeometry(0.12, 1);
+    const starMat = new THREE.MeshBasicMaterial({ 
+      color: 0x9333ea,
+      transparent: true,
+      opacity: 0.95
+    });
+    const star = new THREE.Mesh(starGeo, starMat);
+    saraktSystem.add(star);
+
+    // Star glow
+    const glowGeo = new THREE.IcosahedronGeometry(0.2, 1);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0x9333ea,
+      transparent: true,
+      opacity: 0.2
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    saraktSystem.add(glow);
+
+    // Octavia (green)
+    const octaviaGeo = new THREE.IcosahedronGeometry(0.05, 1);
+    const octaviaMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+    const octavia = new THREE.Mesh(octaviaGeo, octaviaMat);
+    octavia.userData.orbitRadius = 0.4;
+    octavia.userData.orbitSpeed = 1.2;
+    saraktSystem.add(octavia);
+
+    // Zythera (red)
+    const zytheraGeo = new THREE.IcosahedronGeometry(0.05, 1);
+    const zytheraMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const zythera = new THREE.Mesh(zytheraGeo, zytheraMat);
+    zythera.userData.orbitRadius = 0.6;
+    zythera.userData.orbitSpeed = 0.8;
+    saraktSystem.add(zythera);
+
+    // Position Sarakt system in galaxy arm
+    saraktSystem.position.set(1.5, 0.1, 1.2);
+    scene.add(saraktSystem);
+    saraktSystemRef.current = saraktSystem;
+
+    // Mouse interaction
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseRef.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     };
-    const onMove = (e: any) => {
-      if (!isDragging) return;
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      setPan({ x: clientX - startX, y: clientY - startY });
+    window.addEventListener('mousemove', handleMouseMove);
+
+    // Animation
+    const clock = new THREE.Clock();
+    let disposed = false;
+
+    const tick = () => {
+      if (disposed) return;
+
+      const elapsed = clock.getElapsedTime();
+      const delta = clock.getDelta();
+
+      // Rotate galaxy
+      if (galaxyRef.current) {
+        galaxyRef.current.rotation.y = elapsed * 0.03;
+      }
+
+      // Rotate Sarakt system with galaxy
+      if (saraktSystemRef.current) {
+        saraktSystemRef.current.rotation.y = elapsed * 0.03;
+        
+        // Pulse star
+        const star = saraktSystemRef.current.children[0];
+        const pulse = Math.sin(elapsed * 3) * 0.1 + 1;
+        star.scale.set(pulse, pulse, pulse);
+
+        // Orbit planets
+        saraktSystemRef.current.children.forEach(child => {
+          if (child.userData.orbitRadius) {
+            const angle = elapsed * child.userData.orbitSpeed;
+            child.position.x = Math.cos(angle) * child.userData.orbitRadius;
+            child.position.z = Math.sin(angle) * child.userData.orbitRadius;
+            child.position.y = Math.sin(elapsed * 0.5 + child.userData.orbitSpeed) * 0.05;
+          }
+        });
+      }
+
+      // Camera follows mouse slightly
+      camera.position.x += (mouseRef.current.x * 2 - camera.position.x) * delta * 0.5;
+      camera.position.y += (mouseRef.current.y * 2 + 4 - camera.position.y) * delta * 0.5;
+      camera.lookAt(0, 0, 0);
+
+      renderer.render(scene, camera);
+      animationFrameRef.current = requestAnimationFrame(tick);
     };
-    const onUp = () => setIsDragging(false);
 
-    el.addEventListener("mousedown", onDown);
-    el.addEventListener("touchstart", onDown);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("touchmove", onMove);
-    window.addEventListener("mouseup", onUp);
-    window.addEventListener("touchend", onUp);
+    tick();
 
+    // Resize
+    const handleResize = () => {
+      if (!containerRef.current || !camera || !renderer) return;
+      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
     return () => {
-      el.removeEventListener("mousedown", onDown);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      disposed = true;
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (rendererRef.current && containerRef.current && containerRef.current.contains(rendererRef.current.domElement)) {
+        containerRef.current.removeChild(rendererRef.current.domElement);
+      }
+      galaxyGeo.dispose();
+      galaxyMat.dispose();
+      coreGeo.dispose();
+      coreMat.dispose();
+      starGeo.dispose();
+      starMat.dispose();
+      glowGeo.dispose();
+      glowMat.dispose();
+      octaviaGeo.dispose();
+      octaviaMat.dispose();
+      zytheraGeo.dispose();
+      zytheraMat.dispose();
+      renderer.dispose();
     };
-  }, [isDragging, pan]);
+  }, []);
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    setZoom(prev => Math.min(Math.max(prev * (e.deltaY > 0 ? 0.9 : 1.1), 0.5), 4));
-  };
+  // Update validators (separate from scene init)
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    const scene = sceneRef.current;
+    const existingIds = new Set(validatorMeshesRef.current.keys());
+    const newIds = new Set(validators.map(v => v.id));
+
+    // Remove old validators
+    existingIds.forEach(id => {
+      if (!newIds.has(id)) {
+        const mesh = validatorMeshesRef.current.get(id);
+        if (mesh) {
+          scene.remove(mesh);
+          mesh.geometry.dispose();
+          (mesh.material as THREE.Material).dispose();
+          validatorMeshesRef.current.delete(id);
+        }
+      }
+    });
+
+    // Add/update validators
+    validators.forEach((validator, index) => {
+      let mesh = validatorMeshesRef.current.get(validator.id);
+      
+      if (!mesh) {
+        const geo = new THREE.IcosahedronGeometry(0.08, 1);
+        const mat = new THREE.MeshBasicMaterial();
+        mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+        validatorMeshesRef.current.set(validator.id, mesh);
+      }
+
+      // Position based on stake (orbit radius)
+      const orbitRadius = 1.5 + (validator.stake / 100) * 1.5;
+      const angle = (index / validators.length) * Math.PI * 2;
+      mesh.position.x = Math.cos(angle) * orbitRadius;
+      mesh.position.z = Math.sin(angle) * orbitRadius;
+      mesh.position.y = (Math.random() - 0.5) * 0.3;
+
+      // Color based on status
+      const material = mesh.material as THREE.MeshBasicMaterial;
+      if (validator.status === 'active') {
+        material.color.setHex(0x10b981);
+        material.opacity = 0.8 + validator.uptime * 0.2;
+      } else if (validator.status === 'slashing') {
+        material.color.setHex(0xef4444);
+        material.opacity = 0.9;
+      } else {
+        material.color.setHex(0x6b7280);
+        material.opacity = 0.4;
+      }
+
+      // Scale based on stake
+      const scale = 0.5 + (validator.stake / 100) * 1.5;
+      mesh.scale.set(scale, scale, scale);
+
+      mesh.userData.validator = validator;
+    });
+  }, [validators]);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black overflow-hidden cursor-grab active:cursor-grabbing" onWheel={handleWheel}>
-      {/* Nebula & Stars */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        {[...Array(120)].map((_, i) => (
-          <div key={i} className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
-            style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 6}s` }}
-          />
-        ))}
+    <div className="w-full h-full bg-slate-950 relative">
+      <div 
+        ref={containerRef} 
+        className="w-full h-full"
+        style={{ minHeight: '600px' }}
+      />
+      
+      <div className="absolute top-4 left-4 text-white font-mono text-sm space-y-1 bg-black/50 p-3 rounded backdrop-blur">
+        <div>Block: {blockHeight.toLocaleString()}</div>
+        <div>Network Health: {(networkHealth * 100).toFixed(1)}%</div>
+        <div>Validators: {validators.length}</div>
+        <div className="text-xs text-gray-400 mt-2">
+          <div>Green = Active | Red = Slashing | Gray = Inactive</div>
+          <div>Size = Stake Weight | Distance = Orbit Radius</div>
+        </div>
       </div>
-
-      {/* Galaxy */}
-      <motion.div className="absolute inset-0" style={{ scale: zoom, x: pan.x, y: pan.y }}>
-        {userStarSystems.map((sys, i) => {
-          const x = 150 + (i % 8) * 280 + Math.random() * 80;
-          const y = 150 + Math.floor(i / 8) * 280 + Math.random() * 80;
-
-          return (
-            <motion.button
-              key={sys.id}
-              className="absolute group"
-              style={{ left: x, top: y }}
-              onClick={() => setSelectedSystem(sys)}
-              whileHover={{ scale: 1.3 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 blur-xl animate-ping" />
-                <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-blue-600 shadow-2xl border-4 border-white/30 flex items-center justify-center">
-                  <Globe className="w-8 h-8 text-white" />
-                </div>
-              </div>
-            </motion.button>
-          );
-        })}
-
-        {/* Spawn Button */}
-        <motion.button
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 group"
-          whileHover={{ scale: 1.2 }}
-          onClick={() => {
-            const name = prompt("Name your star system:");
-            if (name) spawnStarSystem(name, 5);
-          }}
-        >
-          <div className="w-24 h-24 rounded-full bg-white/10 border-4 border-dashed border-white/50 backdrop-blur flex items-center justify-center hover:border-primary hover:bg-white/20 transition-all">
-            <Rocket className="w-10 h-10 text-white group-hover:text-primary" />
-          </div>
-        </motion.button>
-      </motion.div>
-
-      {/* HUD */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-10">
-        <Button size="sm" variant="glass" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Reset</Button>
-        <Button size="sm" variant="glass" onClick={() => setZoom(z => z * 1.3)}>+</Button>
-        <Button size="sm" variant="glass" onClick={() => setZoom(z => z * 0.7)}>-</Button>
-      </div>
-
-      {/* Trading Panel */}
-      <AnimatePresence>
-        {selectedSystem && (
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-8 right-8 glass p-6 rounded-2xl border border-primary/30 max-w-sm"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
-                {selectedSystem.name}
-              </h3>
-              <Button size="icon" variant="ghost" onClick={() => setSelectedSystem(null)}>×</Button>
-            </div>
-
-            {/* Commented out - Trading functionality not yet implemented */}
-            {/*
-            {selectedSystem.forSale ? (
-              <div className="space-y-4">
-                <Badge className="w-full justify-center text-lg py-3 bg-yellow-500 text-black">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  Listed: {selectedSystem.price} AVAX
-                </Badge>
-                <Button className="w-full" variant="cosmic">
-                  Buy Now
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <Label>Planets</Label>
-                  <p className="text-2xl font-bold">{selectedSystem.planets?.length || 0}</p>
-                </div>
-                <div>
-                  <Label htmlFor="price">List for Sale (AVAX)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="0.5"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="glass mt-2"
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  variant="cosmic"
-                  disabled={isListing || !price || parseFloat(price) <= 0}
-                  onClick={handleListForSale}
-                >
-                  {isListing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Listing...
-                    </>
-                  ) : (
-                    <>
-                      <DollarSign className="w-4 h-4 mr-2" />
-                      List for Sale
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-            */}
-
-            <div className="space-y-4">
-              <div>
-                <Label>Planets</Label>
-                <p className="text-2xl font-bold">{selectedSystem.planets?.length || 0}</p>
-              </div>
-            </div>
-
-            <Button variant="outline" className="w-full mt-3" onClick={() => setSelectedSystem(null)}>
-              Enter System
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
-}
+};
