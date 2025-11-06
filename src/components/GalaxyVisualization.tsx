@@ -22,101 +22,130 @@ export default function GalaxyVisualization({
   const mouseRef = useRef({ x: 0, y: 0 });
   const raycasterRef = useRef(new THREE.Raycaster());
   const [isSelected, setIsSelected] = useState(false);
-  const targetCameraPos = useRef(new THREE.Vector3(0, 6, 20));
+  const targetCameraPos = useRef(new THREE.Vector3(0, 4, 8));
   const targetLookAt = useRef(new THREE.Vector3(0, 0, 0));
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000510);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(
-      65,
+      60,
       containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
-      1000
+      100
     );
-    camera.position.set(0, 6, 20);
+    camera.position.set(0, 4, 8);
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Galaxy particles
-    const count = 25000;
+    // Galaxy core (bright center)
+    const coreGeo = new THREE.IcosahedronGeometry(0.2, 2);
+    const coreMat = new THREE.MeshBasicMaterial({ 
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.9
+    });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    scene.add(core);
+
+    // Galaxy particles with color gradient
+    const count = 50000;
     const positions = new Float32Array(count * 3);
-    const radius = 15;
-    const branches = 6;
+    const colors = new Float32Array(count * 3);
+    const colorInside = new THREE.Color(0x4f46e5); // purple/blue inside
+    const colorOutside = new THREE.Color(0x06b6d4); // cyan outside
 
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      const r = Math.random() * radius;
-      const spin = r * 1.5;
-      const branch = i % branches;
-      const branchAngle = (branch / branches) * Math.PI * 2;
-      const randomX = Math.pow(Math.random(), 2) * (Math.random() < 0.5 ? 1 : -1);
-      const randomY = Math.pow(Math.random(), 2) * (Math.random() < 0.5 ? 1 : -1);
-      const randomZ = Math.pow(Math.random(), 2) * (Math.random() < 0.5 ? 1 : -1);
+      const radius = Math.pow(Math.random(), 0.5) * 3;
+      const spin = radius * 2;
+      const branch = ((i % 3) / 3) * Math.PI * 2;
+      
+      const randomPower = Math.pow(Math.random(), 3);
+      const randomSign = () => (Math.random() - 0.5) * 2;
 
-      positions[i3] = Math.cos(branchAngle + spin) * r + randomX * 0.4;
-      positions[i3 + 1] = randomY * 0.2;
-      positions[i3 + 2] = Math.sin(branchAngle + spin) * r + randomZ * 0.4;
+      positions[i3] = Math.cos(branch + spin) * radius + randomSign() * randomPower * 0.5;
+      positions[i3 + 1] = randomSign() * randomPower * 0.3;
+      positions[i3 + 2] = Math.sin(branch + spin) * radius + randomSign() * randomPower * 0.5;
+
+      const mixedColor = colorInside.clone().lerp(colorOutside, radius / 3);
+      colors[i3] = mixedColor.r;
+      colors[i3 + 1] = mixedColor.g;
+      colors[i3 + 2] = mixedColor.b;
     }
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const galaxyGeo = new THREE.BufferGeometry();
+    galaxyGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    galaxyGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    const material = new THREE.PointsMaterial({
-      color: 0xb499ff,
-      size: 0.05,
+    const galaxyMat = new THREE.PointsMaterial({
+      size: 0.015,
       sizeAttenuation: true,
-      transparent: true,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexColors: true
     });
 
-    const galaxy = new THREE.Points(geometry, material);
+    const galaxy = new THREE.Points(galaxyGeo, galaxyMat);
     scene.add(galaxy);
     galaxyRef.current = galaxy;
 
-    // Sarakt Star System
-    const saraktGroup = new THREE.Group();
-    saraktGroup.position.set(6, 0, -8);
-    saraktGroupRef.current = saraktGroup;
-
-    const starGeo = new THREE.SphereGeometry(0.4, 32, 32);
-    const starMat = new THREE.MeshBasicMaterial({ color: 0xa042ff });
-    const star = new THREE.Mesh(starGeo, starMat);
-    star.userData = { type: 'star', pulseBase: 1 };
-    saraktGroup.add(star);
-
-    const glowGeo = new THREE.SphereGeometry(0.8, 32, 32);
-    const glowMat = new THREE.MeshBasicMaterial({
-      color: 0xa042ff,
+    // Sarakt system (positioned in galaxy arm)
+    const saraktSystem = new THREE.Group();
+    
+    // Sarakt star (purple)
+    const starGeo = new THREE.IcosahedronGeometry(0.12, 1);
+    const starMat = new THREE.MeshBasicMaterial({ 
+      color: 0x9333ea,
       transparent: true,
-      opacity: 0.2,
-      blending: THREE.AdditiveBlending,
+      opacity: 0.95
+    });
+    const star = new THREE.Mesh(starGeo, starMat);
+    star.userData.type = 'clickable';
+    saraktSystem.add(star);
+
+    // Star glow
+    const glowGeo = new THREE.IcosahedronGeometry(0.2, 1);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0x9333ea,
+      transparent: true,
+      opacity: 0.2
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
-    saraktGroup.add(glow);
+    saraktSystem.add(glow);
 
-    const planet1Geo = new THREE.SphereGeometry(0.15, 16, 16);
-    const planet1Mat = new THREE.MeshBasicMaterial({ color: 0x33ccff });
-    const planet1 = new THREE.Mesh(planet1Geo, planet1Mat);
-    planet1.userData = { type: 'orbit1', radius: 1.5, speed: 1 };
-    saraktGroup.add(planet1);
+    // Octavia (green planet)
+    const octaviaGeo = new THREE.IcosahedronGeometry(0.05, 1);
+    const octaviaMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+    const octavia = new THREE.Mesh(octaviaGeo, octaviaMat);
+    octavia.userData.orbitRadius = 0.4;
+    octavia.userData.orbitSpeed = 1.2;
+    saraktSystem.add(octavia);
 
-    const planet2Geo = new THREE.SphereGeometry(0.2, 16, 16);
-    const planet2Mat = new THREE.MeshBasicMaterial({ color: 0xff3366 });
-    const planet2 = new THREE.Mesh(planet2Geo, planet2Mat);
-    planet2.userData = { type: 'orbit2', radius: 2.5, speed: 0.6 };
-    saraktGroup.add(planet2);
+    // Zythera (red planet)
+    const zytheraGeo = new THREE.IcosahedronGeometry(0.05, 1);
+    const zytheraMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const zythera = new THREE.Mesh(zytheraGeo, zytheraMat);
+    zythera.userData.orbitRadius = 0.6;
+    zythera.userData.orbitSpeed = 0.8;
+    saraktSystem.add(zythera);
 
-    scene.add(saraktGroup);
+    // Position Sarakt system in galaxy arm
+    saraktSystem.position.set(1.5, 0.1, 1.2);
+    scene.add(saraktSystem);
+    saraktGroupRef.current = saraktSystem;
 
+    // Mouse interaction
     const onMouseMove = (event: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
@@ -126,7 +155,8 @@ export default function GalaxyVisualization({
 
     const onClick = () => {
       raycasterRef.current.setFromCamera(mouseRef.current, camera);
-      const intersects = raycasterRef.current.intersectObjects(saraktGroup.children, true);
+      const clickable = saraktSystem.children.filter(c => c.userData.type === 'clickable');
+      const intersects = raycasterRef.current.intersectObjects(clickable, true);
       
       if (intersects.length > 0) {
         setIsSelected(prev => !prev);
@@ -140,7 +170,8 @@ export default function GalaxyVisualization({
       const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       
       raycasterRef.current.setFromCamera({ x, y }, camera);
-      const intersects = raycasterRef.current.intersectObjects(saraktGroup.children, true);
+      const clickable = saraktSystem.children.filter(c => c.userData.type === 'clickable');
+      const intersects = raycasterRef.current.intersectObjects(clickable, true);
       
       if (containerRef.current) {
         containerRef.current.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
@@ -151,58 +182,59 @@ export default function GalaxyVisualization({
     containerRef.current.addEventListener('click', onClick);
     containerRef.current.addEventListener('pointermove', onPointerMove);
 
+    // Animation
     const clock = new THREE.Clock();
     const animate = () => {
-      const t = clock.getElapsedTime();
+      const elapsed = clock.getElapsedTime();
+      const delta = clock.getDelta();
 
+      // Rotate galaxy
       if (galaxyRef.current) {
-        galaxyRef.current.rotation.y = t * 0.02;
+        galaxyRef.current.rotation.y = elapsed * 0.03;
       }
 
+      // Rotate Sarakt system with galaxy
       if (saraktGroupRef.current) {
-        saraktGroupRef.current.rotation.y = t * 0.05;
+        saraktGroupRef.current.rotation.y = elapsed * 0.03;
+        
+        // Pulse star
+        const star = saraktGroupRef.current.children[0];
+        const pulse = Math.sin(elapsed * 3) * 0.1 + 1;
+        star.scale.set(pulse, pulse, pulse);
 
+        // Orbit planets
         saraktGroupRef.current.children.forEach(child => {
-          if (child.userData.type === 'orbit1') {
-            child.position.set(
-              Math.cos(t) * child.userData.radius,
-              0,
-              Math.sin(t) * child.userData.radius
-            );
-          } else if (child.userData.type === 'orbit2') {
-            child.position.set(
-              Math.cos(t * child.userData.speed) * child.userData.radius,
-              0,
-              Math.sin(t * child.userData.speed) * child.userData.radius
-            );
-          } else if (child.userData.type === 'star') {
-            const pulse = Math.sin(t * 3) * 0.05 + 1;
-            child.scale.set(pulse, pulse, pulse);
+          if (child.userData.orbitRadius) {
+            const angle = elapsed * child.userData.orbitSpeed;
+            child.position.x = Math.cos(angle) * child.userData.orbitRadius;
+            child.position.z = Math.sin(angle) * child.userData.orbitRadius;
+            child.position.y = Math.sin(elapsed * 0.5 + child.userData.orbitSpeed) * 0.05;
           }
         });
       }
 
       // Camera zoom logic
       if (isSelected && saraktGroupRef.current) {
+        const worldPos = new THREE.Vector3();
+        saraktGroupRef.current.getWorldPosition(worldPos);
         targetCameraPos.current.set(
-          saraktGroupRef.current.position.x,
-          saraktGroupRef.current.position.y + 1,
-          saraktGroupRef.current.position.z + 3
+          worldPos.x + 0.5,
+          worldPos.y + 0.3,
+          worldPos.z + 1
         );
-        targetLookAt.current.copy(saraktGroupRef.current.position);
+        targetLookAt.current.copy(worldPos);
       } else {
-        // Reset to default view
-        targetCameraPos.current.set(0, 6, 20);
+        targetCameraPos.current.set(0, 4, 8);
         targetLookAt.current.set(0, 0, 0);
       }
 
-      camera.position.lerp(targetCameraPos.current, 0.03);
+      camera.position.lerp(targetCameraPos.current, delta * 2);
       
-      const lookAtCurrent = new THREE.Vector3();
-      camera.getWorldDirection(lookAtCurrent);
-      lookAtCurrent.multiplyScalar(10).add(camera.position);
-      lookAtCurrent.lerp(targetLookAt.current, 0.03);
-      camera.lookAt(lookAtCurrent);
+      const currentLookAt = new THREE.Vector3();
+      camera.getWorldDirection(currentLookAt);
+      currentLookAt.multiplyScalar(10).add(camera.position);
+      currentLookAt.lerp(targetLookAt.current, delta * 2);
+      camera.lookAt(currentLookAt);
 
       renderer.render(scene, camera);
       animationIdRef.current = requestAnimationFrame(animate);
@@ -232,22 +264,24 @@ export default function GalaxyVisualization({
       if (rendererRef.current && containerRef.current && containerRef.current.contains(rendererRef.current.domElement)) {
         containerRef.current.removeChild(rendererRef.current.domElement);
       }
-      geometry.dispose();
-      material.dispose();
+      galaxyGeo.dispose();
+      galaxyMat.dispose();
+      coreGeo.dispose();
+      coreMat.dispose();
       starGeo.dispose();
       starMat.dispose();
       glowGeo.dispose();
       glowMat.dispose();
-      planet1Geo.dispose();
-      planet1Mat.dispose();
-      planet2Geo.dispose();
-      planet2Mat.dispose();
+      octaviaGeo.dispose();
+      octaviaMat.dispose();
+      zytheraGeo.dispose();
+      zytheraMat.dispose();
       renderer.dispose();
     };
   }, [isSelected]);
 
   return (
-    <div className="relative w-full h-[600px] rounded-2xl overflow-hidden bg-gradient-to-br from-purple-950 to-black">
+    <div className="relative w-full h-[600px] rounded-2xl overflow-hidden bg-slate-950">
       <div ref={containerRef} className="w-full h-full" />
       
       <div className="absolute top-4 left-4 text-white font-mono text-xs space-y-1 bg-black/70 p-3 rounded backdrop-blur border border-purple-500/30">
@@ -268,7 +302,7 @@ export default function GalaxyVisualization({
       )}
       
       <div className="absolute bottom-4 left-4 text-purple-300 text-xs opacity-60 bg-black/50 px-3 py-2 rounded">
-        {isSelected ? 'Click star again to zoom out' : 'Click the purple star system to zoom in'}
+        {isSelected ? 'Click star again to zoom out' : 'Click the purple star to zoom in'}
       </div>
     </div>
   );
