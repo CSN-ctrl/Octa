@@ -379,15 +379,11 @@ export default function UnifiedUniverse() {
         </div>
       </div>
       <div className="container mx-auto px-4 pb-16 max-w-7xl">
-        <Tabs defaultValue="starmap" className="mb-12">
-          <TabsList className="grid w-full grid-cols-3 mb-8 h-auto p-1">
-            <TabsTrigger value="starmap" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
-              <Globe className="w-5 h-5 mr-2" />
-              Star Map
-            </TabsTrigger>
-            <TabsTrigger value="galaxy" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
+        <Tabs defaultValue="universe" className="mb-12">
+          <TabsList className="grid w-full grid-cols-2 mb-8 h-auto p-1">
+            <TabsTrigger value="universe" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
               <Orbit className="w-5 h-5 mr-2" />
-              Galaxy View
+              Universe Map
             </TabsTrigger>
             <TabsTrigger value="forge" className="data-[state=active]:bg-gradient-cosmic data-[state=active]:text-white text-lg py-4">
               <Sparkles className="w-5 h-5 mr-2" />
@@ -395,30 +391,83 @@ export default function UnifiedUniverse() {
             </TabsTrigger>
           </TabsList>
 
-          {/* STAR MAP TAB - Universe-Level Navigation & Control */}
-          <TabsContent value="starmap" className="space-y-8">
-            {/* Star Map Header */}
-            <Card className="glass border-2 border-primary/30 p-8 mb-8">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-4 rounded-xl bg-primary/20 border-2 border-primary">
-                  <Globe className="w-12 h-12 text-primary" />
+          {/* UNIFIED UNIVERSE TAB - Galaxy View + Star Map */}
+          <TabsContent value="universe" className="space-y-8">
+            {/* Galaxy Visualization with Overlays */}
+            <Card className="glass border-2 border-primary/30 overflow-hidden">
+              <CardContent className="p-0 relative">
+                <div className="bg-black/90" style={{ height: '700px' }}>
+                  <GalaxyVisualization
+                    systemProgress={starSystems.length / 10}
+                    octaviaProgress={planetsData["sarakt-prime"].population / 100}
+                    zytheraProgress={planetsData["zythera"].population / 100}
+                  />
                 </div>
-                <div>
-                  <h2 className="text-4xl font-bold mb-2">Galactic Dashboard</h2>
-                  <p className="text-lg text-muted-foreground">
-                    Multi-subnet admin panel • Navigate star systems, planets, and infrastructure
-                  </p>
+                
+                {/* Overlay Info Cards */}
+                <div className="absolute top-4 left-4 right-4 flex flex-col gap-4 pointer-events-none">
+                  <div className="glass border border-primary/30 p-4 backdrop-blur-xl pointer-events-auto">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 rounded-lg bg-primary/20 border border-primary">
+                        <Orbit className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold">Sarakt Galaxy</h3>
+                        <p className="text-xs text-muted-foreground">100,000 particle spiral • Multi-subnet universe</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="text-muted-foreground">• Each star system = blockchain subnet</span>
+                      <span className="text-muted-foreground">• Each planet = node on subnet</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span>• Each star system = blockchain subnet</span>
-                <span>• Each planet = node on subnet</span>
-                <span>• Click to drill down into simulations</span>
-              </div>
+
+                {/* Bottom Stats Overlay */}
+                <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <div className="glass border border-primary/30 p-3 backdrop-blur-xl pointer-events-auto">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
+                        <span className="text-xs font-semibold">Sarakt Star</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Progress: {Math.round((starSystems.length / 10) * 100)}%</p>
+                    </div>
+                    <div className="glass border border-primary/30 p-3 backdrop-blur-xl pointer-events-auto">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3 h-3 rounded-full bg-green-500" />
+                        <span className="text-xs font-semibold">Octavia</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Pop: {planetsData["sarakt-prime"].population}k</p>
+                    </div>
+                    <div className="glass border border-primary/30 p-3 backdrop-blur-xl pointer-events-auto">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3 h-3 rounded-full bg-red-500" />
+                        <span className="text-xs font-semibold">Zythera</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Pop: {planetsData["zythera"].population}k</p>
+                    </div>
+                    <div className="glass border border-primary/30 p-3 backdrop-blur-xl pointer-events-auto">
+                      <div className="flex items-center gap-2 mb-1">
+                        <MapPin className="w-3 h-3 text-primary" />
+                        <span className="text-xs font-semibold">Plots</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">10,000 units</p>
+                    </div>
+                    <div className="glass border border-primary/30 p-3 backdrop-blur-xl pointer-events-auto">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Network className="w-3 h-3 text-primary" />
+                        <span className="text-xs font-semibold">Systems</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{starSystems.length} active</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
 
-            {/* Quick Stats */}
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
+            {/* Quick Stats - Full Width Below Galaxy */}
+            <div className="grid md:grid-cols-4 gap-4">
               <Card className="glass p-6 border-primary/20">
                 <div className="flex items-center gap-2 text-xl font-bold mb-2">
                   <Users className="w-5 h-5 text-primary" />
@@ -599,96 +648,6 @@ export default function UnifiedUniverse() {
               </Card>
             )}
 
-            {/* All Star Systems Network Visualization - Could integrate InteractiveStarMap here */}
-            {starSystems.length > 0 && (
-              <Card className="glass p-6 border-primary/20">
-                <CardHeader className="px-0 pt-0">
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Network className="w-6 h-6" />
-                    Network Topology
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    All star systems across the universe • {starSystems.length} active subnet{starSystems.length !== 1 ? 's' : ''}
-                  </p>
-                </CardHeader>
-                <CardContent className="px-0 pb-0">
-                  <div className="text-muted-foreground text-center py-8">
-                    <p className="mb-2">Interactive 3D star map coming soon</p>
-                    <p className="text-xs">View all subnets, planets, and infrastructure topology</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* GALAXY VIEW TAB - 3D Visualization */}
-          <TabsContent value="galaxy" className="space-y-8">
-            <Card className="glass border-2 border-primary/30 overflow-hidden">
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="p-4 rounded-xl bg-primary/20 border-2 border-primary">
-                    <Orbit className="w-12 h-12 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-4xl mb-2">Sarakt Galaxy</CardTitle>
-                    <p className="text-lg text-muted-foreground">
-                      100,000 particle spiral with Sarakt star at the core
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="bg-black/90" style={{ height: '700px' }}>
-                  <GalaxyVisualization
-                    systemProgress={starSystems.length / 10}
-                    octaviaProgress={planetsData["sarakt-prime"].population / 100}
-                    zytheraProgress={planetsData["zythera"].population / 100}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Galaxy Info */}
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card className="glass border-primary/20">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-4 h-4 rounded-full bg-purple-500 animate-pulse" />
-                    <h3 className="text-xl font-bold">Sarakt Star</h3>
-                  </div>
-                  <p className="text-muted-foreground mb-2">Purple pulsing core at galaxy center</p>
-                  <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/50">
-                    Progress: {Math.round((starSystems.length / 10) * 100)}%
-                  </Badge>
-                </CardContent>
-              </Card>
-
-              <Card className="glass border-primary/20">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-4 h-4 rounded-full bg-green-500" />
-                    <h3 className="text-xl font-bold">Octavia</h3>
-                  </div>
-                  <p className="text-muted-foreground mb-2">Orbits within first galaxy arm</p>
-                  <Badge className="bg-green-500/20 text-green-300 border-green-500/50">
-                    Population: {planetsData["sarakt-prime"].population}k
-                  </Badge>
-                </CardContent>
-              </Card>
-
-              <Card className="glass border-primary/20">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-4 h-4 rounded-full bg-red-500" />
-                    <h3 className="text-xl font-bold">Zythera</h3>
-                  </div>
-                  <p className="text-muted-foreground mb-2">Orbits within second galaxy arm</p>
-                  <Badge className="bg-red-500/20 text-red-300 border-red-500/50">
-                    Population: {planetsData["zythera"].population}k
-                  </Badge>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
 
           {/* CELESTIAL FORGE TAB - Internal Universe Constructor */}
