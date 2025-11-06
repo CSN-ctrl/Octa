@@ -13,7 +13,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { ethers } from "ethers";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { GalaxyVisualization } from "@/components/GalaxyVisualization";
+import GalaxyVisualization from "@/components/GalaxyVisualization";
 
 const planetsData = {
   "sarakt-prime": {
