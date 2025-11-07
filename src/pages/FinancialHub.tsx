@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -34,8 +32,6 @@ export default function FinancialHub() {
   const { automations, recurringPayments } = useAutomation(address);
   const { balances } = useTreasury();
 
-  const [selectedTab, setSelectedTab] = useState("dashboard");
-
   if (!address) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -64,32 +60,8 @@ export default function FinancialHub() {
           </p>
         </div>
 
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-            <TabsTrigger value="dashboard" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="treasury" className="gap-2">
-              <Wallet className="h-4 w-4" />
-              Treasury
-            </TabsTrigger>
-            <TabsTrigger value="portfolio" className="gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Portfolio
-            </TabsTrigger>
-            <TabsTrigger value="social" className="gap-2">
-              <Users className="h-4 w-4" />
-              Social
-            </TabsTrigger>
-            <TabsTrigger value="marketplace" className="gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Marketplace
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="space-y-6">
+        {/* Overview Stats */}
+        <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <Card className="border-primary/20 bg-gradient-to-br from-card to-card/50">
                 <CardHeader className="pb-2">
@@ -177,10 +149,14 @@ export default function FinancialHub() {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
 
-          {/* Treasury & Banking Tab */}
-          <TabsContent value="treasury" className="space-y-6">
+          {/* Treasury & Banking Section */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Wallet className="h-6 w-6" />
+              Treasury & Banking
+            </h2>
             <Card>
               <CardHeader>
                 <CardTitle>Treasury Overview</CardTitle>
@@ -206,10 +182,14 @@ export default function FinancialHub() {
                 ))}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
 
-          {/* Portfolio Tab */}
-          <TabsContent value="portfolio" className="space-y-6">
+          {/* Portfolio Section */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <TrendingUp className="h-6 w-6" />
+              My Portfolios
+            </h2>
             {portfolioLoading ? (
               <Card>
                 <CardContent className="p-6">
@@ -285,10 +265,14 @@ export default function FinancialHub() {
                 ))}
               </div>
             )}
-          </TabsContent>
+          </div>
 
-          {/* Social Investing Tab */}
-          <TabsContent value="social" className="space-y-6">
+          {/* Social Investing Section */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Users className="h-6 w-6" />
+              Social Investing
+            </h2>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -369,10 +353,14 @@ export default function FinancialHub() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
 
-          {/* Marketplace Tab */}
-          <TabsContent value="marketplace" className="space-y-6">
+          {/* Marketplace Section */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <ShoppingCart className="h-6 w-6" />
+              Marketplace
+            </h2>
             <Card>
               <CardHeader>
                 <CardTitle>Active Listings</CardTitle>
@@ -405,14 +393,13 @@ export default function FinancialHub() {
                             <Button size="sm">Buy Now</Button>
                           </div>
                         </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
       </div>
     </div>
   );

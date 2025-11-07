@@ -112,7 +112,7 @@ export const GalaxyVisualization = ({
     scene.add(points);
     galaxyRef.current = points;
 
-    // Sarakt Star (purple pulsing core)
+    // Sarakt Star (purple pulsing core) - positioned in galaxy arm
     const saraktGeometry = new THREE.SphereGeometry(0.15, 32, 32);
     const saraktMaterial = new THREE.MeshBasicMaterial({
       color: 0x9333ea,
@@ -120,6 +120,8 @@ export const GalaxyVisualization = ({
       opacity: 0.9
     });
     const saraktStar = new THREE.Mesh(saraktGeometry, saraktMaterial);
+    // Position Sarakt in the second branch of the galaxy
+    saraktStar.position.set(0.8, 0, 0.8);
     scene.add(saraktStar);
     saraktStarRef.current = saraktStar;
 
@@ -189,7 +191,7 @@ export const GalaxyVisualization = ({
         zytheraRef.current.position.z = Math.sin(branchAngle + spinAngle + zytheraAngle) * zytheraRadius;
       }
 
-      // Camera circular motion
+      // Camera circular motion around galaxy center
       camera.position.x = Math.cos(elapsedTime * 0.05) * 4;
       camera.position.z = Math.sin(elapsedTime * 0.05) * 4;
       camera.lookAt(0, 0, 0);
