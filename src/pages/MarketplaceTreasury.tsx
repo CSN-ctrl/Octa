@@ -690,11 +690,4 @@ export default function DAOFinancialHub() {
       </div>
     </div>
   );
-}    <p className="text-sm text-gray-400 mb-1">Staked Tokens</p>
-                    <p className="text-2xl font-bold text-white">{stakedTokens.toLocaleString()}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-purple-950/30 border border-purple-500/20">
-                    <p className="text-sm text-gray-400 mb-1">Voting Power</p>
-                    <p className="text-2xl font-bold text-purple-400">{votingPower}%</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-purple-950/30 border border-purple-500/20">
+}   
