@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Cosmic Purple Sci-Fi Theme */
+    --background: 270 50% 5%;
+    --foreground: 270 20% 95%;
+
+    --card: 270 40% 8%;
+    --card-foreground: 270 20% 95%;
+
+    --popover: 270 45% 10%;
+    --popover-foreground: 270 20% 95%;
+
+    --primary: 270 70% 55%;
+    --primary-foreground: 270 10% 98%;
+
+    --secondary: 280 60% 45%;
+    --secondary-foreground: 270 10% 98%;
+
+    --muted: 270 30% 15%;
+    --muted-foreground: 270 15% 60%;
+
+    --accent: 290 75% 60%;
+    --accent-foreground: 270 10% 98%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 270 10% 98%;
+
+    --border: 270 40% 20%;
+    --input: 270 40% 15%;
+    --ring: 270 70% 55%;
+
+    --radius: 0.75rem;
+
+    /* Sci-Fi Gradients */
+    --gradient-cosmic: linear-gradient(135deg, hsl(270 70% 55%), hsl(290 75% 60%));
+    --gradient-space: linear-gradient(180deg, hsl(270 50% 5%), hsl(270 45% 8%));
+    --gradient-glow: linear-gradient(90deg, hsl(270 70% 55% / 0.1), hsl(290 75% 60% / 0.1));
+    
+    /* Glow Effects */
+    --glow-primary: 0 0 20px hsl(270 70% 55% / 0.5);
+    --glow-accent: 0 0 30px hsl(290 75% 60% / 0.6);
+    --glow-card: 0 0 40px hsl(270 70% 55% / 0.2);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-glow: box-shadow 0.3s ease-in-out;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(180deg, hsl(270 50% 5%), hsl(270 45% 8%));
+    min-height: 100vh;
+  }
+
+  /* Glowing effects */
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+
+  .glow-card {
+    box-shadow: var(--glow-card);
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: hsl(270 40% 8% / 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsl(270 70% 55% / 0.3);
+  }
+
+  /* Animated gradient border */
+  @keyframes border-glow {
+    0%, 100% {
+      border-color: hsl(270 70% 55% / 0.5);
+      box-shadow: 0 0 20px hsl(270 70% 55% / 0.3);
+    }
+    50% {
+      border-color: hsl(290 75% 60% / 0.7);
+      box-shadow: 0 0 30px hsl(290 75% 60% / 0.5);
+    }
+  }
+
+  .border-animated {
+    animation: border-glow 3s ease-in-out infinite;
+  }
+
+  /* Cosmic particles background */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  .particle {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
