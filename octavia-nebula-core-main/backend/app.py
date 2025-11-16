@@ -13,6 +13,7 @@ from city_api import router as city_router
 from governance_api import router as governance_router
 from portfolio_api import router as portfolio_router
 from managers_api import router as managers_router
+from document_api import router as document_router
 
 app = FastAPI(
     title="Sarakt Land Registry API",
@@ -37,6 +38,7 @@ app.include_router(city_router)
 app.include_router(governance_router)
 app.include_router(portfolio_router)
 app.include_router(managers_router)
+app.include_router(document_router)
 
 @app.get("/")
 async def root():

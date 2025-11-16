@@ -278,13 +278,23 @@ async def activate_plot(plotId: int, recipient: Optional[str] = None, owner_emai
                 from email_service import send_email_with_attachment
             try:
                 final_owner = Web3.to_checksum_address(recipient) if recipient else buyer_now
-                pdf_buf = DeedGenerator.generate_deed(plotId, final_owner, tx_hash.hex())
+                # Get contract address for deed
+                contract_address = land_addr
+                # Generate deed with template from documents folder
+                pdf_buf = DeedGenerator.generate_deed(
+                    plot_id=plotId,
+                    owner=final_owner,
+                    tx_hash=tx_hash.hex(),
+                    owner_email=owner_email,
+                    token_id=plotId,  # NFT token ID is same as plot ID
+                    contract_address=contract_address
+                )
                 send_email_with_attachment(
                     to_address=owner_email,
-                    subject=f"Sarakt Land Deed - Plot #{plotId}",
-                    body_text=f"Congratulations! Your plot #{plotId} has been activated.\n\nOwner: {final_owner}\nTransaction: {tx_hash.hex()}",
+                    subject=f"Sarakt Land Ownership Title Certificate - Plot #{plotId}",
+                    body_text=f"Congratulations! Your plot #{plotId} has been activated.\n\nOwner: {final_owner}\nTransaction: {tx_hash.hex()}\n\nPlease find your Land Ownership Title Certificate attached.",
                     attachment_bytes=pdf_buf.getvalue(),
-                    attachment_filename=f"Sarakt_Deed_Plot_{plotId}.pdf"
+                    attachment_filename=f"LandOwnershipTitleCertificate_Plot_{plotId}.pdf"
                 )
             except Exception as e:
                 # Don't fail activation if email fails
