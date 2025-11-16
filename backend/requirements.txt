@@ -1,9 +1,0 @@
-fastapi
-uvicorn[standard]
-httpx
-web3
-eth-account
-python-dotenv
-reportlab
-qrcode[pil]
-alchemy-sdk
