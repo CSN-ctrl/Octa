@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,12 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Briefcase, Home, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { usePlotRegistry } from "@/hooks/usePlotRegistry";
+import { useDigitalID } from "@/hooks/useDigitalID";
 
 const PlanetDetail = () => {
+  const navigate = useNavigate();
   const { systemId, planetId } = useParams();
+  const { hasDigitalID, checkDigitalID } = useDigitalID();
   const [plotsToBuy, setPlotsToBuy] = useState(1);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   // Demo data for worker path (could be wired to Supabase later)
@@ -34,21 +37,27 @@ const PlanetDetail = () => {
   const availablePlots = 10000;
   const plotPrice = 100; // xBGL
 
-  const handlePurchase = () => {
-    toast.success(`Successfully purchased ${plotsToBuy} plot(s)!`, {
-      description: `Transaction complete. Ownership document issued via IPFS.`,
-    });
+  const handlePurchase = async () => {
+    // Check Digital ID before redirecting to purchase
+    await checkDigitalID();
+    if (!hasDigitalID) {
+      toast.error("Digital ID required. Redirecting to create one...");
+      setTimeout(() => {
+        navigate("/digital-id?redirect=/quick-actions");
+      }, 1500);
+      return;
+    }
+    // Redirect to Quick Actions for purchase
+    navigate("/quick-actions");
   };
 
   return (
     <div className="min-h-screen pt-20">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
-        <Link to={`/star-system/${systemId}`}>
-          <Button variant="glass" className="mb-8">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to {systemId}
-          </Button>
-        </Link>
+        <Button variant="glass" className="mb-8" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
 
         <div className="mb-12">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">

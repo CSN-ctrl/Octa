@@ -11,21 +11,25 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 import { useWallet } from "@/contexts/WalletContext";
 import { usePortfolioManagers } from "@/hooks/usePortfolioManagers";
 import { useMarketplace } from "@/hooks/useMarketplace";
+import { useDigitalID } from "@/hooks/useDigitalID";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function QuickActionsPage() {
-  const { address } = useWallet();
+  const { address, signer } = useWallet();
   const { buyPlotPhase1AVAX, buyPlotPhase1USDC } = useLandPlots();
   const { balances } = useTreasury();
   const { portfolios } = usePortfolio(address);
   const { managers, loading: managersLoading, applyAsManager } = usePortfolioManagers();
   const { listings, loading: marketplaceLoading } = useMarketplace();
+  const { hasDigitalID, checkDigitalID } = useDigitalID();
   const navigate = useNavigate();
   const [plotId, setPlotId] = useState<string>("");
   const [pmName, setPmName] = useState<string>("");
   const [pmBio, setPmBio] = useState<string>("");
   const [pmRoi, setPmRoi] = useState<number>(20);
   const [pmSharpe, setPmSharpe] = useState<number>(1);
+  const [purchasing, setPurchasing] = useState(false);
 
   return (
     <div className="min-h-screen bg-background pt-20">
@@ -97,27 +101,196 @@ export default function QuickActionsPage() {
               <CardDescription>Pay AVAX or USDC; admin activates and mints</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-end gap-2">
-                <Input value={plotId} onChange={(e) => setPlotId(e.target.value)} placeholder="Plot ID" />
-                <Button
-                  onClick={async () => {
-                    const id = parseInt(plotId);
-                    if (!id || id <= 0) return;
-                    try { await buyPlotPhase1AVAX(id); } catch {}
-                  }}
-                >
-                  Pay AVAX
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    const id = parseInt(plotId);
-                    if (!id || id <= 0) return;
-                    try { await buyPlotPhase1USDC(id); } catch {}
-                  }}
-                >
-                  Pay USDC
-                </Button>
+              <div className="space-y-3">
+                <div className="flex items-end gap-2">
+                  <Input value={plotId} onChange={(e) => setPlotId(e.target.value)} placeholder="Plot ID" />
+                  <Button
+                    disabled={purchasing || !plotId}
+                    onClick={async () => {
+                      const id = parseInt(plotId);
+                      if (!id || id <= 0) {
+                        toast.error("Please enter a valid Plot ID");
+                        return;
+                      }
+                      
+                      // Check Digital ID before purchase
+                      await checkDigitalID();
+                      if (!hasDigitalID) {
+                        toast.error("Digital ID required. Redirecting to create one...");
+                        setTimeout(() => {
+                          navigate(`/digital-id?redirect=/quick-actions&plotId=${id}&paymentMethod=AVAX`);
+                        }, 1500);
+                        return;
+                      }
+
+                      setPurchasing(true);
+                      try {
+                        if (!signer || !address) {
+                          toast.error("Wallet not connected");
+                          return;
+                        }
+                        const { getLandContract } = await import("@/lib/contracts");
+                        const contract = getLandContract(signer);
+                        const price = await contract.phase1PriceAVAX();
+                        const txHash = await buyPlotPhase1AVAX(id);
+                        if (txHash) {
+                          // Add plot to primary portfolio
+                          try {
+                            const { getPortfolio, upsertPortfolio } = await import("@/lib/api");
+                            // Convert price from wei to AVAX (1e18)
+                            const priceBigInt = typeof price === 'bigint' ? price : BigInt(String(price));
+                            const priceNum = Number(priceBigInt) / 1e18;
+                            
+                            // Get existing portfolio or create new one
+                            let portfolioData;
+                            try {
+                              portfolioData = await getPortfolio(address);
+                            } catch {
+                              // Portfolio doesn't exist, will create it
+                              portfolioData = null;
+                            }
+                            
+                            // Get existing holdings or start fresh
+                            const existingHoldings = portfolioData?.portfolio?.holdings || [];
+                            
+                            // Add the new plot holding
+                            const newHolding = {
+                              asset_type: "plot",
+                              identifier: String(id),
+                              cost_basis: priceNum,
+                              yield_annual: 0.05, // Default 5% annual yield for plots
+                            };
+                            
+                            // Check if plot already exists in holdings
+                            const plotExists = existingHoldings.some(
+                              (h: any) => h.asset_type === "plot" && h.identifier === String(id)
+                            );
+                            
+                            if (!plotExists) {
+                              await upsertPortfolio({
+                                wallet: address,
+                                holdings: [...existingHoldings, newHolding],
+                                portfolio_type: "primary",
+                              });
+                              toast.success("Plot added to primary portfolio");
+                            }
+                          } catch (portfolioError: any) {
+                            console.error("Error adding to portfolio:", portfolioError);
+                            // Don't fail the purchase if portfolio update fails
+                            toast.warning("Purchase successful, but failed to add to portfolio");
+                          }
+                          
+                          // Navigate to confirmation page
+                          const priceStr = typeof price === 'bigint' ? price.toString() : String(price);
+                          navigate(`/purchase-confirmation?plotId=${id}&txHash=${txHash}&price=${priceStr}&currency=AVAX`);
+                        }
+                      } catch (error: any) {
+                        console.error("Purchase error:", error);
+                        toast.error(error.message || "Failed to purchase plot");
+                      } finally {
+                        setPurchasing(false);
+                      }
+                    }}
+                  >
+                    {purchasing ? "Processing..." : "Pay AVAX"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={purchasing || !plotId}
+                    onClick={async () => {
+                      const id = parseInt(plotId);
+                      if (!id || id <= 0) {
+                        toast.error("Please enter a valid Plot ID");
+                        return;
+                      }
+                      
+                      // Check Digital ID before purchase
+                      await checkDigitalID();
+                      if (!hasDigitalID) {
+                        toast.error("Digital ID required. Redirecting to create one...");
+                        setTimeout(() => {
+                          navigate(`/digital-id?redirect=/quick-actions&plotId=${id}&paymentMethod=USDC`);
+                        }, 1500);
+                        return;
+                      }
+
+                      setPurchasing(true);
+                      try {
+                        if (!signer || !address) {
+                          toast.error("Wallet not connected");
+                          return;
+                        }
+                        const { getLandContract } = await import("@/lib/contracts");
+                        const contract = getLandContract(signer);
+                        const price = await contract.phase1PriceUSDC();
+                        const txHash = await buyPlotPhase1USDC(id);
+                        if (txHash) {
+                          // Add plot to primary portfolio
+                          try {
+                            const { getPortfolio, upsertPortfolio } = await import("@/lib/api");
+                            // Convert price from smallest unit to USDC (1e6 decimals)
+                            const priceBigInt = typeof price === 'bigint' ? price : BigInt(String(price));
+                            const priceNum = Number(priceBigInt) / 1e6;
+                            
+                            // Get existing portfolio or create new one
+                            let portfolioData;
+                            try {
+                              portfolioData = await getPortfolio(address);
+                            } catch {
+                              // Portfolio doesn't exist, will create it
+                              portfolioData = null;
+                            }
+                            
+                            // Get existing holdings or start fresh
+                            const existingHoldings = portfolioData?.portfolio?.holdings || [];
+                            
+                            // Add the new plot holding
+                            const newHolding = {
+                              asset_type: "plot",
+                              identifier: String(id),
+                              cost_basis: priceNum,
+                              yield_annual: 0.05, // Default 5% annual yield for plots
+                            };
+                            
+                            // Check if plot already exists in holdings
+                            const plotExists = existingHoldings.some(
+                              (h: any) => h.asset_type === "plot" && h.identifier === String(id)
+                            );
+                            
+                            if (!plotExists) {
+                              await upsertPortfolio({
+                                wallet: address,
+                                holdings: [...existingHoldings, newHolding],
+                                portfolio_type: "primary",
+                              });
+                              toast.success("Plot added to primary portfolio");
+                            }
+                          } catch (portfolioError: any) {
+                            console.error("Error adding to portfolio:", portfolioError);
+                            // Don't fail the purchase if portfolio update fails
+                            toast.warning("Purchase successful, but failed to add to portfolio");
+                          }
+                          
+                          // Navigate to confirmation page
+                          const priceStr = typeof price === 'bigint' ? price.toString() : String(price);
+                          navigate(`/purchase-confirmation?plotId=${id}&txHash=${txHash}&price=${priceStr}&currency=USDC`);
+                        }
+                      } catch (error: any) {
+                        console.error("Purchase error:", error);
+                        toast.error(error.message || "Failed to purchase plot");
+                      } finally {
+                        setPurchasing(false);
+                      }
+                    }}
+                  >
+                    {purchasing ? "Processing..." : "Pay USDC"}
+                  </Button>
+                </div>
+                {!hasDigitalID && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                    ⚠️ Digital ID required for plot purchase. You'll be redirected to create one.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

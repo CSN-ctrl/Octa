@@ -156,7 +156,9 @@ export function useLandPlots() {
     setLoading(true);
     try {
       const contract = getLandContract(signer);
-      const totalPrice = priceInAVAX * BigInt(plotIds.length);
+      // Get price from contract to ensure we have the latest
+      const currentPrice = await contract.priceInAVAX();
+      const totalPrice = currentPrice * BigInt(plotIds.length);
       const tx = await contract.buyPlotsBatch(plotIds, { value: totalPrice });
       await tx.wait();
       

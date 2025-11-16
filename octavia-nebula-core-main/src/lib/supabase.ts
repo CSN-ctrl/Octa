@@ -1,9 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Only create client if both URL and KEY are provided
+export const supabase = SUPABASE_URL && SUPABASE_KEY 
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : (null as any); // Graceful fallback - will need to handle null checks in components
 
 export async function fetchUsers() {
   const { data, error } = await supabase.from("users").select("*");

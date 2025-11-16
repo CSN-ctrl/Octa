@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +23,10 @@ import { ethers } from "ethers";
 import { formatEther } from "ethers";
 
 const DigitalID = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { address, signer, isConnected, balance, connect } = useWallet();
-  const { digitalID, hasDigitalID, loading: idLoading, registerDigitalID } = useDigitalID();
+  const { digitalID, hasDigitalID, loading: idLoading, registerDigitalID, checkDigitalID } = useDigitalID();
   const { userPlots, loading: plotsLoading } = useLandPlots();
   
   const [idType, setIdType] = useState<'personal' | 'corporate' | 'organization' | null>(null);
@@ -32,6 +35,27 @@ const DigitalID = () => {
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [registering, setRegistering] = useState(false);
+
+  // Check for redirect after Digital ID creation
+  useEffect(() => {
+    if (hasDigitalID) {
+      const redirect = searchParams.get("redirect");
+      const plotId = searchParams.get("plotId");
+      const paymentMethod = searchParams.get("paymentMethod");
+      
+      if (redirect && plotId && paymentMethod) {
+        // Redirect back to purchase flow
+        setTimeout(() => {
+          navigate(`/quick-actions?plotId=${plotId}&paymentMethod=${paymentMethod}`);
+        }, 2000);
+      } else if (redirect) {
+        // Generic redirect
+        setTimeout(() => {
+          navigate(redirect);
+        }, 2000);
+      }
+    }
+  }, [hasDigitalID, searchParams, navigate]);
 
   const handleCreateID = async () => {
     if (!isConnected || !signer) {
@@ -49,11 +73,26 @@ const DigitalID = () => {
     try {
       const txHash = await registerDigitalID(firstName, lastName, email, avatarUrl);
       toast.success(`Digital ID registered! TX: ${txHash.slice(0, 10)}...`);
+      
+      // Refresh Digital ID status
+      await checkDigitalID();
+      
       setFirstName("");
       setLastName("");
       setEmail("");
       setAvatarUrl("");
       setIdType(null);
+
+      // Check if we need to redirect
+      const redirect = searchParams.get("redirect");
+      const plotId = searchParams.get("plotId");
+      const paymentMethod = searchParams.get("paymentMethod");
+      
+      if (redirect && plotId && paymentMethod) {
+        toast.info("Redirecting back to purchase...");
+      } else if (redirect) {
+        toast.info("Redirecting...");
+      }
     } catch (error: any) {
       console.error("Registration error:", error);
       toast.error(error.message || "Failed to register Digital ID");
