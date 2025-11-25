@@ -198,7 +198,7 @@ if __name__ == "__main__":
     print("Testing Avalanche CLI key loader...")
     key = auto_load_funded_account_key(
         subnet_name="ChaosStarNetwork",
-        rpc_url="http://127.0.0.1:9650/ext/bc/ChaosStarNetwork/rpc"
+        rpc_url="http://127.0.0.1:41773/ext/bc/wtHFpLKd93iiPmBBsCdeTEPz6Quj9MoCL8NpuxoFXHtvTVeT1/rpc"  # Chaos Star Network RPC
     )
     
     if key:

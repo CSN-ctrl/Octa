@@ -129,7 +129,12 @@ export default function QuickActionsPage() {
                           toast.error("Wallet not connected");
                           return;
                         }
-                        const { getLandContract } = await import("@/lib/contracts");
+                        const { getLandContract, hasLandContract } = await import("@/lib/contracts");
+                        if (!hasLandContract()) {
+                          toast.error("Land contract address not set");
+                          setPurchasing(false);
+                          return;
+                        }
                         const contract = getLandContract(signer);
                         const price = await contract.phase1PriceAVAX();
                         const txHash = await buyPlotPhase1AVAX(id);
@@ -220,7 +225,12 @@ export default function QuickActionsPage() {
                           toast.error("Wallet not connected");
                           return;
                         }
-                        const { getLandContract } = await import("@/lib/contracts");
+                        const { getLandContract, hasLandContract } = await import("@/lib/contracts");
+                        if (!hasLandContract()) {
+                          toast.error("Land contract address not set");
+                          setPurchasing(false);
+                          return;
+                        }
                         const contract = getLandContract(signer);
                         const price = await contract.phase1PriceUSDC();
                         const txHash = await buyPlotPhase1USDC(id);

@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
 import "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
-import "lib/openzeppelin-contracts/contracts/security/Pausable.sol";
+import "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 
 /**
  * @title PlotRegistry1155
@@ -40,6 +40,10 @@ contract PlotRegistry1155 is ERC1155, AccessControl, Pausable {
 
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) { _pause(); }
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) { _unpause(); }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC1155, AccessControl) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
 
     function uri(uint256 id) public view override returns (string memory) {
         return _uriForId[id];
@@ -100,30 +104,17 @@ contract PlotRegistry1155 is ERC1155, AccessControl, Pausable {
         emit TransferApproved(plotId, currentOwner, newOwner);
     }
 
-    function _beforeTokenTransfer(
-        address operator,
+    function _update(
         address from,
         address to,
         uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
+        uint256[] memory values
     ) internal override whenNotPaused {
-        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-    }
-
-    function _afterTokenTransfer(
-        address operator,
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal override {
-        super._afterTokenTransfer(operator, from, to, ids, amounts, data);
+        super._update(from, to, ids, values);
         // Track owners for supply-1 tokens
         for (uint256 i = 0; i < ids.length; i++) {
             uint256 id = ids[i];
-            if (amounts[i] == 0) continue;
+            if (values[i] == 0) continue;
             if (to == address(0)) {
                 ownerOfPlot[id] = address(0);
             } else if (from != to) {

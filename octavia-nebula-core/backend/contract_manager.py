@@ -16,11 +16,24 @@ try:
 except ImportError:
     from config import AVALANCHE_RPC, PRIVATE_KEY, CHAIN_ID
 
+# Import CLI detector for automatic tool detection
+try:
+    from .cli_detector import get_cli_detector, is_forge_available
+except ImportError:
+    from cli_detector import get_cli_detector, is_forge_available
+
 
 class ContractManager:
     """Manages smart contract deployment, verification, and interaction"""
     
     def __init__(self):
+        # Check if Forge is available
+        if not is_forge_available():
+            raise Exception(
+                "Forge is not installed or not in PATH. "
+                "Please install Foundry: https://book.getfoundry.sh/getting-started/installation"
+            )
+        
         if not PRIVATE_KEY:
             raise Exception(
                 "PRIVATE_KEY not set. "
@@ -42,6 +55,9 @@ class ContractManager:
         # Ensure directories exist
         self.deployments_dir.mkdir(exist_ok=True)
         self.abi_dir.mkdir(exist_ok=True)
+        
+        # CLI detector for Forge operations
+        self.cli_detector = get_cli_detector()
         
         self.addresses_file = self.deployments_dir / "addresses.json"
         self.load_addresses()
@@ -67,7 +83,9 @@ class ContractManager:
             return AVALANCHE_RPC
         
         # Default to local subnet RPC
-        return "http://127.0.0.1:9650/ext/bc/ChaosStarNetwork/rpc"
+        # Always use Chaos Star Network RPC - never use port 9650
+        from .config import CHAOSSTARNETWORK_PRIMARY_RPC
+        return CHAOSSTARNETWORK_PRIMARY_RPC
     
     def check_contract_deployed(self, address: str) -> bool:
         """Check if a contract is deployed at the given address"""
@@ -118,12 +136,13 @@ class ContractManager:
     
     def compile_contracts(self) -> bool:
         """Compile Solidity contracts using Foundry"""
+        if not is_forge_available():
+            raise Exception("Foundry (forge) not found. Please install Foundry.")
+        
         try:
-            result = subprocess.run(
-                ["forge", "build"],
-                cwd=str(self.project_root),
-                capture_output=True,
-                text=True,
+            result = self.cli_detector.execute_forge_command(
+                "build",
+                cwd=self.project_root,
                 timeout=120
             )
             
@@ -133,8 +152,6 @@ class ContractManager:
             
             print("Contracts compiled successfully")
             return True
-        except FileNotFoundError:
-            raise Exception("Foundry (forge) not found. Please install Foundry.")
         except subprocess.TimeoutExpired:
             raise Exception("Contract compilation timed out")
         except Exception as e:
@@ -263,22 +280,19 @@ class ContractManager:
                 except:
                     pass
             
-            cmd = [
-                "forge", "script",
-                str(script_path),
-                "--rpc-url", rpc_url,
-                "--private-key", private_key_for_forge,
-                "--broadcast",
-                "-vv"
-            ]
-            
             print(f"Deploying to: {rpc_url}")
             print(f"Deployer: {self.deployer.address}")
-            result = subprocess.run(
-                cmd,
-                cwd=str(self.project_root),
-                capture_output=True,
-                text=True,
+            
+            result = self.cli_detector.execute_forge_command(
+                "script",
+                args=[
+                    str(script_path),
+                    "--rpc-url", rpc_url,
+                    "--private-key", private_key_for_forge,
+                    "--broadcast",
+                    "-vv"
+                ],
+                cwd=self.project_root,
                 timeout=600
             )
             

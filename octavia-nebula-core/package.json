@@ -14,6 +14,8 @@
     "build:all": "bash ./scripts/build_all.sh"
   },
   "dependencies": {
+    "@avalanche-sdk/chainkit": "^0.3.0-alpha.11",
+    "@avalanche-sdk/client": "^0.1.0-alpha.2",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -46,6 +48,7 @@
     "@tanstack/react-query": "^5.83.0",
     "@types/three": "^0.169.0",
     "@walletconnect/ethereum-provider": "^2.23.0",
+    "animejs": "^4.2.2",
     "axios": "^1.13.1",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",

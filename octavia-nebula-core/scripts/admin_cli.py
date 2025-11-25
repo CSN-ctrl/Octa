@@ -45,13 +45,44 @@ def get_web3():
     return Web3(Web3.HTTPProvider(rpc))
 
 def get_admin_account(w3: Web3):
-    pk = os.getenv("PRIVATE_KEY")
+    # Try to get from config (which auto-loads from subnet)
+    pk = os.getenv("PRIVATE_KEY") or os.getenv("ADMIN_PRIVATE_KEY")
+    
     if not pk:
-        # Try Avalanche CLI key
-        subnet_name = os.getenv("AVALANCHE_SUBNET_NAME", "ChaosStarNetwork")
-        _, pk = discover_from_cli(subnet_name)
+        # Try loading from backend config which auto-discovers from subnet
+        try:
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from backend.config import PRIVATE_KEY as CONFIG_PK, ADMIN_PRIVATE_KEY
+            pk = ADMIN_PRIVATE_KEY or CONFIG_PK
+        except Exception:
+            pass
+    
     if not pk:
-        raise RuntimeError("PRIVATE_KEY not set in .env")
+        # Try Avalanche CLI key directly
+        try:
+            subnet_name = os.getenv("AVALANCHE_SUBNET_NAME", "ChaosStarNetwork")
+            from backend.subnet_interaction import create_subnet_interactor
+            interactor = create_subnet_interactor(subnet_name)
+            pk = interactor.get_private_key()
+        except Exception:
+            # Fallback to old method
+            try:
+                subnet_name = os.getenv("AVALANCHE_SUBNET_NAME", "ChaosStarNetwork")
+                _, pk = discover_from_cli(subnet_name)
+            except Exception:
+                pass
+    
+    if not pk:
+        raise RuntimeError(
+            "PRIVATE_KEY not found. "
+            "The system will automatically discover admin keys from Avalanche CLI subnet configuration. "
+            "Please ensure:\n"
+            "  1. Avalanche CLI is configured with a subnet, or\n"
+            "  2. Set PRIVATE_KEY in .env file"
+        )
+    
     acct = w3.eth.account.from_key(pk)
     return acct
 

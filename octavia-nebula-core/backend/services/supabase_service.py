@@ -27,11 +27,33 @@ def upsert_plot(wallet, token_id, metadata):
         )
     
     try:
-        supabase.table("plots").upsert({
-            "wallet": wallet,
-            "token_id": token_id,
-            "metadata": metadata
-        }).execute()
+        # Extract plot data from metadata if available
+        plot_id = metadata.get("plotId") or token_id
+        owner_wallet = metadata.get("owner") or wallet
+        zone_type = metadata.get("zoneType") or metadata.get("zone") or "residential"
+        
+        # Prepare plot data for Supabase schema
+        plot_data = {
+            "id": int(plot_id) if isinstance(plot_id, (int, str)) and str(plot_id).isdigit() else None,
+            "owner_wallet": owner_wallet,
+            "zone_type": zone_type,
+            "coord_x": metadata.get("coord_x") or metadata.get("x") or 0,
+            "coord_y": metadata.get("coord_y") or metadata.get("y") or 0,
+            "building_stage": metadata.get("building_stage") or 0,
+            "production_rate": metadata.get("production_rate") or 0,
+            "metadata_cid": metadata.get("metadata_cid") or None,
+            "workers": metadata.get("workers") or [],
+        }
+        
+        # Remove None values to avoid schema issues
+        plot_data = {k: v for k, v in plot_data.items() if v is not None}
+        
+        # Upsert to plots table
+        supabase.table("plots").upsert(plot_data, on_conflict="id").execute()
+        
+        # Also save full metadata to a separate table or as JSON if needed
+        # The metadata contains purchase info, deed, etc.
+        return {"success": True, "plot_id": plot_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error upserting plot: {str(e)}")
 

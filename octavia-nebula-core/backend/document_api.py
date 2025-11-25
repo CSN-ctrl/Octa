@@ -7,7 +7,17 @@ from pydantic import BaseModel
 from typing import Optional
 from io import BytesIO
 from pathlib import Path
-from document_handler import DocumentHandler
+# Import DocumentHandler - make it optional
+try:
+    from document_handler import DocumentHandler
+    DOCUMENT_HANDLER_AVAILABLE = True
+except ImportError:
+    try:
+        from .document_handler import DocumentHandler
+        DOCUMENT_HANDLER_AVAILABLE = True
+    except ImportError:
+        DOCUMENT_HANDLER_AVAILABLE = False
+        DocumentHandler = None
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -30,6 +40,11 @@ class DeedData(BaseModel):
 @router.get("/templates")
 async def list_templates():
     """List available document templates"""
+    if not DOCUMENT_HANDLER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Document handler is not available. Please install required dependencies (PyPDF2, python-docx, reportlab, qrcode[pil])"
+        )
     try:
         templates = DocumentHandler.list_templates()
         return {
@@ -45,6 +60,11 @@ async def list_templates():
 @router.post("/generate/pdf")
 async def generate_pdf_deed(data: DeedData):
     """Generate PDF land ownership certificate"""
+    if not DOCUMENT_HANDLER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Document handler is not available. Please install required dependencies (PyPDF2, python-docx, reportlab, qrcode[pil])"
+        )
     try:
         pdf_bytes = DocumentHandler.generate_pdf_deed(
             plot_id=data.plot_id,
@@ -75,6 +95,11 @@ async def generate_pdf_deed(data: DeedData):
 @router.post("/generate/docx")
 async def generate_docx_deed(data: DeedData):
     """Generate Word document land ownership certificate"""
+    if not DOCUMENT_HANDLER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Document handler is not available. Please install required dependencies (PyPDF2, python-docx, reportlab, qrcode[pil])"
+        )
     try:
         docx_bytes = DocumentHandler.generate_docx_deed(
             plot_id=data.plot_id,
@@ -105,6 +130,11 @@ async def generate_docx_deed(data: DeedData):
 @router.get("/read/pdf")
 async def read_pdf_template():
     """Read the PDF template (returns template info)"""
+    if not DOCUMENT_HANDLER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Document handler is not available. Please install required dependencies (PyPDF2, python-docx, reportlab, qrcode[pil])"
+        )
     try:
         if not DocumentHandler.PDF_TEMPLATE.exists():
             raise HTTPException(status_code=404, detail="PDF template not found")
@@ -123,6 +153,11 @@ async def read_pdf_template():
 @router.get("/read/docx")
 async def read_docx_template():
     """Read the Word template (returns template info)"""
+    if not DOCUMENT_HANDLER_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Document handler is not available. Please install required dependencies (PyPDF2, python-docx, reportlab, qrcode[pil])"
+        )
     try:
         if not DocumentHandler.DOCX_TEMPLATE.exists():
             raise HTTPException(status_code=404, detail="Word template not found")

@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from "react";
-import { getLandContract, getDigitalIDContract } from "@/lib/contracts";
+import { getLandContract, getDigitalIDContract, hasLandContract } from "@/lib/contracts";
 
 export function useContractEvents(
   onLandMinted?: (plotId: number, owner: string, price: bigint) => void,
@@ -7,8 +7,9 @@ export function useContractEvents(
 ) {
   const setupEventListeners = useCallback(() => {
     // Set up Land contract events
-    try {
-      const landContract = getLandContract();
+    if (hasLandContract()) {
+      try {
+        const landContract = getLandContract();
       
       // LandMinted event
       landContract.on("LandMinted", (plotId, owner, pricePaid, coldWallet, timestamp, event) => {
@@ -17,8 +18,9 @@ export function useContractEvents(
           onLandMinted(Number(plotId), owner, pricePaid);
         }
       });
-    } catch (error) {
-      console.warn("Could not set up land contract events:", error);
+      } catch (error) {
+        console.warn("Could not set up land contract events:", error);
+      }
     }
 
     // Set up Digital ID contract events
@@ -37,10 +39,12 @@ export function useContractEvents(
 
     // Return cleanup function
     return () => {
-      try {
-        const landContract = getLandContract();
-        landContract.removeAllListeners("LandMinted");
-      } catch (e) {}
+      if (hasLandContract()) {
+        try {
+          const landContract = getLandContract();
+          landContract.removeAllListeners("LandMinted");
+        } catch (e) {}
+      }
       
       try {
         const digitalIDContract = getDigitalIDContract();

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { useAutoscale } from '@/hooks/useAutoscale';
 
 interface GalaxyVisualizationProps {
   systemProgress?: number;
@@ -14,6 +15,28 @@ export const GalaxyVisualization = ({
   octaviaProgress = 0,
   zytheraProgress = 0 
 }: GalaxyVisualizationProps) => {
+  // Autoscale hook for responsive design
+  const {
+    screenSize,
+    getFOV,
+    getPixelRatio,
+    getDistanceMultiplier,
+    getParticleMultiplier,
+    shouldReduceQuality,
+  } = useAutoscale({
+    baseFOV: 75,
+    mobileFOV: 70,
+    tabletFOV: 72,
+    desktopFOV: 75,
+    mobileDistance: 1.2,
+    tabletDistance: 1.0,
+    desktopDistance: 1.0,
+    maxPixelRatio: 2,
+    mobilePixelRatio: 1.5,
+    reduceParticlesOnMobile: true,
+    particleReductionFactor: 0.5,
+  });
+
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -40,23 +63,32 @@ export const GalaxyVisualization = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Camera
+    // Camera - Use autoscale FOV
+    const initialFOV = getFOV();
     const camera = new THREE.PerspectiveCamera(
-      75,
+      initialFOV,
       containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
       100
     );
-    camera.position.set(3, 3, 3);
+    // Adjust initial camera position based on screen size
+    const distanceMultiplier = getDistanceMultiplier();
+    camera.position.set(3 * distanceMultiplier, 3 * distanceMultiplier, 3 * distanceMultiplier);
     cameraRef.current = camera;
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // Renderer - Optimized settings with autoscale
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: !shouldReduceQuality(), // Disable antialiasing on mobile for performance
+      alpha: true,
+      powerPreference: "high-performance"
+    });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(getPixelRatio());
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
+    renderer.shadowMap.enabled = false; // Disable shadows for better performance
+    renderer.sortObjects = false; // Disable sorting for better performance
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     raycasterRef.current = new THREE.Raycaster();
@@ -66,12 +98,34 @@ export const GalaxyVisualization = ({
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.enablePan = true;
+    controls.enableZoom = true;
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
     controlsRef.current = controls;
 
-    // Galaxy parameters
+    // User interaction tracking for smart camera controls
+    let userInteracting = false;
+    let lastInteractionTime = performance.now();
+    const AUTO_ORBIT_RESUME_DELAY = 2000; // Resume after 2 seconds
+
+    controls.addEventListener('start', () => {
+      userInteracting = true;
+      lastInteractionTime = performance.now();
+    });
+
+    controls.addEventListener('end', () => {
+      lastInteractionTime = performance.now();
+    });
+
+    // Galaxy parameters - Optimized with autoscale particle reduction
+    const baseCount = 40000;
+    const particleMultiplier = getParticleMultiplier();
     const parameters = {
-      count: 100000,
-      size: 0.01,
+      count: Math.floor(baseCount * particleMultiplier), // Scale particles based on screen size
+      size: screenSize.isMobile ? 0.015 : 0.012, // Slightly larger on mobile for visibility
       radius: 2.15,
       branches: 3,
       spin: 3,
@@ -120,7 +174,8 @@ export const GalaxyVisualization = ({
       sizeAttenuation: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      vertexColors: true
+      vertexColors: true,
+      transparent: false // Since we use additive blending, we don't need transparency
     });
 
     const points = new THREE.Points(geometry, material);
@@ -131,8 +186,8 @@ export const GalaxyVisualization = ({
     const ambient = new THREE.AmbientLight(0xffffff, 0.25);
     scene.add(ambient);
 
-    // Galaxy center black hole (at 0,0,0)
-    const bhGeom = new THREE.SphereGeometry(0.12, 32, 32);
+    // Galaxy center black hole (at 0,0,0) - Reduced complexity
+    const bhGeom = new THREE.SphereGeometry(0.12, 16, 16); // Reduced from 32
     const bhMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0, metalness: 0.0 });
     const blackHole = new THREE.Mesh(bhGeom, bhMat);
     blackHole.position.set(0, 0, 0);
@@ -140,7 +195,7 @@ export const GalaxyVisualization = ({
 
     // Sarakt Star (emissive core with point light)
     const starPos = new THREE.Vector3(1.6, 0, 1.6); // move further off-center
-    const saraktGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+    const saraktGeometry = new THREE.SphereGeometry(0.10, 16, 16); // Reduced from 32
     const saraktMaterial = new THREE.MeshStandardMaterial({
       color: 0x9333ea,
       emissive: 0x6d28d9,
@@ -158,8 +213,8 @@ export const GalaxyVisualization = ({
     starLight.position.copy(saraktStar.position);
     scene.add(starLight);
 
-    // Sarakt glow
-    const glowGeometry = new THREE.SphereGeometry(0.25, 32, 32);
+    // Sarakt glow - Reduced complexity
+    const glowGeometry = new THREE.SphereGeometry(0.18, 16, 16); // Reduced from 32
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0x9333ea,
       transparent: true,
@@ -168,8 +223,8 @@ export const GalaxyVisualization = ({
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     saraktStar.add(glow);
 
-    // Octavia (within galaxy arms)
-    const octaviaGeometry = new THREE.SphereGeometry(0.06, 24, 24);
+    // Octavia (within galaxy arms) - Reduced complexity
+    const octaviaGeometry = new THREE.SphereGeometry(0.04, 12, 12); // Reduced from 24
     const octaviaMaterial = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.6, metalness: 0.05 });
     const octavia = new THREE.Mesh(octaviaGeometry, octaviaMaterial);
     // Create orbital parent to achieve inclined circular orbit
@@ -178,59 +233,72 @@ export const GalaxyVisualization = ({
     // Slight inclination (in radians)
     octaviaOrbit.rotation.x = THREE.MathUtils.degToRad(8);
     // Place planet on x-axis at radius
-    const octaviaRadius = 1.2;
+    const octaviaRadius = 0.8;
     octavia.position.set(octaviaRadius, 0, 0);
     octaviaOrbit.add(octavia);
     scene.add(octaviaOrbit);
     octaviaRef.current = octavia;
     octaviaOrbitRef.current = octaviaOrbit;
-    // Orbit ring
-    const octaviaRing = new THREE.RingGeometry(octaviaRadius - 0.001, octaviaRadius + 0.001, 128);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, opacity: 0.35, transparent: true, side: THREE.DoubleSide });
+    // Orbit ring - Reduced complexity
+    const octaviaRing = new THREE.RingGeometry(octaviaRadius - 0.001, octaviaRadius + 0.001, 64); // Reduced from 128
+    const ringMat = new THREE.MeshBasicMaterial({ 
+      color: 0x22c55e, 
+      opacity: 0.35, 
+      transparent: true, 
+      side: THREE.DoubleSide,
+      depthWrite: false // Optimize for better performance
+    });
     const ringMesh = new THREE.Mesh(octaviaRing, ringMat);
     ringMesh.position.copy(starPos);
     ringMesh.rotation.x = octaviaOrbit.rotation.x;
     scene.add(ringMesh);
 
-    // Zythera (within galaxy arms)
-    const zytheraGeometry = new THREE.SphereGeometry(0.06, 24, 24);
+    // Zythera (within galaxy arms) - Reduced complexity
+    const zytheraGeometry = new THREE.SphereGeometry(0.04, 12, 12); // Reduced from 24
     const zytheraMaterial = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6, metalness: 0.05 });
     const zythera = new THREE.Mesh(zytheraGeometry, zytheraMaterial);
     const zytheraOrbit = new THREE.Object3D();
     zytheraOrbit.position.copy(saraktStar.position);
     zytheraOrbit.rotation.x = THREE.MathUtils.degToRad(15);
-    const zytheraRadius = 1.6;
+    const zytheraRadius = 1.1;
     zythera.position.set(zytheraRadius, 0, 0);
     zytheraOrbit.add(zythera);
     scene.add(zytheraOrbit);
     zytheraRef.current = zythera;
     zytheraOrbitRef.current = zytheraOrbit;
-    const zytheraRing = new THREE.RingGeometry(zytheraRadius - 0.001, zytheraRadius + 0.001, 128);
-    const ringMatZ = new THREE.MeshBasicMaterial({ color: 0xef4444, opacity: 0.3, transparent: true, side: THREE.DoubleSide });
+    const zytheraRing = new THREE.RingGeometry(zytheraRadius - 0.001, zytheraRadius + 0.001, 64); // Reduced from 128
+    const ringMatZ = new THREE.MeshBasicMaterial({ 
+      color: 0xef4444, 
+      opacity: 0.3, 
+      transparent: true, 
+      side: THREE.DoubleSide,
+      depthWrite: false // Optimize for better performance
+    });
     const ringMeshZ = new THREE.Mesh(zytheraRing, ringMatZ);
     ringMeshZ.position.copy(starPos);
     ringMeshZ.rotation.x = zytheraOrbit.rotation.x;
     scene.add(ringMeshZ);
 
-    // HTML Labels
+    // HTML Labels - Responsive sizing
     const makeLabel = (text: string, color: string) => {
       const el = document.createElement('div');
       el.textContent = text;
       el.style.position = 'absolute';
       el.style.pointerEvents = 'auto';
-      el.style.padding = '2px 6px';
+      el.style.padding = screenSize.isMobile ? '4px 8px' : '2px 6px';
       el.style.borderRadius = '6px';
-      el.style.fontSize = '12px';
+      el.style.fontSize = screenSize.isMobile ? '14px' : '12px';
       el.style.fontWeight = '600';
       el.style.background = 'rgba(0,0,0,0.5)';
       el.style.border = `1px solid ${color}66`;
       el.style.color = color;
       el.style.userSelect = 'none';
       el.style.transform = 'translate(-50%, -150%)';
+      el.style.zIndex = '10';
       return el;
     };
     const starLabel = makeLabel('Sarakt Star', '#a78bfa');
-    const octaviaLabel = makeLabel('Octavia', '#22c55e');
+    const octaviaLabel = makeLabel('Sarakt Prime', '#22c55e');
     const zytheraLabel = makeLabel('Zythera', '#ef4444');
     starLabelRef.current = starLabel;
     octaviaLabelRef.current = octaviaLabel;
@@ -239,7 +307,7 @@ export const GalaxyVisualization = ({
     containerRef.current.appendChild(octaviaLabel);
     containerRef.current.appendChild(zytheraLabel);
 
-    // Zoom helper
+    // Zoom helper - Use autoscale distance multiplier
     const zoomTo = (target: THREE.Vector3, distance = 1.2, durationMs = 900) => {
       if (!cameraRef.current || !controlsRef.current) return;
       const cam = cameraRef.current;
@@ -248,7 +316,9 @@ export const GalaxyVisualization = ({
       const startTarget = controls.target.clone();
       const dir = new THREE.Vector3().subVectors(startPos, startTarget).normalize();
       const endTarget = target.clone();
-      const endPos = target.clone().add(dir.multiplyScalar(distance));
+      // Apply distance multiplier for responsive zoom
+      const adjustedDistance = distance * getDistanceMultiplier();
+      const endPos = target.clone().add(dir.multiplyScalar(adjustedDistance));
       const start = performance.now();
       const animate = (t: number) => {
         const elapsed = t - start;
@@ -277,7 +347,7 @@ export const GalaxyVisualization = ({
         zoomTo(octaviaOrbitRef.current.position, 1.0);
         if (typeof onSelect === "function") {
           const p = octaviaOrbitRef.current.position;
-          onSelect("octavia", { position: { x: p.x, y: p.y, z: p.z }, radius: 1.2 });
+          onSelect("octavia", { position: { x: p.x, y: p.y, z: p.z }, radius: 0.8 });
         }
       }
     };
@@ -286,7 +356,7 @@ export const GalaxyVisualization = ({
         zoomTo(zytheraOrbitRef.current.position, 1.2);
         if (typeof onSelect === "function") {
           const p = zytheraOrbitRef.current.position;
-          onSelect("zythera", { position: { x: p.x, y: p.y, z: p.z }, radius: 1.6 });
+          onSelect("zythera", { position: { x: p.x, y: p.y, z: p.z }, radius: 1.1 });
         }
       }
     };
@@ -294,8 +364,8 @@ export const GalaxyVisualization = ({
     // Mesh click (raycast) to zoom
     const clickable: Array<{ id: "star" | "octavia" | "zythera"; obj: THREE.Object3D; target: () => THREE.Vector3; dist?: number; radius?: number }> = [
       { id: "star", obj: saraktStar, target: () => starPos.clone(), dist: 1.0 },
-      { id: "octavia", obj: octavia, target: () => (octaviaOrbitRef.current ? octaviaOrbitRef.current.position.clone() : octavia.position.clone()), dist: 1.0, radius: 1.2 },
-      { id: "zythera", obj: zythera, target: () => (zytheraOrbitRef.current ? zytheraOrbitRef.current.position.clone() : zythera.position.clone()), dist: 1.2, radius: 1.6 },
+      { id: "octavia", obj: octavia, target: () => (octaviaOrbitRef.current ? octaviaOrbitRef.current.position.clone() : octavia.position.clone()), dist: 1.0, radius: 0.8 },
+      { id: "zythera", obj: zythera, target: () => (zytheraOrbitRef.current ? zytheraOrbitRef.current.position.clone() : zythera.position.clone()), dist: 1.2, radius: 1.1 },
     ];
     const onPointerDown = (event: MouseEvent) => {
       if (!containerRef.current || !cameraRef.current || !raycasterRef.current || !pointerRef.current) return;
@@ -318,10 +388,26 @@ export const GalaxyVisualization = ({
     };
     containerRef.current.addEventListener('pointerdown', onPointerDown);
 
-    // Animation
+    // Animation - Optimized with delta time and throttled updates
     const clock = new THREE.Clock();
+    let frameCount = 0;
+    
+    // Cache world positions to avoid recalculation
+    const saraktWorldPos = new THREE.Vector3();
+    const octaviaWorldPos = new THREE.Vector3();
+    const zytheraWorldPos = new THREE.Vector3();
+    
+    // Cache label positions for DOM update optimization
+    const labelPositions = {
+      star: { x: 0, y: 0, visible: false },
+      octavia: { x: 0, y: 0, visible: false },
+      zythera: { x: 0, y: 0, visible: false }
+    };
+
     const tick = () => {
       const elapsedTime = clock.getElapsedTime();
+      const delta = clock.getDelta();
+      frameCount++;
 
       // Update controls
       controls.update();
@@ -338,39 +424,67 @@ export const GalaxyVisualization = ({
         saraktStarRef.current.scale.set(pulse * intensity, pulse * intensity, pulse * intensity);
       }
 
-      // Planetary orbits (constant angular velocity)
+      // Planetary orbits - Use delta time for frame-rate independent animation
       if (octaviaOrbitRef.current) {
         const baseSpeed = 0.25;
-        const speed = baseSpeed * (0.8 + octaviaProgress * 0.4); // slight speed variance via progress
-        octaviaOrbitRef.current.rotation.y += speed * renderer.info.render.frame * 0 + speed * 0.016; // ~60fps step
+        const speed = baseSpeed * (0.8 + octaviaProgress * 0.4);
+        octaviaOrbitRef.current.rotation.y += speed * delta;
       }
       if (zytheraOrbitRef.current) {
         const baseSpeed = 0.2;
         const speed = baseSpeed * (0.8 + zytheraProgress * 0.4);
-        zytheraOrbitRef.current.rotation.y += speed * 0.016;
+        zytheraOrbitRef.current.rotation.y += speed * delta;
       }
 
-      // Update HTML labels (screen-space projection)
-      const updateLabel = (obj: THREE.Object3D | null, el: HTMLDivElement | null) => {
-        if (!obj || !el || !containerRef.current) return;
-        const width = containerRef.current.clientWidth;
-        const height = containerRef.current.clientHeight;
-        const pos = obj.getWorldPosition(new THREE.Vector3()).clone();
-        pos.project(camera);
-        const x = (pos.x * 0.5 + 0.5) * width;
-        const y = (-pos.y * 0.5 + 0.5) * height;
-        el.style.left = `${x}px`;
-        el.style.top = `${y}px`;
-        el.style.display = pos.z < 1 ? 'block' : 'none';
-      };
-      updateLabel(saraktStarRef.current, starLabelRef.current);
-      updateLabel(octaviaRef.current, octaviaLabelRef.current);
-      updateLabel(zytheraRef.current, zytheraLabelRef.current);
+      // Update HTML labels only every 3 frames (20fps instead of 60fps) - Throttled for performance
+      if (frameCount % 3 === 0 && containerRef.current) {
+        const updateLabel = (
+          obj: THREE.Object3D | null, 
+          el: HTMLDivElement | null, 
+          worldPos: THREE.Vector3,
+          cache: typeof labelPositions.star
+        ) => {
+          if (!obj || !el) return;
+          obj.getWorldPosition(worldPos); // Reuse vector
+          worldPos.project(camera);
+          const width = containerRef.current!.clientWidth;
+          const height = containerRef.current!.clientHeight;
+          const x = (worldPos.x * 0.5 + 0.5) * width;
+          const y = (-worldPos.y * 0.5 + 0.5) * height;
+          const visible = worldPos.z < 1;
+          
+          // Only update DOM if position actually changed (reduces DOM operations)
+          if (Math.abs(cache.x - x) > 1 || Math.abs(cache.y - y) > 1 || cache.visible !== visible) {
+            cache.x = x;
+            cache.y = y;
+            cache.visible = visible;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.display = visible ? 'block' : 'none';
+          }
+        };
+        updateLabel(saraktStarRef.current, starLabelRef.current, saraktWorldPos, labelPositions.star);
+        updateLabel(octaviaRef.current, octaviaLabelRef.current, octaviaWorldPos, labelPositions.octavia);
+        updateLabel(zytheraRef.current, zytheraLabelRef.current, zytheraWorldPos, labelPositions.zythera);
+      }
 
-      // Camera circular motion around galaxy center
-      camera.position.x = starPos.x + Math.cos(elapsedTime * 0.05) * 4;
-      camera.position.z = starPos.z + Math.sin(elapsedTime * 0.05) * 4;
-      camera.lookAt(starPos);
+      // Smart camera controls - Only auto-orbit when user isn't interacting
+      const timeSinceInteraction = performance.now() - lastInteractionTime;
+      if (!userInteracting || timeSinceInteraction > AUTO_ORBIT_RESUME_DELAY) {
+        if (timeSinceInteraction > AUTO_ORBIT_RESUME_DELAY) {
+          userInteracting = false; // Resume auto-orbit
+        }
+        // Smooth interpolation back to auto-orbit - Use autoscale distance
+        const lerpFactor = Math.min(1, timeSinceInteraction / AUTO_ORBIT_RESUME_DELAY);
+        const orbitRadius = 4 * getDistanceMultiplier();
+        const autoX = starPos.x + Math.cos(elapsedTime * 0.05) * orbitRadius;
+        const autoZ = starPos.z + Math.sin(elapsedTime * 0.05) * orbitRadius;
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, autoX, lerpFactor * 0.02);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, autoZ, lerpFactor * 0.02);
+        if (lerpFactor > 0.5) {
+          camera.lookAt(starPos);
+        }
+      }
 
       // Render
       renderer.render(scene, camera);
@@ -380,14 +494,35 @@ export const GalaxyVisualization = ({
 
     tick();
 
-    // Handle resize
+    // Handle resize - Debounced with autoscale updates
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
     const handleResize = () => {
-      if (!containerRef.current) return;
-
-      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (!containerRef.current || !camera || !renderer) return;
+        
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+        
+        if (width === 0 || height === 0) return;
+        
+        // Update camera with autoscale FOV
+        camera.aspect = width / height;
+        camera.fov = getFOV();
+        camera.updateProjectionMatrix();
+        
+        // Update renderer with autoscale pixel ratio
+        renderer.setSize(width, height, false); // false = don't update style
+        renderer.setPixelRatio(getPixelRatio());
+        
+        // Update antialiasing based on screen size
+        if (renderer.domElement) {
+          const newAntialias = !shouldReduceQuality();
+          // Note: Can't change antialiasing after creation, but pixel ratio helps
+        }
+        
+        resizeTimeout = null;
+      }, 150);
     };
 
     window.addEventListener('resize', handleResize);
@@ -395,6 +530,10 @@ export const GalaxyVisualization = ({
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = null;
+      }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -422,14 +561,24 @@ export const GalaxyVisualization = ({
       octaviaMaterial.dispose();
       zytheraGeometry.dispose();
       zytheraMaterial.dispose();
+      // Dispose ring geometries and materials
+      octaviaRing.dispose();
+      ringMat.dispose();
+      zytheraRing.dispose();
+      ringMatZ.dispose();
+      bhGeom.dispose();
+      bhMat.dispose();
     };
-  }, [systemProgress, octaviaProgress, zytheraProgress]);
+  }, [systemProgress, octaviaProgress, zytheraProgress, screenSize, getFOV, getPixelRatio, getDistanceMultiplier, getParticleMultiplier, shouldReduceQuality]);
 
   return (
     <div 
       ref={containerRef} 
       className="w-full h-full"
-      style={{ minHeight: '600px' }}
+      style={{ 
+        minHeight: screenSize.isMobile ? '400px' : screenSize.isTablet ? '500px' : '600px',
+        touchAction: 'none' // Prevent default touch behaviors for better mobile interaction
+      }}
     />
   );
 };

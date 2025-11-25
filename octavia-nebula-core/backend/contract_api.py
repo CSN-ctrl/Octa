@@ -49,11 +49,14 @@ async def get_contract_addresses():
         if not manager.addresses:
             manager.load_addresses()
         addresses = dict(manager.addresses)
-        # Also expose PlotRegistry (from env) if present
+        # Also expose PlotRegistry and CSN Token (from env) if present
         import os
+        from .config import CSN_TOKEN_ADDRESS
         plot_registry = os.getenv("PLOT_REGISTRY_ADDRESS")
         if plot_registry:
             addresses["plotRegistry"] = plot_registry
+        # Add CSN token address
+        addresses["csnToken"] = CSN_TOKEN_ADDRESS
         # Expose admin address (derived from PRIVATE_KEY or Avalanche CLI)
         try:
             addresses["adminAddress"] = manager.deployer.address
@@ -74,11 +77,14 @@ async def get_contract_addresses():
             try:
                 with open(addresses_file, 'r') as f:
                     addresses = json.load(f)
-                # Merge plot registry from env if present
+                # Merge plot registry and CSN token from env if present
                 import os
+                from .config import CSN_TOKEN_ADDRESS
                 plot_registry = os.getenv("PLOT_REGISTRY_ADDRESS")
                 if plot_registry:
                     addresses["plotRegistry"] = plot_registry
+                # Add CSN token address
+                addresses["csnToken"] = CSN_TOKEN_ADDRESS
                 return {
                     "success": True,
                     "addresses": addresses

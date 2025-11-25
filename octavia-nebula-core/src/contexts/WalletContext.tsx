@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { ethers } from "ethers";
-import { connectWallet, getConnectedAddress, getRpcProvider, disconnectWalletConnect } from "@/lib/wallet";
+import { connectWallet, getConnectedAddress, getRpcProvider, disconnectWalletConnect, connectWithPrivateKey } from "@/lib/wallet";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -11,6 +11,7 @@ interface WalletContextType {
   isConnected: boolean;
   balance: string;
   connect: (useWalletConnect?: boolean) => Promise<void>;
+  connectWithPrivateKey: (privateKey: string) => Promise<void>;
   disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
 }
@@ -55,6 +56,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const connectWithKey = async (privateKey: string) => {
+    try {
+      const { signer: newSigner, address: newAddress } = await connectWithPrivateKey(privateKey);
+      setSigner(newSigner);
+      setAddress(newAddress);
+      setWalletProvider(null); // Not using external provider
+      await refreshBalance(newAddress);
+      toast.success("Wallet connected with private key!");
+    } catch (error: any) {
+      console.error("Failed to connect with private key:", error);
+      toast.error(error.message || "Failed to connect with private key");
+    }
+  };
+
   const disconnect = async () => {
     await disconnectWalletConnect();
     if (walletProvider && walletProvider.disconnect) {
@@ -72,6 +87,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!addrToCheck) return;
 
     try {
+      // Use ethers.js directly (more reliable for C-Chain balance)
       const rpc = getRpcProvider();
       if (!rpc) return;
       const bal = await rpc.getBalance(addrToCheck);
@@ -141,6 +157,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isConnected: !!address,
         balance,
         connect,
+        connectWithPrivateKey: connectWithKey,
         disconnect,
         refreshBalance,
       }}

@@ -6,24 +6,85 @@ from alchemy_sdk import Alchemy, Network
 
 load_dotenv()
 
-ALCHEMY_KEY = os.getenv("ALCHEMY_KEY")
+# Try to load admin key from config (which auto-loads from Avalanche CLI subnet)
 PRIVATE_KEY = os.getenv("ADMIN_PRIVATE_KEY")
-
-if not ALCHEMY_KEY:
-    raise RuntimeError("Missing ALCHEMY_KEY env var")
 if not PRIVATE_KEY:
-    raise RuntimeError("Missing ADMIN_PRIVATE_KEY env var")
+    # Try loading from backend config which auto-discovers from subnet
+    try:
+        try:
+            from backend.config import ADMIN_PRIVATE_KEY, PRIVATE_KEY as CONFIG_PRIVATE_KEY, AVALANCHE_RPC
+            PRIVATE_KEY = ADMIN_PRIVATE_KEY or CONFIG_PRIVATE_KEY
+        except ImportError:
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+            from backend.config import ADMIN_PRIVATE_KEY, PRIVATE_KEY as CONFIG_PRIVATE_KEY, AVALANCHE_RPC
+            PRIVATE_KEY = ADMIN_PRIVATE_KEY or CONFIG_PRIVATE_KEY
+    except Exception:
+        PRIVATE_KEY = None
 
-alchemy = Alchemy(
-    api_key=ALCHEMY_KEY,
-    network=Network.AVALANCHE_MAINNET
-)
+# If still not found, try Avalanche CLI directly
+if not PRIVATE_KEY:
+    try:
+        from backend.avalanche_key_loader import auto_load_funded_account_key
+        subnet_name = os.getenv("AVALANCHE_SUBNET_NAME", "ChaosStarNetwork")
+        PRIVATE_KEY = auto_load_funded_account_key(subnet_name=subnet_name, silent=True)
+        if PRIVATE_KEY:
+            os.environ["ADMIN_PRIVATE_KEY"] = PRIVATE_KEY
+    except Exception:
+        pass
 
-# Web3 provider via Alchemy RPC
-ALCHEMY_AVAX_RPC = f"https://avalanche-mainnet.g.alchemy.com/v2/{ALCHEMY_KEY}"
-w3 = Web3(Web3.HTTPProvider(ALCHEMY_AVAX_RPC))
+if not PRIVATE_KEY:
+    raise RuntimeError(
+        "Missing ADMIN_PRIVATE_KEY. "
+        "Please either:\n"
+        "  1. Set ADMIN_PRIVATE_KEY in .env, or\n"
+        "  2. Configure Avalanche CLI subnet with a funded account\n"
+        "     (The system will auto-discover the admin key from the subnet)"
+    )
 
-admin_account = w3.eth.account.from_key(PRIVATE_KEY)
+ALCHEMY_KEY = os.getenv("ALCHEMY_KEY")
+
+# Use subnet RPC if available, otherwise use Alchemy
+try:
+    try:
+        from backend.config import AVALANCHE_RPC
+        USE_SUBNET_RPC = True
+    except ImportError:
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+        from backend.config import AVALANCHE_RPC
+        USE_SUBNET_RPC = True
+except Exception:
+    USE_SUBNET_RPC = False
+
+if USE_SUBNET_RPC and AVALANCHE_RPC:
+    # Use subnet RPC for admin operations
+    w3 = Web3(Web3.HTTPProvider(AVALANCHE_RPC))
+    admin_account = w3.eth.account.from_key(PRIVATE_KEY)
+    # Still initialize Alchemy for balance checks if key is available
+    if ALCHEMY_KEY:
+        alchemy = Alchemy(
+            api_key=ALCHEMY_KEY,
+            network=Network.AVALANCHE_MAINNET
+        )
+    else:
+        alchemy = None
+else:
+    # Fallback to Alchemy if subnet RPC not available
+    if not ALCHEMY_KEY:
+        raise RuntimeError("Missing ALCHEMY_KEY env var (required when subnet RPC not available)")
+    
+    alchemy = Alchemy(
+        api_key=ALCHEMY_KEY,
+        network=Network.AVALANCHE_MAINNET
+    )
+    
+    # Web3 provider via Alchemy RPC
+    ALCHEMY_AVAX_RPC = f"https://avalanche-mainnet.g.alchemy.com/v2/{ALCHEMY_KEY}"
+    w3 = Web3(Web3.HTTPProvider(ALCHEMY_AVAX_RPC))
+    admin_account = w3.eth.account.from_key(PRIVATE_KEY)
 
 
 def verify_signature(address: str, message: str, signature: str) -> bool:

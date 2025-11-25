@@ -6,6 +6,17 @@ import {SaraktDigitalID} from "../src/contracts/SaraktDigitalID.sol";
 import {SaraktTreasury} from "../src/contracts/SaraktTreasury.sol";
 import {SaraktLandV2} from "../src/contracts/SaraktLandV2.sol";
 
+interface ITreasury {
+    function depositERC20(address token, uint256 amount) external;
+    receive() external payable;
+}
+
+interface IDigitalID {
+    function ids(address user) external view returns (
+        string memory username, string memory emailHash, uint256 registeredAt, bool active
+    );
+}
+
 contract CheckDeployment is Script {
     function run() external {
         string memory addressesJson = vm.readFile("./deployments/addresses.json");
@@ -26,7 +37,7 @@ contract CheckDeployment is Script {
     }
     
     function _checkContract(string memory name, address addr) internal view {
-        console.log("\n---", name, "---");
+        console.log("\n[", name, "]");
         if (addr == address(0)) {
             console.log("Status: NOT DEPLOYED");
             return;
@@ -36,33 +47,29 @@ contract CheckDeployment is Script {
         console.log("Code size:", addr.code.length, "bytes");
         
         if (addr.code.length > 0) {
-            console.log("Status: DEPLOYED ✓");
+            console.log("Status: DEPLOYED [OK]");
         } else {
-            console.log("Status: ADDRESS HAS NO CODE ✗");
+            console.log("Status: ADDRESS HAS NO CODE [FAIL]");
         }
     }
     
     function _verifyIntegration(address landAddr, address treasuryAddr, address digitalIDAddr) internal view {
         console.log("\n=== Verifying Contract Integration ===");
         
-        try SaraktLandV2(landAddr).treasury() returns (address treasury) {
-            if (treasury == treasuryAddr) {
-                console.log("✓ Land -> Treasury connection: OK");
-            } else {
-                console.log("✗ Land -> Treasury connection: MISMATCH");
-            }
-        } catch {
-            console.log("✗ Could not read Land.treasury()");
-        }
+        SaraktLandV2 land = SaraktLandV2(landAddr);
         
-        try SaraktLandV2(landAddr).digitalID() returns (address digitalID) {
-            if (digitalID == digitalIDAddr) {
-                console.log("✓ Land -> DigitalID connection: OK");
+        address treasuryAddrFromContract = address(land.treasury());
+        if (treasuryAddrFromContract == treasuryAddr) {
+            console.log("[OK] Land -> Treasury connection: OK");
             } else {
-                console.log("✗ Land -> DigitalID connection: MISMATCH");
+            console.log("[FAIL] Land -> Treasury connection: MISMATCH");
             }
-        } catch {
-            console.log("✗ Could not read Land.digitalID()");
+        
+        address digitalIDAddrFromContract = address(land.digitalID());
+        if (digitalIDAddrFromContract == digitalIDAddr) {
+            console.log("[OK] Land -> DigitalID connection: OK");
+            } else {
+            console.log("[FAIL] Land -> DigitalID connection: MISMATCH");
         }
         
         try SaraktLandV2(landAddr).salesActive() returns (bool active) {
@@ -105,18 +112,18 @@ contract CheckDeployment is Script {
     
     function _findSubstring(bytes memory data, bytes memory pattern) internal pure returns (uint256) {
         if (pattern.length > data.length) {
-            return type(uint256).max);
+            return type(uint256).max;
         }
         
         for (uint256 i = 0; i <= data.length - pattern.length; i++) {
-            bool match = true;
+            bool isMatch = true;
             for (uint256 j = 0; j < pattern.length; j++) {
                 if (data[i + j] != pattern[j]) {
-                    match = false;
+                    isMatch = false;
                     break;
                 }
             }
-            if (match) {
+            if (isMatch) {
                 return i;
             }
         }

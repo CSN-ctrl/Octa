@@ -17,28 +17,45 @@ if (typeof console !== "undefined") {
       message.includes("Removing intrinsics.%WeakMapPrototype%") ||
       message.includes("Removing intrinsics.%DatePrototype%") ||
       message.includes("lockdown-install.js") ||
+      message.includes("inpage.js") ||
       (message.includes("getOrInsert") && message.includes("Removing")) ||
       (message.includes("toTemporalInstant") && message.includes("Removing"))
     );
   };
   
+  const isCSPWarning = (message: string): boolean => {
+    const msg = message.toLowerCase();
+    return (
+      msg.includes("content-security-policy") &&
+      (msg.includes("blocked") || msg.includes("violates") || msg.includes("directive")) &&
+      (msg.includes("default-src 'none'") || 
+       msg.includes("script-src-elem") || 
+       msg.includes("img-src") ||
+       msg.includes("inpage.js") ||
+       msg.includes("sandbox eval code") ||
+       msg.includes("favicon.ico") ||
+       msg.includes("consider using a hash") ||
+       msg.includes("consider using a nonce"))
+    );
+  };
+  
   console.log = (...args: any[]) => {
     const message = String(args.join(" "));
-    if (!isSESMessage(message)) {
+    if (!isSESMessage(message) && !isCSPWarning(message)) {
       originalLog.apply(console, args);
     }
   };
   
   console.info = (...args: any[]) => {
     const message = String(args.join(" "));
-    if (!isSESMessage(message)) {
+    if (!isSESMessage(message) && !isCSPWarning(message)) {
       originalInfo.apply(console, args);
     }
   };
   
   console.warn = (...args: any[]) => {
     const message = String(args.join(" "));
-    if (!isSESMessage(message)) {
+    if (!isSESMessage(message) && !isCSPWarning(message)) {
       originalWarn.apply(console, args);
     }
   };

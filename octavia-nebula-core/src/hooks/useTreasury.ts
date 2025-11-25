@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
-import { getTreasuryContract, getERC20Contract, CONTRACT_ADDRESSES } from "@/lib/contracts";
+import { getTreasuryContract, getERC20Contract, CONTRACT_ADDRESSES, hasTreasuryContract } from "@/lib/contracts";
 import { toast } from "sonner";
 
 export interface TreasuryBalances {
@@ -16,12 +16,91 @@ export function useTreasury() {
   const [loading, setLoading] = useState(false);
 
   const fetchBalances = useCallback(async () => {
+    // Check if treasury contract address is available (check both function and direct property)
+    const hasTreasury = hasTreasuryContract() && CONTRACT_ADDRESSES.treasury && CONTRACT_ADDRESSES.treasury.trim() !== "";
+    
+    if (!hasTreasury) {
+      console.debug("Treasury contract address not set, skipping balance fetch");
+      setBalances({
+        avax: "0",
+        tokens: {},
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
+      // Double-check before calling to avoid errors
+      if (!CONTRACT_ADDRESSES.treasury || CONTRACT_ADDRESSES.treasury.trim() === "") {
+        throw new Error("Treasury contract address not set");
+      }
+      
+      // Verify contract is deployed by checking if code exists
+      const { getRpcProvider } = await import("@/lib/wallet");
+      const provider = getRpcProvider();
+      if (provider) {
+        try {
+          // Add timeout to code check
+          const codeCheckPromise = provider.getCode(CONTRACT_ADDRESSES.treasury);
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Code check timeout")), 5000)
+          );
+          const code = await Promise.race([codeCheckPromise, timeoutPromise]);
+          if (!code || code === "0x") {
+            console.debug("Treasury contract not deployed at address:", CONTRACT_ADDRESSES.treasury);
+            setBalances({
+              avax: "0",
+              tokens: {},
+            });
+            setLoading(false);
+            return;
+          }
+        } catch (codeError: any) {
+          // Handle timeout or deployment errors gracefully
+          if (codeError.message?.includes("not deployed") || 
+              codeError.message?.includes("timeout") ||
+              codeError.message?.includes("Code check timeout")) {
+            console.debug("Treasury contract not deployed at address:", CONTRACT_ADDRESSES.treasury);
+            setBalances({
+              avax: "0",
+              tokens: {},
+            });
+            setLoading(false);
+            return;
+          }
+          // Re-throw unexpected errors
+          throw codeError;
+        }
+      }
+      
       const treasuryContract = getTreasuryContract();
       
-      // Fetch AVAX balance
-      const avaxBalance = await treasuryContract.balanceAVAX();
+      // Fetch AVAX balance with error handling for BAD_DATA and timeouts
+      let avaxBalance = 0n;
+      try {
+        // Add timeout to balanceAVAX call
+        const balancePromise = treasuryContract.balanceAVAX();
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Contract call timeout")), 10000)
+        );
+        avaxBalance = await Promise.race([balancePromise, timeoutPromise]);
+      } catch (error: any) {
+        // Handle BAD_DATA errors and timeouts (contract not deployed or function doesn't exist)
+        const isTimeout = error.message?.includes("timeout") || error.message?.includes("Contract call timeout");
+        const isBadData = error.code === "BAD_DATA" || error.message?.includes("could not decode");
+        
+        if (isBadData || isTimeout) {
+          console.debug("Treasury contract balanceAVAX() function unavailable, contract not deployed, or call timed out");
+          setBalances({
+            avax: "0",
+            tokens: {},
+          });
+          setLoading(false);
+          return;
+        }
+        throw error;
+      }
       
       // Fetch token balances if dummy token address is available
       const tokenBalances: Record<string, { balance: string; symbol: string; decimals: number }> = {};
@@ -50,8 +129,32 @@ export function useTreasury() {
         tokens: tokenBalances,
       });
     } catch (error: any) {
-      console.error("Error fetching treasury balances:", error);
-      toast.error("Failed to fetch treasury balances");
+      // Handle BAD_DATA errors (contract not deployed or function doesn't exist)
+      if (error.code === "BAD_DATA" || error.message?.includes("could not decode")) {
+        console.debug("Treasury contract balanceAVAX() function unavailable or contract not deployed");
+        setBalances({
+          avax: "0",
+          tokens: {},
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Only show error toast if it's not a missing address error
+      if (!error.message?.includes("not set") && !error.message?.includes("not deployed")) {
+        console.error("Error fetching treasury balances:", error);
+        // Don't show toast for expected errors
+        if (!error.message?.includes("timeout")) {
+          console.warn("Treasury balance fetch failed:", error.message);
+        }
+      } else {
+        console.debug("Treasury contract not available:", error.message);
+      }
+      // Set default balances on error
+      setBalances({
+        avax: "0",
+        tokens: {},
+      });
     } finally {
       setLoading(false);
     }

@@ -39,7 +39,7 @@ export default function PurchaseConfirmation() {
   }, [address, checkDigitalID]);
 
   const handlePrintDeed = async () => {
-    if (!plotId || !address || !hasDigitalID) {
+    if (!plotId || !address) {
       toast.error("Missing information for deed generation");
       return;
     }
@@ -127,8 +127,8 @@ export default function PurchaseConfirmation() {
               {hasDigitalID ? (
                 <Badge className="bg-green-500">Active</Badge>
               ) : (
-                <Badge variant="outline" className="border-yellow-500 text-yellow-500">
-                  Required
+                <Badge variant="outline" className="border-blue-500 text-blue-500">
+                  Optional
                 </Badge>
               )}
             </div>
@@ -156,16 +156,16 @@ export default function PurchaseConfirmation() {
             ) : (
               <div className="space-y-4">
                 <p className="text-muted-foreground">
-                  A Digital ID is required to complete your plot purchase. Please create one to proceed.
+                  A Digital ID is optional but recommended for enhanced features and identity verification.
                 </p>
                 <Button
-                  variant="cosmic"
+                  variant="outline"
                   onClick={() => navigate("/digital-id?redirect=/purchase-confirmation", { 
                     state: { plotId, txHash, price, currency } 
                   })}
                 >
                   <User className="h-4 w-4 mr-2" />
-                  Create Digital ID
+                  Create Digital ID (Optional)
                 </Button>
               </div>
             )}
@@ -173,8 +173,6 @@ export default function PurchaseConfirmation() {
         </Card>
 
         {/* Purchase Details */}
-        {hasDigitalID && (
-          <>
             <Card className="glass border-primary/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -273,8 +271,6 @@ export default function PurchaseConfirmation() {
                 </div>
               </CardContent>
             </Card>
-          </>
-        )}
       </div>
     </div>
   );
