@@ -1,0 +1,21 @@
+{
+  "fields": {
+    "activation_date": "",
+    "blockchain_name": "ChaosStar Network",
+    "buyer_signature": "",
+    "citizen_id": "",
+    "coordinates": "5, 10",
+    "date_of_issue": "2025-11-28",
+    "email": "john@example.com",
+    "nft_token_id": "42",
+    "owner_name": "John Doe",
+    "plot_id": "SP-0042",
+    "seller_signature": "",
+    "transaction_hash": "0x1234567890abcdef",
+    "unique_identifier": "LOC-bc1039e8",
+    "wallet_address": "0x005dc956f359695fdc276b6a74fc47c4993a9c29994c5c1d94d568afef990e1c9a277fbd7b",
+    "zone_type": "Residential"
+  },
+  "generated_at": "2025-11-28T12:26:39+02:00",
+  "template_id": "land-ownership-certificate"
+}
