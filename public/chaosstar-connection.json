@@ -1,0 +1,16 @@
+{
+  "chaosstar_network": {
+    "name": "ChaosStar Network",
+    "blockchain_id": "4q1KP4TH6tiJSwX3xrx9Qx7qsSa9HpqyyC7fWMt2kcJBmWXUZ",
+    "rpc_endpoint": "http://localhost:8545",
+    "stargate_rpc": "http://localhost:8545",
+    "backend_api": "http://localhost:5001",
+    "vm_api": "http://127.0.0.1:36027/ext/bc/4q1KP4TH6tiJSwX3xrx9Qx7qsSa9HpqyyC7fWMt2kcJBmWXUZ/chaosstarapi",
+    "chain_id": 8088,
+    "network_type": "local",
+    "native_token": "xBGL"
+  },
+  "connection_type": "chaosstar_vm",
+  "created_at": "2025-01-27T00:00:00Z",
+  "updated_at": "2025-01-27T00:00:00Z"
+}
