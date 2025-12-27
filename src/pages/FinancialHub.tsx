@@ -5,7 +5,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useLandPlots } from "@/hooks/useLandPlots";
 import { useEffect, useState, useMemo } from "react";
-import { getPortfolio, projectPortfolio, getLoanEligibility } from "@/lib/api";
+import * as supabaseService from "@/lib/supabase-service";
 import { getRpcProvider } from "@/lib/wallet";
 import { ethers } from "ethers";
 import { animate, stagger } from "animejs";
@@ -68,17 +68,16 @@ export default function FinancialHub() {
           try {
             console.log(`📡 Fetching plots for ${addr.slice(0, 6)}...${addr.slice(-4)}`);
             
-            // Priority 1: Try Registry API (port 8000) - most reliable for PlotRegistry
+            // Priority 1: Try Supabase - most reliable
             try {
-              const { getRegistryPlotsByOwner } = await import("@/lib/api");
-              const plotIds = await getRegistryPlotsByOwner(addr);
-              if (plotIds && plotIds.length > 0) {
-                console.log(`✅ Found ${plotIds.length} plots from Registry API for ${addr.slice(0, 6)}...${addr.slice(-4)}`);
-                plotIds.forEach(id => allOwnedPlots.add(id));
+              const plots = await supabaseService.getPlots({ ownerWallet: addr });
+              if (plots && plots.length > 0) {
+                console.log(`✅ Found ${plots.length} plots from Supabase for ${addr.slice(0, 6)}...${addr.slice(-4)}`);
+                plots.forEach(plot => allOwnedPlots.add(plot.id));
                 continue; // Success, move to next address
               }
             } catch (error: any) {
-              console.debug(`Registry API failed for ${addr}, trying contract:`, error.message);
+              console.debug(`Supabase failed for ${addr}, trying contract:`, error.message);
             }
 
             // Priority 2: Fallback to contract query
@@ -135,108 +134,58 @@ export default function FinancialHub() {
         return;
       }
       try {
-        // Priority 1: Try backend portfolio API
-        const portfolio = await getPortfolio(address).catch(() => null);
+        // Priority 1: Try Supabase portfolios
+        const supabasePortfolios = await supabaseService.getPortfolios(address);
         
-        if (portfolio?.portfolio) {
-          setPortfolioData(portfolio.portfolio);
-          console.log(`✅ Portfolio loaded from backend`);
+        if (supabasePortfolios && supabasePortfolios.length > 0) {
+          const primaryPortfolio = supabasePortfolios.find(p => p.status === 'active') || supabasePortfolios[0];
+          setPortfolioData({
+            wallet: address,
+            portfolio_type: "primary",
+            holdings: [],
+            total_value: Number(primaryPortfolio.current_value || 0),
+            source: "supabase"
+          });
+          console.log(`✅ Portfolio loaded from Supabase`);
           return;
         }
         
-        // Priority 2: Create portfolio from Registry API data
+        // Priority 2: Create portfolio from Supabase plots
         try {
-          const { getRegistryPlotsByOwner, getRegistryPlot } = await import("@/lib/api");
-          const { CONTRACT_ADDRESSES, PLOT_REGISTRY_ABI } = await import("@/lib/contracts");
-          const plotIds = await getRegistryPlotsByOwner(address);
+          const plots = await supabaseService.getPlots({ ownerWallet: address });
           
-          if (plotIds && plotIds.length > 0) {
+          if (plots && plots.length > 0) {
             // Fetch detailed plot data and create holdings
-            const holdings = await Promise.all(
-              plotIds.slice(0, 100).map(async (plotId) => {
-                try {
-                  const plot = await getRegistryPlot(plotId);
-                  // Convert price from wei to xBGL
-                  const priceInWei = BigInt(plot.price || "0");
-                  const priceInXBGL = Number(ethers.formatEther(priceInWei));
-                  
-                  // Try to get additional metadata from contract
-                  let contractMetadata = null;
-                  try {
-                    const provider = getRpcProvider();
-                    if (provider && CONTRACT_ADDRESSES.plotRegistry) {
-                      const contract = new ethers.Contract(
-                        CONTRACT_ADDRESSES.plotRegistry,
-                        PLOT_REGISTRY_ABI,
-                        provider
-                      );
-                      const metadata = await contract.getPlotMetadata(plotId);
-                      contractMetadata = {
-                        x: Number(metadata.x),
-                        y: Number(metadata.y),
-                        level: Number(metadata.level),
-                        issued: metadata.issued,
-                        price: metadata.price,
-                        planetId: metadata.planetId,
-                      };
-                    }
-                  } catch (e) {
-                    console.debug(`Failed to fetch contract metadata for plot ${plotId}:`, e);
-                  }
+            const holdings = plots.slice(0, 100).map((plot) => {
+              const priceInXBGL = 100; // Default price, can be enhanced with metadata
                   
                   return {
                     asset_type: "plot",
-                    identifier: String(plotId),
-                    cost_basis: priceInXBGL || 100,
-                    current_value: priceInXBGL || 100,
+                identifier: String(plot.id),
+                cost_basis: priceInXBGL,
+                current_value: priceInXBGL,
                     yield_annual: 0.05,
                     metadata: {
-                      plotId,
-                      x: plot.x,
-                      y: plot.y,
-                      level: plot.level,
-                      planetId: plot.planetId,
-                      price: priceInXBGL,
-                      priceWei: plot.price,
-                      contractMetadata,
-                      source: "registry",
+                  plotId: plot.id,
+                  x: plot.coord_x,
+                  y: plot.coord_y,
+                  zoneType: plot.zone_type,
+                  buildingStage: plot.building_stage,
+                  productionRate: plot.production_rate,
+                  source: "supabase",
                       fetchedAt: new Date().toISOString(),
-                      // Deed information (can be added if available from backend)
                       documents: {
                         deed: {
-                          plotId,
-                          coordinates: `(${plot.x}, ${plot.y})`,
-                          level: plot.level,
+                      plotId: plot.id,
+                      coordinates: `(${plot.coord_x}, ${plot.coord_y})`,
+                      zoneType: plot.zone_type,
                           price: priceInXBGL,
                           currency: "xBGL",
                         }
                       }
                     }
                   };
-                } catch (e) {
-                  console.debug(`Failed to fetch plot ${plotId}:`, e);
-                  // Fallback to basic holding
-                  return {
-                    asset_type: "plot",
-                    identifier: String(plotId),
-                    cost_basis: 100,
-                    current_value: 100,
-                    yield_annual: 0.05,
-                    metadata: { 
-                      plotId, 
-                      source: "registry",
-                      documents: {
-                        deed: {
-                          plotId,
-                          price: 100,
-                          currency: "xBGL",
-                        }
-                      }
-                    }
-                  };
-                }
-              })
-            );
+            });
             
             if (holdings.length > 0) {
               const totalValue = holdings.reduce((sum, h) => sum + (h.cost_basis || 100), 0);
@@ -245,14 +194,14 @@ export default function FinancialHub() {
                 portfolio_type: "primary",
                 holdings,
                 total_value: totalValue,
-                source: "registry"
+                source: "supabase"
               });
-              console.log(`📊 Created portfolio from Registry API: ${holdings.length} plots`);
+              console.log(`📊 Created portfolio from Supabase: ${holdings.length} plots`);
               return;
             }
           }
         } catch (error: any) {
-          console.debug("Registry API not available for portfolio:", error.message);
+          console.debug("Supabase plots not available for portfolio:", error.message);
         }
         
         // Priority 3: Create portfolio from blockchain data (allUserPlots)
@@ -437,34 +386,44 @@ export default function FinancialHub() {
           return;
         }
 
-        // Priority 2: Try backend API (non-blocking, fallback)
-        const [p, pPrimary, proj] = await Promise.all([
-          getPortfolio(address).catch(() => null),
-          getPortfolio(address, "primary").catch(() => null),
-          projectPortfolio({ wallet: address }).catch(() => null),
-        ]);
+        // Priority 2: Use Supabase portfolios
+        const supabasePortfolios = await supabaseService.getPortfolios(address);
 
         if (!cancelled) {
           let primaryPortfolioData = null;
 
-          // Handle backend responses
-          if (p?.portfolios) {
-            primaryPortfolioData = p.primary || p.portfolios.primary || pPrimary?.portfolio || null;
-            setSpeculativePortfolio(p.speculative || p.portfolios.secondary || null);
+          // Handle Supabase portfolios
+          if (supabasePortfolios && supabasePortfolios.length > 0) {
+            const primaryPortfolio = supabasePortfolios.find(p => 
+              p.status === 'active' && (!p.name || p.name.toLowerCase().includes('primary'))
+            ) || supabasePortfolios[0];
+            
+            const speculativePortfolio = supabasePortfolios.find(p => 
+              p.status === 'active' && p.name && p.name.toLowerCase().includes('speculative')
+            );
+
+            if (primaryPortfolio) {
+              primaryPortfolioData = {
+                wallet: address,
+                portfolio_type: "primary",
+                holdings: [],
+                total_value: Number(primaryPortfolio.current_value || 0),
+                source: "supabase"
+              };
             setPortfolioData(primaryPortfolioData);
-          } else if (p?.portfolio) {
-            const portfolio = p.portfolio;
-            if (portfolio.portfolio_type === "primary") {
-              primaryPortfolioData = portfolio;
-              setPortfolioData(portfolio);
-            } else {
-              setSpeculativePortfolio(portfolio);
             }
-          } else if (pPrimary?.portfolio) {
-            primaryPortfolioData = pPrimary.portfolio;
-            setPortfolioData(pPrimary.portfolio);
+
+            if (speculativePortfolio) {
+              setSpeculativePortfolio({
+                wallet: address,
+                portfolio_type: "speculative",
+                holdings: [],
+                total_value: Number(speculativePortfolio.current_value || 0),
+                source: "supabase"
+              });
+            }
           } else {
-            // Backend unavailable - use blockchain data if available
+            // Supabase unavailable - use blockchain data if available
             // Use the detailed portfolio data from the first useEffect if available
             if (portfolioData && portfolioData.holdings && portfolioData.holdings.length > 0) {
               primaryPortfolioData = portfolioData;
@@ -497,10 +456,6 @@ export default function FinancialHub() {
               primaryPortfolioData = blockchainPortfolio;
               setPortfolioData(blockchainPortfolio);
             }
-          }
-          
-          if (proj) {
-            setProjection(proj);
           }
           
           // Merge any additional plots from allUserPlots that aren't in the portfolio

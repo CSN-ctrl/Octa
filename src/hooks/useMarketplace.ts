@@ -1,24 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
-import { db, MarketplaceListing, generateId } from "@/lib/local-db";
+import * as supabaseService from "@/lib/supabase-service";
+import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
-// Re-export MarketplaceListing type for compatibility
-export type { MarketplaceListing };
+type MarketplaceListing = Tables<"marketplace_listings">;
 
-export function useMarketplace() {
+export function useMarketplace(filters?: {
+  assetType?: string;
+  status?: string;
+  sellerWallet?: string;
+}) {
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await db.marketplaceListings
-        .where('status')
-        .equals('active')
-        .sortBy('listed_at');
-      
-      // Reverse to get newest first
-      setListings(data.reverse());
+      const data = await supabaseService.getMarketplaceListings({
+        ...filters,
+        status: filters?.status || 'active',
+      });
+      setListings(data);
     } catch (error: any) {
       console.error("Error fetching listings:", error);
       toast.error("Failed to fetch marketplace listings");
@@ -26,10 +28,25 @@ export function useMarketplace() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     fetchListings();
+
+    // Subscribe to real-time updates
+    const subscription = supabaseService.subscribeToMarketplace((listing) => {
+      setListings((prev) => {
+        const index = prev.findIndex((l) => l.id === listing.id);
+        if (index >= 0) {
+          return prev.map((l) => (l.id === listing.id ? listing : l));
+        }
+        return [...prev, listing];
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [fetchListings]);
 
   const createListing = async (data: {
@@ -42,23 +59,16 @@ export function useMarketplace() {
     metadata?: any;
   }) => {
     try {
-      const id = generateId('listing');
-      const now = new Date().toISOString();
-      
-      const listing: MarketplaceListing = {
-        id,
+      await supabaseService.createMarketplaceListing({
         seller_wallet: data.seller_wallet,
         asset_type: data.asset_type,
         asset_id: data.asset_id,
         price: data.price,
         token_type: data.token_type || 'xBGL',
-        description: data.description,
-        metadata: data.metadata || {},
+        description: data.description || null,
+        metadata: data.metadata || null,
         status: 'active',
-        listed_at: now,
-      };
-
-      await db.marketplaceListings.add(listing);
+      });
       toast.success("Listing created successfully");
       await fetchListings();
     } catch (error: any) {
@@ -69,7 +79,7 @@ export function useMarketplace() {
 
   const purchaseListing = async (listingId: string, buyerWallet: string) => {
     try {
-      await db.marketplaceListings.update(listingId, {
+      await supabaseService.updateMarketplaceListing(listingId, {
         status: 'sold',
         buyer_wallet: buyerWallet,
         sold_at: new Date().toISOString(),

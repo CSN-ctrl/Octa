@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLandPlots } from "./useLandPlots";
 import { useTreasury } from "./useTreasury";
-import { listPlanets, getStarSystem, getSubnetStatus, getStarSystem as apiGetStarSystem } from "@/lib/api";
+import * as supabaseService from "@/lib/supabase-service";
 
 export interface RealPlanetStats {
   name: string;
@@ -83,21 +83,26 @@ export function useRealPlanetStats() {
         }]
       };
 
-      // Try to fetch real planets from API
+      // Try to fetch real planets from Supabase
       try {
-        const planetsResponse = await listPlanets();
-        if (planetsResponse?.planets && Array.isArray(planetsResponse.planets)) {
-          // Map real planets from API
+        const planets = await supabaseService.getPlanets();
+        if (planets && Array.isArray(planets)) {
+          // Map real planets from Supabase
           const realPlanets: Record<string, RealPlanetStats> = {};
 
-          for (const planet of planetsResponse.planets) {
+          for (const planet of planets) {
             // Try to get subnet info for the planet's star system
             let subnetInfo = null;
             if (planet.star_system_id) {
               try {
-                const systemResponse = await apiGetStarSystem(planet.star_system_id);
-                if (systemResponse?.star_system?.subnet_id) {
-                  subnetInfo = await getSubnetStatus(systemResponse.star_system.subnet_id).catch(() => null);
+                const system = await supabaseService.getStarSystemById(planet.star_system_id);
+                if (system?.subnet_id) {
+                  // Subnet info is in the star system
+                  subnetInfo = {
+                    subnet_id: system.subnet_id,
+                    chain_id: system.chain_id,
+                    rpc_url: system.rpc_url,
+                  };
                 }
               } catch (e) {
                 console.warn("Could not fetch subnet info for planet:", e);

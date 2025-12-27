@@ -1,14 +1,21 @@
 /**
- * Hook for managing plot purchases
+ * Hook for managing plot purchases - using Supabase
  */
 
 import { useState, useEffect } from "react";
-import { getPurchasesByAddress, getOwnedPlotsFromRegistry } from "@/lib/registry-sync";
-import { PlotPurchase, PlotRegistry } from "@/lib/local-db";
+import { getTransactions, getPlotsByOwner } from "@/lib/supabase-service";
+
+export interface PlotPurchase {
+  plot_id: number;
+  buyer_address: string;
+  purchase_price: string;
+  transaction_hash: string;
+  timestamp: string;
+}
 
 export function usePlotPurchases(address?: string) {
   const [purchases, setPurchases] = useState<PlotPurchase[]>([]);
-  const [ownedPlots, setOwnedPlots] = useState<PlotRegistry[]>([]);
+  const [ownedPlots, setOwnedPlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,13 +28,28 @@ export function usePlotPurchases(address?: string) {
     const fetchPurchases = async () => {
       setLoading(true);
       try {
-        const [purchaseData, ownedData] = await Promise.all([
-          getPurchasesByAddress(address),
-          getOwnedPlotsFromRegistry(address),
-        ]);
+        // Get transactions for this address (plot purchases)
+        const transactions = await getTransactions({
+          fromAddress: address,
+          limit: 1000,
+        });
         
-        setPurchases(purchaseData);
-        setOwnedPlots(ownedData);
+        // Filter for plot purchase transactions
+        const plotPurchases = transactions
+          .filter(tx => tx.transaction_type === "plot_purchase" || tx.token_type === "xBGL")
+          .map(tx => ({
+            plot_id: tx.plot_id || 0,
+            buyer_address: address,
+            purchase_price: tx.amount?.toString() || "0",
+            transaction_hash: tx.transaction_hash,
+            timestamp: tx.created_at || new Date().toISOString(),
+          }));
+        
+        // Get owned plots from Supabase
+        const plots = await getPlotsByOwner(address);
+        
+        setPurchases(plotPurchases);
+        setOwnedPlots(plots);
       } catch (error) {
         console.error("Failed to fetch plot purchases:", error);
       } finally {
@@ -46,15 +68,28 @@ export function usePlotPurchases(address?: string) {
     purchases,
     ownedPlots,
     loading,
-    refresh: () => {
+    refresh: async () => {
       if (address) {
-        Promise.all([
-          getPurchasesByAddress(address),
-          getOwnedPlotsFromRegistry(address),
-        ]).then(([purchaseData, ownedData]) => {
-          setPurchases(purchaseData);
-          setOwnedPlots(ownedData);
-        });
+        try {
+          const transactions = await getTransactions({
+            fromAddress: address,
+            limit: 1000,
+          });
+          const plotPurchases = transactions
+            .filter(tx => tx.transaction_type === "plot_purchase" || tx.token_type === "xBGL")
+            .map(tx => ({
+              plot_id: tx.plot_id || 0,
+              buyer_address: address,
+              purchase_price: tx.amount?.toString() || "0",
+              transaction_hash: tx.transaction_hash,
+              timestamp: tx.created_at || new Date().toISOString(),
+            }));
+          const plots = await getPlotsByOwner(address);
+          setPurchases(plotPurchases);
+          setOwnedPlots(plots);
+        } catch (error) {
+          console.error("Failed to refresh plot purchases:", error);
+        }
       }
     },
   };

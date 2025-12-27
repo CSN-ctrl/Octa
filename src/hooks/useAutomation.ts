@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { db, AutomationSetting, RecurringPayment, generateId } from "@/lib/local-db";
+import * as supabaseService from "@/lib/supabase-service";
+import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
-// Re-export types for compatibility
-export type { AutomationSetting, RecurringPayment };
+type AutomationSetting = Tables<"automation_settings">;
+type RecurringPayment = Tables<"recurring_payments">;
 
 export function useAutomation(walletAddress?: string | null) {
   const [automations, setAutomations] = useState<AutomationSetting[]>([]);
@@ -11,19 +12,17 @@ export function useAutomation(walletAddress?: string | null) {
   const [loading, setLoading] = useState(false);
 
   const fetchAutomations = useCallback(async () => {
-    if (!walletAddress) return;
+    if (!walletAddress) {
+      setAutomations([]);
+      setRecurringPayments([]);
+      return;
+    }
 
     setLoading(true);
     try {
       const [automationsData, paymentsData] = await Promise.all([
-        db.automationSettings
-          .where('owner_wallet')
-          .equals(walletAddress)
-          .toArray(),
-        db.recurringPayments
-          .where('from_wallet')
-          .equals(walletAddress)
-          .toArray(),
+        supabaseService.getAutomationSettings(walletAddress),
+        supabaseService.getRecurringPayments({ fromWallet: walletAddress }),
       ]);
 
       setAutomations(automationsData);
@@ -53,20 +52,13 @@ export function useAutomation(walletAddress?: string | null) {
     }
 
     try {
-      const id = generateId('automation');
-      const now = new Date().toISOString();
-      
-      const automation: AutomationSetting = {
-        id,
+      await supabaseService.createAutomationSetting({
         owner_wallet: walletAddress,
-        portfolio_id: data.portfolio_id,
+        portfolio_id: data.portfolio_id || null,
         automation_type: data.automation_type,
         enabled: true,
         config: data.config,
-        created_at: now,
-      };
-
-      await db.automationSettings.add(automation);
+      });
       toast.success("Automation created successfully");
       await fetchAutomations();
     } catch (error: any) {
@@ -77,7 +69,7 @@ export function useAutomation(walletAddress?: string | null) {
 
   const toggleAutomation = async (id: string, enabled: boolean) => {
     try {
-      await db.automationSettings.update(id, { enabled });
+      await supabaseService.updateAutomationSetting(id, { enabled });
       toast.success(`Automation ${enabled ? 'enabled' : 'disabled'}`);
       await fetchAutomations();
     } catch (error: any) {
@@ -99,23 +91,16 @@ export function useAutomation(walletAddress?: string | null) {
     }
 
     try {
-      const id = generateId('payment');
-      const now = new Date().toISOString();
-      
-      const payment: RecurringPayment = {
-        id,
+      await supabaseService.createRecurringPayment({
         from_wallet: walletAddress,
-        to_wallet: data.to_wallet,
+        to_wallet: data.to_wallet || null,
         amount: data.amount,
         token_type: data.token_type,
         frequency: data.frequency,
         next_payment_date: data.next_payment_date,
         enabled: true,
-        created_at: now,
         payment_count: 0,
-      };
-
-      await db.recurringPayments.add(payment);
+      });
       toast.success("Recurring payment created");
       await fetchAutomations();
     } catch (error: any) {

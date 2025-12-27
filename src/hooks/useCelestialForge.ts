@@ -2,23 +2,13 @@ import { useState, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "sonner";
-import {
-  spawnStarSystem as apiSpawnStarSystem,
-  spawnPlanet as apiSpawnPlanet,
-  getForgeToolsStatus,
-  listStarSystems as apiListStarSystems,
-  getStarSystem as apiGetStarSystem,
-  listPlanets as apiListPlanets,
-  getPlanet as apiGetPlanet,
-  updateStarSystemStatus as apiUpdateStarSystemStatus,
-  updatePlanetStatus as apiUpdatePlanetStatus,
-  deployStarSystem as apiDeployStarSystem,
-} from "@/lib/api";
+import * as supabaseService from "@/lib/supabase-service";
+import type { Tables } from "@/integrations/supabase/types";
 import { getStarSystemContract, getPlanetContract, STAR_SYSTEM_ABI, PLANET_ABI } from "@/lib/contracts";
 import { getRpcProvider } from "@/lib/wallet";
 
-type StarSystemRow = Database['public']['Tables']['star_systems']['Row'];
-type PlanetRow = Database['public']['Tables']['planets']['Row'];
+type StarSystemRow = Tables<'star_systems'>;
+type PlanetRow = Tables<'planets'>;
 
 export interface StarSystem {
   id: string;
@@ -136,244 +126,49 @@ export function useCelestialForge() {
     }
   }, []);
 
-  // Query blockchain directly to find all StarSystem contracts using Avalanche CLI
+  // Query Supabase to find all StarSystem contracts
   const discoverStarSystemsFromBlockchain = useCallback(async (): Promise<StarSystem[]> => {
-    // Since contracts are natively integrated into the VM, we use the backend API instead
-    // of trying to discover from blockchain contracts directly
+    // Fetch from Supabase instead of backend API
     try {
-      const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
-      const response = await fetch(`${base}/api/celestial-forge/star-systems`, {
-        signal: AbortSignal.timeout(10000),
-      });
+      const systems = await supabaseService.getStarSystems();
       
-      if (response.ok) {
-        const data = await response.json();
-        const systems = (data.star_systems || data || []) as StarSystem[];
-        return systems;
-      }
+      // Convert Supabase format to StarSystem format
+      return systems.map((sys): StarSystem => ({
+        id: sys.id,
+        name: sys.name,
+        subnet_id: sys.subnet_id || null,
+        owner_wallet: sys.owner_wallet,
+        treasury_balance: sys.treasury_balance || {},
+        planets: sys.planets || [],
+        created_at: sys.created_at || new Date().toISOString(),
+        rpc_url: sys.rpc_url || null,
+        chain_id: sys.chain_id || null,
+        status: sys.status || "active",
+        contract_address: null,
+        tribute_percent: sys.tribute_percent ? Number(sys.tribute_percent) : null,
+        native_balance: null,
+        active: sys.status === "active",
+      }));
     } catch (error) {
-      console.debug("Could not fetch star systems from backend API:", error);
+      console.debug("Could not fetch star systems from Supabase:", error);
     }
     
-    // Return empty array if backend API is not available
+    // Return empty array if Supabase is not available
     return [];
 
-    try {
-      // Method 1: Query backend API to get subnets (which are star systems) via Avalanche CLI
-      const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
-      
-      // Get list of subnets from backend API (VM-based)
-      const subnetsResponse = await fetch(`${base}/api/avalanche-info/subnets`, {
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-      
-      if (!subnetsResponse.ok) {
-        console.debug("Failed to get subnets list from Avalanche CLI");
-        return [];
-      }
-      
-      const subnetsData = await subnetsResponse.json();
-      // Handle both old format (subnets array) and new format (success + subnets)
-      const subnets = subnetsData.subnets || [];
-      if (!Array.isArray(subnets) || subnets.length === 0) {
-        console.debug("No subnets found or invalid response");
-        return [];
-      }
-      
-      const discoveredSystems: StarSystem[] = [];
-      
-      // For each subnet, try to find StarSystem contracts
-      for (const subnet of subnets) {
-        const subnetName = subnet.name || subnet.subnet_name;
-        if (!subnetName) continue;
-        
-        let starSystemAddress: string | null = null;
-        let blockchainData: Partial<StarSystem> | null = null;
-        
-        try {
-          // Get contracts for this subnet (star system)
-          const contractsResponse = await fetch(`${base}/api/celestial-forge/star-systems/${subnetName}/contracts`, {
-            signal: AbortSignal.timeout(5000),
-          });
-          
-          if (contractsResponse.ok) {
-            const contractsData = await contractsResponse.json();
-            
-            // Look for StarSystem contract in the contracts list
-            starSystemAddress = contractsData.addresses?.StarSystem || 
-                               contractsData.addresses?.starSystem ||
-                               (contractsData.deployment_status?.StarSystem?.address) ||
-                               null;
-            
-            if (starSystemAddress) {
-              // Fetch the actual contract data from blockchain
-              blockchainData = await fetchStarSystemFromBlockchain(starSystemAddress, subnetName);
-            }
-          }
-        } catch (error) {
-          console.debug(`Failed to get contracts for subnet ${subnetName}:`, error);
-          // Continue to add subnet even if contract fetch fails
-        }
-        
-        // Add the subnet as a star system (with or without contract data)
-        if (blockchainData) {
-          discoveredSystems.push({
-            id: subnetName,
-            name: blockchainData.name || subnetName,
-            subnet_id: blockchainData.subnet_id || subnet.subnet_id || subnet.blockchain_id || null,
-            owner_wallet: blockchainData.owner_wallet || "",
-            treasury_balance: {},
-            planets: blockchainData.planets || [],
-            created_at: new Date().toISOString(),
-            rpc_url: blockchainData.rpc_url || subnet.rpc_url || null,
-            chain_id: blockchainData.chain_id || subnet.chain_id || null,
-            status: blockchainData.status || (blockchainData.active ? "active" : "inactive"),
-            contract_address: starSystemAddress,
-            tribute_percent: blockchainData.tribute_percent || null,
-            native_balance: blockchainData.native_balance || null,
-            active: blockchainData.active || false,
-          } as StarSystem);
-        } else {
-          // If no StarSystem contract found, still add the subnet as a star system
-          // (it might be in the process of being set up)
-          discoveredSystems.push({
-            id: subnetName,
-            name: subnetName,
-            subnet_id: subnet.subnet_id || subnet.blockchain_id || null,
-            owner_wallet: "",
-            treasury_balance: {},
-            planets: [],
-            created_at: new Date().toISOString(),
-            rpc_url: subnet.rpc_url || null,
-            chain_id: subnet.chain_id || null,
-            status: subnet.status || "deploying",
-            contract_address: starSystemAddress,
-            tribute_percent: null,
-            native_balance: null,
-            active: false,
-          } as StarSystem);
-        }
-      }
-      
-      // Always include Sarakt Star System (ChaosStarNetwork)
-      const saraktSystemName = "ChaosStarNetwork";
-      const hasSarakt = discoveredSystems.some(s => 
-        s.id === "sarakt-star-system" || 
-        s.name === "Sarakt Star System" || 
-        s.subnet_id === saraktSystemName ||
-        s.id === saraktSystemName
-      );
-
-      if (!hasSarakt) {
-        // Get Sarakt Star System info from backend API or create default
-        try {
-          const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
-          const saraktResponse = await fetch(`${base}/api/celestial-forge/star-systems/sarakt-star-system`, {
-            signal: AbortSignal.timeout(5000),
-          });
-
-          if (saraktResponse.ok) {
-            const saraktData = await saraktResponse.json();
-            if (saraktData.success && saraktData.star_system) {
-              const sarakt = saraktData.star_system;
-              discoveredSystems.unshift({
-                id: sarakt.id || "sarakt-star-system",
-                name: sarakt.name || "Sarakt Star System",
-                subnet_id: sarakt.subnet_id || saraktSystemName,
-                owner_wallet: sarakt.owner_wallet || "",
-                treasury_balance: sarakt.treasury_balance || {},
-                planets: sarakt.planets || [],
-                created_at: sarakt.created_at || new Date().toISOString(),
-                rpc_url: sarakt.rpc_url || null,
-                chain_id: sarakt.chain_id || null,
-                status: sarakt.status || "active",
-                contract_address: null,
-                tribute_percent: 0, // Sarakt Star System doesn't pay tribute (it's the primary system)
-                native_balance: null,
-                active: sarakt.status === "active",
-              } as StarSystem);
-            }
-          } else {
-            // Create default Sarakt Star System if API fails
-            discoveredSystems.unshift({
-              id: "sarakt-star-system",
-              name: "Sarakt Star System",
-              subnet_id: saraktSystemName,
-              owner_wallet: "",
-              treasury_balance: {},
-              planets: ["sarakt-prime", "zythera"],
-              created_at: new Date().toISOString(),
-              rpc_url: null,
-              chain_id: null,
-              status: "active",
-              contract_address: null,
-            tribute_percent: 0, // Sarakt Star System doesn't pay tribute
-            native_balance: null,
-            active: true,
-          } as StarSystem);
-          }
-        } catch (error) {
-          console.debug("Failed to fetch Sarakt Star System from API, using default:", error);
-          // Create default Sarakt Star System
-          discoveredSystems.unshift({
-            id: "sarakt-star-system",
-            name: "Sarakt Star System",
-            subnet_id: saraktSystemName,
-            owner_wallet: "",
-            treasury_balance: {},
-            planets: ["sarakt-prime", "zythera"],
-            created_at: new Date().toISOString(),
-            rpc_url: null,
-            chain_id: null,
-            status: "active",
-            contract_address: null,
-            tribute_percent: 0, // Sarakt Star System doesn't pay tribute
-            native_balance: null,
-            active: true,
-          } as StarSystem);
-        }
-      }
-
-      return discoveredSystems;
-    } catch (error) {
-      console.error("Error discovering star systems from blockchain:", error);
-      // Even on error, return Sarakt Star System as fallback
-      return [{
-        id: "sarakt-star-system",
-        name: "Sarakt Star System",
-        subnet_id: "ChaosStarNetwork",
-        owner_wallet: "",
-        treasury_balance: {},
-        planets: ["sarakt-prime", "zythera"],
-        created_at: new Date().toISOString(),
-        rpc_url: null,
-        chain_id: null,
-        status: "active",
-        contract_address: null,
-            tribute_percent: 0, // Sarakt Star System doesn't pay tribute
-            native_balance: null,
-            active: true,
-          } as StarSystem];
-    }
   }, [fetchStarSystemFromBlockchain]);
 
   // Get Sarakt Star System (always available)
   const getSaraktStarSystem = useCallback(async (): Promise<StarSystem> => {
     try {
-      const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
-      const saraktResponse = await fetch(`${base}/api/celestial-forge/star-systems/sarakt-star-system`, {
-        signal: AbortSignal.timeout(5000),
-      });
-
-      if (saraktResponse.ok) {
-        const saraktData = await saraktResponse.json();
-        if (saraktData.success && saraktData.star_system) {
-          const sarakt = saraktData.star_system;
+      // Try to get from Supabase first
+      const sarakt = await supabaseService.getStarSystemById("sarakt-star-system");
+      if (sarakt) {
           return {
-            id: sarakt.id || "sarakt-star-system",
-            name: sarakt.name || "Sarakt Star System",
+          id: sarakt.id,
+          name: sarakt.name,
             subnet_id: sarakt.subnet_id || "ChaosStarNetwork",
-            owner_wallet: sarakt.owner_wallet || "",
+          owner_wallet: sarakt.owner_wallet,
             treasury_balance: sarakt.treasury_balance || {},
             planets: sarakt.planets || ["sarakt-prime", "zythera"],
             created_at: sarakt.created_at || new Date().toISOString(),
@@ -381,14 +176,13 @@ export function useCelestialForge() {
             chain_id: sarakt.chain_id || null,
             status: sarakt.status || "active",
             contract_address: null,
-            tribute_percent: 0, // Sarakt Star System doesn't pay tribute (it's the primary system)
+          tribute_percent: sarakt.tribute_percent ? Number(sarakt.tribute_percent) : 0,
             native_balance: null,
-            active: sarakt.status === "active" || true,
+          active: sarakt.status === "active",
           } as StarSystem;
-        }
       }
     } catch (error) {
-      console.debug("Failed to fetch Sarakt Star System from API, using default:", error);
+      console.debug("Failed to fetch Sarakt Star System from Supabase, using default:", error);
     }
 
     // Default Sarakt Star System
@@ -434,50 +228,36 @@ export function useCelestialForge() {
         console.debug("Blockchain discovery failed, using Sarakt only:", error);
       }
 
-      // If we only have Sarakt, try backend API as additional fallback
+      // If we only have Sarakt, try Supabase as additional fallback
       if (allSystems.length === 1) {
         try {
-          const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
-          const response = await fetch(`${base}/api/celestial-forge/star-systems`, {
-            signal: AbortSignal.timeout(5000),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const systems = (data.star_systems || data || []) as StarSystem[];
+          const systems = await supabaseService.getStarSystems();
             
-            // Add systems from backend (excluding Sarakt)
-            for (const system of systems) {
-              const isSarakt = system.id === "sarakt-star-system" || 
-                              system.name === "Sarakt Star System";
+          // Add systems from Supabase (excluding Sarakt)
+          for (const sys of systems) {
+            const isSarakt = sys.id === "sarakt-star-system" || 
+                            sys.name === "Sarakt Star System";
               if (!isSarakt) {
-                // Try to enhance with blockchain data if contract address exists
-                const contractAddress = (system as any).contract_address || 
-                                      (system as any).metadata?.contract_address;
-                
-                if (contractAddress) {
-                  try {
-                    const blockchainData = await fetchStarSystemFromBlockchain(contractAddress, system.id);
-                    if (blockchainData) {
                       allSystems.push({
-                        ...system,
-                        ...blockchainData,
-                        id: system.id,
-                        created_at: system.created_at,
+                id: sys.id,
+                name: sys.name,
+                subnet_id: sys.subnet_id || null,
+                owner_wallet: sys.owner_wallet,
+                treasury_balance: sys.treasury_balance || {},
+                planets: sys.planets || [],
+                created_at: sys.created_at || new Date().toISOString(),
+                rpc_url: sys.rpc_url || null,
+                chain_id: sys.chain_id || null,
+                status: sys.status || "active",
+                contract_address: null,
+                tribute_percent: sys.tribute_percent ? Number(sys.tribute_percent) : null,
+                native_balance: null,
+                active: sys.status === "active",
                       } as StarSystem);
-                      continue;
-                    }
-                  } catch (error) {
-                    console.debug(`Failed to fetch blockchain data for system ${system.id}:`, error);
-                  }
-                }
-                
-                allSystems.push(system);
-              }
             }
           }
         } catch (error) {
-          console.debug("Backend API fetch failed:", error);
+          console.debug("Supabase fetch failed:", error);
         }
       }
 
@@ -523,19 +303,12 @@ export function useCelestialForge() {
         throw new Error("Tribute must be between 0-20%");
       }
 
-      // Check for duplicate names via backend API
-      const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
+      // Check for duplicate names via Supabase
       try {
-        const checkResponse = await fetch(`${base}/api/celestial-forge/star-systems`, {
-          signal: AbortSignal.timeout(5000),
-        });
-        if (checkResponse.ok) {
-          const data = await checkResponse.json();
-          const systems = (data.star_systems || data || []) as StarSystem[];
-          const existingSystem = systems.find((s: StarSystem) => s.name === name);
+        const systems = await supabaseService.getStarSystems();
+        const existingSystem = systems.find((s) => s.name === name);
       if (existingSystem) {
         throw new Error('Star system name already exists');
-          }
         }
       } catch (error: any) {
         // If check fails, continue (might be network issue)
@@ -548,49 +321,37 @@ export function useCelestialForge() {
 
       // Balance check removed - allowing mock star system creation
 
-      toast.info("Creating star system with Avalanche CLI...");
+      toast.info("Creating star system...");
 
-      // Call backend API to create subnet using Avalanche CLI (real mode)
-      let apiResult;
-      try {
-        apiResult = await apiSpawnStarSystem({
+      // Create star system in Supabase
+      const starSystemData = await supabaseService.createStarSystem({
           name,
           owner_wallet: address,
           tribute_percent: tributePercent,
-          mock: false, // Use real Avalanche CLI to create actual subnets
-        });
-      } catch (error: any) {
-        // Network error - backend might not be running
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            "Backend API is not reachable. Please start the backend server:\n" +
-            "cd backend && uvicorn app:app --reload\n\n" +
-            "Then ensure it's running on http://localhost:5001"
-          );
-        }
-        throw error;
-      }
+        status: "deploying",
+        planets: [],
+        treasury_balance: {},
+      });
 
-      if (!apiResult.success) {
-        throw new Error(apiResult.error || "Failed to create star system");
-      }
-
-      const starSystemData = apiResult.star_system;
-
-      // Star system is already created in backend via API call
-      // No need to store in Supabase - backend handles persistence
-
-      toast.success(
-        `Star system "${name}" creation initiated! ${apiResult.message || ''}`
-      );
-
-      // Show next steps if available
-      if (apiResult.next_steps && apiResult.next_steps.length > 0) {
-        toast.info(`Next: ${apiResult.next_steps[0]}`);
-      }
+      toast.success(`Star system "${name}" created successfully!`);
 
       await fetchStarSystems();
-      return starSystemData;
+      return {
+        id: starSystemData.id,
+        name: starSystemData.name,
+        subnet_id: starSystemData.subnet_id,
+        owner_wallet: starSystemData.owner_wallet,
+        treasury_balance: starSystemData.treasury_balance || {},
+        planets: starSystemData.planets || [],
+        created_at: starSystemData.created_at || new Date().toISOString(),
+        rpc_url: starSystemData.rpc_url,
+        chain_id: starSystemData.chain_id,
+        status: starSystemData.status || "deploying",
+        contract_address: null,
+        tribute_percent: starSystemData.tribute_percent ? Number(starSystemData.tribute_percent) : null,
+        native_balance: null,
+        active: false,
+      } as StarSystem;
     } catch (error: any) {
       console.error("Error spawning star system:", error);
       toast.error(error.message || "Failed to spawn star system");
@@ -625,21 +386,14 @@ export function useCelestialForge() {
         throw new Error("You don't own this star system");
       }
 
-      // Check for duplicate planet names via backend API
-      const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
+      // Check for duplicate planet names via Supabase
       try {
-        const checkResponse = await fetch(`${base}/api/celestial-forge/planets`, {
-          signal: AbortSignal.timeout(5000),
-        });
-        if (checkResponse.ok) {
-          const data = await checkResponse.json();
-          const planets = (data.planets || data || []) as Planet[];
+        const planets = await supabaseService.getPlanets({ starSystemId });
           const existingPlanet = planets.find(
-            (p: Planet) => p.star_system_id === starSystemId && p.name === planetName
+          (p) => p.star_system_id === starSystemId && p.name === planetName
           );
       if (existingPlanet) {
         throw new Error('Planet name already exists in this star system');
-          }
         }
       } catch (error: any) {
         // If check fails, continue (might be network issue)
@@ -650,50 +404,36 @@ export function useCelestialForge() {
         }
       }
 
-      // Balance check removed - allowing mock planet creation
+      toast.info("Creating planet...");
 
-      toast.info("Creating planet with Avalanche CLI...");
-
-      // Call backend API to create planet/validator node (real mode)
-      let apiResult;
-      try {
-        apiResult = await apiSpawnPlanet({
+      // Create planet in Supabase
+      const planetData = await supabaseService.createPlanet({
           name: planetName,
           star_system_id: starSystemId,
-          star_system_name: starSystem.name,
           owner_wallet: address,
           planet_type: planetType,
-          mock: false, // Use real Avalanche CLI to create actual nodes
-        });
-      } catch (error: any) {
-        // Network error - backend might not be running
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            "Backend API is not reachable. Please start the backend server:\n" +
-            "cd backend && uvicorn app:app --reload\n\n" +
-            "Then ensure it's running on http://localhost:5001"
-          );
-        }
-        throw error;
-      }
+        node_type: "master",
+        status: "deploying",
+      });
 
-      if (!apiResult.success) {
-        throw new Error(apiResult.error || "Failed to create planet");
-      }
-
-      const planetData = apiResult.planet;
-
-      // Planet is already created in backend via API call
-      // No need to store in Supabase - backend handles persistence
-
-      // Show next steps if available
-      if (apiResult.next_steps && apiResult.next_steps.length > 0) {
-        toast.info(`Next: ${apiResult.next_steps[0]}`);
-      }
+      // Update star system to include this planet
+      const updatedPlanets = [...(starSystem.planets || []), planetData.id];
+      await supabaseService.updateStarSystem(starSystemId, {
+        planets: updatedPlanets,
+      });
 
       toast.success(`Planet "${planetName}" created successfully!`);
       await fetchStarSystems();
-      return planetData;
+      return {
+        id: planetData.id,
+        name: planetData.name,
+        star_system_id: planetData.star_system_id || starSystemId,
+        node_type: (planetData.node_type as "master" | "validator") || "master",
+        owner_wallet: planetData.owner_wallet,
+        ip_address: planetData.ip_address,
+        status: (planetData.status as "active" | "deploying" | "inactive") || "deploying",
+        created_at: planetData.created_at || new Date().toISOString(),
+      } as Planet;
     } catch (error: any) {
       console.error("Error spawning planet:", error);
       toast.error(error.message || "Failed to spawn planet");
@@ -755,14 +495,14 @@ export function useCelestialForge() {
           await updateStarSystemOnBlockchain(contractAddress, { status });
           toast.success(`Star system status updated on blockchain to ${status}`);
         } catch (blockchainError: any) {
-          console.error("Blockchain update failed, falling back to API:", blockchainError);
-          // Fall back to API update
-          await apiUpdateStarSystemStatus(systemId, status);
-          toast.success(`Star system status updated to ${status} (via API)`);
+          console.error("Blockchain update failed, falling back to Supabase:", blockchainError);
+          // Fall back to Supabase update
+          await supabaseService.updateStarSystem(systemId, { status });
+          toast.success(`Star system status updated to ${status} (via Supabase)`);
         }
       } else {
-        // No contract address or deploying status - use API
-        await apiUpdateStarSystemStatus(systemId, status);
+        // No contract address or deploying status - use Supabase
+        await supabaseService.updateStarSystem(systemId, { status });
         toast.success(`Star system status updated to ${status}`);
       }
 
@@ -779,7 +519,7 @@ export function useCelestialForge() {
   const updatePlanetStatus = async (planetId: string, status: "active" | "deploying" | "inactive") => {
     setLoading(true);
     try {
-      await apiUpdatePlanetStatus(planetId, status);
+      await supabaseService.updatePlanet(planetId, { status });
       toast.success(`Planet status updated to ${status}`);
       await fetchStarSystems();
     } catch (error: any) {
@@ -794,10 +534,10 @@ export function useCelestialForge() {
   const deployStarSystem = async (systemId: string) => {
     setLoading(true);
     try {
-      const result = await apiDeployStarSystem(systemId);
-      toast.success(result.message || "Star system deployment initiated");
+      await supabaseService.updateStarSystem(systemId, { status: "deploying" });
+      toast.success("Star system deployment initiated");
       await fetchStarSystems();
-      return result;
+      return { success: true, message: "Deployment initiated" };
     } catch (error: any) {
       console.error("Error deploying star system:", error);
       toast.error(error.message || "Failed to deploy star system");
@@ -809,8 +549,26 @@ export function useCelestialForge() {
 
   const getStarSystemDetails = async (systemId: string) => {
     try {
-      const result = await apiGetStarSystem(systemId);
-      return result;
+      const system = await supabaseService.getStarSystemById(systemId);
+      if (!system) {
+        throw new Error("Star system not found");
+      }
+      return {
+        success: true,
+        star_system: {
+          id: system.id,
+          name: system.name,
+          subnet_id: system.subnet_id,
+          owner_wallet: system.owner_wallet,
+          treasury_balance: system.treasury_balance || {},
+          planets: system.planets || [],
+          created_at: system.created_at,
+          rpc_url: system.rpc_url,
+          chain_id: system.chain_id,
+          status: system.status,
+          tribute_percent: system.tribute_percent,
+        },
+      };
     } catch (error: any) {
       console.error("Error getting star system details:", error);
       throw error;
@@ -819,8 +577,24 @@ export function useCelestialForge() {
 
   const getPlanetDetails = async (planetId: string) => {
     try {
-      const result = await apiGetPlanet(planetId);
-      return result;
+      const planet = await supabaseService.getPlanetById(planetId);
+      if (!planet) {
+        throw new Error("Planet not found");
+      }
+      return {
+        success: true,
+        planet: {
+          id: planet.id,
+          name: planet.name,
+          star_system_id: planet.star_system_id,
+          owner_wallet: planet.owner_wallet,
+          planet_type: planet.planet_type,
+          node_type: planet.node_type,
+          ip_address: planet.ip_address,
+          status: planet.status,
+          created_at: planet.created_at,
+        },
+      };
     } catch (error: any) {
       console.error("Error getting planet details:", error);
       throw error;

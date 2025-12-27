@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { getTreasury } from "@/lib/api";
+import * as supabaseService from "@/lib/supabase-service";
 
 export interface TreasuryBalances {
   avax: string;
   tokens: Record<string, { balance: string; symbol: string; decimals: number }>;
 }
 
-export function useTreasury() {
+export function useTreasury(treasuryAddress?: string) {
   const [balances, setBalances] = useState<TreasuryBalances>({
     avax: "0",
     tokens: {},
@@ -14,44 +14,52 @@ export function useTreasury() {
   const [loading, setLoading] = useState(false);
 
   const fetchBalances = useCallback(async () => {
+    if (!treasuryAddress) {
+      setBalances({ avax: "0", tokens: {} });
+      return;
+    }
+
     setLoading(true);
     try {
-      // Fetch treasury from backend API (VM-native)
-      const treasuryData = await getTreasury();
+      // Fetch treasury balance from Supabase
+      const balanceData = await supabaseService.getUserBalance(treasuryAddress);
       
-      // Backend returns: { address, balance_xbgl, balance_chaos, balance_xen }
+      if (balanceData) {
       const tokenBalances: Record<string, { balance: string; symbol: string; decimals: number }> = {};
       
-      // Map VM token types to frontend format
-      if (treasuryData.balance_xbgl) {
+        // Map Supabase balance data to frontend format
+        if (balanceData.xbgl_balance) {
         tokenBalances["xBGL"] = {
-          balance: treasuryData.balance_xbgl,
+            balance: balanceData.xbgl_balance.toString(),
           symbol: "xBGL",
           decimals: 9,
         };
       }
-      if (treasuryData.balance_chaos) {
+        if (balanceData.chaos_balance) {
         tokenBalances["CHAOS"] = {
-          balance: treasuryData.balance_chaos,
+            balance: balanceData.chaos_balance.toString(),
           symbol: "CHAOS",
           decimals: 9,
           };
       }
-      if (treasuryData.balance_xen) {
-        tokenBalances["XEN"] = {
-          balance: treasuryData.balance_xen,
-          symbol: "XEN",
-          decimals: 9,
+        if (balanceData.avax_balance) {
+          tokenBalances["AVAX"] = {
+            balance: balanceData.avax_balance.toString(),
+            symbol: "AVAX",
+            decimals: 18,
         };
       }
       
       // Use xBGL as AVAX equivalent for display
       setBalances({
-        avax: treasuryData.balance_xbgl || "0",
+          avax: balanceData.xbgl_balance?.toString() || "0",
         tokens: tokenBalances,
       });
+      } else {
+        setBalances({ avax: "0", tokens: {} });
+      }
     } catch (error: any) {
-      console.debug("Error fetching treasury balances from VM:", error);
+      console.debug("Error fetching treasury balances:", error);
       // Set default balances on error
       setBalances({
         avax: "0",
@@ -60,15 +68,42 @@ export function useTreasury() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [treasuryAddress]);
 
   useEffect(() => {
     fetchBalances();
     
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchBalances, 30000);
-    return () => clearInterval(interval);
-  }, [fetchBalances]);
+    // Subscribe to real-time updates if address provided
+    if (treasuryAddress) {
+      const subscription = supabaseService.subscribeToUserBalance(treasuryAddress, (balance) => {
+        const tokenBalances: Record<string, { balance: string; symbol: string; decimals: number }> = {};
+        
+        if (balance.xbgl_balance) {
+          tokenBalances["xBGL"] = {
+            balance: balance.xbgl_balance.toString(),
+            symbol: "xBGL",
+            decimals: 9,
+          };
+        }
+        if (balance.chaos_balance) {
+          tokenBalances["CHAOS"] = {
+            balance: balance.chaos_balance.toString(),
+            symbol: "CHAOS",
+            decimals: 9,
+          };
+        }
+        
+        setBalances({
+          avax: balance.xbgl_balance?.toString() || "0",
+          tokens: tokenBalances,
+        });
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [treasuryAddress, fetchBalances]);
 
   return {
     balances,

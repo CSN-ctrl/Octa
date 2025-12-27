@@ -33,6 +33,7 @@ import StarSystemPage from "./pages/StarSystem";
 import PlanetPage from "./pages/Planet";
 import CityPage from "./pages/City";
 import CelestialForgePage from "./pages/CelestialForge";
+import BlockchainTest from "./pages/BlockchainTest";
 import { loadContractAddresses } from "@/lib/contracts";
 
 const queryClient = new QueryClient();
@@ -95,6 +96,7 @@ const App = () => {
                                 <Route path="/planet/:planetId" element={<PlanetDetail />} />
                                 <Route path="/black-market-dex" element={<BlackMarketDEX />} />
                                 <Route path="/nanofiber-research" element={<NanofiberResearch />} />
+                                <Route path="/blockchain-test" element={<BlockchainTest />} />
                                 <Route path="*" element={<NotFound />} />
                               </Routes>
                             </div>

@@ -172,7 +172,34 @@ export class ChaosStarClient {
     chain_id: number;
     blockchain_id: string;
   }> {
-    return this.request('/api/health');
+    // Check Supabase connection instead of backend API
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.from("star_systems").select("id").limit(1);
+      
+      if (!error) {
+        return {
+          status: "healthy",
+          health: "healthy",
+          stargate_connected: true,
+          chain: "ChaosStar",
+          chain_id: 43113,
+          blockchain_id: "ChaosStarNetwork",
+        };
+      }
+    } catch (error) {
+      console.debug("Supabase health check failed:", error);
+    }
+    
+    // Fallback response
+    return {
+      status: "degraded",
+      health: "degraded",
+      stargate_connected: false,
+      chain: "ChaosStar",
+      chain_id: 43113,
+      blockchain_id: "ChaosStarNetwork",
+    };
   }
 
   async getChainInfo(): Promise<{

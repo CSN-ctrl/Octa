@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { initLocalDB } from "@/lib/local-db";
+// IndexedDB removed - using Supabase only
 
 // Suppress SES lockdown console messages (informational messages from WalletConnect's security system)
 // These messages indicate SES is removing experimental/non-standard JavaScript intrinsics for security
@@ -124,12 +124,10 @@ if (!rootElement) {
   throw new Error("Root element not found. Make sure index.html has a <div id='root'></div> element.");
 }
 
-// Initialize local database before rendering app
-initLocalDB().then(() => {
-  // Wrap app initialization in try-catch to handle errors
-  try {
-    createRoot(rootElement).render(<App />);
-  } catch (error) {
+// Render app (IndexedDB removed - using Supabase only)
+try {
+  createRoot(rootElement).render(<App />);
+} catch (error) {
   console.error("Failed to render app:", error);
   rootElement.innerHTML = `
     <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; font-family: system-ui, sans-serif; background: #1a1a1a; color: #fff;">
@@ -148,25 +146,5 @@ initLocalDB().then(() => {
       </div>
     </div>
   `;
-    throw error;
-  }
-}).catch((error) => {
-  console.error("Failed to initialize local database:", error);
-  // Still try to render app even if DB init fails
-  try {
-    createRoot(rootElement).render(<App />);
-  } catch (renderError) {
-    console.error("Failed to render app:", renderError);
-    rootElement.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; font-family: system-ui, sans-serif; background: #1a1a1a; color: #fff;">
-        <div>
-          <h1 style="font-size: 24px; margin-bottom: 16px; color: #ef4444;">Failed to load application</h1>
-          <p style="margin-bottom: 16px; color: #999;">${renderError instanceof Error ? renderError.message : "Unknown error"}</p>
-          <button onclick="window.location.reload()" style="padding: 8px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;">
-            Reload Page
-          </button>
-        </div>
-      </div>
-    `;
-  }
-});
+  throw error;
+}

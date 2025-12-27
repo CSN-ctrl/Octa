@@ -1,10 +1,10 @@
 /**
  * useChainAccounts Hook
- * Fetches accounts (keys) and their balances from the ChaosStar backend
+ * Fetches accounts (keys) and their balances from Supabase
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { getApiUrl } from "@/env";
+import * as supabaseService from "@/lib/supabase-service";
 
 export interface ChainAccount {
   id: string;
@@ -29,17 +29,24 @@ export function useChainAccounts() {
     setError(null);
     
     try {
-      const baseUrl = getApiUrl();
-      const response = await fetch(`${baseUrl}/api/accounts`, {
-        signal: AbortSignal.timeout(5000),
-      });
+      // Get all user balances from Supabase
+      const balances = await supabaseService.getAllUserBalances();
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch accounts: ${response.statusText}`);
-      }
+      // Convert to ChainAccount format
+      const accountsData: ChainAccount[] = balances.map((balance) => ({
+        id: balance.wallet_address,
+        name: `Account ${balance.wallet_address.slice(0, 6)}...${balance.wallet_address.slice(-4)}`,
+        wallet_address: balance.wallet_address,
+        public_key: null,
+        type: "wallet",
+        balances: {
+          xBGL: (balance.xbgl_balance || 0).toString(),
+          CHAOS: (balance.chaos_balance || 0).toString(),
+          XEN: "0", // Not stored in user_balances, would need to add if needed
+        },
+      }));
       
-      const data = await response.json();
-      setAccounts(data.accounts || []);
+      setAccounts(accountsData);
     } catch (err: any) {
       console.error("Failed to fetch chain accounts:", err);
       setError(err.message || "Failed to fetch accounts");
@@ -52,16 +59,19 @@ export function useChainAccounts() {
   // Fetch balance for a specific address
   const fetchBalance = useCallback(async (address: string) => {
     try {
-      const baseUrl = getApiUrl();
-      const response = await fetch(`${baseUrl}/api/balance/${address}`, {
-        signal: AbortSignal.timeout(5000),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch balance: ${response.statusText}`);
+      const balance = await supabaseService.getUserBalance(address);
+      if (balance) {
+        return {
+          xBGL: (balance.xbgl_balance || 0).toString(),
+          CHAOS: (balance.chaos_balance || 0).toString(),
+          XEN: "0",
+        };
       }
-      
-      return await response.json();
+      return {
+        xBGL: "0",
+        CHAOS: "0",
+        XEN: "0",
+      };
     } catch (err: any) {
       console.error("Failed to fetch balance:", err);
       return null;

@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { GalaxyVisualization } from "@/components/GalaxyVisualization";
 import { Card as UICard } from "@/components/ui/card";
 import { fetchPlots, type BackendPlot } from "@/lib/api";
+import * as supabaseService from "@/lib/supabase-service";
 import { OctagonalGrid } from "@/components/OctagonalGrid";
 import { NetworkTopology } from "@/components/NetworkTopology";
 import { useNavigate } from "react-router-dom";
@@ -69,24 +70,17 @@ export default function UnifiedUniverse() {
   const [planetsList, setPlanetsList] = useState<any[]>([]);
   const displayLoading = forgeLoading || planetsStatsLoading;
   
-  // Fetch planets from API
+  // Fetch planets from Supabase
   useEffect(() => {
     async function fetchPlanets() {
       try {
-        const { listPlanets } = await import("@/lib/api");
-        // listPlanets already has timeout handling built-in (5 second timeout)
-        const result = await listPlanets();
-        
-        if (result?.planets && Array.isArray(result.planets)) {
-          setPlanetsList(result.planets);
+        const planets = await supabaseService.getPlanets();
+        if (planets && Array.isArray(planets)) {
+          setPlanetsList(planets);
         }
       } catch (error: any) {
-        // Silently handle errors - backend might not be available
-        if (error.name === "AbortError" || error.message?.includes("timeout")) {
-          console.debug("Planets API request timed out - backend may not be available");
-        } else {
-          console.debug("Could not fetch planets from API:", error);
-        }
+        // Silently handle errors - Supabase might not be available
+        console.debug("Could not fetch planets from Supabase:", error);
       }
     }
     fetchPlanets();
@@ -205,27 +199,20 @@ export default function UnifiedUniverse() {
       console.debug("Failed to fetch plots from contract:", error.message);
     }
     
-    // Fallback to portfolio API (if backend is available)
+    // Fallback to Supabase (if available)
     try {
-      const { getPortfolio } = await import("@/lib/api");
-      const portfolioData = await getPortfolio(address, "primary").catch(() => null);
+      const plots = await supabaseService.getPlots({ ownerWallet: address });
       
-      if (portfolioData?.portfolio?.holdings || portfolioData?.holdings) {
-        const holdings = portfolioData.portfolio?.holdings || portfolioData.holdings || [];
-        // Extract plot IDs from holdings where asset_type is "plot"
-        const plotIds = holdings
-          .filter((h: any) => h.asset_type === "plot" && h.identifier)
-          .map((h: any) => parseInt(h.identifier, 10))
-          .filter((id: number) => !isNaN(id));
-        
-        console.log("Plots from portfolio:", plotIds);
+      if (plots && plots.length > 0) {
+        const plotIds = plots.map(plot => plot.id);
+        console.log("Plots from Supabase:", plotIds);
         setOwnedPlotIds(plotIds);
       } else {
-        console.log("No portfolio data found");
+        console.log("No plots found in Supabase");
         setOwnedPlotIds([]);
       }
     } catch (error) {
-      console.debug("Failed to fetch owned plots from portfolio:", error);
+      console.debug("Failed to fetch owned plots from Supabase:", error);
       setOwnedPlotIds([]);
     }
   };
@@ -273,52 +260,40 @@ export default function UnifiedUniverse() {
       try {
         console.log("Fetching plots for city:", city.name);
         
-        // Priority 1: Fetch from local database registry (fastest)
+        // Fetch plots from Supabase
         let registryPlots: any[] = [];
         try {
-          const { getAvailablePlots, getOwnedPlotsFromRegistry, syncPlotFromRegistry } = await import("@/lib/registry-sync");
+          const { getPlots, getPlotsByOwner } = await import("@/lib/supabase-service");
           
-          // Get available and owned plots from local database
-          // Wrap in try-catch to handle database initialization errors gracefully
-          let availablePlots: any[] = [];
-          let ownedPlots: any[] = [];
+          // Get all plots and filter by city if needed
+          let allPlots = await getPlots({ limit: 1000 });
           
-          try {
-            availablePlots = await getAvailablePlots(1000);
-          } catch (availableError: any) {
-            console.debug("Failed to get available plots from local DB:", availableError.message);
-            // Continue with empty array
-          }
-          
+          // Get owned plots for current user
           if (address) {
-            try {
-              ownedPlots = await getOwnedPlotsFromRegistry(address);
-            } catch (ownedError: any) {
-              console.debug("Failed to get owned plots from local DB:", ownedError.message);
-              // Continue with empty array
-            }
+            const ownedPlots = await getPlotsByOwner(address);
+            // Merge owned plots (they're already in allPlots, but ensure they're marked as owned)
+            const ownedPlotIds = new Set(ownedPlots.map(p => p.id));
+            allPlots = allPlots.map(plot => ({
+              ...plot,
+              owned: ownedPlotIds.has(plot.id),
+            }));
           }
           
-          // Combine and transform to grid format
-          const allPlots = [...availablePlots, ...ownedPlots];
-          const uniquePlots = Array.from(
-            new Map(allPlots.map(p => [p.plot_id, p])).values()
-          );
-          
-          registryPlots = uniquePlots.map((plot) => ({
-            id: plot.plot_id,
-            plotId: plot.plot_id,
-            x: plot.x,
-            y: plot.y,
-            level: plot.level,
-            type: plot.purchased ? "claimed" : "unclaimed",
-            owner: plot.owner_address || undefined,
-            wallet: plot.owner_address || undefined,
-            owned: plot.purchased,
-            minted: plot.issued,
-            zone: "residential",
-            zoneType: "residential",
-            coordinates: `${plot.x},${plot.y}`,
+          // Transform to grid format
+          registryPlots = allPlots.map((plot) => ({
+            id: plot.id,
+            plotId: plot.id,
+            x: plot.coord_x || 0,
+            y: plot.coord_y || 0,
+            level: 1,
+            type: plot.owner_wallet ? "claimed" : "unclaimed",
+            owner: plot.owner_wallet || undefined,
+            wallet: plot.owner_wallet || undefined,
+            owned: !!plot.owner_wallet,
+            minted: !!plot.owner_wallet,
+            zone: plot.zone_type || "residential",
+            zoneType: plot.zone_type || "residential",
+            coordinates: `${plot.coord_x || 0},${plot.coord_y || 0}`,
             metadata: {
               ...plot,
               source: "local_registry",

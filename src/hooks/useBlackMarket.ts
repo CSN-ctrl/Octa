@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getApiBase } from "@/lib/api";
+import * as supabaseService from "@/lib/supabase-service";
 
 export interface BlackMarketStatus {
   planetId: string;
@@ -31,74 +31,44 @@ export function useBlackMarket() {
   const fetchBlackMarketStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const base = getApiBase();
-      const res = await fetch(`${base}/governance/black-market/status`);
+      // Fetch planets from Supabase to determine black market status
+      const planets = await supabaseService.getPlanets();
       
-      if (res.ok) {
-        const data = await res.json();
-        // Transform backend data to frontend format
+      // Transform Supabase data to frontend format
         const markets: Record<string, BlackMarketStatus> = {};
         
-        // Process planets from backend response
-        if (data.planets) {
-          for (const [planetId, planetData] of Object.entries(data.planets)) {
-            const planet = planetData as any;
-            markets[planetId] = {
-              planetId: planet.planet_id || planetId,
-              planetName: planet.planet_name || planetId,
-              enabled: planet.enabled || false,
-              isMainMarket: planet.is_main_market || false,
-              activationCondition: planet.activation_condition ? {
-                type: planet.activation_condition.type || "plot_sales",
-                threshold: planet.activation_condition.threshold || 100000,
-                current: planet.activation_condition.current || 0,
-                locked: planet.activation_condition.locked !== undefined ? planet.activation_condition.locked : true,
-              } : undefined,
-              liquidity: data.liquidity || { XMR: 0, Xen: 0 },
-              networkEnabled: planet.network_enabled || false,
-            };
-          }
-        } else {
-          // Fallback: Zarathis (Zythera) - always enabled, main market
-          markets["zythera"] = {
-            planetId: "zythera",
-            planetName: "Zythera",
-            enabled: true,
-            isMainMarket: true,
-            liquidity: data.liquidity || { XMR: 0, Xen: 0 },
-            networkEnabled: true, // Can scale across multiple worlds
-          };
-
-          // Octavia (Sarakt Prime) - conditional activation (locked for now)
-          markets["sarakt-prime"] = {
-            planetId: "sarakt-prime",
-            planetName: "Sarakt Prime",
-            enabled: false, // Disabled until 100k plots sold AND unlocked
-            isMainMarket: false,
-            activationCondition: {
+      // Process planets from Supabase
+      for (const planet of planets) {
+        // Check if planet has black market access via invite system
+        const hasAccess = await supabaseService.checkBlackMarketAccess(planet.owner_wallet);
+        
+        markets[planet.id] = {
+          planetId: planet.id,
+          planetName: planet.name,
+          enabled: hasAccess,
+          isMainMarket: planet.planet_type === "zythera", // Zythera is main market
+          activationCondition: planet.planet_type === "sarakt-prime" ? {
               type: "plot_sales",
               threshold: 100000,
-              current: data.octavia_plots_sold || 0,
-              locked: true, // Keep locked until user unlocks
-            },
+            current: 0, // Would need to fetch from plots table
+            locked: !hasAccess,
+          } : undefined,
             liquidity: { XMR: 0, Xen: 0 },
-            networkEnabled: false,
+          networkEnabled: hasAccess,
           };
         }
 
-        setBlackMarkets(markets);
-      } else {
-        // Fallback to default values
-        setBlackMarkets({
-          "zythera": {
+      // Fallback: Default markets if no planets found
+      if (Object.keys(markets).length === 0) {
+        markets["zythera"] = {
             planetId: "zythera",
             planetName: "Zythera",
             enabled: true,
             isMainMarket: true,
             liquidity: { XMR: 0, Xen: 0 },
             networkEnabled: true,
-          },
-          "sarakt-prime": {
+        };
+        markets["sarakt-prime"] = {
             planetId: "sarakt-prime",
             planetName: "Sarakt Prime",
             enabled: false,
@@ -111,9 +81,10 @@ export function useBlackMarket() {
             },
             liquidity: { XMR: 0, Xen: 0 },
             networkEnabled: false,
-          },
-        });
+        };
       }
+
+      setBlackMarkets(markets);
     } catch (error) {
       console.debug("Could not fetch black market status:", error);
       // Fallback to default values

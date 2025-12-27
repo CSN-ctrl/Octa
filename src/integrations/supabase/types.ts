@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -309,15 +309,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "planets_star_system_id_fkey"
-            columns: ["star_system_id"]
-            isOneToOne: false
-            referencedRelation: "star_systems"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       plots: {
         Row: {
@@ -329,6 +321,7 @@ export type Database = {
           last_tick: string | null
           metadata_cid: string | null
           owner_wallet: string | null
+          planet_id: string | null
           production_rate: number | null
           updated_at: string | null
           workers: Json | null
@@ -343,6 +336,7 @@ export type Database = {
           last_tick?: string | null
           metadata_cid?: string | null
           owner_wallet?: string | null
+          planet_id?: string | null
           production_rate?: number | null
           updated_at?: string | null
           workers?: Json | null
@@ -357,12 +351,21 @@ export type Database = {
           last_tick?: string | null
           metadata_cid?: string | null
           owner_wallet?: string | null
+          planet_id?: string | null
           production_rate?: number | null
           updated_at?: string | null
           workers?: Json | null
           zone_type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "plots_planet_id_fkey"
+            columns: ["planet_id"]
+            isOneToOne: false
+            referencedRelation: "planets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portfolio_followers: {
         Row: {
@@ -591,9 +594,11 @@ export type Database = {
           from_address: string
           id: string
           metadata: Json | null
+          plot_id: number | null
           status: string | null
           to_address: string | null
           token_type: string | null
+          transaction_type: string | null
           tx_hash: string
           type: string
         }
@@ -604,9 +609,11 @@ export type Database = {
           from_address: string
           id?: string
           metadata?: Json | null
+          plot_id?: number | null
           status?: string | null
           to_address?: string | null
           token_type?: string | null
+          transaction_type?: string | null
           tx_hash: string
           type: string
         }
@@ -617,13 +624,23 @@ export type Database = {
           from_address?: string
           id?: string
           metadata?: Json | null
+          plot_id?: number | null
           status?: string | null
           to_address?: string | null
           token_type?: string | null
+          transaction_type?: string | null
           tx_hash?: string
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_balances: {
         Row: {
@@ -657,7 +674,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_wallet_owner: { Args: { wallet_addr: string }; Returns: boolean }
+      burn_tokens: {
+        Args: {
+          p_amount: number
+          p_from_address: string
+          p_metadata?: Json
+          p_token_type?: string
+          p_tx_hash?: string
+        }
+        Returns: Json
+      }
+      get_all_balances: { Args: { p_wallet_address: string }; Returns: Json }
+      get_token_balance: {
+        Args: { p_token_type?: string; p_wallet_address: string }
+        Returns: number
+      }
+      mint_tokens: {
+        Args: {
+          p_amount: number
+          p_metadata?: Json
+          p_to_address: string
+          p_token_type?: string
+          p_tx_hash?: string
+        }
+        Returns: Json
+      }
+      transfer_tokens: {
+        Args: {
+          p_amount: number
+          p_from_address: string
+          p_metadata?: Json
+          p_to_address: string
+          p_token_type?: string
+          p_tx_hash?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       automation_type: "auto_reinvest" | "recurring_deposit" | "rebalance"

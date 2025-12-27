@@ -22,7 +22,7 @@ import { ethers } from "ethers";
 import { toast } from "sonner";
 import { getRpcProvider } from "@/lib/wallet";
 import { getERC20Contract } from "@/lib/contracts";
-import { getApiBase } from "@/lib/api";
+import * as supabaseService from "@/lib/supabase-service";
 
 // Xen token address (Zarathis token) - to be configured
 const XEN_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder - needs actual address
@@ -39,18 +39,20 @@ export default function BlackMarketDEX() {
   const [priceImpact, setPriceImpact] = useState<number>(0);
   const [blackMarketLiquidity, setBlackMarketLiquidity] = useState<{ XMR: number; Xen: number }>({ XMR: 0, Xen: 0 });
 
-  // Fetch black market liquidity from backend
+  // Fetch black market liquidity from Supabase
   useEffect(() => {
     const fetchLiquidity = async () => {
       try {
-        const base = getApiBase();
-        const res = await fetch(`${base}/governance/black-market`);
-        if (res.ok) {
-          const data = await res.json();
-          setBlackMarketLiquidity({
-            XMR: data.liquidity?.XMR || 0,
-            Xen: data.liquidity?.Xen || data.liquidity?.SC || 0
-          });
+        if (address) {
+          const hasAccess = await supabaseService.checkBlackMarketAccess(address);
+          if (hasAccess) {
+            // Get balances for black market tokens (SC/ShadowCoin)
+            const balance = await supabaseService.getUserBalance(address);
+            setBlackMarketLiquidity({
+              XMR: 0, // Would need separate table for XMR
+              Xen: Number(balance?.sc_balance || 0)
+            });
+          }
         }
       } catch (error) {
         console.debug("Could not fetch black market liquidity:", error);

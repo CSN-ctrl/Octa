@@ -55,49 +55,69 @@ export function ChaosStarProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
-      const healthData = await client.getHealth();
+      // Check Supabase connection instead of backend API
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error: supabaseError } = await supabase.from("star_systems").select("id").limit(1);
       
-      // Handle both old and new health response formats
-      const status = healthData.status || (healthData.status && healthData.status.overall) || "healthy"
-      const contractConnected = healthData.contract_connected !== undefined ? healthData.contract_connected : (healthData.stargate_connected || false)
-      const stargateConnected = healthData.stargate_connected || false
-      
-      setHealth({
-        status: typeof status === "string" ? status : status.overall || "healthy",
-        contractConnected: contractConnected,
-        stargateConnected: stargateConnected,
-        chain: healthData.chain,
-        chainId: healthData.chain_id,
-        blockchainId: healthData.blockchain_id,
-      });
-      
-      // Consider connected if Stargate is connected (primary access method)
-      setIsConnected(stargateConnected || contractConnected);
-      
-      // Only log once on initial connection
-      if (!hasLoggedConnection.current) {
-        console.log("✓ ChaosStar backend connected:", healthData);
-        hasLoggedConnection.current = true;
+      if (!supabaseError && data !== null) {
+        setHealth({
+          status: "healthy",
+          contractConnected: true,
+          stargateConnected: true,
+          chain: "ChaosStar",
+          chainId: 43113,
+          blockchainId: "ChaosStarNetwork",
+        });
+        
+        setIsConnected(true);
+        
+        // Only log once on initial connection
+        if (!hasLoggedConnection.current) {
+          console.log("✓ Supabase connected");
+          hasLoggedConnection.current = true;
+        }
+      } else {
+        // Check if it's a network error (DNS, connection refused, etc.)
+        const isNetworkError = supabaseError?.message?.includes("ERR_NAME_NOT_RESOLVED") ||
+                              supabaseError?.message?.includes("Failed to fetch") ||
+                              supabaseError?.message?.includes("NetworkError");
+        
+        if (isNetworkError) {
+          // Network error - Supabase might be unavailable, but don't treat as critical
+          setHealth({
+            status: "degraded",
+            contractConnected: false,
+            stargateConnected: false,
+            chain: "ChaosStar",
+            chainId: 43113,
+            blockchainId: "ChaosStarNetwork",
+          });
+          setIsConnected(false);
+          setError("Supabase network error - check internet connection");
+        } else {
+          throw new Error(supabaseError?.message || "Supabase connection failed");
+        }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to connect to backend";
-      const isBackendUnavailable = message.includes("Backend not available") || 
-                                   message.includes("Failed to fetch") ||
-                                   message.includes("ERR_CONNECTION_REFUSED");
+      const message = err instanceof Error ? err.message : "Failed to connect to Supabase";
+      const isNetworkError = message.includes("ERR_NAME_NOT_RESOLVED") ||
+                            message.includes("Failed to fetch") ||
+                            message.includes("NetworkError");
       
-      // Only set error if it's not a simple connection refused (backend not running)
-      if (!isBackendUnavailable) {
-      setError(message);
-      } else {
-        setError(null); // Clear error for expected backend unavailability
-      }
-      
+      setError(isNetworkError ? "Network error - Supabase unavailable" : message);
       setIsConnected(false);
-      setHealth(null);
+      setHealth({
+        status: "degraded",
+        contractConnected: false,
+        stargateConnected: false,
+        chain: "ChaosStar",
+        chainId: 43113,
+        blockchainId: "ChaosStarNetwork",
+      });
       
-      // Log disconnection only if we were previously connected and it's not expected
-      if (hasLoggedConnection.current && !isBackendUnavailable) {
-        console.warn("ChaosStar backend disconnected:", message);
+      // Log disconnection only if we were previously connected
+      if (hasLoggedConnection.current) {
+        console.warn("Supabase disconnected:", message);
         hasLoggedConnection.current = false;
       }
     } finally {

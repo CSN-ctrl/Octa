@@ -273,6 +273,13 @@ export function OctagonalGrid({
     }
     
     try {
+      // TODO: Document generation would need a Supabase function or external service
+      // For now, use client-side generation or return error
+      toast.error("Document generation not yet implemented with Supabase");
+      return;
+      
+      // Legacy code (commented out - would need Supabase Edge Function):
+      /*
       const base = (import.meta as any).env?.VITE_API_URL?.replace(/\/+$/, "") || "http://localhost:5001";
       const endpoint = format === "pdf" ? "/documents/generate/pdf" : "/documents/generate/docx";
       
@@ -304,6 +311,7 @@ export function OctagonalGrid({
       document.body.removeChild(a);
       
       toast.success(`Cadastral certificate downloaded`);
+      */
     } catch (error: any) {
       console.error("Document generation error:", error);
       toast.error("Failed to generate document");

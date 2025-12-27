@@ -1,8 +1,6 @@
-import { useState, useEffect, useRef } from "react";
-import { ethers } from "ethers";
-import { getDigitalIDContract, hasDigitalIDContract } from "@/lib/contracts";
+import { useState, useEffect } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { getRpcProvider } from "@/lib/wallet";
+import * as supabaseService from "@/lib/supabase-service";
 import { toast } from "sonner";
 
 export interface DigitalIDInfo {
@@ -15,21 +13,10 @@ export interface DigitalIDInfo {
 }
 
 export function useDigitalID() {
-  const { address, signer, isConnected } = useWallet();
+  const { address, isConnected } = useWallet();
   const [digitalID, setDigitalID] = useState<DigitalIDInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const addressesLoadAttemptedRef = useRef(false);
-
-  // Helper to add timeout to contract calls
-  const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error("Contract call timeout")), timeoutMs)
-      ),
-    ]);
-  };
 
   const checkDigitalID = async (userAddress?: string) => {
     const addr = userAddress || address;
@@ -38,120 +25,58 @@ export function useDigitalID() {
       return;
     }
 
-    // Try to load contract addresses if not already loaded
-    if (!hasDigitalIDContract() && !addressesLoadAttemptedRef.current) {
-      addressesLoadAttemptedRef.current = true;
-      try {
-        const { loadContractAddresses } = await import("@/lib/contracts");
-        await loadContractAddresses();
-      } catch (error) {
-        // Contract addresses not available yet
-      }
-    }
-
-    if (!hasDigitalIDContract()) {
-      setDigitalID(null);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
-      // Verify contract is deployed by checking code
-      const provider = getRpcProvider();
-      if (provider) {
-        try {
-          const { CONTRACT_ADDRESSES } = await import("@/lib/contracts");
-          const contractAddress = CONTRACT_ADDRESSES.digitalID;
-          if (contractAddress) {
-            const code = await withTimeout(provider.getCode(contractAddress), 5000);
-            if (!code || code === "0x") {
-              console.debug("Digital ID contract not deployed at:", contractAddress);
-              setDigitalID(null);
-              setLoading(false);
-              return;
-            }
-          }
-        } catch (codeError: any) {
-          console.debug("Failed to verify Digital ID contract code:", codeError.message);
-          setDigitalID(null);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const contract = getDigitalIDContract();
-      const idData = await withTimeout(contract.ids(addr), 10000);
-      
-      if (idData.active) {
+      const identity = await supabaseService.getDigitalIdentity(addr);
+      if (identity) {
+        // Parse name to extract first/last name if needed
+        const nameParts = identity.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
         setDigitalID({
-          firstName: idData.firstName,
-          lastName: idData.lastName,
-          email: idData.email,
-          avatarURI: idData.avatarURI,
-          registeredAt: idData.registeredAt,
-          active: idData.active,
+          firstName,
+          lastName,
+          email: '', // Not stored in Supabase schema
+          avatarURI: identity.avatar_cid || '',
+          registeredAt: BigInt(new Date(identity.created_at || '').getTime()),
+          active: true,
         });
       } else {
         setDigitalID(null);
       }
     } catch (err: any) {
-      // Handle decode errors gracefully (contract might not be deployed)
-      if (err.code === "BAD_DATA" || err.message?.includes("could not decode")) {
-        console.debug("Digital ID contract may not be deployed or unavailable:", err.message);
-        setDigitalID(null);
-      } else {
       console.error("Error checking digital ID:", err);
       setError(err.message);
       setDigitalID(null);
-      }
     } finally {
       setLoading(false);
     }
   };
 
   const registerDigitalID = async (firstName: string, lastName: string, email: string, avatarURI: string) => {
-    if (!signer) {
-      throw new Error("Wallet not connected. Please connect your wallet to register a Digital ID on Chaos Star Network.");
-    }
-
-    if (!hasDigitalIDContract()) {
-      throw new Error("Digital ID contract not available on Chaos Star Network. Please ensure the contract is deployed.");
+    if (!address) {
+      throw new Error("Wallet not connected. Please connect your wallet to register a Digital ID.");
     }
 
     setLoading(true);
     setError(null);
     try {
-      // Verify contract is deployed
-      const provider = getRpcProvider();
-      if (provider) {
-        const { CONTRACT_ADDRESSES } = await import("@/lib/contracts");
-        const contractAddress = CONTRACT_ADDRESSES.digitalID;
-        if (contractAddress) {
-          const code = await withTimeout(provider.getCode(contractAddress), 5000);
-          if (!code || code === "0x") {
-            throw new Error("Digital ID contract not deployed on Chaos Star Network");
-          }
-        }
-      }
-
-      const contract = getDigitalIDContract(signer);
-      const tx = await contract.registerID(firstName, lastName, email, avatarURI);
-      toast.success(`Transaction sent! Hash: ${tx.hash.slice(0, 10)}...`);
-      const receipt = await tx.wait();
+      await supabaseService.upsertDigitalIdentity({
+        wallet_address: address,
+        name: `${firstName} ${lastName}`.trim(),
+        avatar_cid: avatarURI || null,
+        identity_type: 'user',
+      });
       
-      if (receipt.status === 1) {
-        toast.success("Digital ID registered successfully on Chaos Star Network!");
-      } else {
-        throw new Error("Transaction failed");
-      }
+      toast.success("Digital ID registered successfully!");
       
       // Refresh digital ID after registration
       await checkDigitalID();
-      return receipt.hash;
     } catch (err: any) {
-      console.error("Error registering digital ID on blockchain:", err);
-      const errorMessage = err.reason || err.message || "Failed to register Digital ID on Chaos Star Network";
+      console.error("Error registering digital ID:", err);
+      const errorMessage = err.message || "Failed to register Digital ID";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -160,30 +85,23 @@ export function useDigitalID() {
   };
 
   const deactivateDigitalID = async () => {
-    if (!signer) {
+    if (!address) {
       throw new Error("Wallet not connected");
-    }
-
-    if (!hasDigitalIDContract()) {
-      throw new Error("Digital ID contract not available");
     }
 
     setLoading(true);
     setError(null);
     try {
-      const contract = getDigitalIDContract(signer);
-      const tx = await contract.deactivateID();
-      const receipt = await tx.wait();
-      
-      if (receipt.status === 1) {
-        toast.success("Digital ID deactivated on Chaos Star Network");
+      const identity = await supabaseService.getDigitalIdentity(address);
+      if (identity) {
+        await supabaseService.deleteDigitalIdentity(identity.id);
+        toast.success("Digital ID deactivated");
       }
       
       await checkDigitalID();
-      return receipt.hash;
     } catch (err: any) {
       console.error("Error deactivating digital ID:", err);
-      const errorMessage = err.reason || err.message || "Failed to deactivate Digital ID";
+      const errorMessage = err.message || "Failed to deactivate Digital ID";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -208,8 +126,6 @@ export function useDigitalID() {
     registerDigitalID,
     deactivateDigitalID,
     refresh: () => checkDigitalID(),
-    hasContract: hasDigitalIDContract(),
+    hasContract: true, // Always available with Supabase
   };
 }
-
-

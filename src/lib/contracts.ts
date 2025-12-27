@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { getRpcProvider } from "./wallet";
+// RPC provider removed - using Supabase only
 
 // Contract addresses - load from deployments or env
 const getContractAddresses = () => {
@@ -14,19 +14,8 @@ const getContractAddresses = () => {
     accountRegistry: import.meta.env.VITE_ACCOUNT_REGISTRY_ADDRESS || "",
   };
 
-  // Try to fetch from localStorage first (fastest, already loaded)
-  try {
-    const stored = localStorage.getItem("contract_addresses");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Accept if it has any contract address (land, accountRegistry, etc.)
-      if (parsed.land || parsed.accountRegistry || parsed.digitalID || parsed.treasury) {
-        Object.assign(addresses, parsed);
-      }
-    }
-  } catch (e) {
-    // Silently fail, will try other sources
-  }
+  // Contract addresses - localStorage removed, using environment variables only
+  // TODO: Load from Supabase app_settings table if needed
 
   // Fallback: Use known deployed AccountRegistry address if not loaded
   if (!addresses.accountRegistry || addresses.accountRegistry.trim() === "") {
@@ -211,42 +200,10 @@ export const ACCOUNT_REGISTRY_ABI = [
   "event SubAccountUnlinked(uint256 indexed parentAccountId, uint256 indexed childAccountId)",
 ];
 
-// Contract instances
+// Contract instances - DISABLED: Using Supabase only
 export function getLandContract(signer?: ethers.Signer) {
-  const landAddress = CONTRACT_ADDRESSES.land;
-  if (!landAddress || landAddress.trim() === "") {
-    throw new Error("Land contract address not set");
-  }
-  
-  // If signer is provided, use it (signer has a provider attached)
-  if (signer) {
-    return new ethers.Contract(
-      landAddress,
-      LAND_CONTRACT_ABI,
-      signer
-    );
-  }
-  
-  // Otherwise, get a read-only provider for view calls
-  const provider = getRpcProvider();
-  if (!provider) {
-    // Return null instead of throwing - allows callers to handle gracefully
-    console.debug("RPC provider not available for land contract");
-    return null;
-  }
-  
-  // Create contract with provider (for read-only operations)
-  try {
-    return new ethers.Contract(
-      landAddress,
-      LAND_CONTRACT_ABI,
-      provider
-    );
-  } catch (error: any) {
-    // Handle contract creation errors gracefully
-    console.debug("Failed to create land contract instance:", error);
-    return null;
-  }
+  console.debug("Contract access disabled - using Supabase for all data");
+  return null;
 }
 
 export function hasLandContract(): boolean {
@@ -255,24 +212,8 @@ export function hasLandContract(): boolean {
 }
 
 export function getDigitalIDContract(signer?: ethers.Signer) {
-  const digitalIDAddress = CONTRACT_ADDRESSES.digitalID;
-  if (!digitalIDAddress || digitalIDAddress.trim() === "") {
-    throw new Error("Digital ID contract address not set");
-  }
-  // Validate and normalize address to prevent name resolution
-  if (!ethers.isAddress(digitalIDAddress)) {
-    throw new Error(`Invalid digital ID contract address: ${digitalIDAddress}`);
-  }
-  const normalizedAddress = ethers.getAddress(digitalIDAddress);
-  const provider = signer || getRpcProvider();
-  if (!provider) {
-    throw new Error("No provider available for digital ID contract");
-  }
-  return new ethers.Contract(
-    normalizedAddress,
-    DIGITAL_ID_ABI,
-    provider
-  );
+  console.debug("Contract access disabled - using Supabase for digital IDs");
+  return null;
 }
 
 export function hasDigitalIDContract(): boolean {
@@ -281,29 +222,8 @@ export function hasDigitalIDContract(): boolean {
 }
 
 export function getTreasuryContract(signer?: ethers.Signer) {
-  const treasuryAddress = CONTRACT_ADDRESSES.treasury;
-  if (!treasuryAddress || treasuryAddress.trim() === "") {
-    throw new Error("Treasury contract address not set");
-  }
-  
-  // Ensure address is valid (not an ENS name) and normalize it
-  let normalizedAddress = treasuryAddress.trim();
-  if (!ethers.isAddress(normalizedAddress)) {
-    throw new Error(`Invalid treasury address: ${normalizedAddress}`);
-  }
-  normalizedAddress = ethers.getAddress(normalizedAddress); // Normalize to checksum format
-  
-  const provider = signer || getRpcProvider();
-  if (!provider) {
-    throw new Error("No provider available for treasury contract");
-  }
-  
-  // Create contract with explicit address (no name resolution)
-  return new ethers.Contract(
-    normalizedAddress,
-    TREASURY_ABI,
-    provider
-  );
+  console.debug("Contract access disabled - using Supabase for treasury");
+  return null;
 }
 
 export function hasTreasuryContract(): boolean {
@@ -312,16 +232,8 @@ export function hasTreasuryContract(): boolean {
 }
 
 export function getERC20Contract(address: string, signer?: ethers.Signer) {
-  // Validate and normalize address to prevent name resolution
-  if (!ethers.isAddress(address)) {
-    throw new Error(`Invalid ERC20 contract address: ${address}`);
-  }
-  const normalizedAddress = ethers.getAddress(address);
-  const provider = signer || getRpcProvider();
-  if (!provider) {
-    throw new Error("No provider available for ERC20 contract");
-  }
-  return new ethers.Contract(normalizedAddress, ERC20_ABI, provider);
+  console.debug("Contract access disabled - using Supabase for token balances");
+  return null;
 }
 
 // Note: xBGL is the native coin, not an ERC20 token
@@ -336,60 +248,28 @@ export function hasXBGLTokenContract(): boolean {
 export const hasCSNTokenContract = hasXBGLTokenContract;
 
 export function getPlotRegistryContract(signer?: ethers.Signer) {
-  if (!CONTRACT_ADDRESSES.plotRegistry) {
-    throw new Error("Plot registry address not set");
-  }
-  return new ethers.Contract(
-    CONTRACT_ADDRESSES.plotRegistry,
-    PLOT_REGISTRY_ABI,
-    signer || (getRpcProvider() as any)
-  );
+  console.debug("Contract access disabled - using Supabase for plot registry");
+  return null;
 }
 
 export function getStarSystemContract(address: string, signer?: ethers.Signer) {
-  if (!address || address.trim() === "") {
-    throw new Error("StarSystem contract address not set");
-  }
-  return new ethers.Contract(
-    address,
-    STAR_SYSTEM_ABI,
-    signer || (getRpcProvider() as any)
-  );
+  console.debug("Contract access disabled - using Supabase for star systems");
+  return null;
 }
 
 export function getPlanetContract(address: string, signer?: ethers.Signer) {
-  if (!address || address.trim() === "") {
-    throw new Error("Planet contract address not set");
-  }
-  return new ethers.Contract(
-    address,
-    PLANET_ABI,
-    signer || (getRpcProvider() as any)
-  );
+  console.debug("Contract access disabled - using Supabase for planets");
+  return null;
 }
 
 export function getCityContract(address: string, signer?: ethers.Signer) {
-  if (!address || address.trim() === "") {
-    throw new Error("City contract address not set");
-  }
-  return new ethers.Contract(
-    address,
-    CITY_ABI,
-    signer || (getRpcProvider() as any)
-  );
+  console.debug("Contract access disabled - using Supabase for cities");
+  return null;
 }
 
 export function getAccountRegistryContract(signer?: ethers.Signer) {
-  // Use known deployed address as fallback
-  const registryAddress = CONTRACT_ADDRESSES.accountRegistry || "0x3E95B28Fa95426F2bA996528bDa7457871e03C70";
-  if (!registryAddress || registryAddress.trim() === "") {
-    throw new Error("Account Registry contract address not set");
-  }
-  return new ethers.Contract(
-    registryAddress,
-    ACCOUNT_REGISTRY_ABI,
-    signer || (getRpcProvider() as any)
-  );
+  console.debug("Contract access disabled - using Supabase for account registry");
+  return null;
 }
 
 export function hasAccountRegistryContract(): boolean {
@@ -418,31 +298,7 @@ export async function loadContractAddresses(): Promise<boolean> {
         return controller.signal;
       };
 
-      // Try 1: Backend API
-      const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5001";
-      try {
-        const response = await fetch(`${backendUrl}/api/contracts/addresses`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          signal: createTimeoutSignal(5000),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.addresses) {
-            Object.assign(CONTRACT_ADDRESSES, data.addresses);
-            localStorage.setItem("contract_addresses", JSON.stringify(data.addresses));
-            addressesLoaded = true;
-            console.log("✓ Contract addresses loaded from backend:", data.addresses);
-            return true;
-          }
-        }
-      } catch (apiError: any) {
-        // API failed, try next source (ignore abort errors)
-        if (apiError.name !== "AbortError") {
-          console.debug("Backend API not available, trying other sources...");
-        }
-      }
+      // Try 1: Public JSON file (skip backend API - using Supabase now)
 
       // Try 2: Public JSON file (from public folder first, then deployments folder, then root)
       const filePaths = ["/addresses.json", "/deployments/addresses.json"];
@@ -460,7 +316,7 @@ export async function loadContractAddresses(): Promise<boolean> {
             if (data.land || data.accountRegistry || data.addresses?.land || data.addresses?.accountRegistry) {
               const addresses = data.addresses || data;
               Object.assign(CONTRACT_ADDRESSES, addresses);
-              localStorage.setItem("contract_addresses", JSON.stringify(addresses));
+              // localStorage removed - using Supabase only
               addressesLoaded = true;
               console.log(`✓ Contract addresses loaded from ${filePath}:`, addresses);
               return true;

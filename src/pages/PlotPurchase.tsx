@@ -33,8 +33,7 @@ import { ethers } from "ethers";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { getRpcProvider } from "@/lib/wallet";
-import { getLandContract, hasLandContract, loadContractAddresses } from "@/lib/contracts";
+// Contract access removed - using Supabase only
 import * as accountApi from "@/lib/api";
 import {
   Dialog,
@@ -94,23 +93,7 @@ export default function PlotPurchase() {
   });
   const [customPlotId, setCustomPlotId] = useState("");
   const [purchasing, setPurchasing] = useState(false);
-  const [contractAddressLoaded, setContractAddressLoaded] = useState(false);
-
-  // Load contract addresses on mount
-  useEffect(() => {
-    const loadAddresses = async () => {
-      try {
-        const loaded = await loadContractAddresses();
-        setContractAddressLoaded(loaded);
-        if (loaded) {
-          console.log("✓ Contract addresses loaded");
-        }
-      } catch (error) {
-        console.debug("Contract addresses not available:", error);
-      }
-    };
-    loadAddresses();
-  }, []);
+  // Contract addresses removed - using Supabase only
 
   // Listen for contract events (LandMinted) to refresh plot list
   useContractEvents(
@@ -129,15 +112,15 @@ export default function PlotPurchase() {
     undefined // No ID registration handler needed here
   );
 
-  // Load balance for selected wallet
+  // Load balance for selected wallet from Supabase
   useEffect(() => {
     const loadBalance = async () => {
       if (purchaseWalletType === "connected" && address) {
         try {
-          const provider = getRpcProvider();
-          if (provider) {
-            const bal = await provider.getBalance(address);
-            setPurchaseBalance(ethers.formatEther(bal));
+          const { getUserBalance } = await import("@/lib/supabase-service");
+          const balance = await getUserBalance(address);
+          if (balance) {
+            setPurchaseBalance(balance.xbgl_balance?.toString() || "0");
           }
         } catch (error) {
           console.error("Failed to load balance:", error);
@@ -156,54 +139,21 @@ export default function PlotPurchase() {
     loadBalance();
   }, [purchaseWalletType, address, selectedKeyName]);
 
-  // Check if a plot is owned by checking balanceOf for a specific address or checking if minted
+  // Check if a plot is owned using Supabase
   const checkPlotOwnership = async (plotId: number, checkAddress?: string): Promise<{ isOwned: boolean; owner: string | null }> => {
     try {
-      if (!hasLandContract()) {
-        return { isOwned: false, owner: null };
-      }
-      const contract = getLandContract();
-      const provider = contract.provider;
-      if (!provider) {
+      const { getPlotById } = await import("@/lib/supabase-service");
+      const plot = await getPlotById(plotId);
+      
+      if (!plot) {
         return { isOwned: false, owner: null };
       }
       
-      try {
-        // First check if plot is minted (activated)
-        const minted = await contract.plotMinted(plotId);
-        if (!minted) {
-          // Plot not minted yet, check pending buyer
-          const pendingBuyer = await contract.pendingBuyer(plotId).catch(() => ethers.ZeroAddress);
-          if (pendingBuyer && pendingBuyer !== ethers.ZeroAddress) {
-            return { isOwned: true, owner: pendingBuyer };
-          }
-          return { isOwned: false, owner: null };
-        }
-        
-        // Plot is minted, so it's owned by someone
-        // If we have a specific address to check, verify ownership
-        if (checkAddress) {
-          try {
-            const balance = await contract.balanceOf(checkAddress, plotId);
-            if (balance > 0n) {
-              return { isOwned: true, owner: checkAddress };
-            }
-          } catch {
-            // balanceOf call failed
-          }
-        }
-        
-        // Plot is minted but we don't know the exact owner
-        // For ERC1155, we'd need to check all possible addresses, which is impractical
-        // So we'll return that it's owned but owner is unknown
-        return { isOwned: true, owner: null };
-      } catch (error: any) {
-        // Contract call failed - might be BAD_DATA if contract not fully deployed
-        if (error.code === "BAD_DATA" || error.message?.includes("could not decode")) {
-          return { isOwned: false, owner: null };
-        }
-        throw error;
+      if (plot.owner_wallet) {
+        return { isOwned: true, owner: plot.owner_wallet };
       }
+      
+      return { isOwned: false, owner: null };
     } catch (error) {
       console.debug("Failed to check plot ownership:", error);
       return { isOwned: false, owner: null };
@@ -302,14 +252,8 @@ export default function PlotPurchase() {
           ? keyResult.private_key 
           : `0x${keyResult.private_key}`;
         
-        // Create wallet connected to Chaos Star Network RPC
-        const provider = getRpcProvider();
-        if (!provider) {
-          toast.error("Chaos Star Network RPC not available");
-          setPurchasing(false);
-          return;
-        }
-        const wallet = new ethers.Wallet(privateKey, provider);
+        // Create wallet (no RPC needed - using Supabase)
+        const wallet = new ethers.Wallet(privateKey);
         purchaseSigner = wallet;
         purchaseAddress = wallet.address;
       } else if (purchaseWalletType === "connected") {
@@ -326,138 +270,120 @@ export default function PlotPurchase() {
         return;
       }
 
-      // Check balance (including gas costs)
-      const provider = getRpcProvider();
-      if (provider) {
-        const balance = await provider.getBalance(purchaseAddress);
-        const requiredBalance = ethers.parseEther(totalCost.toString());
-        
-        // Estimate gas costs (add 20% buffer for safety)
-        let gasEstimate = 0n;
+      // Check balance from Supabase
+      const { getUserBalance, transferTokens, updatePlot, createTransaction } = await import("@/lib/supabase-service");
+      const balance = await getUserBalance(purchaseAddress);
+      
+      if (!balance || (balance.xbgl_balance || 0) < totalCost) {
+        toast.error(`Insufficient balance. You need ${totalCost} xBGL but have ${balance?.xbgl_balance || 0} xBGL.`);
+        setPurchasing(false);
+        return;
+      }
+
+      // Generate transaction hash (simulated)
+      const txHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+
+      // Transfer tokens from buyer to treasury (simulated purchase)
+      // In a real scenario, this would be a treasury address
+      const treasuryAddress = "0x0000000000000000000000000000000000000000"; // Placeholder
+      
+      for (const plotId of plotIdsArray) {
         try {
-          if (purchaseSigner && selectedPlotIds.size > 0) {
-            const contract = getLandContract(purchaseSigner);
-            const plotIds = Array.from(selectedPlotIds);
-            
-            if (plotIds.length === 1) {
-              // Single plot purchase
-              const gasPrice = await provider.getFeeData();
-              const estimatedGas = await contract.buyPlotWithAVAX.estimateGas(plotIds[0], {
-                value: ethers.parseEther(totalCost.toString())
-              });
-              gasEstimate = estimatedGas * (gasPrice.gasPrice || 25000000000n) * 120n / 100n; // 20% buffer
-            } else {
-              // Batch purchase
-              const gasPrice = await provider.getFeeData();
-              const estimatedGas = await contract.buyPlotsBatch.estimateGas(plotIds, {
-                value: ethers.parseEther(totalCost.toString())
-              });
-              gasEstimate = estimatedGas * (gasPrice.gasPrice || 25000000000n) * 120n / 100n; // 20% buffer
-            }
-          }
-        } catch (gasError) {
-          // If gas estimation fails, use a conservative estimate (50k gas * 25 gwei)
-          gasEstimate = 50000n * 25000000000n * 120n / 100n;
-        }
-        
-        const totalRequired = requiredBalance + gasEstimate;
-        if (balance < totalRequired) {
-          const shortfall = totalRequired - balance;
-          toast.error(
-            `Insufficient balance. You need ${ethers.formatEther(totalRequired)} xBGL (${totalCost} xBGL for plot + ${ethers.formatEther(gasEstimate)} xBGL for gas) but have ${ethers.formatEther(balance)} xBGL. Shortfall: ${ethers.formatEther(shortfall)} xBGL`
+          // Transfer xBGL for plot purchase
+          const transferResult = await transferTokens(
+            purchaseAddress,
+            treasuryAddress,
+            PLOT_PRICE_xBGL,
+            "xBGL"
           );
-          setPurchasing(false);
-          return;
-        }
-      }
-
-      // Check contract - try to load addresses if not available
-      if (!hasLandContract()) {
-        try {
-          const loaded = await loadContractAddresses();
-          if (!loaded || !hasLandContract()) {
-            toast.error("Land contract not deployed. Please deploy the contract first.");
-            setPurchasing(false);
-            return;
+          
+          if (!transferResult.success) {
+            throw new Error(transferResult.error || "Transfer failed");
           }
-        } catch (error) {
-          toast.error("Land contract not available. Please ensure the contract is deployed.");
-          setPurchasing(false);
-          return;
-        }
-      }
-
-      const contract = getLandContract(purchaseSigner);
-      const PLOT_PRICE_xBGL_WEI = ethers.parseEther(PLOT_PRICE_xBGL.toString());
-
-      let txHash: string | null = null;
-
-      // Purchase plots
-      if (plotIdsArray.length === 1) {
-        // Single plot purchase
-        const tx = await contract.buyPlotWithAVAX(plotIdsArray[0], { value: PLOT_PRICE_xBGL_WEI });
-        txHash = tx.hash;
-        toast.info(`Transaction sent! Hash: ${tx.hash.slice(0, 10)}...`);
-        const receipt = await tx.wait();
-        if (receipt.status === 1) {
-          toast.success(`Successfully purchased plot #${plotIdsArray[0]} for 100 xBGL!`);
-        } else {
-          toast.error("Transaction failed");
-          setPurchasing(false);
-          return;
-        }
-      } else {
-        // Batch purchase
-        const totalPrice = PLOT_PRICE_xBGL_WEI * BigInt(plotIdsArray.length);
-        const tx = await contract.buyPlotsBatch(plotIdsArray, { value: totalPrice });
-        txHash = tx.hash;
-        toast.info(`Transaction sent! Hash: ${tx.hash.slice(0, 10)}...`);
-        const receipt = await tx.wait();
-        if (receipt.status === 1) {
-          toast.success(`Successfully purchased ${plotIdsArray.length} plots for ${totalCost} xBGL!`);
-        } else {
-          toast.error("Transaction failed");
+          
+          // Update plot ownership in Supabase
+          await updatePlot(plotId, {
+            owner_wallet: purchaseAddress,
+            metadata_cid: txHash,
+          });
+          
+          // Create transaction record
+          await createTransaction({
+            transaction_hash: txHash,
+            from_address: purchaseAddress,
+            to_address: treasuryAddress,
+            amount: PLOT_PRICE_xBGL,
+            token_type: "xBGL",
+            transaction_type: "plot_purchase",
+            plot_id: plotId,
+            status: "completed",
+          });
+          
+          console.log(`✓ Purchased plot #${plotId}`);
+        } catch (error: any) {
+          console.error(`Failed to purchase plot #${plotId}:`, error);
+          toast.error(`Failed to purchase plot #${plotId}: ${error.message}`);
           setPurchasing(false);
           return;
         }
       }
       
-      // Record purchases in database and add to portfolio
-      if (txHash && purchaseAddress) {
+      toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL!`);
+      
+      // Add plots to portfolio
+      if (purchaseAddress) {
         try {
-          const { recordPlotPurchase } = await import("@/lib/registry-sync");
           const { getPortfolio, upsertPortfolio } = await import("@/lib/api");
-          const provider = getRpcProvider();
           
-          // Get transaction receipt to get block number
-          let blockNumber: number | undefined;
-          if (provider && txHash) {
-            try {
-              const receipt = await provider.getTransactionReceipt(txHash);
-              if (receipt) {
-                blockNumber = receipt.blockNumber;
-              }
-            } catch (error) {
-              console.debug("Could not get transaction receipt:", error);
-            }
+          // Get existing portfolio or create new one
+          let portfolioData;
+          try {
+            portfolioData = await getPortfolio(purchaseAddress);
+          } catch {
+            portfolioData = null;
           }
           
-          // Record each purchase in the database
-          for (const plotId of plotIdsArray) {
-            try {
-              await recordPlotPurchase(
-                plotId,
-                purchaseAddress,
-                txHash,
-                PLOT_PRICE_xBGL_WEI,
-                "xBGL",
-                blockNumber
-              );
-              console.log(`✓ Recorded purchase for plot #${plotId}`);
-            } catch (error) {
-              console.error(`Failed to record purchase for plot #${plotId}:`, error);
+          // Get existing holdings or start fresh
+          const existingHoldings = portfolioData?.portfolio?.holdings || [];
+          
+          // Add each purchased plot to portfolio
+          const newHoldings = plotIdsArray.map((plotId) => ({
+            asset_type: "plot",
+            identifier: String(plotId),
+            cost_basis: PLOT_PRICE_xBGL,
+            yield_annual: 0.05, // Default 5% annual yield for plots
+            metadata: {
+              plotId: plotId,
+              purchaseDate: new Date().toISOString(),
+              purchaseTxHash: txHash,
+              purchasePrice: PLOT_PRICE_xBGL,
+              currency: "xBGL",
+              status: "active",
             }
-          }
+          }));
+          
+          const updatedHoldings = [...existingHoldings, ...newHoldings];
+          
+          // Calculate new portfolio value
+          const newTotalValue = updatedHoldings.reduce((sum, holding) => {
+            return sum + (holding.current_value || holding.cost_basis || 0);
+          }, 0);
+          
+          // Upsert portfolio
+          await upsertPortfolio({
+            wallet: purchaseAddress,
+            portfolio: {
+              holdings: updatedHoldings,
+              total_value: newTotalValue,
+            }
+          });
+          
+          console.log(`✓ Added ${plotIdsArray.length} plot(s) to portfolio`);
+        } catch (error) {
+          console.error("Failed to update portfolio:", error);
+          // Don't fail the purchase if portfolio update fails
+        }
+      }
           
           // Get existing portfolio or create new one
           let portfolioData;

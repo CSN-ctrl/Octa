@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { db, Portfolio, generateId } from "@/lib/local-db";
+import * as supabaseService from "@/lib/supabase-service";
+import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
-// Re-export Portfolio type for compatibility
-export type { Portfolio };
+type Portfolio = Tables<"portfolios">;
 
 export function usePortfolio(walletAddress?: string | null) {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -12,23 +12,21 @@ export function usePortfolio(walletAddress?: string | null) {
   const [totalROI, setTotalROI] = useState(0);
 
   const fetchPortfolios = useCallback(async () => {
-    if (!walletAddress) return;
+    if (!walletAddress) {
+      setPortfolios([]);
+      setTotalValue(0);
+      setTotalROI(0);
+      return;
+    }
 
     setLoading(true);
     try {
-      const data = await db.portfolios
-        .where('owner_wallet')
-        .equals(walletAddress)
-        .sortBy('created_at');
-      
-      // Reverse to get newest first
-      const sortedData = data.reverse();
-
-      setPortfolios(sortedData);
+      const data = await supabaseService.getPortfolios(walletAddress);
+      setPortfolios(data);
       
       // Calculate totals
-      const total = sortedData.reduce((sum, p) => sum + Number(p.current_value), 0);
-      const totalInvested = sortedData.reduce((sum, p) => sum + Number(p.initial_investment), 0);
+      const total = data.reduce((sum, p) => sum + Number(p.current_value || 0), 0);
+      const totalInvested = data.reduce((sum, p) => sum + Number(p.initial_investment || 0), 0);
       const avgROI = totalInvested > 0 ? ((total - totalInvested) / totalInvested) * 100 : 0;
       
       setTotalValue(total);
@@ -46,7 +44,24 @@ export function usePortfolio(walletAddress?: string | null) {
 
   useEffect(() => {
     fetchPortfolios();
-  }, [fetchPortfolios]);
+
+    // Subscribe to real-time updates
+    if (walletAddress) {
+      const subscription = supabaseService.subscribeToPortfolios(walletAddress, (portfolio) => {
+        setPortfolios((prev) => {
+          const index = prev.findIndex((p) => p.id === portfolio.id);
+          if (index >= 0) {
+            return prev.map((p) => (p.id === portfolio.id ? portfolio : p));
+          }
+          return [...prev, portfolio];
+        });
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [walletAddress, fetchPortfolios]);
 
   const createPortfolio = async (data: {
     name: string;
@@ -60,26 +75,18 @@ export function usePortfolio(walletAddress?: string | null) {
     }
 
     try {
-      const now = new Date().toISOString();
-      const id = generateId('portfolio');
-      
-      const portfolio: Portfolio = {
-        id,
-        owner_wallet: walletAddress,
+      await supabaseService.createPortfolio({
         name: data.name,
-        description: data.description,
+        owner_wallet: walletAddress,
+        description: data.description || null,
         initial_investment: data.initial_investment,
         current_value: data.initial_investment,
         risk_level: data.risk_level || 'moderate',
         roi_percent: 0,
-        created_at: now,
-        updated_at: now,
         status: 'active',
         auto_reinvest_enabled: false,
         auto_reinvest_percent: 0,
-      };
-
-      await db.portfolios.add(portfolio);
+      });
       toast.success("Portfolio created successfully");
       await fetchPortfolios();
     } catch (error: any) {
@@ -90,10 +97,9 @@ export function usePortfolio(walletAddress?: string | null) {
 
   const updateAutoReinvest = async (portfolioId: string, enabled: boolean, percent: number) => {
     try {
-      await db.portfolios.update(portfolioId, {
+      await supabaseService.updatePortfolio(portfolioId, {
         auto_reinvest_enabled: enabled,
         auto_reinvest_percent: percent,
-        updated_at: new Date().toISOString(),
       });
       toast.success("Auto-reinvest settings updated");
       await fetchPortfolios();

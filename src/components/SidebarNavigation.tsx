@@ -16,7 +16,8 @@ import {
   Sparkles,
   Link2,
   CheckCircle2,
-  XCircle
+  XCircle,
+  TestTube
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { Badge } from "@/components/ui/badge";
@@ -130,6 +131,12 @@ export function SidebarNavigation() {
       label: "Chaos Vault",
       icon: Wallet,
       path: "/chaos-vault",
+    },
+    {
+      type: "file",
+      label: "Blockchain Test",
+      icon: TestTube,
+      path: "/blockchain-test",
     },
   ];
 

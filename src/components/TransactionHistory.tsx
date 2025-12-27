@@ -4,9 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { History, ExternalLink, Loader2, RefreshCw, ArrowUpRight, ArrowDownLeft } from "lucide-react";
-import { getTransactionHistory } from "@/lib/avalanche-sdk";
+import * as supabaseService from "@/lib/supabase-service";
+import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+
+type TransactionDB = Tables<"transactions">;
 
 interface Transaction {
   hash: string;
@@ -35,18 +38,21 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
     setError(null);
     
     try {
-      const data = await getTransactionHistory(address, limit);
+      const data = await supabaseService.getTransactions({
+        walletAddress: address,
+        limit,
+      });
       
-      // Transform ChainKit data to our format
-      const formatted = data.map((tx: any) => ({
-        hash: tx.hash || tx.transactionHash,
-        from: tx.from || tx.fromAddress,
-        to: tx.to || tx.toAddress,
-        value: tx.value ? (Number(tx.value) / 1e18).toFixed(6) : "0",
-        timestamp: tx.timestamp || tx.blockTimestamp || Date.now() / 1000,
-        status: tx.status === "success" || tx.status === 1 ? "success" : 
+      // Transform Supabase data to our format
+      const formatted: Transaction[] = data.map((tx: TransactionDB) => ({
+        hash: tx.tx_hash,
+        from: tx.from_address,
+        to: tx.to_address || "",
+        value: tx.amount ? (Number(tx.amount) / 1e18).toFixed(6) : "0",
+        timestamp: tx.created_at ? new Date(tx.created_at).getTime() / 1000 : Date.now() / 1000,
+        status: tx.status === "success" ? "success" : 
                 tx.status === "pending" ? "pending" : "failed",
-        type: tx.to ? (tx.to.toLowerCase() === address.toLowerCase() ? "transfer" : "contract") : "other",
+        type: (tx.type || "other") as "transfer" | "contract" | "other",
       }));
       
       setTransactions(formatted);
@@ -61,6 +67,25 @@ export function TransactionHistory({ address, limit = 50 }: TransactionHistoryPr
 
   useEffect(() => {
     loadTransactions();
+
+    // Subscribe to real-time updates
+    const subscription = supabaseService.subscribeToTransactions(address, (tx) => {
+      const formatted: Transaction = {
+        hash: tx.tx_hash,
+        from: tx.from_address,
+        to: tx.to_address || "",
+        value: tx.amount ? (Number(tx.amount) / 1e18).toFixed(6) : "0",
+        timestamp: tx.created_at ? new Date(tx.created_at).getTime() / 1000 : Date.now() / 1000,
+        status: tx.status === "success" ? "success" : 
+                tx.status === "pending" ? "pending" : "failed",
+        type: (tx.type || "other") as "transfer" | "contract" | "other",
+      };
+      setTransactions((prev) => [formatted, ...prev].slice(0, limit));
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [address, limit]);
 
   const getExplorerUrl = (hash: string) => {

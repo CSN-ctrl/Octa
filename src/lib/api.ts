@@ -12,138 +12,45 @@ export function getApiBase(): string {
   return apiUrl.replace(/\/+$/, "");
 }
 
-export function getRegistryApiBase(): string {
-  const envUrl = (import.meta as any).env?.VITE_REGISTRY_API_URL as string | undefined;
-  if (envUrl) return envUrl.replace(/\/+$/, "");
-  // Default to Registry API on port 8000
-  return "http://localhost:8000";
-}
+// Registry API removed - using Supabase as registry
 
 export async function fetchPlots(address: string): Promise<BackendPlot[]> {
-  // Try registry API first (port 8000)
-  const registryBase = getRegistryApiBase();
+  // Use Supabase as the only source (registry)
   try {
-    const res = await fetch(`${registryBase}/registry/owner/${address}`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const plotIds: number[] = await res.json();
-      // Fetch detailed metadata for each plot
-      const plotsWithMetadata = await Promise.all(
-        plotIds.slice(0, 100).map(async (plotId) => {
-          try {
-            const plotRes = await fetch(`${registryBase}/registry/plot/${plotId}`, {
-              signal: AbortSignal.timeout(3000),
-            });
-            if (plotRes.ok) {
-              const plotData = await plotRes.json();
-              return {
-                wallet: address,
-                token_id: plotId,
-                metadata: {
-                  plotId,
-                  x: plotData.x,
-                  y: plotData.y,
-                  level: plotData.level,
-                  issued: plotData.issued,
-                  price: plotData.price,
-                  planetId: plotData.planetId,
-                  owner: address,
-                  source: "registry"
-                }
-              };
-            }
-          } catch (e) {
-            // Skip if individual plot fetch fails
-          }
-          return {
-            wallet: address,
-            token_id: plotId,
-            metadata: { plotId, owner: address, source: "registry" }
-          };
-        })
-      );
-      if (plotsWithMetadata.length > 0) {
-        console.log(`✅ Fetched ${plotsWithMetadata.length} plots from Registry API`);
-        return plotsWithMetadata;
-      }
-    }
-  } catch (error: any) {
-    // Registry API not available - try backend
-    console.debug("Registry API not available, trying backend:", error.message);
-  }
-
-  // Try backend (port 5001)
-  const base = getApiBase();
-  try {
-    const res = await fetch(`${base}/api/plots/owned/${address}`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data?.plots || [];
-    }
-  } catch (error: any) {
-    // Backend not available - fall back to contract
-    const isConnectionError = error.name === 'AbortError' || 
-                             error.name === 'TypeError' ||
-                             error.message?.includes('Failed to fetch') ||
-                             error.message?.includes('ERR_CONNECTION_REFUSED');
-    if (isConnectionError) {
-      // Fall back to contract query
-      return fetchPlotsFromContract(address);
-    }
-    throw error;
-  }
-  
-  // If we get here, backend returned an error status
-  // Fall back to contract
-  return fetchPlotsFromContract(address);
-}
-
-/**
- * Fetch plots directly from the contract
- */
-async function fetchPlotsFromContract(address: string): Promise<BackendPlot[]> {
-  try {
-    const { fetchOwnedPlots } = await import("@/lib/plotUtils");
-    const plotIds = await fetchOwnedPlots(address, 1000);
-    
-    // Convert to BackendPlot format
-    return plotIds.map(plotId => ({
+    const { getPlotsByOwner } = await import("@/lib/supabase-service");
+    const plots = await getPlotsByOwner(address);
+    return plots.map((plot) => ({
       wallet: address,
-      token_id: plotId,
+      token_id: plot.id,
       metadata: {
-        plotId,
+        plotId: plot.id,
+        x: plot.coord_x,
+        y: plot.coord_y,
+        zoneType: plot.zone_type,
         owner: address,
+        source: "supabase"
       }
     }));
-  } catch (error) {
-    console.debug("Failed to fetch plots from contract:", error);
+  } catch (error: any) {
+    console.debug("Failed to fetch plots from Supabase:", error.message);
     return [];
   }
 }
 
 export async function savePlot(wallet: string, tokenId: number | string, metadata: any): Promise<void> {
-  const base = getApiBase();
   try {
-    const res = await fetch(`${base}/api/plots/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        wallet: wallet,
-        token_id: tokenId,
-        metadata: metadata
-      }),
+    const { upsertPlot } = await import("@/lib/supabase-service");
+    await upsertPlot({
+      id: Number(tokenId),
+      owner_wallet: wallet,
+      coord_x: metadata.x || metadata.coord_x || 0,
+      coord_y: metadata.y || metadata.coord_y || 0,
+      zone_type: metadata.zoneType || metadata.zone_type || null,
+      metadata_cid: metadata.metadata_cid || null,
     });
-    if (!res.ok) {
-      // Don't throw - backend might not be available, but plot is still on blockchain
-      const errorText = await res.text().catch(() => res.statusText);
-      console.debug("Failed to save plot to backend:", errorText);
-    }
   } catch (error: any) {
-    // Don't throw - backend might not be available, but plot is still on blockchain
-    console.debug("Failed to save plot to backend:", error.message);
+    // Don't throw - Supabase might not be available, but plot is still on blockchain
+    console.debug("Failed to save plot to Supabase:", error.message);
   }
 }
 
@@ -183,173 +90,103 @@ export async function activatePlot(plotId: number, recipient?: string): Promise<
 
 // Economy APIs
 export async function getCurrencies() {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/economy/currencies`);
-  if (!res.ok) throw new Error(`Failed to fetch currencies`);
-  return res.json();
+  const { getCurrencies: getCurrenciesFromSupabase } = await import("@/lib/supabase-service");
+  return getCurrenciesFromSupabase();
 }
 
 export async function getTreasury() {
-  const base = getApiBase();
-  try {
-  const res = await fetch(`${base}/api/treasury`, {
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error(`Failed to fetch treasury: ${res.statusText}`);
-  return res.json();
-  } catch (error: any) {
-    // Handle connection errors gracefully
-    const isConnectionError = error.name === 'AbortError' || 
-                             error.name === 'TypeError' ||
-                             error.message?.includes('Failed to fetch') ||
-                             error.message?.includes('ERR_CONNECTION_REFUSED');
-    if (isConnectionError) {
-      throw new Error('Backend not available');
-    }
-    throw error;
-  }
+  const { getAllUserBalances, getTotalSupply } = await import("@/lib/supabase-service");
+  const balances = await getAllUserBalances();
+  const [xBGL, CHAOS, AVAX, SC] = await Promise.all([
+    getTotalSupply("xBGL"),
+    getTotalSupply("CHAOS"),
+    getTotalSupply("AVAX"),
+    getTotalSupply("SC"),
+  ]);
+  
+  return {
+    balances: {
+      xBGL: { balance: xBGL, symbol: "xBGL" },
+      CHAOS: { balance: CHAOS, symbol: "CHAOS" },
+      AVAX: { balance: AVAX, symbol: "AVAX" },
+      SC: { balance: SC, symbol: "SC" },
+    },
+    total_value: xBGL + CHAOS + AVAX + SC,
+  };
 }
 
 // NPC APIs
 export async function listNpcs() {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/npcs/`);
-  if (!res.ok) throw new Error(`Failed to fetch NPCs`);
-  return res.json();
+  const { getNPCs } = await import("@/lib/supabase-service");
+  const npcs = await getNPCs();
+  return { npcs };
 }
 
 export async function spawnNpcs(count: number, cohort?: string) {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/npcs/spawn`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ count, cohort }),
-  });
-  if (!res.ok) throw new Error(`Failed to spawn NPCs`);
-  return res.json();
+  const { spawnNPCs } = await import("@/lib/supabase-service");
+  return spawnNPCs(count, cohort);
 }
 
 // City APIs
 export async function listZones() {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/city/zones`);
-  if (!res.ok) throw new Error(`Failed to fetch zones`);
-  return res.json();
+  const { listZones: listZonesFromSupabase } = await import("@/lib/supabase-service");
+  return listZonesFromSupabase();
 }
 
 export async function listCityPlots(limit?: number, offset?: number) {
-  const base = getApiBase();
-  try {
-  const params = new URLSearchParams();
-  if (limit) params.append("limit", limit.toString());
-  if (offset) params.append("offset", offset.toString());
-  const url = `${base}/api/city/plots${params.toString() ? `?${params.toString()}` : ""}`;
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(10000), // 10 second timeout
-    });
-    if (!res.ok) {
-      // If backend is not available, return empty plots instead of throwing
-      if (res.status === 503 || res.status === 0) {
-        console.debug("Backend not available for city plots");
-        return { plots: [] };
-      }
-      throw new Error(`Failed to fetch city plots: ${res.statusText}`);
-    }
-  return res.json();
-  } catch (error: any) {
-    // Network errors or timeouts - return empty plots instead of throwing
-    if (error.name === "AbortError" || error.name === "TypeError") {
-      console.debug("Backend not available for city plots");
-      return { plots: [] };
-    }
-    throw error;
-  }
+  const { listCityPlots: listCityPlotsFromSupabase } = await import("@/lib/supabase-service");
+  return listCityPlotsFromSupabase({ limit, offset });
 }
 
 export async function getCityStats(cityName?: string) {
-  const base = getApiBase();
-  try {
-  const params = new URLSearchParams();
-  if (cityName) params.append("city_name", cityName);
-  const url = `${base}/api/city/stats${params.toString() ? `?${params.toString()}` : ""}`;
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(5000), // 5 second timeout
-    });
-    if (!res.ok) {
-      // If backend is not available, return null instead of throwing
-      if (res.status === 503 || res.status === 0) {
-        console.debug("Backend not available for city stats");
-        return null;
-      }
-      throw new Error(`Failed to fetch city stats: ${res.statusText}`);
-    }
-  return res.json();
-  } catch (error: any) {
-    // Network errors or timeouts - return null instead of throwing
-    if (error.name === "AbortError" || error.name === "TypeError") {
-      console.debug("Backend not available for city stats");
-      return null;
-    }
-    throw error;
-  }
+  const { getCityStats: getCityStatsFromSupabase } = await import("@/lib/supabase-service");
+  return getCityStatsFromSupabase(cityName);
 }
 
 export async function calculateNewcomers() {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/city/newcomers/calculate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!res.ok) throw new Error(`Failed to calculate newcomers`);
-  return res.json();
+  const { calculateNewcomers: calculateNewcomersFromSupabase } = await import("@/lib/supabase-service");
+  return calculateNewcomersFromSupabase();
 }
 
 // Governance APIs
 export async function listFactions() {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/governance/factions`);
-  if (!res.ok) throw new Error(`Failed to fetch factions`);
-  return res.json();
+  const { getFactions } = await import("@/lib/supabase-service");
+  const factions = await getFactions();
+  return { factions };
 }
 
 export async function getBlackMarket() {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/governance/black-market`);
-  if (!res.ok) throw new Error(`Failed to fetch black market`);
-  return res.json();
+  const { checkBlackMarketAccess } = await import("@/lib/supabase-service");
+  // Return black market status - would need wallet address from context
+  return { 
+    accessible: false, // Will be checked per wallet
+    message: "Black market access requires invite"
+  };
 }
 
 // Portfolio APIs
 export async function getPortfolio(wallet: string, portfolioType?: "primary" | "secondary") {
-  const base = getApiBase();
-  const url = portfolioType 
-    ? `${base}/api/portfolio/${wallet}?portfolio_type=${portfolioType}`
-    : `${base}/api/portfolio/${wallet}`;
   try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) {
-      // If backend returns 404 or is not available, return null (frontend will use local DB)
-      if (res.status === 404 || res.status === 503 || res.status === 0) {
-        console.debug("Backend portfolio endpoint not available, frontend will use local database");
-        return null;
-      }
-      throw new Error(`Failed to fetch portfolio: ${res.statusText}`);
+    const { getPortfolios } = await import("@/lib/supabase-service");
+    const portfolios = await getPortfolios(wallet);
+    if (portfolios && portfolios.length > 0) {
+      const portfolio = portfolios.find(p => p.status === 'active') || portfolios[0];
+      return {
+        wallet,
+        portfolio: {
+          id: portfolio.id,
+          name: portfolio.name,
+          owner_wallet: portfolio.owner_wallet,
+          current_value: Number(portfolio.current_value || 0),
+          holdings: [], // Would need to join with plots or other assets
+        },
+        portfolio_type: portfolioType || "primary",
+      };
     }
-    return res.json();
+    return null;
   } catch (error: any) {
-    // Network errors or timeouts - return null (frontend will use local DB)
-    const isConnectionError = error.name === "AbortError" || 
-                             error.name === "TypeError" ||
-                             error.message?.includes("Failed to fetch") ||
-                             error.message?.includes("ERR_CONNECTION_REFUSED") ||
-                             error.message?.includes("404");
-    if (isConnectionError) {
-      console.debug("Backend not available for portfolio, frontend will use local database");
-      return null;
-    }
-    throw error;
+    console.debug("Supabase not available for portfolio:", error.message);
+    return null;
   }
 }
 
@@ -411,83 +248,43 @@ export async function upsertPortfolio(input: {
   manager_id?: string | null;
   portfolio_type?: "primary" | "secondary";
 }) {
-  // Always save to local database first (primary source)
   try {
-    const { db, generateId } = await import("@/lib/local-db");
+    const { getPortfolios, createPortfolio, updatePortfolio } = await import("@/lib/supabase-service");
+    const portfolios = await getPortfolios(input.wallet);
+    const portfolioType = input.portfolio_type || "primary";
     
-    // Check if portfolio exists
-    const existing = await db.portfolios
-      .where('owner_wallet')
-      .equals(input.wallet)
-      .filter(p => (p.portfolio_type || 'primary') === (input.portfolio_type || 'primary'))
-      .first();
-    
-    const now = new Date().toISOString();
     const totalValue = (input.holdings || []).reduce((sum, h) => sum + (h.cost_basis || 0), 0);
-    const initialInvestment = existing?.initial_investment || totalValue;
-    const currentValue = totalValue;
-    const roiPercent = initialInvestment > 0 ? ((currentValue - initialInvestment) / initialInvestment) * 100 : 0;
+    const existing = portfolios.find(p => p.status === 'active');
     
     if (existing) {
-      // Update existing portfolio
-      await db.portfolios.update(existing.id!, {
-        holdings: input.holdings || existing.holdings || [],
-        total_value: totalValue,
-        current_value: currentValue,
-        recurring_investment_monthly: input.recurring_investment_monthly ?? existing.recurring_investment_monthly ?? 0,
-        roi_percent: roiPercent,
-        updated_at: now,
+      const updated = await updatePortfolio(existing.id, {
+        current_value: totalValue,
+        auto_reinvest_enabled: input.recurring_investment_monthly ? true : false,
       });
+      return {
+        success: true,
+        portfolio: updated,
+      };
     } else {
-      // Create new portfolio
-      const id = generateId('portfolio');
-      await db.portfolios.add({
-        id,
+      const created = await createPortfolio({
+        name: `${portfolioType} Portfolio`,
         owner_wallet: input.wallet,
-        name: `${input.portfolio_type || 'primary'} Portfolio`,
-        description: `Portfolio for ${input.wallet}`,
-        initial_investment: initialInvestment,
-        current_value: currentValue,
-        roi_percent: roiPercent,
-        created_at: now,
-        updated_at: now,
+        initial_investment: totalValue,
+        current_value: totalValue,
         status: 'active',
         risk_level: 'moderate',
-        auto_reinvest_enabled: false,
-        auto_reinvest_percent: 0,
-        portfolio_type: input.portfolio_type || 'primary',
-        holdings: input.holdings || [],
-        total_value: totalValue,
-        recurring_investment_monthly: input.recurring_investment_monthly || 0,
-        wallet: input.wallet,
       });
-    }
-    
-    console.debug("Portfolio saved to local database");
-  } catch (error: any) {
-    console.error("Failed to save portfolio to local database:", error);
-    // Continue to try backend as fallback
-  }
-  
-  // Try backend as optional sync (non-blocking)
-  const base = getApiBase();
-  try {
-    const res = await fetch(`${base}/api/portfolio/upsert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      console.debug("Portfolio synced to backend");
-      return res.json();
+      return {
+        success: true,
+        portfolio: created,
+      };
     }
   } catch (error: any) {
-    // Backend sync is optional, just log
-    console.debug("Backend sync failed (optional):", error.message);
+    console.error("Failed to save portfolio to Supabase:", error);
+    throw error;
   }
   
-  // Return local database format
+  // Return format
   return {
     portfolio: {
       wallet: input.wallet,
@@ -691,87 +488,54 @@ export async function assignSubnetAndNodeToPlanet(planetId: string, subnetName: 
 
 // Star System and Planet Interaction APIs
 export async function listStarSystems(owner_wallet?: string) {
-  const base = getApiBase();
-  const url = owner_wallet 
-    ? `${base}/api/celestial-forge/star-systems?owner=${owner_wallet}`
-    : `${base}/api/celestial-forge/star-systems`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to list star systems`);
-  return res.json();
+  const { getStarSystems } = await import("@/lib/supabase-service");
+  const systems = await getStarSystems(owner_wallet);
+  return { star_systems: systems };
 }
 
 export async function getStarSystem(system_id: string) {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/celestial-forge/star-systems/${system_id}`);
-  if (!res.ok) throw new Error(`Failed to get star system`);
-  return res.json();
+  const { getStarSystemById } = await import("@/lib/supabase-service");
+  const system = await getStarSystemById(system_id);
+  if (!system) {
+    throw new Error(`Star system not found: ${system_id}`);
+  }
+  return { success: true, star_system: system };
 }
 
 export async function listPlanets(star_system_id?: string, owner_wallet?: string) {
-  const base = getApiBase();
-  const params = new URLSearchParams();
-  if (star_system_id) params.append("star_system_id", star_system_id);
-  if (owner_wallet) params.append("owner_wallet", owner_wallet);
-  const url = `${base}/api/celestial-forge/planets${params.toString() ? "?" + params.toString() : ""}`;
-  try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(5000), // 5 second timeout
-    });
-    if (!res.ok) {
-      // If backend is not available, return empty result instead of throwing
-      if (res.status === 503 || res.status === 0) {
-        console.debug("Backend not available, returning empty planets list");
-        return { planets: [] };
-      }
-      throw new Error(`Failed to list planets: ${res.statusText}`);
-    }
-    return res.json();
-  } catch (error: any) {
-    // Network errors or timeouts - return empty result
-    if (error.name === "AbortError" || error.name === "TypeError") {
-      console.debug("Backend not available, returning empty planets list");
-      return { planets: [] };
-    }
-    throw error;
-  }
+  const { getPlanets } = await import("@/lib/supabase-service");
+  const filters: any = {};
+  if (star_system_id) filters.starSystemId = star_system_id;
+  if (owner_wallet) filters.ownerWallet = owner_wallet;
+  const planets = await getPlanets(filters);
+  return { planets };
 }
 
 export async function getPlanet(planet_id: string) {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/celestial-forge/planets/${planet_id}`);
-  if (!res.ok) throw new Error(`Failed to get planet`);
-  return res.json();
+  const { getPlanetById } = await import("@/lib/supabase-service");
+  const planet = await getPlanetById(planet_id);
+  if (!planet) {
+    throw new Error(`Planet not found: ${planet_id}`);
+  }
+  return { success: true, planet };
 }
 
 export async function updateStarSystemStatus(system_id: string, status: "active" | "deploying" | "inactive") {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/celestial-forge/star-systems/${system_id}/update`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  });
-  if (!res.ok) throw new Error(`Failed to update star system status`);
-  return res.json();
+  const { updateStarSystem } = await import("@/lib/supabase-service");
+  const updated = await updateStarSystem(system_id, { status });
+  return { success: true, star_system: updated };
 }
 
 export async function updatePlanetStatus(planet_id: string, status: "active" | "deploying" | "inactive") {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/celestial-forge/planets/${planet_id}/update`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  });
-  if (!res.ok) throw new Error(`Failed to update planet status`);
-  return res.json();
+  const { updatePlanet } = await import("@/lib/supabase-service");
+  const updated = await updatePlanet(planet_id, { status });
+  return { success: true, planet: updated };
 }
 
 export async function deployStarSystem(system_id: string) {
-  const base = getApiBase();
-  const res = await fetch(`${base}/api/celestial-forge/star-systems/${system_id}/deploy`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error(`Failed to deploy star system`);
-  return res.json();
+  const { updateStarSystem } = await import("@/lib/supabase-service");
+  const updated = await updateStarSystem(system_id, { status: "deploying" });
+  return { success: true, message: "Deployment initiated", star_system: updated };
 }
 
 export async function deploySubnet(subnet_name: string) {
@@ -1240,87 +1004,68 @@ export interface RegistryStats {
 }
 
 export async function getRegistryStats(): Promise<RegistryStats> {
-  const base = getRegistryApiBase();
   try {
-    const res = await fetch(`${base}/registry/stats`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) throw new Error(`Failed to get registry stats`);
-    return res.json();
+    const { getPlots, getTotalSupply } = await import("@/lib/supabase-service");
+    const allPlots = await getPlots();
+    const totalSupply = await getTotalSupply("xBGL");
+    
+    return {
+      totalPlots: allPlots.length,
+      issuedPlots: allPlots.filter(p => p.owner_wallet).length,
+      purchasedPlots: allPlots.filter(p => p.owner_wallet).length,
+    };
   } catch (error: any) {
     throw new Error(`Failed to get registry stats: ${error.message}`);
   }
 }
 
 export async function getRegistryPlot(plotId: number): Promise<RegistryPlot> {
-  const base = getRegistryApiBase();
   try {
-    const res = await fetch(`${base}/registry/plot/${plotId}`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) {
-      // If Registry API not available, return null instead of throwing
-      const isConnectionError = res.status === 0 || 
-                               res.status === 404 ||
-                               res.status === 503;
-      if (isConnectionError) {
-        console.debug(`Registry API not available for plot ${plotId}`);
-        throw new Error("Registry API not available");
-      }
-      throw new Error(`Failed to get plot ${plotId}: ${res.statusText}`);
+    const { getPlotById } = await import("@/lib/supabase-service");
+    const plot = await getPlotById(plotId);
+    if (!plot) {
+      throw new Error(`Plot ${plotId} not found`);
     }
-    return res.json();
+    
+    return {
+      plotId: plot.id,
+      x: plot.coord_x || 0,
+      y: plot.coord_y || 0,
+      level: 1, // Default level
+      issued: !!plot.owner_wallet,
+      price: "0", // Price stored in plots table if needed
+      planetId: plot.planet_id || "",
+      owner: plot.owner_wallet || "",
+    };
   } catch (error: any) {
-    // Check if it's a connection error
-    const isConnectionError = error.name === "AbortError" || 
-                             error.name === "TypeError" ||
-                             error.message?.includes("Failed to fetch") ||
-                             error.message?.includes("ERR_CONNECTION_REFUSED") ||
-                             error.message?.includes("Registry API not available");
-    if (isConnectionError) {
-      console.debug(`Registry API not available for plot ${plotId}, will use contract fallback`);
-      throw error; // Let caller handle fallback
-    }
     throw new Error(`Failed to get plot ${plotId}: ${error.message}`);
   }
 }
 
 export async function getRegistryPlotsByOwner(address: string): Promise<number[]> {
-  const base = getRegistryApiBase();
   try {
-    const res = await fetch(`${base}/registry/owner/${address}`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) {
-      // If Registry API returns error, fall back to contract
-      throw new Error(`Registry API returned ${res.status}`);
-    }
-    return res.json();
+    const { getPlotsByOwner } = await import("@/lib/supabase-service");
+    const plots = await getPlotsByOwner(address);
+    return plots.map(p => p.id);
   } catch (error: any) {
-    // Registry API not available - fall back to contract query
-    const isConnectionError = error.name === "AbortError" || 
-                             error.name === "TypeError" ||
-                             error.message?.includes("Failed to fetch") ||
-                             error.message?.includes("ERR_CONNECTION_REFUSED") ||
-                             error.message?.includes("404");
-    if (isConnectionError) {
-      console.debug("Registry API not available, falling back to contract:", error.message);
-      // Fall back to contract query
-      const { fetchOwnedPlots } = await import("@/lib/plotUtils");
-      return fetchOwnedPlots(address, 1000);
-    }
-    throw error;
+    throw new Error(`Failed to get plots: ${error.message}`);
   }
 }
 
 export async function getRegistryPlots(limit: number = 100, offset: number = 0): Promise<RegistryPlot[]> {
-  const base = getRegistryApiBase();
   try {
-    const res = await fetch(`${base}/registry/plots?limit=${limit}&offset=${offset}`, {
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) throw new Error(`Failed to get plots`);
-    return res.json();
+    const { getPlots } = await import("@/lib/supabase-service");
+    const plots = await getPlots({ limit, offset });
+    return plots.map(plot => ({
+      plotId: plot.id,
+      x: plot.coord_x || 0,
+      y: plot.coord_y || 0,
+      level: 1,
+      issued: !!plot.owner_wallet,
+      price: "0",
+      planetId: plot.planet_id || "",
+      owner: plot.owner_wallet || "",
+    }));
   } catch (error: any) {
     throw new Error(`Failed to get plots: ${error.message}`);
   }
@@ -1331,43 +1076,45 @@ export async function getRegistryPlotsWithOwners(
   offset: number = 0, 
   addresses?: string[]
 ): Promise<PlotWithOwner[]> {
-  const base = getRegistryApiBase();
   try {
-    let url = `${base}/registry/plots/with-owners?limit=${limit}&offset=${offset}`;
+    const { getPlots } = await import("@/lib/supabase-service");
+    let plots = await getPlots({ limit, offset });
+    
+    // Filter by addresses if provided
     if (addresses && addresses.length > 0) {
-      url += `&addresses=${addresses.join(',')}`;
+      plots = plots.filter(p => p.owner_wallet && addresses.includes(p.owner_wallet));
     }
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) throw new Error(`Failed to get plots with owners`);
-    return res.json();
+    
+    return plots
+      .filter(p => p.owner_wallet)
+      .map(plot => ({
+        plotId: plot.id,
+        owner: plot.owner_wallet!,
+        x: plot.coord_x || 0,
+        y: plot.coord_y || 0,
+      }));
   } catch (error: any) {
     throw new Error(`Failed to get plots with owners: ${error.message}`);
   }
 }
 
 export async function registerPlotToPortfolio(plotId: number, wallet: string, price?: string, txHash?: string): Promise<any> {
-  const base = getRegistryApiBase();
   try {
-    const params = new URLSearchParams();
-    params.append("plot_id", plotId.toString());
-    params.append("wallet", wallet);
-    if (price) params.append("price", price);
-    if (txHash) params.append("tx_hash", txHash);
-    
-    const res = await fetch(`${base}/registry/portfolio/register?${params.toString()}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(error.detail || `Failed to register plot to portfolio`);
+    const { getPlotById, updatePlot } = await import("@/lib/supabase-service");
+    const plot = await getPlotById(plotId);
+    if (!plot) {
+      throw new Error(`Plot ${plotId} not found`);
     }
-    return res.json();
+    
+    // Update plot with portfolio registration info
+    await updatePlot(plotId, {
+      owner_wallet: wallet,
+      metadata_cid: txHash || plot.metadata_cid,
+    });
+    
+    return { success: true, plotId, wallet };
   } catch (error: any) {
-    console.debug("Failed to register plot to portfolio via registry:", error.message);
+    console.debug("Failed to register plot to portfolio:", error.message);
     return null;
   }
 }
