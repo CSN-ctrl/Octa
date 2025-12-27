@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import * as supabaseService from "@/lib/supabase-service";
 import type { Tables } from "@/integrations/supabase/types";
 import { getStarSystemContract, getPlanetContract, STAR_SYSTEM_ABI, PLANET_ABI } from "@/lib/contracts";
-import { getRpcProvider } from "@/lib/wallet";
+// RPC provider removed - using Supabase only
 
 type StarSystemRow = Tables<'star_systems'>;
 type PlanetRow = Tables<'planets'>;
@@ -48,82 +48,18 @@ export function useCelestialForge() {
   const STAR_SYSTEM_COST = 10000; // 10,000 AVAX for a new subnet
   const PLANET_COST = 2000; // 2,000 AVAX for a master node
 
-  // Fetch star system data from blockchain contract
+  // Fetch star system data from blockchain contract (disabled - using Supabase only)
   const fetchStarSystemFromBlockchain = useCallback(async (contractAddress: string, systemId: string): Promise<Partial<StarSystem> | null> => {
-    try {
-      const provider = getRpcProvider();
-      if (!provider) {
-        console.debug("No RPC provider available for blockchain fetch");
-        return null;
-      }
-
-      // Check if contract exists
-      const code = await provider.getCode(contractAddress);
-      if (!code || code === "0x") {
-        console.debug(`No contract found at address ${contractAddress}`);
-        return null;
-      }
-
-      const contract = new ethers.Contract(contractAddress, STAR_SYSTEM_ABI, provider);
-      
-      // Fetch system data from blockchain
-      const systemData = await contract.systemData();
-      
-      // Fetch planets
-      const planetAddresses = await contract.getPlanets();
-      const planetCount = await contract.planetCount();
-
-      return {
-        name: systemData.name,
-        subnet_id: systemData.subnetId,
-        owner_wallet: systemData.owner,
-        rpc_url: systemData.rpcUrl,
-        chain_id: Number(systemData.chainId),
-        tribute_percent: Number(systemData.tributePercent),
-        native_balance: systemData.nativeBalance,
-        active: systemData.active,
-        status: systemData.active ? "active" : "inactive",
-        planets: planetAddresses.map((addr: string) => addr.toLowerCase()),
-        contract_address: contractAddress,
-      };
-    } catch (error: any) {
-      console.error(`Error fetching star system ${contractAddress} from blockchain:`, error);
-      return null;
-    }
+    // RPC provider removed - using Supabase only
+    console.debug("Blockchain fetch disabled - using Supabase only");
+    return null;
   }, []);
 
-  // Fetch planet data from blockchain contract
+  // Fetch planet data from blockchain contract (disabled - using Supabase only)
   const fetchPlanetFromBlockchain = useCallback(async (contractAddress: string): Promise<any | null> => {
-    try {
-      const provider = getRpcProvider();
-      if (!provider) {
-        return null;
-      }
-
-      const code = await provider.getCode(contractAddress);
-      if (!code || code === "0x") {
-        return null;
-      }
-
-      const contract = new ethers.Contract(contractAddress, PLANET_ABI, provider);
-      const planetData = await contract.planetData();
-      
-      return {
-        name: planetData.name,
-        owner_wallet: planetData.owner,
-        star_system: planetData.starSystem,
-        planet_type: planetData.planetType,
-        node_type: planetData.nodeType,
-        ip_address: planetData.ipAddress,
-        active: planetData.active,
-        status: planetData.active ? "active" : "inactive",
-        native_balance: planetData.nativeBalance,
-        contract_address: contractAddress,
-      };
-    } catch (error: any) {
-      console.error(`Error fetching planet ${contractAddress} from blockchain:`, error);
-      return null;
-    }
+    // RPC provider removed - using Supabase only
+    console.debug("Blockchain fetch disabled - using Supabase only");
+    return null;
   }, []);
 
   // Query Supabase to find all StarSystem contracts

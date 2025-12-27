@@ -5,7 +5,7 @@
 
 import { ethers } from "ethers";
 import { db, PlotRegistry, PlotPurchase, generateId, initLocalDB } from "./local-db";
-import { getRpcProvider } from "./wallet";
+// RPC provider removed - using Supabase only
 import { getPlotRegistryContract } from "./contracts";
 
 /**
@@ -13,11 +13,10 @@ import { getPlotRegistryContract } from "./contracts";
  */
 export async function syncPlotFromRegistry(plotId: number): Promise<PlotRegistry | null> {
   try {
-    const provider = getRpcProvider();
-    if (!provider) {
-      console.debug("RPC provider not available for registry sync");
-      return null;
-    }
+    // RPC provider removed - using Supabase only
+    // Registry sync disabled - using Supabase as registry
+    console.debug("Registry sync disabled - using Supabase only");
+    return null;
 
     const contract = getPlotRegistryContract();
     if (!contract) {
@@ -96,11 +95,10 @@ export async function syncPlotsFromRegistry(plotIds: number[]): Promise<PlotRegi
  */
 export async function syncAllPlotsFromRegistry(): Promise<number> {
   try {
-    const provider = getRpcProvider();
-    if (!provider) {
-      console.debug("RPC provider not available");
-      return 0;
-    }
+    // RPC provider removed - using Supabase only
+    // Registry sync disabled - using Supabase as registry
+    console.debug("Registry sync disabled - using Supabase only");
+    return 0;
 
     const contract = getPlotRegistryContract();
     if (!contract) {
@@ -160,11 +158,10 @@ export async function recordPlotPurchase(
   blockNumber?: number
 ): Promise<PlotPurchase | null> {
   try {
-    const provider = getRpcProvider();
-    if (!provider) {
-      console.debug("RPC provider not available");
-      return null;
-    }
+    // RPC provider removed - using Supabase only
+    // Registry sync disabled - using Supabase as registry
+    console.debug("Registry sync disabled - using Supabase only");
+    return null;
 
     const contract = getPlotRegistryContract();
     if (!contract) {

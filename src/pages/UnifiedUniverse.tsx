@@ -89,6 +89,30 @@ export default function UnifiedUniverse() {
     const interval = setInterval(fetchPlanets, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch population count (unique plot owners) from Supabase
+  useEffect(() => {
+    async function fetchPopulation() {
+      try {
+        const plots = await supabaseService.getPlots();
+        // Count unique owners (excluding null/empty owners)
+        const uniqueOwners = new Set(
+          plots
+            .filter(plot => plot.owner_wallet && plot.owner_wallet.trim() !== '')
+            .map(plot => plot.owner_wallet)
+        );
+        setPopulationCount(uniqueOwners.size);
+      } catch (error: any) {
+        console.debug("Could not fetch population from Supabase:", error);
+        setPopulationCount(0);
+      }
+    }
+    fetchPopulation();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPopulation, 30000);
+    return () => clearInterval(interval);
+  }, []);
   
   const displayPlanets = planetsList;
   
@@ -104,7 +128,7 @@ export default function UnifiedUniverse() {
   const [planetName, setPlanetName] = useState("");
   const [selectedStarSystemForPlanet, setSelectedStarSystemForPlanet] = useState<string>("");
   const [planetType, setPlanetType] = useState<"habitable" | "resource" | "research" | "military">("habitable");
-  const [selectedBody, setSelectedBody] = useState<null | { id: "star" | "octavia" | "zythera"; position: { x: number; y: number; z: number }; radius?: number }>(null);
+  // selectedBody removed - visualization is detached from functions
   const [backendPlots, setBackendPlots] = useState<BackendPlot[]>([]);
   const [loadingPlots, setLoadingPlots] = useState(false);
   const [managementTab, setManagementTab] = useState<"assets" | "plots" | "income" | "settings">("assets");
@@ -118,6 +142,7 @@ export default function UnifiedUniverse() {
   const [showNodesList, setShowNodesList] = useState(false);
   const [cityPlots, setCityPlots] = useState<any[]>([]);
   const [loadingCityPlots, setLoadingCityPlots] = useState(false);
+  const [populationCount, setPopulationCount] = useState<number>(0);
   const [cityStats, setCityStats] = useState<any>(null);
   const [loadingCityStats, setLoadingCityStats] = useState(false);
   const [ownedPlotIds, setOwnedPlotIds] = useState<number[]>([]);
@@ -2108,76 +2133,7 @@ export default function UnifiedUniverse() {
                 <Card className="glass border-2 border-primary/30 overflow-hidden">
                   <CardContent className="p-0 relative">
                     <div className="bg-black/90 relative" style={{ height: '700px' }}>
-                      <GalaxyVisualization
-                        systemProgress={displayStarSystems.length / 10}
-                        octaviaProgress={(planetsData?.["sarakt-prime"]?.population || 0) / 100}
-                        zytheraProgress={(planetsData?.["zythera"]?.population || 0) / 100}
-                        onSelect={(id, info) => setSelectedBody({ id, position: info.position, radius: info.radius })}
-                      />
-                      {selectedBody && (
-                        <div className="absolute bottom-4 right-4 pointer-events-auto">
-                          <div className="glass border border-primary/30 rounded-lg p-4 w-[320px]">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="text-lg font-bold capitalize">
-                                {selectedBody.id === 'star' 
-                                  ? 'Sarakt Star System' 
-                                  : selectedBody.id === 'octavia' 
-                                    ? 'Sarakt Prime' 
-                                    : selectedBody.id === 'zythera'
-                                      ? 'Zythera'
-                                      : selectedBody.id}
-                              </div>
-                              <Badge variant="outline">Control Panel</Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground mb-3">
-                              Pos: {selectedBody.position.x.toFixed(2)}, {selectedBody.position.y.toFixed(2)}, {selectedBody.position.z.toFixed(2)}
-                              {selectedBody.radius ? <> • Orbit r={selectedBody.radius}</> : null}
-                            </div>
-                            {selectedBody.id !== 'star' ? (
-                              <div className="space-y-2">
-                                <Button variant="glass" className="w-full">Center Camera</Button>
-                                <Button variant="cosmic" className="w-full">Track Orbit</Button>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <Button variant="outline">Details</Button>
-                                  <Button variant="outline">Manage</Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                <Button variant="glass" className="w-full">Center System</Button>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <Button variant="outline">Lore</Button>
-                                  <Button variant="outline">Telemetry</Button>
-                                </div>
-                              </div>
-                            )}
-                            <div className="pt-3">
-                              <Button variant="secondary" size="sm" className="w-full" onClick={() => setSelectedBody(null)}>
-                                Close
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Overlay Info Cards */}
-                    <div className="absolute top-4 left-4 right-4 flex flex-col gap-4 pointer-events-none">
-                      <div className="glass border border-primary/30 p-4 backdrop-blur-xl pointer-events-auto">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 rounded-lg bg-primary/20 border border-primary">
-                            <Orbit className="w-6 h-6 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-bold">Galaxy</h3>
-                            <p className="text-xs text-muted-foreground">100,000 particle spiral • Multi-subnet universe</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          <span className="text-muted-foreground">• Each star system = blockchain subnet</span>
-                          <span className="text-muted-foreground">• Each planet = node on subnet</span>
-                        </div>
-                      </div>
+                      <GalaxyVisualization />
                     </div>
 
                     {/* Bottom Stats Overlay */}
@@ -2298,7 +2254,7 @@ export default function UnifiedUniverse() {
                   <Users className="w-5 h-5 text-primary" />
                   Population
                 </div>
-                <p className="text-3xl font-bold">5,247</p>
+                <p className="text-3xl font-bold">{populationCount.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Active citizens</p>
               </Card>
               <Card className="glass p-6 border-primary/20">
@@ -2314,16 +2270,16 @@ export default function UnifiedUniverse() {
                   <Coins className="w-5 h-5 text-primary" />
                   Currencies
                 </div>
-                <p className="text-3xl font-bold">2</p>
-                <p className="text-sm text-muted-foreground">xBGL & SC</p>
+                <p className="text-3xl font-bold">3</p>
+                <p className="text-sm text-muted-foreground">xBGL, Chaos & Xen</p>
               </Card>
               <Card className="glass p-6 border-primary/20">
                 <div className="flex items-center gap-2 text-xl font-bold mb-2">
                   <Globe className="w-5 h-5 text-primary" />
                   Worlds
                 </div>
-                <p className="text-3xl font-bold">6</p>
-                <p className="text-sm text-muted-foreground">Planets & hubs</p>
+                <p className="text-3xl font-bold">2</p>
+                <p className="text-sm text-muted-foreground">Sarakt Prime & Zythera</p>
               </Card>
             </div>
             {/* Your Plots (from backend) */}
@@ -2363,150 +2319,6 @@ export default function UnifiedUniverse() {
               </Card>
             )}
 
-            {/* User-Created Star Systems */}
-            {displayStarSystems.length > 0 && (
-              <Card className="border-accent/20 bg-card/50 backdrop-blur overflow-hidden">
-                <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -z-10" />
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-4 rounded-xl bg-accent/10 border border-accent/30">
-                        <Rocket className="w-10 h-10 text-accent" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-4xl mb-2">Your Star Systems</CardTitle>
-                        <p className="text-muted-foreground">Avalanche subnets you've deployed</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-gradient-cosmic text-white text-lg px-4 py-2">
-                      {displayStarSystems.length} System{displayStarSystems.length !== 1 ? 's' : ''}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayStarSystems.map((system) => {
-                      const systemPlanets = getPlanetsForSystem(system.id);
-                      return (
-                      <Card
-                        key={system.id}
-                        className="border-accent/10 hover:border-accent hover:shadow-glow-accent transition-all cursor-pointer group"
-                      >
-                        <CardHeader>
-                          <div className="flex items-center justify-between mb-3">
-                            <Badge 
-                              variant={system.status === 'active' ? 'default' : 'outline'}
-                              className="text-sm capitalize"
-                            >
-                              {system.status}
-                            </Badge>
-                            {system.chain_id && (
-                              <Badge variant="outline" className="text-xs font-mono">
-                                #{system.chain_id}
-                              </Badge>
-                            )}
-                          </div>
-                          <CardTitle className="text-2xl">{system.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="text-xs text-muted-foreground truncate">
-                            {system.subnet_id || "Deploying subnet..."}
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="glass p-3 rounded-lg">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Globe className="w-4 h-4 text-accent" />
-                                <span className="text-xs text-muted-foreground">Planets</span>
-                              </div>
-                              <p className="text-xl font-bold">{systemPlanets.length}</p>
-                            </div>
-                            <div className="glass p-3 rounded-lg">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Coins className="w-4 h-4 text-accent" />
-                                <span className="text-xs text-muted-foreground">Treasury</span>
-                              </div>
-                              <p className="text-sm font-bold">
-                                {balances.avax || "0"} AVAX
-                              </p>
-                            </div>
-                          </div>
-                          {system.rpc_url && (
-                            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                              <strong>RPC:</strong> {system.rpc_url.substring(0, 40)}...
-                            </div>
-                          )}
-                          {chaosStarSubnets.length > 0 && !system.assigned_subnet_id && (
-                            <div className="mb-2">
-                              <select
-                                className="w-full glass p-2 rounded border border-accent/30 text-xs"
-                                onChange={async (e) => {
-                                  const subnetName = e.target.value;
-                                  if (subnetName && confirm(`Assign subnet "${subnetName}" to star system "${system.name}"?`)) {
-                                    try {
-                                      const { assignSubnetToStarSystem } = await import("@/lib/api");
-                                      await assignSubnetToStarSystem(system.id, subnetName);
-                                      toast.success(`Subnet "${subnetName}" assigned to "${system.name}"`);
-                                      fetchStarSystems();
-                                    } catch (error: any) {
-                                      toast.error(error.message || "Failed to assign subnet");
-                                    }
-                                  }
-                                }}
-                                defaultValue=""
-                              >
-                                <option value="">Assign Subnet...</option>
-                                {chaosStarSubnets.map((subnet: any) => (
-                                  <option key={subnet.name} value={subnet.name}>
-                                    {subnet.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
-                          {system.assigned_subnet_id && (
-                            <Badge variant="outline" className="mb-2 text-xs">
-                              Subnet: {system.assigned_subnet_id}
-                            </Badge>
-                          )}
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="cosmic" 
-                              className="flex-1 gap-2 group-hover:shadow-glow-accent transition-all"
-                              onClick={() => {
-                                setSelectedSystemForManagement(system.id);
-                                setManageView("details");
-                                navigate("#manage");
-                              }}
-                            >
-                              Manage <ArrowRight className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm(`Destroy star system "${system.name}" and all its ${systemPlanets.length} planet(s)?\n\nThis action cannot be undone.`)) {
-                                  // Delete star system - refresh from API
-                        fetchStarSystems();
-                        setSelectedSystemForManagement(null);
-                        toast.success(`Star system "${system.name}" deleted!`);
-                                  toast.success(`Star system "${system.name}" destroyed!`);
-                                }
-                              }}
-                              className="px-3"
-                              title="Destroy Star System"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
                 </div>
                   </div>

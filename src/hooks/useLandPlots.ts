@@ -80,14 +80,11 @@ export function useLandPlots() {
 
     setLoading(true);
     try {
-      // Get provider first to ensure it's available
-      const { getRpcProvider } = await import("@/lib/wallet");
-      const rpcProvider = getRpcProvider();
-      if (!rpcProvider) {
-        console.debug("RPC provider not available");
-        setLoading(false);
-        return;
-      }
+      // RPC provider removed - using Supabase only
+      // Contract interactions disabled - using Supabase for data
+      console.debug("Contract fetch disabled - using Supabase only");
+      setLoading(false);
+      return;
       
       const contract = getLandContract();
 
@@ -365,14 +362,9 @@ export function useLandPlots() {
     }
     setLoading(true);
     try {
-      // Ensure we're using Chaos Star Network RPC
-      // The signer should already be connected to Chaos Star Network RPC if using ChaosStar Keys
-      // For MetaMask, this won't work (as we disabled it in ChaosVault)
-      const { getRpcProvider } = await import("@/lib/wallet");
-      const provider = getRpcProvider();
-      if (!provider) {
-        throw new Error("Chaos Star Network RPC not available");
-      }
+      // RPC provider removed - using Supabase only
+      // Contract interactions disabled - using Supabase for data
+      throw new Error("Contract interactions disabled - using Supabase only");
 
       // Verify the signer's provider is using Chaos Star Network
       const signerProvider = signer.provider;

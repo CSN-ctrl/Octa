@@ -110,14 +110,15 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
         }
         
         if (hasAccountRegistryContract()) {
-          // Verify contract is deployed by checking if code exists
-          const { getRpcProvider } = await import("@/lib/wallet");
-          const provider = getRpcProvider();
+          // RPC provider removed - using Supabase only
+          // Contract verification disabled
           const { CONTRACT_ADDRESSES } = await import("@/lib/contracts");
           
-          if (provider && CONTRACT_ADDRESSES.accountRegistry) {
+          // Skip contract verification - using Supabase only
+          if (CONTRACT_ADDRESSES.accountRegistry) {
             try {
-              const code = await provider.getCode(CONTRACT_ADDRESSES.accountRegistry);
+              // Contract verification disabled - assume deployed if address exists
+              const code = "0x1234"; // Placeholder - contract verification disabled
               if (!code || code === "0x") {
                 // Contract not deployed - expected, silently skip
                 // Continue to try Supabase as fallback
@@ -386,14 +387,13 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
       // Always use the known deployed address - it's already deployed
       const registryAddress = "0x3E95B28Fa95426F2bA996528bDa7457871e03C70";
       
-      // Verify contract is actually deployed by checking if code exists
-      // IMPORTANT: Always use Chaos Star Network RPC provider, not signer.provider
-      // (signer.provider might be connected to MetaMask's network, which is different)
-      const { getRpcProvider } = await import("@/lib/wallet");
-      const provider = getRpcProvider(); // Always use Chaos Star Network RPC
-      if (provider) {
+      // RPC provider removed - using Supabase only
+      // Contract verification disabled - assume deployed if address exists
+      // Skip contract code check - using Supabase only
+      {
         try {
-          const code = await provider.getCode(registryAddress);
+          // Contract verification disabled - assume deployed
+          const code = "0x1234"; // Placeholder
           if (!code || code === "0x") {
             // Contract not deployed, need to deploy it
             const rpcUrl = "http://127.0.0.1:41773/ext/bc/wtHFpLKd93iiPmBBsCdeTEPz6Quj9MoCL8NpuxoFXHtvTVeT1/rpc";
@@ -570,57 +570,20 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
   };
 
   const loadChaosStarInfo = async () => {
+    // CLI integration removed - not needed at the moment
     setLoadingChaosStar(true);
     try {
-      // Load subnets
-      const subnetsResult = await accountApi.listChaosStarSubnets();
-      setChaosStarSubnets(subnetsResult.subnets || []);
-
-      // Load network status
-      try {
-        const networkResult = await accountApi.getChaosStarNetworkStatus();
-        setNetworkStatus(networkResult);
-      } catch (error: any) {
-        // Silently handle backend not available
-        const isConnectionError = error.message?.includes("Failed to fetch") || 
-                                   error.message?.includes("ERR_CONNECTION_REFUSED");
-        if (!isConnectionError) {
-          console.debug("Failed to load network status:", error);
-        }
-      }
-
-      // Load keys
-      try {
-        const keysResult = await accountApi.listChaosStarKeys();
-        setChaosStarKeys(keysResult.keys || []);
-      } catch (error: any) {
-        // Silently handle backend not available
-        const isConnectionError = error.message?.includes("Failed to fetch") || 
-                                   error.message?.includes("ERR_CONNECTION_REFUSED");
-        if (!isConnectionError) {
-          console.debug("Failed to load keys:", error);
-        }
-      }
-    } catch (error: any) {
-      // Silently handle backend not available
-      const isConnectionError = error.message?.includes("Failed to fetch") || 
-                                 error.message?.includes("ERR_CONNECTION_REFUSED");
-      if (!isConnectionError) {
-        console.debug("Failed to load ChaosStar info:", error);
-      }
+      setChaosStarSubnets([]);
+      setNetworkStatus(null);
+      setChaosStarKeys([]);
     } finally {
       setLoadingChaosStar(false);
     }
   };
 
   const loadSubnetDetails = async (subnetName: string) => {
-    try {
-      const result = await accountApi.describeChaosStarSubnet(subnetName);
-      return result;
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load subnet details");
-      throw error;
-    }
+    // CLI integration removed - not needed at the moment
+    throw new Error("CLI integration removed - subnet details not available");
   };
 
   const loadTransfers = () => {
@@ -820,7 +783,8 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
       const privateKey = await getWalletPrivateKey(walletId);
       if (!privateKey) return null;
       
-      const provider = await import("@/lib/wallet").then((m) => m.getRpcProvider());
+      // RPC provider removed - using Supabase only
+      const provider = null;
       if (!provider) return null;
       
       return new ethers.Wallet(privateKey, provider);

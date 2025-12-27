@@ -17,7 +17,6 @@ import {
   Trash2,
   ArrowUpDown,
   Coins,
-  KeyRound,
   Sparkles,
   Zap,
   TrendingUp,
@@ -25,16 +24,9 @@ import {
   Send
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAccountManagement } from "@/contexts/AccountManagementContext";
-import { useLandPlots } from "@/hooks/useLandPlots";
-import { useSwap } from "@/hooks/useSwap";
-import { useContractEvents } from "@/hooks/useContractEvents";
-import { ethers } from "ethers";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-// Contract access removed - using Supabase only
-import * as accountApi from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -59,19 +51,16 @@ function getZoneType(x: number, y: number): string {
 export default function PlotPurchase() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { address, isConnected, connect, signer, balance, connectWithPrivateKey } = useWallet();
-  const { chaosStarKeys } = useAccountManagement();
-  const { priceInAVAX, buyPlotsBatch, buyPlotPhase1AVAX, buyPlotPhase1USDC, buyPlotPhase1xBGL, loading } = useLandPlots();
-  const { swapxBGLForToken, swapTokenForxBGL, getQuote, swapping, loadingQuote } = useSwap();
+  const { address, isConnected, signer } = useWallet();
   
   // Plot price is fixed at 100 xBGL
   const PLOT_PRICE_xBGL = 100;
   
-  // Account/Key selection for purchase
-  const [purchaseWalletType, setPurchaseWalletType] = useState<"connected" | "key" | "account">("key");
-  const [selectedKeyName, setSelectedKeyName] = useState<string>("");
+  // Account selection for purchase (CLI keys removed)
+  const [purchaseWalletType, setPurchaseWalletType] = useState<"connected" | "account">("connected");
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [purchaseBalance, setPurchaseBalance] = useState<string>("0");
+  const [buyerEmail, setBuyerEmail] = useState<string>("");
   const [showAddPlotDialog, setShowAddPlotDialog] = useState(false);
   
   // Currency selection
@@ -95,22 +84,7 @@ export default function PlotPurchase() {
   const [purchasing, setPurchasing] = useState(false);
   // Contract addresses removed - using Supabase only
 
-  // Listen for contract events (LandMinted) to refresh plot list
-  useContractEvents(
-    (plotId, owner, pricePaid) => {
-      console.log("LandMinted event received:", { plotId, owner, pricePaid });
-      toast.success(`Plot #${plotId} purchased successfully!`);
-      // Refresh plot list if this is one of our selected plots
-      if (selectedPlotIds.has(plotId)) {
-        setSelectedPlotIds(prev => {
-          const next = new Set(prev);
-          next.delete(plotId);
-          return next;
-        });
-      }
-    },
-    undefined // No ID registration handler needed here
-  );
+  // Contract events removed - using Supabase real-time subscriptions instead
 
   // Load balance for selected wallet from Supabase
   useEffect(() => {
@@ -125,19 +99,11 @@ export default function PlotPurchase() {
         } catch (error) {
           console.error("Failed to load balance:", error);
         }
-      } else if (purchaseWalletType === "key" && selectedKeyName) {
-        try {
-          const result = await accountApi.getKeyBalance(selectedKeyName);
-          if (result.success) {
-            setPurchaseBalance(result.balance || "0");
-          }
-        } catch (error) {
-          console.error("Failed to load key balance:", error);
-        }
       }
+      // CLI key wallet type removed
     };
     loadBalance();
-  }, [purchaseWalletType, address, selectedKeyName]);
+  }, [purchaseWalletType, address]);
 
   // Check if a plot is owned using Supabase
   const checkPlotOwnership = async (plotId: number, checkAddress?: string): Promise<{ isOwned: boolean; owner: string | null }> => {
@@ -239,24 +205,8 @@ export default function PlotPurchase() {
       let purchaseSigner: ethers.Signer | null = null;
       let purchaseAddress: string = "";
 
-      // Get signer based on wallet type
-      if (purchaseWalletType === "key" && selectedKeyName) {
-        // Get private key for Avalanche CLI key
-        const keyResult = await accountApi.getKeyPrivateKey(selectedKeyName);
-        if (!keyResult.success || !keyResult.private_key) {
-          toast.error("Failed to get private key for selected wallet");
-          setPurchasing(false);
-          return;
-        }
-        const privateKey = keyResult.private_key.startsWith("0x") 
-          ? keyResult.private_key 
-          : `0x${keyResult.private_key}`;
-        
-        // Create wallet (no RPC needed - using Supabase)
-        const wallet = new ethers.Wallet(privateKey);
-        purchaseSigner = wallet;
-        purchaseAddress = wallet.address;
-      } else if (purchaseWalletType === "connected") {
+      // Get signer based on wallet type (CLI keys removed)
+      if (purchaseWalletType === "connected") {
         if (!isConnected || !signer || !address) {
           toast.error("Please connect your wallet or select an ChaosStar Key");
           setPurchasing(false);
@@ -270,8 +220,15 @@ export default function PlotPurchase() {
         return;
       }
 
+      // Validate email
+      if (!buyerEmail || !buyerEmail.includes("@")) {
+        toast.error("Please enter a valid email address");
+        setPurchasing(false);
+        return;
+      }
+
       // Check balance from Supabase
-      const { getUserBalance, transferTokens, updatePlot, createTransaction } = await import("@/lib/supabase-service");
+      const { getUserBalance, purchasePlot, registerOwnership } = await import("@/lib/supabase-service");
       const balance = await getUserBalance(purchaseAddress);
       
       if (!balance || (balance.xbgl_balance || 0) < totalCost) {
@@ -280,46 +237,32 @@ export default function PlotPurchase() {
         return;
       }
 
-      // Generate transaction hash (simulated)
-      const txHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      // Register ownership (wallet + email)
+      try {
+        await registerOwnership(purchaseAddress, buyerEmail);
+      } catch (error: any) {
+        console.debug("Failed to register ownership:", error.message);
+        // Continue with purchase even if registration fails
+      }
 
-      // Transfer tokens from buyer to treasury (simulated purchase)
-      // In a real scenario, this would be a treasury address
-      const treasuryAddress = "0x0000000000000000000000000000000000000000"; // Placeholder
-      
+      // Purchase each plot using Supabase RPC function
+      const purchaseResults = [];
       for (const plotId of plotIdsArray) {
         try {
-          // Transfer xBGL for plot purchase
-          const transferResult = await transferTokens(
+          const result = await purchasePlot(
+            plotId,
             purchaseAddress,
-            treasuryAddress,
+            buyerEmail,
             PLOT_PRICE_xBGL,
             "xBGL"
           );
           
-          if (!transferResult.success) {
-            throw new Error(transferResult.error || "Transfer failed");
+          if (!result.success) {
+            throw new Error(result.error || "Purchase failed");
           }
           
-          // Update plot ownership in Supabase
-          await updatePlot(plotId, {
-            owner_wallet: purchaseAddress,
-            metadata_cid: txHash,
-          });
-          
-          // Create transaction record
-          await createTransaction({
-            transaction_hash: txHash,
-            from_address: purchaseAddress,
-            to_address: treasuryAddress,
-            amount: PLOT_PRICE_xBGL,
-            token_type: "xBGL",
-            transaction_type: "plot_purchase",
-            plot_id: plotId,
-            status: "completed",
-          });
-          
-          console.log(`✓ Purchased plot #${plotId}`);
+          purchaseResults.push({ plotId, txHash: result.txHash });
+          console.log(`✓ Purchased plot #${plotId} - TX: ${result.txHash}`);
         } catch (error: any) {
           console.error(`Failed to purchase plot #${plotId}:`, error);
           toast.error(`Failed to purchase plot #${plotId}: ${error.message}`);
@@ -330,265 +273,32 @@ export default function PlotPurchase() {
       
       toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL!`);
       
-      // Add plots to portfolio
+      // Clear selection and refresh
+      setSelectedPlotIds(new Set());
+      
+      // Refresh plot data
       if (purchaseAddress) {
         try {
-          const { getPortfolio, upsertPortfolio } = await import("@/lib/api");
-          
-          // Get existing portfolio or create new one
-          let portfolioData;
-          try {
-            portfolioData = await getPortfolio(purchaseAddress);
-          } catch {
-            portfolioData = null;
-          }
-          
-          // Get existing holdings or start fresh
-          const existingHoldings = portfolioData?.portfolio?.holdings || [];
-          
-          // Add each purchased plot to portfolio
-          const newHoldings = plotIdsArray.map((plotId) => ({
-            asset_type: "plot",
-            identifier: String(plotId),
-            cost_basis: PLOT_PRICE_xBGL,
-            yield_annual: 0.05, // Default 5% annual yield for plots
-            metadata: {
-              plotId: plotId,
-              purchaseDate: new Date().toISOString(),
-              purchaseTxHash: txHash,
-              purchasePrice: PLOT_PRICE_xBGL,
-              currency: "xBGL",
-              status: "active",
-            }
-          }));
-          
-          const updatedHoldings = [...existingHoldings, ...newHoldings];
-          
-          // Calculate new portfolio value
-          const newTotalValue = updatedHoldings.reduce((sum, holding) => {
-            return sum + (holding.current_value || holding.cost_basis || 0);
-          }, 0);
-          
-          // Upsert portfolio
-          await upsertPortfolio({
-            wallet: purchaseAddress,
-            portfolio: {
-              holdings: updatedHoldings,
-              total_value: newTotalValue,
-            }
-          });
-          
-          console.log(`✓ Added ${plotIdsArray.length} plot(s) to portfolio`);
+          const { getPlotsByOwner } = await import("@/lib/supabase-service");
+          await getPlotsByOwner(purchaseAddress);
         } catch (error) {
-          console.error("Failed to update portfolio:", error);
-          // Don't fail the purchase if portfolio update fails
-        }
-      }
-          
-          // Get existing portfolio or create new one
-          let portfolioData;
-          try {
-            portfolioData = await getPortfolio(purchaseAddress);
-          } catch {
-            // Portfolio doesn't exist, will create it
-            portfolioData = null;
-          }
-          
-          // Get existing holdings or start fresh
-          const existingHoldings = portfolioData?.portfolio?.holdings || [];
-          
-          // Get contract address (already imported at top)
-          const { CONTRACT_ADDRESSES } = await import("@/lib/contracts");
-          
-          // Add each purchased plot to portfolio with info and deed
-          const newHoldings = plotIdsArray.map((plotId) => ({
-            asset_type: "plot",
-            identifier: String(plotId),
-            cost_basis: PLOT_PRICE_xBGL,
-            yield_annual: 0.05, // Default 5% annual yield for plots
-            metadata: {
-              plotId: plotId,
-              purchaseDate: new Date().toISOString(),
-              purchaseTxHash: txHash,
-              purchasePrice: PLOT_PRICE_xBGL,
-              currency: "xBGL",
-              status: "pending", // Will be "active" once activated
-              deed: {
-                plotId: plotId,
-                owner: purchaseAddress,
-                purchaseDate: new Date().toISOString(),
-                purchaseTxHash: txHash,
-                purchasePrice: PLOT_PRICE_xBGL,
-                currency: "xBGL",
-                network: "Chaos Star Network",
-                contractAddress: CONTRACT_ADDRESSES.land || null,
-              }
-            }
-          }));
-          
-          // Filter out any plots that already exist in holdings
-          const existingPlotIds = new Set(
-            existingHoldings
-              .filter((h: any) => h.asset_type === "plot")
-              .map((h: any) => h.identifier)
-          );
-          
-          const plotsToAdd = newHoldings.filter(
-            (h) => !existingPlotIds.has(h.identifier)
-          );
-          
-          if (plotsToAdd.length > 0) {
-            await upsertPortfolio({
-              wallet: purchaseAddress,
-              holdings: [...existingHoldings, ...plotsToAdd],
-              portfolio_type: "primary",
-            });
-            toast.success(`${plotsToAdd.length} plot(s) added to your portfolio!`);
-            
-            // Trigger a refresh of the portfolio in Financial Hub by dispatching a custom event
-            window.dispatchEvent(new CustomEvent('portfolio-updated', { detail: { wallet: purchaseAddress } }));
-          }
-        } catch (portfolioError: any) {
-          console.error("Error adding plots to portfolio:", portfolioError);
-          // Don't fail the purchase if portfolio update fails
-          toast.warning("Purchase successful, but failed to add to portfolio. You can add them manually.");
-        }
-        
-        // Register plots to portfolio via Registry API
-        try {
-          const { registerPlotToPortfolio, upsertPortfolio } = await import("@/lib/api");
-          
-          // Get existing portfolio to append to
-          let existingPortfolio = null;
-          try {
-            const { getPortfolio } = await import("@/lib/api");
-            existingPortfolio = await getPortfolio(purchaseAddress, "primary");
-          } catch (e) {
-            // Portfolio might not exist yet, that's okay
-          }
-          
-          const existingHoldings = existingPortfolio?.portfolio?.holdings || 
-                                  existingPortfolio?.holdings || 
-                                  [];
-          
-          // Register each plot and add to portfolio
-          const newHoldings = [];
-          for (const plotId of plotIdsArray) {
-            try {
-              // Register plot via Registry API
-              const registration = await registerPlotToPortfolio(
-                plotId,
-                purchaseAddress,
-                PLOT_PRICE_xBGL.toString(),
-                txHash
-              );
-              
-              if (registration?.portfolio_holding) {
-                const holding = {
-                  ...registration.portfolio_holding,
-                  metadata: {
-                    ...registration.portfolio_holding.metadata,
-                    purchaseDate: new Date().toISOString(),
-                    purchaseTxHash: txHash,
-                  }
-                };
-                newHoldings.push(holding);
-                console.log(`✅ Registered plot ${plotId} to portfolio via Registry API`);
-              }
-            } catch (regError: any) {
-              console.debug(`Failed to register plot ${plotId} via Registry API:`, regError.message);
-              // Create basic holding if registry fails
-              newHoldings.push({
-                asset_type: "plot",
-                identifier: String(plotId),
-                cost_basis: PLOT_PRICE_xBGL,
-                yield_annual: 0.05,
-                metadata: {
-                  plotId,
-                  source: "blockchain",
-                  purchaseDate: new Date().toISOString(),
-                  purchaseTxHash: txHash,
-                }
-              });
-            }
-          }
-          
-          // Update portfolio with new holdings
-          if (newHoldings.length > 0) {
-            try {
-              await upsertPortfolio({
-                wallet: purchaseAddress,
-                holdings: [...existingHoldings, ...newHoldings],
-                portfolio_type: "primary",
-              });
-              console.log(`✅ Added ${newHoldings.length} plot(s) to portfolio via Registry API`);
-              toast.success(`${newHoldings.length} plot(s) registered to your portfolio!`);
-              
-              // Trigger portfolio refresh in Financial Hub and Universe page
-              window.dispatchEvent(new CustomEvent('portfolio-updated', { 
-                detail: { wallet: purchaseAddress } 
-              }));
-              window.dispatchEvent(new CustomEvent('plots-purchased', { 
-                detail: { wallet: purchaseAddress, plotIds: plotIdsArray, txHash } 
-              }));
-            } catch (portfolioError: any) {
-              console.debug("Failed to update portfolio (plots are still registered on blockchain):", portfolioError.message);
-            }
-          }
-        } catch (saveError: any) {
-          // Don't fail the purchase if portfolio registration fails - plot is still on blockchain
-          console.debug("Failed to register plots to portfolio (plot data is still on blockchain):", saveError.message);
-        }
-        
-        // Also save to backend/Supabase for persistence (legacy support)
-        try {
-          const { savePlot } = await import("@/lib/api");
-          const { CONTRACT_ADDRESSES } = await import("@/lib/contracts");
-          
-          for (const plotId of plotIdsArray) {
-            const plotMetadata = {
-              plotId: plotId,
-              owner: purchaseAddress,
-              purchaseDate: new Date().toISOString(),
-              purchaseTxHash: txHash,
-              purchasePrice: PLOT_PRICE_xBGL,
-              currency: "xBGL",
-              status: "active",
-              network: "Chaos Star Network",
-              contractAddress: CONTRACT_ADDRESSES.land || null,
-            };
-            await savePlot(purchaseAddress, plotId, plotMetadata).catch(() => {});
-          }
-        } catch (saveError: any) {
-          // Silent fail - already handled above
+          console.debug("Failed to refresh plots:", error);
         }
       }
       
-      // Trigger refresh of owned plots (for PlotSell component)
+      // Trigger refresh event
       window.dispatchEvent(new CustomEvent('plots-purchased', { 
         detail: { 
           wallet: purchaseAddress,
           plotIds: plotIdsArray,
-          txHash: txHash 
+          email: buyerEmail
         } 
       }));
       
-      // Navigate to purchase confirmation with all required parameters
-      if (txHash) {
-        const priceStr = PLOT_PRICE_xBGL.toString();
-        // Calculate coordinates from plotId (grid is 101x101, from -50 to 50)
-        const plotId = plotIdsArray[0];
-        const gridSize = 101;
-        const idx = plotId - 1; // 0-indexed
-        const row = Math.floor(idx / gridSize);
-        const col = idx % gridSize;
-        const x = col - 50; // Offset to center at 0
-        const y = row - 50;
-        const zone = getZoneType(x, y);
-        navigate(`/purchase-confirmation?plotId=${plotId}&txHash=${txHash}&price=${priceStr}&currency=xBGL&x=${x}&y=${y}&zone=${encodeURIComponent(zone)}${plotIdsArray.length > 1 ? `&count=${plotIdsArray.length}` : ''}`);
-      } else {
-        toast.error("Failed to get transaction hash");
-      }
+      // Navigate back to universe or show success
+      setTimeout(() => {
+        navigate("/universe");
+      }, 2000);
     } catch (error: any) {
       console.error("Purchase error:", error);
       toast.error(error.reason || error.message || "Failed to purchase plots");
@@ -832,18 +542,12 @@ export default function PlotPurchase() {
                     </Label>
                     <Select 
                       value={purchaseWalletType} 
-                      onValueChange={(value) => setPurchaseWalletType(value as "connected" | "key" | "account")}
+                      onValueChange={(value) => setPurchaseWalletType(value as "connected" | "account")}
                     >
                       <SelectTrigger className="glass-enhanced">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="key">
-                          <div className="flex items-center gap-2">
-                            <KeyRound className="h-4 w-4" />
-                            ChaosStar Key
-                          </div>
-                        </SelectItem>
                         <SelectItem value="connected">
                           <div className="flex items-center gap-2">
                             <Wallet className="h-4 w-4" />
@@ -852,39 +556,6 @@ export default function PlotPurchase() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-
-                    {purchaseWalletType === "key" && (
-                      <Select 
-                        value={selectedKeyName} 
-                        onValueChange={setSelectedKeyName}
-                      >
-                        <SelectTrigger className="glass-enhanced">
-                          <SelectValue placeholder="Choose a key...">
-                            {selectedKeyName ? (
-                              <div className="flex items-center gap-2">
-                                <KeyRound className="h-4 w-4 text-primary" />
-                                <span>{selectedKeyName}</span>
-                              </div>
-                            ) : (
-                              "Choose a key..."
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {chaosStarKeys.map((key) => (
-                            <SelectItem key={key.name} value={key.name}>
-                              <div className="flex items-center gap-2">
-                                <KeyRound className="h-4 w-4" />
-                                <span>{key.name}</span>
-                                <Badge variant="outline" className="ml-auto text-xs">
-                                  {key.address.slice(0, 6)}...{key.address.slice(-4)}
-                                </Badge>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
 
                     <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                       <div className="flex items-center justify-between text-sm">
@@ -897,6 +568,25 @@ export default function PlotPurchase() {
                           <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
                         </div>
                       )}
+                    </div>
+
+                    {/* Email Input */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        <Send className="h-4 w-4" />
+                        Email Address
+                      </Label>
+                      <Input
+                        type="email"
+                        placeholder="your@email.com"
+                        value={buyerEmail}
+                        onChange={(e) => setBuyerEmail(e.target.value)}
+                        className="glass-enhanced"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Required for ownership registry
+                      </p>
                     </div>
                   </div>
 
@@ -940,7 +630,7 @@ export default function PlotPurchase() {
                       variant="default"
                       className="w-full gap-2 h-14 text-lg font-semibold hover:scale-105 transition-all bg-gradient-to-r from-primary to-primary/80"
                       onClick={handlePurchase}
-                      disabled={purchasing || loading || selectedPlotIds.size === 0 || !hasEnoughBalance || (purchaseWalletType === "key" && !selectedKeyName)}
+                      disabled={purchasing || loading || selectedPlotIds.size === 0 || !hasEnoughBalance || !buyerEmail || !buyerEmail.includes("@")}
                     >
                       {purchasing ? (
                         <>

@@ -64,13 +64,14 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
       throw new Error("No accounts found. Please unlock your wallet and try again.");
     }
 
-    // Ensure we're on the correct network (ChaosStar Network)
+    // Note: Network switching is optional - wallet connection works for signing regardless of network
+    // Using Supabase for data, so network doesn't matter for signing operations
     try {
-      await addChaosStarNetwork();
+      await addChaosStarNetwork(provider);
     } catch (networkError: any) {
-      // If network switch fails, log but don't fail the connection
-      // User can manually switch networks later
-      console.warn("Failed to switch to ChaosStar Network:", networkError.message);
+      // If network switch fails, that's OK - we can still sign transactions
+      // User can manually switch networks later if needed
+      console.debug("Network switch optional - wallet can still sign:", networkError.message);
     }
 
     // Use the wallet's provider for signing only (no RPC needed - using Supabase)

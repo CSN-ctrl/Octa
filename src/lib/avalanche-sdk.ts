@@ -92,14 +92,15 @@ export async function getEnhancedBalances(address: string) {
       // Continue with empty tokens array
     }
     
-    // For native balance, use ethers.js directly (more reliable than SDK for C-Chain)
-    const { getRpcProvider } = await import("./wallet");
-    const { ethers } = await import("ethers");
-    const rpc = getRpcProvider();
+    // RPC provider removed - using Supabase only
+    // Native balance now fetched from Supabase
     let nativeBalance = "0";
-    if (rpc) {
-      const balance = await rpc.getBalance(address);
-      nativeBalance = balance.toString();
+    try {
+      const { getUserBalance } = await import("./supabase-service");
+      const balance = await getUserBalance(address);
+      nativeBalance = (balance?.xbgl_balance || 0).toString();
+    } catch (e) {
+      console.debug("Could not fetch balance from Supabase:", e);
     }
     
     return {
@@ -166,14 +167,10 @@ export async function getTokenMetadata(tokenAddress: string) {
     
     // Fallback: Get token info directly from ERC20 contract
     try {
-      const { getERC20Contract } = await import("./contracts");
-      const { getRpcProvider } = await import("./wallet");
-      const rpc = getRpcProvider();
-      
-      if (!rpc) {
-        console.debug("RPC provider not available for token metadata");
-        return null;
-      }
+      // RPC provider removed - using Supabase only
+      // Token metadata fetching disabled
+      console.debug("RPC provider removed - token metadata fetching disabled");
+      return null;
       
       const tokenContract = getERC20Contract(tokenAddress);
       

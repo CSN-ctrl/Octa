@@ -32,7 +32,7 @@ import { useLandPlots } from "@/hooks/useLandPlots";
 import { AccountSelector } from "@/components/AccountSelector";
 import { ethers } from "ethers";
 import { formatEther } from "ethers";
-import { getRpcProvider } from "@/lib/wallet";
+// RPC provider removed - using Supabase only
 import { 
   Dialog, 
   DialogContent, 
@@ -264,11 +264,8 @@ const DigitalID = () => {
       // Disconnect current wallet
       await disconnect();
       
-      // Create provider for Chaos Star Network (Avalanche subnet)
-      const provider = getRpcProvider();
-      if (!provider) {
-        throw new Error("Could not connect to Chaos Star Network");
-      }
+      // RPC provider removed - using Supabase only
+      // Provider not needed for signing - wallet signer is used instead
 
       // Create wallet from private key
       const wallet = new ethers.Wallet(newWalletPrivateKey, provider);

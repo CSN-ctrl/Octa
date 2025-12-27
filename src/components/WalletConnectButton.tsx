@@ -18,12 +18,13 @@ export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) 
   const handleConnect = async (walletId?: string) => {
     try {
       await connect(false, walletId);
-      // Wait a bit for state to update
+      // Wait a bit for state to update, then call onConnect if provided
       setTimeout(() => {
-        if (address && onConnect) {
-          onConnect(address);
+        const currentAddress = address || (window as any).ethereum?.selectedAddress;
+        if (currentAddress && onConnect) {
+          onConnect(currentAddress);
         }
-      }, 100);
+      }, 200);
     } catch (error: any) {
       // Error is already handled in WalletContext, just log here
       console.error("Wallet connection failed:", error);

@@ -10,7 +10,7 @@ import { usePlotPurchases } from "@/hooks/usePlotPurchases";
 import { useWallet } from "@/contexts/WalletContext";
 import { ExternalLink, MapPin, Calendar, Coins, Hash, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { getRpcProvider } from "@/lib/wallet";
+// RPC provider removed - using Supabase only
 import { ethers } from "ethers";
 
 export function PurchaseHistory() {

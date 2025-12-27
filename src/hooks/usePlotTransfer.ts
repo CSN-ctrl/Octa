@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "sonner";
-import { getRpcProvider } from "@/lib/wallet";
+// RPC provider removed - using Supabase only
 import { CONTRACT_ADDRESSES, PLOT_REGISTRY_ABI } from "@/lib/contracts";
 
 // ERC1155 ABI for transfers (subset of PLOT_REGISTRY_ABI)
@@ -30,9 +30,14 @@ export function usePlotTransfer() {
   const [transferring, setTransferring] = useState(false);
 
   const getContract = useCallback((withSigner = false) => {
-    const provider = withSigner && signer ? signer : getRpcProvider();
+    // RPC provider removed - using Supabase only
+    // Contract interactions disabled - using Supabase for transfers
+    if (!withSigner || !signer) {
+      throw new Error("Signer required for plot transfers - using Supabase only");
+    }
+    const provider = signer;
     if (!provider) {
-      throw new Error("No provider available");
+      throw new Error("No signer available");
     }
     const plotRegistryAddress = CONTRACT_ADDRESSES.plotRegistry;
     if (!plotRegistryAddress || plotRegistryAddress.trim() === "") {

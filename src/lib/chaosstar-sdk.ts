@@ -5,14 +5,16 @@
  */
 
 import { ethers } from "ethers";
-import { getRpcProvider, CHAOSSTAR_NETWORK } from "./wallet";
+import { CHAOSSTAR_NETWORK } from "./wallet";
+// RPC provider removed - using Supabase only
 import * as api from "./api";
 
 /**
- * Get ChaosStar RPC Provider
+ * Get ChaosStar RPC Provider (disabled - using Supabase only)
  */
 export function getProvider(): ethers.JsonRpcProvider | null {
-  return getRpcProvider();
+  // RPC provider removed - using Supabase only
+  return null;
 }
 
 /**
@@ -21,21 +23,16 @@ export function getProvider(): ethers.JsonRpcProvider | null {
  */
 export async function getEnhancedBalances(address: string) {
   try {
-    const rpc = getRpcProvider();
+    // RPC provider removed - using Supabase only
     let nativeBalance = "0";
     
-    if (rpc) {
-      // Validate address format to avoid ENS errors
-      if (address.startsWith("0x") && address.length === 42) {
-        try {
-          const balance = await rpc.getBalance(address);
-          nativeBalance = balance.toString();
-        } catch (err: any) {
-          if (err?.code !== "UNSUPPORTED_OPERATION") {
-            console.debug("Error fetching native balance:", err);
-          }
-        }
-      }
+    // Get balance from Supabase
+    try {
+      const { getUserBalance } = await import("./supabase-service");
+      const balance = await getUserBalance(address);
+      nativeBalance = (balance?.xbgl_balance || 0).toString();
+    } catch (err: any) {
+      console.debug("Error fetching balance from Supabase:", err);
     }
     
     // Try to get token balances from backend

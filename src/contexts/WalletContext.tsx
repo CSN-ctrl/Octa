@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { ethers } from "ethers";
-import { connectWallet, getConnectedAddress, getRpcProvider, disconnectWalletConnect, connectWithPrivateKey, addChaosStarNetwork, detectWallets, type WalletInfo } from "@/lib/wallet";
+import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, type WalletInfo } from "@/lib/wallet";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WalletContextType {
   address: string | null;
   signer: ethers.Signer | null;
-  provider: ethers.JsonRpcProvider;
+  provider: ethers.JsonRpcProvider | null;
   isConnected: boolean;
   balance: string;
   availableWallets: WalletInfo[];
@@ -64,43 +64,38 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         throw new Error(`Wallet "${walletId}" not found.`);
       }
       
-      // Try to add/switch to ChaosStar Network before connecting
-      try {
-        await addChaosStarNetwork(selectedWallet.provider);
-      } catch (networkError: any) {
-        // If network switch fails, show warning but continue with connection
-        // User can manually switch networks if needed
-        console.warn("Network switch failed:", networkError.message);
-        if (!networkError.message?.includes("rejected")) {
-          toast.warning(`Could not switch to ChaosStar Network. You may need to switch manually in ${selectedWallet.name}.`);
-        }
-      }
-      
+      // Note: Network switching removed - using Supabase instead of blockchain RPC
       const { signer: newSigner, address: newAddress, provider: newProvider } = await connectWallet(shouldUseWalletConnect, walletId || selectedWallet.id);
       setSigner(newSigner);
       setAddress(newAddress);
-      setWalletProvider(newProvider);
+      setWalletProvider(selectedWallet.provider); // Store the actual provider for event listening
       await refreshBalance(newAddress);
       toast.success("Wallet connected!");
 
-      // Listen to wallet events
-      if (newProvider) {
+      // Listen to wallet events from the browser provider
+      const { ethereum } = window as any;
+      if (ethereum) {
         // Remove any existing listeners to avoid duplicates
-        newProvider.removeAllListeners?.("accountsChanged");
-        newProvider.removeAllListeners?.("chainChanged");
+        ethereum.removeAllListeners?.("accountsChanged");
+        ethereum.removeAllListeners?.("chainChanged");
         
-        newProvider.on("accountsChanged", (accounts: string[]) => {
+        ethereum.on("accountsChanged", (accounts: string[]) => {
           if (accounts.length === 0) {
             disconnect();
           } else {
             setAddress(accounts[0]);
             refreshBalance(accounts[0]);
+            // Update signer when account changes
+            const web3Provider = new ethers.BrowserProvider(ethereum);
+            web3Provider.getSigner().then(setSigner).catch(() => {});
           }
         });
         
-        newProvider.on("chainChanged", () => {
-          // Refresh balance when chain changes
+        ethereum.on("chainChanged", () => {
+          // Refresh balance and signer when chain changes
           refreshBalance(newAddress);
+          const web3Provider = new ethers.BrowserProvider(ethereum);
+          web3Provider.getSigner().then(setSigner).catch(() => {});
         });
       }
     } catch (error: any) {
@@ -159,24 +154,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!addrToCheck) return;
 
     try {
-      // Use ethers.js directly (more reliable for C-Chain balance)
-      const rpc = getRpcProvider();
-      if (!rpc) {
-        console.debug("RPC provider not available");
-        return;
-      }
-      const bal = await rpc.getBalance(addrToCheck);
-      setBalance(ethers.formatEther(bal));
-    } catch (error: any) {
-      // Check if it's an expected RPC error (404 when node not running)
-      const isRpcError = error?.code === 'SERVER_ERROR' || 
-                        error?.message?.includes('404') ||
-                        error?.message?.includes('Not Found');
-      if (isRpcError) {
-        console.debug("RPC not available, balance fetch skipped");
+      // Get balance from Supabase instead of RPC
+      const { getUserBalance } = await import("@/lib/supabase-service");
+      const balanceData = await getUserBalance(addrToCheck);
+      
+      if (balanceData) {
+        // Use xBGL balance as the primary balance
+        const xbglBalance = balanceData.xbgl_balance || 0;
+        setBalance(xbglBalance.toString());
       } else {
-        console.error("Failed to fetch balance:", error);
+        setBalance("0");
       }
+    } catch (error: any) {
+      console.debug("Failed to fetch balance from Supabase:", error);
+      setBalance("0");
     }
   };
 
@@ -236,7 +227,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       value={{
         address,
         signer,
-        provider: getRpcProvider() as any,
+        provider: null, // No RPC provider needed - using Supabase
         isConnected: !!address,
         balance,
         availableWallets,

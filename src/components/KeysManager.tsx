@@ -43,37 +43,12 @@ export function KeysManager({ onKeySelect }: KeysManagerProps) {
   const [privateKeys, setPrivateKeys] = useState<Record<string, string>>({});
 
   const loadKeys = useCallback(async () => {
+    // CLI integration removed - not needed at the moment
     setLoading(true);
     try {
-      const keysData = await api.listAvalancheKeys();
-      if (keysData.keys && Array.isArray(keysData.keys)) {
-        // Load balances for each key
-        const keysWithBalances = await Promise.all(
-          keysData.keys.map(async (key: any) => {
-            try {
-              const balanceData = await api.getKeyBalance(key.name);
-              return {
-                name: key.name,
-                address: key.address || key.c_address || "",
-                balance: balanceData.c_balance || balanceData.balance || "0",
-                cBalance: balanceData.c_balance,
-                pBalance: balanceData.p_balance,
-                xBalance: balanceData.x_balance,
-              };
-            } catch {
-              return {
-                name: key.name,
-                address: key.address || key.c_address || "",
-                balance: "0",
-              };
-            }
-          })
-        );
-        setKeys(keysWithBalances);
-      }
+      setKeys([]);
     } catch (error: any) {
       console.error("Failed to load keys:", error);
-      toast.error("Failed to load Avalanche keys");
     } finally {
       setLoading(false);
     }
@@ -91,20 +66,8 @@ export function KeysManager({ onKeySelect }: KeysManagerProps) {
   };
 
   const loadPrivateKey = async (keyName: string) => {
-    if (privateKeys[keyName]) {
-      setShowPrivateKey(showPrivateKey === keyName ? null : keyName);
-      return;
-    }
-    
-    try {
-      const data = await api.getKeyPrivateKey(keyName);
-      if (data.private_key) {
-        setPrivateKeys(prev => ({ ...prev, [keyName]: data.private_key }));
-        setShowPrivateKey(keyName);
-      }
-    } catch (error) {
-      toast.error("Failed to load private key");
-    }
+    // CLI integration removed - not needed at the moment
+    toast.error("CLI integration removed - private keys not available");
   };
 
   return (

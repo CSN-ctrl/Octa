@@ -2,22 +2,14 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { 
   Menu,
-  Network, 
   Globe, 
-  Star, 
-  Orbit, 
-  Building2, 
   ChevronRight, 
   Folder, 
   FolderOpen,
   File,
   ShoppingCart,
-  Wallet,
-  Sparkles,
-  Link2,
   CheckCircle2,
-  XCircle,
-  TestTube
+  XCircle
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { Badge } from "@/components/ui/badge";
@@ -63,80 +55,16 @@ export function SidebarNavigation() {
 
   const directoryStructure: DirectoryItem[] = [
     {
-      type: "folder",
+      type: "file",
       label: "Universe",
       icon: Globe,
-      children: [
-        {
-          type: "file",
-          label: "Universe",
-          icon: Globe,
-          path: "/",
-        },
-        {
-          type: "folder",
-          label: "Star Systems",
-          icon: Star,
-          children: [
-            {
-              type: "file",
-              label: "All Systems",
-              icon: Star,
-              path: "/star-system",
-            },
-          ],
-        },
-        {
-          type: "folder",
-          label: "Planets",
-          icon: Orbit,
-          children: [
-            {
-              type: "file",
-              label: "All Planets",
-              icon: Orbit,
-              path: "/planet",
-            },
-          ],
-        },
-        {
-          type: "folder",
-          label: "Cities",
-          icon: Building2,
-          children: [
-            {
-              type: "file",
-              label: "All Cities",
-              icon: Building2,
-              path: "/city",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      type: "file",
-      label: "Celestial Forge",
-      icon: Sparkles,
-      path: "/celestial-forge",
+      path: "/",
     },
     {
       type: "file",
       label: "Financial Hub",
       icon: ShoppingCart,
       path: "/financial-hub",
-    },
-    {
-      type: "file",
-      label: "Chaos Vault",
-      icon: Wallet,
-      path: "/chaos-vault",
-    },
-    {
-      type: "file",
-      label: "Blockchain Test",
-      icon: TestTube,
-      path: "/blockchain-test",
     },
   ];
 

@@ -128,6 +128,116 @@ export async function upsertPlot(plot: TablesInsert<"plots">): Promise<Plot> {
   return data;
 }
 
+// Purchase plot (with email)
+export interface PurchasePlotResult {
+  success: boolean;
+  txHash?: string;
+  plot_id?: number;
+  purchase_id?: string;
+  error?: string;
+}
+
+export async function purchasePlot(
+  plotId: number,
+  buyerWallet: string,
+  buyerEmail: string,
+  price: number,
+  currency: string = "xBGL"
+): Promise<PurchasePlotResult> {
+  try {
+    const { data, error } = await (supabase.rpc as any)("purchase_plot", {
+      p_plot_id: plotId,
+      p_buyer_wallet: buyerWallet,
+      p_buyer_email: buyerEmail,
+      p_price: price,
+      p_currency: currency,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return data as PurchasePlotResult;
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to purchase plot" };
+  }
+}
+
+// Get plot ownership (with email)
+export interface PlotOwnership {
+  success: boolean;
+  owned: boolean;
+  plot_id: number;
+  owner_wallet?: string;
+  owner_email?: string;
+  booking_status?: string;
+  error?: string;
+}
+
+export async function getPlotOwnership(plotId: number): Promise<PlotOwnership> {
+  try {
+    const { data, error } = await (supabase.rpc as any)("get_plot_ownership", {
+      p_plot_id: plotId,
+    });
+
+    if (error) {
+      return { success: false, owned: false, plot_id: plotId, error: error.message };
+    }
+
+    return data as PlotOwnership;
+  } catch (error: any) {
+    return { success: false, owned: false, plot_id: plotId, error: error.message };
+  }
+}
+
+// Register ownership (wallet + email)
+export async function registerOwnership(wallet: string, email: string): Promise<void> {
+  const { error } = await supabase
+    .from("ownership_registry")
+    .upsert(
+      {
+        wallet_address: wallet,
+        email: email,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "wallet_address" }
+    );
+
+  if (error) throw error;
+}
+
+// Get ownership by wallet
+export async function getOwnershipByWallet(wallet: string): Promise<{ wallet_address: string; email: string } | null> {
+  const { data, error } = await supabase
+    .from("ownership_registry")
+    .select("*")
+    .eq("wallet_address", wallet)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+
+  return data;
+}
+
+// Get ownership by email
+export async function getOwnershipByEmail(email: string): Promise<{ wallet_address: string; email: string } | null> {
+  const { data, error } = await supabase
+    .from("ownership_registry")
+    .select("*")
+    .eq("email", email)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+
+  return data;
+}
+
 // ==================== PLANETS ====================
 export async function getPlanets(filters?: {
   ownerWallet?: string;

@@ -20,7 +20,7 @@ import {
 import { useWallet } from "@/contexts/WalletContext";
 import { ethers } from "ethers";
 import { toast } from "sonner";
-import { getRpcProvider } from "@/lib/wallet";
+// RPC provider removed - using Supabase only
 import { getERC20Contract } from "@/lib/contracts";
 import * as supabaseService from "@/lib/supabase-service";
 

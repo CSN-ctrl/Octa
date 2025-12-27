@@ -74,12 +74,6 @@ export function SettingsButton() {
         </div>
         
         <DropdownMenuSeparator />
-        
-        <DropdownMenuItem onClick={() => navigate("/digital-id")}>
-          Digital ID
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
 
         <div className="px-2 py-1.5">
           <div className="flex items-center justify-between">

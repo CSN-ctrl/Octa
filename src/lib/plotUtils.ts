@@ -4,7 +4,7 @@
 
 import { ethers } from "ethers";
 import { getLandContract, hasLandContract } from "./contracts";
-import { getRpcProvider } from "./wallet";
+// RPC provider removed - using Supabase only
 
 export interface OwnedPlot {
   plotId: number;
@@ -32,12 +32,9 @@ export async function fetchOwnedPlots(
   }
 
   try {
-    // Check if RPC provider is available first
-    const provider = getRpcProvider();
-    if (!provider) {
-      console.debug("RPC provider not available");
-      return [];
-    }
+    // RPC provider removed - using Supabase only
+    console.debug("RPC provider removed - using Supabase only");
+    return [];
     
     const contract = getLandContract();
     if (!contract) {
@@ -219,11 +216,10 @@ export async function checkPlotOwnership(
   }
 
   try {
-    // Check if RPC provider is available first
-    const provider = getRpcProvider();
-    if (!provider) {
-      return 0n;
-    }
+    // RPC provider removed - using Supabase only
+    // Contract interactions disabled
+    console.debug("RPC provider removed - using Supabase only");
+    return 0n;
     
     const contract = getLandContract();
     if (!contract) {

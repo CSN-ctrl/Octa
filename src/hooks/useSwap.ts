@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
-import { getRpcProvider } from "@/lib/wallet";
+// RPC provider removed - using Supabase only
 import { getERC20Contract } from "@/lib/contracts";
 import { toast } from "sonner";
 
@@ -31,10 +31,9 @@ export function useSwap() {
 
     setLoadingQuote(true);
     try {
-      const provider = getRpcProvider();
-      if (!provider) {
-        throw new Error("Chaos Star Network RPC not available");
-      }
+      // RPC provider removed - using Supabase only
+      // Swap functionality disabled - using Supabase for token operations
+      throw new Error("Swap functionality disabled - using Supabase only");
 
       // Get token info
       const tokenContract = getERC20Contract(tokenOutAddress, provider);
@@ -95,10 +94,9 @@ export function useSwap() {
 
     setSwapping(true);
     try {
-      const provider = getRpcProvider();
-      if (!provider) {
-        throw new Error("Chaos Star Network RPC not available");
-      }
+      // RPC provider removed - using Supabase only
+      // Swap functionality disabled - using Supabase for token operations
+      throw new Error("Swap functionality disabled - using Supabase only");
 
       // Get user's xBGL balance
       const balance = await provider.getBalance(address);
@@ -172,10 +170,9 @@ export function useSwap() {
 
     setSwapping(true);
     try {
-      const provider = getRpcProvider();
-      if (!provider) {
-        throw new Error("Chaos Star Network RPC not available");
-      }
+      // RPC provider removed - using Supabase only
+      // Swap functionality disabled - using Supabase for token operations
+      throw new Error("Swap functionality disabled - using Supabase only");
 
       // Get token contract
       const tokenContract = getERC20Contract(tokenInAddress, signer);

@@ -4,17 +4,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { useAutoscale } from '@/hooks/useAutoscale';
 
 interface GalaxyVisualizationProps {
-  systemProgress?: number;
-  octaviaProgress?: number;
-  zytheraProgress?: number;
-  onSelect?: (body: "star" | "octavia" | "zythera", info: { position: { x: number; y: number; z: number }; radius?: number }) => void;
+  // Visualization is now detached from functions - purely visual
 }
 
-export const GalaxyVisualization = ({ 
-  systemProgress = 0, 
-  octaviaProgress = 0,
-  zytheraProgress = 0 
-}: GalaxyVisualizationProps) => {
+export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
   // Autoscale hook for responsive design
   const {
     screenSize,
@@ -36,6 +29,25 @@ export const GalaxyVisualization = ({
     reduceParticlesOnMobile: true,
     particleReductionFactor: 0.5,
   });
+
+  // Store functions in refs to prevent unnecessary re-renders
+  const getFOVRef = useRef(getFOV);
+  const getPixelRatioRef = useRef(getPixelRatio);
+  const getDistanceMultiplierRef = useRef(getDistanceMultiplier);
+  const getParticleMultiplierRef = useRef(getParticleMultiplier);
+  const shouldReduceQualityRef = useRef(shouldReduceQuality);
+  
+  // Update refs when functions change
+  useEffect(() => {
+    getFOVRef.current = getFOV;
+    getPixelRatioRef.current = getPixelRatio;
+    getDistanceMultiplierRef.current = getDistanceMultiplier;
+    getParticleMultiplierRef.current = getParticleMultiplier;
+    shouldReduceQualityRef.current = shouldReduceQuality;
+  }, [getFOV, getPixelRatio, getDistanceMultiplier, getParticleMultiplier, shouldReduceQuality]);
+
+  // Track screen size category to only recreate on significant changes
+  const screenCategory = screenSize.isMobile ? 'mobile' : screenSize.isTablet ? 'tablet' : 'desktop';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -64,29 +76,33 @@ export const GalaxyVisualization = ({
     sceneRef.current = scene;
 
     // Camera - Use autoscale FOV
-    const initialFOV = getFOV();
+    const initialFOV = getFOVRef.current();
     const camera = new THREE.PerspectiveCamera(
       initialFOV,
       containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
       100
     );
-    // Adjust initial camera position based on screen size
-    const distanceMultiplier = getDistanceMultiplier();
-    camera.position.set(3 * distanceMultiplier, 3 * distanceMultiplier, 3 * distanceMultiplier);
+    // Adjust initial camera position based on screen size - centered on galaxy (0,0,0)
+    const distanceMultiplier = getDistanceMultiplierRef.current();
+    const galaxyCenter = new THREE.Vector3(0, 0, 0);
+    camera.position.set(3 * distanceMultiplier, 2 * distanceMultiplier, 3 * distanceMultiplier);
+    camera.lookAt(galaxyCenter);
     cameraRef.current = camera;
 
     // Renderer - Optimized settings with autoscale
     const renderer = new THREE.WebGLRenderer({ 
-      antialias: !shouldReduceQuality(), // Disable antialiasing on mobile for performance
+      antialias: !shouldReduceQualityRef.current(), // Disable antialiasing on mobile for performance
       alpha: true,
       powerPreference: "high-performance"
     });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(getPixelRatio());
+    renderer.setPixelRatio(Math.min(getPixelRatioRef.current(), 2)); // Cap pixel ratio to prevent glitches
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
+    // Enable smooth rendering
+    renderer.setAnimationLoop(null); // We'll use requestAnimationFrame manually
     renderer.shadowMap.enabled = false; // Disable shadows for better performance
     renderer.sortObjects = false; // Disable sorting for better performance
     containerRef.current.appendChild(renderer.domElement);
@@ -94,12 +110,13 @@ export const GalaxyVisualization = ({
     raycasterRef.current = new THREE.Raycaster();
     pointerRef.current = new THREE.Vector2();
 
-    // Controls
+    // Controls - centered on galaxy (0,0,0)
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.enablePan = true;
     controls.enableZoom = true;
+    controls.target.set(0, 0, 0); // Center on galaxy
     controls.touches = {
       ONE: THREE.TOUCH.ROTATE,
       TWO: THREE.TOUCH.DOLLY_PAN
@@ -122,7 +139,7 @@ export const GalaxyVisualization = ({
 
     // Galaxy parameters - Optimized with autoscale particle reduction
     const baseCount = 40000;
-    const particleMultiplier = getParticleMultiplier();
+    const particleMultiplier = getParticleMultiplierRef.current();
     const parameters = {
       count: Math.floor(baseCount * particleMultiplier), // Scale particles based on screen size
       size: screenSize.isMobile ? 0.015 : 0.012, // Slightly larger on mobile for visibility
@@ -317,7 +334,7 @@ export const GalaxyVisualization = ({
       const dir = new THREE.Vector3().subVectors(startPos, startTarget).normalize();
       const endTarget = target.clone();
       // Apply distance multiplier for responsive zoom
-      const adjustedDistance = distance * getDistanceMultiplier();
+      const adjustedDistance = distance * getDistanceMultiplierRef.current();
       const endPos = target.clone().add(dir.multiplyScalar(adjustedDistance));
       const start = performance.now();
       const animate = (t: number) => {
@@ -335,29 +352,18 @@ export const GalaxyVisualization = ({
       zoomAnimRef.current = requestAnimationFrame(animate);
     };
 
-    // Click handlers on labels
+    // Click handlers on labels - detached from functions, just visual zoom
     starLabel.onclick = () => {
       zoomTo(starPos, 1.0);
-      if (typeof onSelect === "function") {
-        onSelect("star", { position: { x: starPos.x, y: starPos.y, z: starPos.z } });
-      }
     };
     octaviaLabel.onclick = () => {
       if (octaviaOrbitRef.current) {
         zoomTo(octaviaOrbitRef.current.position, 1.0);
-        if (typeof onSelect === "function") {
-          const p = octaviaOrbitRef.current.position;
-          onSelect("octavia", { position: { x: p.x, y: p.y, z: p.z }, radius: 0.8 });
-        }
       }
     };
     zytheraLabel.onclick = () => {
       if (zytheraOrbitRef.current) {
         zoomTo(zytheraOrbitRef.current.position, 1.2);
-        if (typeof onSelect === "function") {
-          const p = zytheraOrbitRef.current.position;
-          onSelect("zythera", { position: { x: p.x, y: p.y, z: p.z }, radius: 1.1 });
-        }
       }
     };
 
@@ -380,9 +386,7 @@ export const GalaxyVisualization = ({
         if (match) {
           const t = match.target();
           zoomTo(t, match.dist ?? 1.2);
-          if (typeof onSelect === "function") {
-            onSelect(match.id, { position: { x: t.x, y: t.y, z: t.z }, radius: match.radius });
-          }
+          // Detached from functions - just visual zoom
         }
       }
     };
@@ -406,33 +410,31 @@ export const GalaxyVisualization = ({
 
     const tick = () => {
       const elapsedTime = clock.getElapsedTime();
-      const delta = clock.getDelta();
+      const delta = Math.min(clock.getDelta(), 0.1); // Cap delta to prevent large jumps
       frameCount++;
 
       // Update controls
       controls.update();
 
-      // Rotate galaxy slowly
+      // Rotate galaxy - Use delta for smooth, frame-rate independent rotation
       if (galaxyRef.current) {
-        galaxyRef.current.rotation.y = elapsedTime * 0.05;
+        galaxyRef.current.rotation.y += 0.15 * delta; // Increased speed (was 0.05)
       }
 
-      // Pulse Sarakt star
+      // Pulse Sarakt star - static animation, detached from data
       if (saraktStarRef.current) {
-        const intensity = 1 + systemProgress * 0.5;
+        const intensity = 1.0; // Static intensity
         const pulse = Math.sin(elapsedTime * 2) * 0.1 + 0.9;
         saraktStarRef.current.scale.set(pulse * intensity, pulse * intensity, pulse * intensity);
       }
 
-      // Planetary orbits - Use delta time for frame-rate independent animation
+      // Planetary orbits - Use delta time for frame-rate independent animation, static speeds
       if (octaviaOrbitRef.current) {
-        const baseSpeed = 0.25;
-        const speed = baseSpeed * (0.8 + octaviaProgress * 0.4);
+        const speed = 0.25; // Static speed, detached from progress
         octaviaOrbitRef.current.rotation.y += speed * delta;
       }
       if (zytheraOrbitRef.current) {
-        const baseSpeed = 0.2;
-        const speed = baseSpeed * (0.8 + zytheraProgress * 0.4);
+        const speed = 0.2; // Static speed, detached from progress
         zytheraOrbitRef.current.rotation.y += speed * delta;
       }
 
@@ -474,15 +476,22 @@ export const GalaxyVisualization = ({
         if (timeSinceInteraction > AUTO_ORBIT_RESUME_DELAY) {
           userInteracting = false; // Resume auto-orbit
         }
-        // Smooth interpolation back to auto-orbit - Use autoscale distance
+        // Smooth interpolation back to auto-orbit - centered on galaxy (0,0,0)
         const lerpFactor = Math.min(1, timeSinceInteraction / AUTO_ORBIT_RESUME_DELAY);
-        const orbitRadius = 4 * getDistanceMultiplier();
-        const autoX = starPos.x + Math.cos(elapsedTime * 0.05) * orbitRadius;
-        const autoZ = starPos.z + Math.sin(elapsedTime * 0.05) * orbitRadius;
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, autoX, lerpFactor * 0.02);
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, autoZ, lerpFactor * 0.02);
-        if (lerpFactor > 0.5) {
-          camera.lookAt(starPos);
+        const orbitRadius = 4 * getDistanceMultiplierRef.current();
+        const galaxyCenter = new THREE.Vector3(0, 0, 0);
+        // Use accumulated rotation for smooth camera orbit around galaxy center
+        const orbitAngle = elapsedTime * 0.15; // Increased speed to match galaxy rotation (was 0.05)
+        const autoX = galaxyCenter.x + Math.cos(orbitAngle) * orbitRadius;
+        const autoZ = galaxyCenter.z + Math.sin(orbitAngle) * orbitRadius;
+        const autoY = galaxyCenter.y + 2 * getDistanceMultiplierRef.current(); // Slight elevation
+        // Use higher lerp factor for smoother interpolation
+        const smoothLerp = 0.05 * (1 + lerpFactor);
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, autoX, smoothLerp);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, autoY, smoothLerp);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, autoZ, smoothLerp);
+        if (lerpFactor > 0.3) {
+          camera.lookAt(galaxyCenter);
         }
       }
 
@@ -508,16 +517,16 @@ export const GalaxyVisualization = ({
         
         // Update camera with autoscale FOV
         camera.aspect = width / height;
-        camera.fov = getFOV();
+        camera.fov = getFOVRef.current();
         camera.updateProjectionMatrix();
         
         // Update renderer with autoscale pixel ratio
         renderer.setSize(width, height, false); // false = don't update style
-        renderer.setPixelRatio(getPixelRatio());
+        renderer.setPixelRatio(getPixelRatioRef.current());
         
         // Update antialiasing based on screen size
         if (renderer.domElement) {
-          const newAntialias = !shouldReduceQuality();
+          const newAntialias = !shouldReduceQualityRef.current();
           // Note: Can't change antialiasing after creation, but pixel ratio helps
         }
         
@@ -569,7 +578,9 @@ export const GalaxyVisualization = ({
       bhGeom.dispose();
       bhMat.dispose();
     };
-  }, [systemProgress, octaviaProgress, zytheraProgress, screenSize, getFOV, getPixelRatio, getDistanceMultiplier, getParticleMultiplier, shouldReduceQuality]);
+    // Only recreate on screen category changes (mobile/tablet/desktop), not on every resize
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenCategory]);
 
   return (
     <div 
