@@ -62,6 +62,8 @@ export default defineConfig(({ mode }) => ({
     "process.browser": JSON.stringify(true),
   },
   build: {
-    sourcemap: mode === "production", // generate source maps only in dev
+    // Generate source maps for production debugging (hidden = separate .map files, not embedded)
+    sourcemap: mode === "production" ? "hidden" : true,
+    minify: mode === "production" ? "esbuild" : false,
   },
 }));

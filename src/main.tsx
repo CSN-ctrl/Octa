@@ -118,6 +118,54 @@ if (typeof console !== "undefined") {
   };
 }
 
+// Global error handlers for uncaught errors and promise rejections
+window.addEventListener('error', (event) => {
+  // Don't suppress errors we've already handled
+  if (event.message?.includes('Cannot redefine property: ethereum')) {
+    return; // Already handled above
+  }
+  
+  console.error('Uncaught error:', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: event.error,
+    stack: event.error?.stack,
+  });
+  
+  // Log to error tracking service if available
+  if (typeof window !== 'undefined' && (window as any).Sentry) {
+    (window as any).Sentry.captureException(event.error || new Error(event.message), {
+      tags: {
+        type: 'uncaught_error',
+      },
+    });
+  }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', {
+    reason: event.reason,
+    promise: event.promise,
+  });
+  
+  // Log to error tracking service if available
+  if (typeof window !== 'undefined' && (window as any).Sentry) {
+    (window as any).Sentry.captureException(
+      event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
+      {
+        tags: {
+          type: 'unhandled_promise_rejection',
+        },
+      }
+    );
+  }
+  
+  // Prevent default browser behavior (console error)
+  // event.preventDefault();
+});
+
 // Ensure root element exists before rendering
 const rootElement = document.getElementById("root");
 if (!rootElement) {

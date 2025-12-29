@@ -243,19 +243,35 @@ export function SidebarNavigation() {
 }
 
 export function SidebarToggle() {
-  const { toggleSidebar } = useSidebar();
-  
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-9 w-9"
-      onClick={toggleSidebar}
-      data-sidebar="trigger"
-    >
-      <Menu className="h-5 w-5" />
-      <span className="sr-only">Toggle Sidebar</span>
-    </Button>
-  );
+  try {
+    const { toggleSidebar } = useSidebar();
+    
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9"
+        onClick={toggleSidebar}
+        data-sidebar="trigger"
+      >
+        <Menu className="h-5 w-5" />
+        <span className="sr-only">Toggle Sidebar</span>
+      </Button>
+    );
+  } catch (error) {
+    console.error("SidebarToggle error:", error);
+    // Fallback button if sidebar context is not available
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9"
+        onClick={() => console.warn("Sidebar not available")}
+      >
+        <Menu className="h-5 w-5" />
+        <span className="sr-only">Toggle Sidebar</span>
+      </Button>
+    );
+  }
 }
 
