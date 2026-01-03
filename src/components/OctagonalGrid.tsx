@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,7 @@ interface OctagonalGridProps {
   onPlotSelect?: (plot: Plot) => void;
   onPurchase?: (plotId: number) => Promise<void>;
   plotPrice?: bigint | string; // Price in AVAX (wei or formatted string)
+  ownedPlotIds?: number[];
   isConnected?: boolean;
   isLoading?: boolean;
 }
@@ -70,6 +71,8 @@ export function OctagonalGrid({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const svgContainerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastPanRef = useRef({ x: 0, y: 0 });
 
 
   // Generate a circular grid layout for plots with town center in the middle (old style - concentric rings)
@@ -222,7 +225,7 @@ export function OctagonalGrid({
     }
   }, [gridPositions, gridSize, gridHeight, onPlotClick, onPlotSelect]);
 
-  // Handle mouse drag - optimized with useCallback
+  // Handle mouse drag - optimized with useCallback and RAF
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) { // Left mouse button
       setIsDragging(true);
@@ -232,39 +235,118 @@ export function OctagonalGrid({
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isDragging) {
-      setPan({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
+      // Use RAF for smooth updates
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = requestAnimationFrame(() => {
+        setPan({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y,
+        });
       });
     }
   }, [isDragging, dragStart]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
   }, []);
 
-  // Handle wheel zoom
-  const handleWheel = (e: React.WheelEvent) => {
+  // Handle wheel zoom with debouncing
+  const wheelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.5, Math.min(3, zoom * delta));
-    setZoom(newZoom);
-  };
+    if (wheelTimeoutRef.current) {
+      clearTimeout(wheelTimeoutRef.current);
+    }
+    wheelTimeoutRef.current = setTimeout(() => {
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setZoom(prevZoom => {
+        const newZoom = Math.max(0.5, Math.min(3, prevZoom * delta));
+        return newZoom;
+      });
+    }, 10);
+  }, []);
 
-  // Zoom to selected plot when it changes
+  // Zoom to selected plot when it changes - debounced
   useEffect(() => {
     if (selectedPlot && gridPositions[selectedPlot.id - 1]) {
-      const plotPos = gridPositions[selectedPlot.id - 1];
-      const containerWidth = svgContainerRef.current?.clientWidth || gridSize;
-      const containerHeight = svgContainerRef.current?.clientHeight || gridHeight;
+      const timeout = setTimeout(() => {
+        const plotPos = gridPositions[selectedPlot.id - 1];
+        const containerWidth = svgContainerRef.current?.clientWidth || gridSize;
+        const containerHeight = svgContainerRef.current?.clientHeight || gridHeight;
+        
+        const targetX = containerWidth / 2 - plotPos.x * zoom;
+        const targetY = containerHeight / 2 - plotPos.y * zoom;
+        
+        setPan({ x: targetX, y: targetY });
+        if (zoom < 1.5) setZoom(1.5);
+      }, 100);
       
-      const targetX = containerWidth / 2 - plotPos.x * zoom;
-      const targetY = containerHeight / 2 - plotPos.y * zoom;
-      
-      setPan({ x: targetX, y: targetY });
-      if (zoom < 1.5) setZoom(1.5);
+      return () => clearTimeout(timeout);
     }
-  }, [selectedPlot?.id]);
+  }, [selectedPlot?.id, gridPositions, gridSize, gridHeight, zoom]);
+
+  // Viewport culling - only render visible plots
+  const visiblePlots = useMemo(() => {
+    if (!svgContainerRef.current) return [];
+    
+    const container = svgContainerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    
+    // Calculate visible bounds in world coordinates
+    const viewLeft = -pan.x / zoom;
+    const viewRight = (containerRect.width - pan.x) / zoom;
+    const viewTop = -pan.y / zoom;
+    const viewBottom = (containerRect.height - pan.y) / zoom;
+    
+    // Add padding for smooth scrolling
+    const padding = plotSize * 2;
+    const visibleBounds = {
+      left: viewLeft - padding,
+      right: viewRight + padding,
+      top: viewTop - padding,
+      bottom: viewBottom + padding,
+    };
+    
+    // Filter plots that are visible in viewport
+    return gridPositions
+      .map((pos, idx) => {
+        const plotId = idx + 1;
+        const plot = plotsMap.get(plotId) || {
+          id: plotId,
+          x: pos.x,
+          y: pos.y,
+          type: "unclaimed",
+        };
+        
+        // Check if plot is in viewport
+        const isInView = 
+          pos.x >= visibleBounds.left &&
+          pos.x <= visibleBounds.right &&
+          pos.y >= visibleBounds.top &&
+          pos.y <= visibleBounds.bottom;
+        
+        return isInView ? { pos, plot } : null;
+      })
+      .filter((item): item is { pos: typeof gridPositions[0]; plot: Plot } => item !== null);
+  }, [gridPositions, plotsMap, pan, zoom, plotSize]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      if (wheelTimeoutRef.current) {
+        clearTimeout(wheelTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleRequestDocument = async (plot: Plot, format: "pdf" | "docx") => {
     if (!plot.owner || !plot.transactionHash) {
@@ -546,9 +628,9 @@ export function OctagonalGrid({
               style={{
                 transform: `translate(${pan.x}px, ${pan.y}px)`,
                 overflow: "visible",
-                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-                willChange: 'transform',
-                shapeRendering: 'optimizeSpeed'
+                transition: isDragging ? 'none' : 'none',
+                willChange: isDragging ? 'transform' : 'auto',
+                shapeRendering: 'crispEdges',
               }}
             >
                 {/* Town Center in the middle - apply zoom */}
@@ -608,111 +690,102 @@ export function OctagonalGrid({
                 </text>
               </g>
 
-              {/* Plot octagons - all plots in circular arrangement - OPTIMIZED */}
-              {gridPositions.map((pos, idx) => {
-                const plotId = idx + 1;
-                const plot = plotsMap.get(plotId) || {
-                  id: plotId,
-                  x: pos.x,
-                  y: pos.y,
-                  type: "unclaimed",
-                };
-                
-                const isSelected = selectedPlotIds.has(plot.id) || selectedPlot?.id === plot.id;
-                const isHovered = hoveredPlot?.id === plot.id;
-                // Check if plot is owned by checking plot.owner or ownedPlotIds array
-                const isOwned = (plot.owner !== undefined && plot.owner !== null) || ownedPlotIds.includes(plot.id);
-                
-                // Apply zoom to positions
-                const scaledX = pos.x * zoom;
-                const scaledY = pos.y * zoom;
-                const scaledSize = plotSize * zoom;
-                
-                // Pre-calculate octagon points (cached)
-                const octagonAngleStep = Math.PI * 2 / 8;
-                const octagonOffset = -Math.PI / 8;
-                const halfSize = scaledSize / 2;
-                const points = Array.from({ length: 8 }, (_, i) => {
-                  const angle = i * octagonAngleStep + octagonOffset;
-                  return `${scaledX + halfSize * Math.cos(angle)},${scaledY + halfSize * Math.sin(angle)}`;
-                }).join(" ");
+              {/* Plot octagons - viewport culling for performance */}
+              {visiblePlots.map(({ pos, plot }) => {
+                  const isSelected = selectedPlotIds.has(plot.id) || selectedPlot?.id === plot.id;
+                  const isHovered = hoveredPlot?.id === plot.id;
+                  const isOwned = (plot.owner !== undefined && plot.owner !== null) || ownedPlotIds.includes(plot.id);
+                  
+                  // Apply zoom to positions
+                  const scaledX = pos.x * zoom;
+                  const scaledY = pos.y * zoom;
+                  const scaledSize = plotSize * zoom;
+                  
+                  // Pre-calculate octagon points
+                  const octagonAngleStep = Math.PI * 2 / 8;
+                  const octagonOffset = -Math.PI / 8;
+                  const halfSize = scaledSize / 2;
+                  const points = Array.from({ length: 8 }, (_, i) => {
+                    const angle = i * octagonAngleStep + octagonOffset;
+                    return `${scaledX + halfSize * Math.cos(angle)},${scaledY + halfSize * Math.sin(angle)}`;
+                  }).join(" ");
 
-                // Use pre-calculated styles with hover/selection/ownership overrides
-                const baseStyle = plotStyles.get(plot.id) || { fillColor: "rgba(128, 128, 128, 0.15)", strokeColor: "rgba(128, 128, 128, 0.5)", strokeWidth: 1 };
-                
-                // Owned plots get green styling
-                const fillColor = isSelected
-                  ? "rgba(139, 92, 246, 0.6)"
-                  : isOwned
-                  ? "rgba(34, 197, 94, 0.4)" // Green for owned plots
-                  : isHovered
-                  ? "rgba(139, 92, 246, 0.4)"
-                  : baseStyle.fillColor;
+                  const baseStyle = plotStyles.get(plot.id) || { 
+                    fillColor: "rgba(128, 128, 128, 0.15)", 
+                    strokeColor: "rgba(128, 128, 128, 0.5)", 
+                    strokeWidth: 1 
+                  };
+                  
+                  const fillColor = isSelected
+                    ? "rgba(139, 92, 246, 0.6)"
+                    : isOwned
+                    ? "rgba(34, 197, 94, 0.4)"
+                    : isHovered
+                    ? "rgba(139, 92, 246, 0.4)"
+                    : baseStyle.fillColor;
 
-                const strokeColor = isSelected
-                  ? "rgb(139, 92, 246)"
-                  : isOwned
-                  ? "rgb(34, 197, 94)" // Green border for owned plots
-                  : isHovered
-                  ? "rgba(139, 92, 246, 0.8)"
-                  : baseStyle.strokeColor;
+                  const strokeColor = isSelected
+                    ? "rgb(139, 92, 246)"
+                    : isOwned
+                    ? "rgb(34, 197, 94)"
+                    : isHovered
+                    ? "rgba(139, 92, 246, 0.8)"
+                    : baseStyle.strokeColor;
 
-                const strokeWidth = isSelected ? 2.5 : isOwned ? 2.5 : baseStyle.strokeWidth; // Thicker border for owned plots
+                  const strokeWidth = isSelected ? 2.5 : isOwned ? 2.5 : baseStyle.strokeWidth;
 
-                return (
-                  <g key={plot.id}>
-                    <polygon
-                      points={points}
-                      fill={fillColor}
-                      stroke={strokeColor}
-                      strokeWidth={strokeWidth}
-                      className="cursor-pointer transition-all"
-                      onClick={(e) => handlePlotClick(plot, e)}
-                      onMouseEnter={() => setHoveredPlot(plot)}
-                      onMouseLeave={() => setHoveredPlot(null)}
-                    />
-                    {isOwned && (
-                      <>
-                        <circle
-                          cx={scaledX}
-                          cy={scaledY}
-                          r={4 * zoom}
-                          fill="rgb(34, 197, 94)"
-                          stroke="rgb(34, 197, 94)"
-                          strokeWidth={1 * zoom}
-                        />
-                        {/* Owner tag */}
-                        {plot.owner && (
-                          <text
-                            x={scaledX}
-                            y={scaledY - scaledSize / 2 - 5}
-                            textAnchor="middle"
-                            fontSize={8 * zoom}
+                  return (
+                    <g key={plot.id}>
+                      <polygon
+                        points={points}
+                        fill={fillColor}
+                        stroke={strokeColor}
+                        strokeWidth={strokeWidth}
+                        className="cursor-pointer"
+                        onClick={(e) => handlePlotClick(plot, e)}
+                        onMouseEnter={() => setHoveredPlot(plot)}
+                        onMouseLeave={() => setHoveredPlot(null)}
+                      />
+                      {isOwned && (
+                        <>
+                          <circle
+                            cx={scaledX}
+                            cy={scaledY}
+                            r={4 * zoom}
                             fill="rgb(34, 197, 94)"
-                            fontWeight="bold"
-                            className="pointer-events-none"
-                          >
-                            {plot.ownerName || `${plot.owner.slice(0, 4)}...${plot.owner.slice(-4)}`}
-                          </text>
-                        )}
-                      </>
-                    )}
-                    {/* Plot ID label for selected/hovered */}
-                    {(isSelected || isHovered) && (
-                      <text
-                        x={scaledX}
-                        y={scaledY + scaledSize / 2 + 12}
-                        textAnchor="middle"
-                        fontSize={9 * zoom}
-                        fill="white"
-                        fontWeight="bold"
-                        className="pointer-events-none"
-                      >
-                        #{plot.id}
-                      </text>
-                    )}
-                  </g>
-                );
+                            stroke="rgb(34, 197, 94)"
+                            strokeWidth={1 * zoom}
+                          />
+                          {plot.owner && zoom > 0.8 && (
+                            <text
+                              x={scaledX}
+                              y={scaledY - scaledSize / 2 - 5}
+                              textAnchor="middle"
+                              fontSize={8 * zoom}
+                              fill="rgb(34, 197, 94)"
+                              fontWeight="bold"
+                              className="pointer-events-none"
+                            >
+                              {plot.ownerName || `${plot.owner.slice(0, 4)}...${plot.owner.slice(-4)}`}
+                            </text>
+                          )}
+                        </>
+                      )}
+                      {(isSelected || isHovered) && (
+                        <text
+                          x={scaledX}
+                          y={scaledY + scaledSize / 2 + 12}
+                          textAnchor="middle"
+                          fontSize={9 * zoom}
+                          fill="white"
+                          fontWeight="bold"
+                          className="pointer-events-none"
+                        >
+                          #{plot.id}
+                        </text>
+                      )}
+                    </g>
+                  );
               })}
             </svg>
           </div>

@@ -625,16 +625,40 @@ export async function deleteDigitalIdentity(identityId: string): Promise<void> {
 
 // ==================== USER BALANCES ====================
 export async function getUserBalance(walletAddress: string): Promise<UserBalance | null> {
-  const { data, error } = await supabase
-    .from("user_balances")
-    .select("*")
-    .eq("wallet_address", walletAddress)
-    .single();
-  if (error) {
-    if (error.code === "PGRST116") return null;
-    throw error;
+  try {
+    const { data, error } = await supabase
+      .from("user_balances")
+      .select("*")
+      .eq("wallet_address", walletAddress.toLowerCase())
+      .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no row exists
+    
+    if (error) {
+      // PGRST116 = no rows returned (not an error, just no data)
+      if (error.code === "PGRST116") return null;
+      // 406 = Not Acceptable (likely RLS policy blocking or content negotiation issue)
+      if (error.code === "PGRST301" || error.status === 406 || error.message?.includes("406")) {
+        // Silently return null for permission/content negotiation errors
+        return null;
+      }
+      // Only log non-406 errors
+      if (error.status !== 406) {
+        console.debug("Error fetching user balance:", error);
+      }
+      return null; // Return null instead of throwing for better UX
+    }
+    return data;
+  } catch (error: any) {
+    // Handle 406 errors gracefully
+    if (error?.status === 406 || error?.code === "PGRST301" || error?.message?.includes("406")) {
+      // Silently return null for permission/content negotiation errors
+      return null;
+    }
+    // Only log non-406 errors
+    if (error?.status !== 406) {
+      console.debug("Error fetching user balance:", error);
+    }
+    return null; // Return null instead of throwing for better UX
   }
-  return data;
 }
 
 export async function upsertUserBalance(balance: TablesInsert<"user_balances">): Promise<UserBalance> {

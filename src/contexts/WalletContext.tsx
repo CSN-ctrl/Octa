@@ -156,7 +156,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       // Get balance from Supabase instead of RPC
       const { getUserBalance } = await import("@/lib/supabase-service");
-      const balanceData = await getUserBalance(addrToCheck);
+      const balanceData = await getUserBalance(addrToCheck).catch((err: any) => {
+        // Handle 406 errors gracefully - RLS might be blocking access
+        if (err?.status === 406 || err?.code === "PGRST301") {
+          // Silently return null for permission errors
+          return null;
+        }
+        // Re-throw other errors
+        throw err;
+      });
       
       if (balanceData) {
         // Use xBGL balance as the primary balance
@@ -166,7 +174,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setBalance("0");
       }
     } catch (error: any) {
-      console.debug("Failed to fetch balance from Supabase:", error);
+      // Only log non-406 errors
+      if (error?.status !== 406 && error?.code !== "PGRST301") {
+        console.debug("Failed to fetch balance from Supabase:", error);
+      }
       setBalance("0");
     }
   };
@@ -199,7 +210,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
 
       ethereum.on("chainChanged", () => {
-        window.location.reload();
+        // Update state instead of reloading - smoother UX
+        setAddress(null);
+        setSigner(null);
+        setBalance(null);
+        toast.info("Network changed. Please reconnect your wallet.");
       });
     }
 
@@ -211,13 +226,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Refresh balance periodically
+  // Refresh balance periodically (reduced frequency to save Supabase calls)
   useEffect(() => {
     if (!address) return;
     
     const interval = setInterval(() => {
       refreshBalance();
-    }, 10000); // Every 10 seconds
+    }, 30000); // Every 30 seconds (reduced from 10s)
 
     return () => clearInterval(interval);
   }, [address]);

@@ -7,7 +7,7 @@ import {
   Folder, 
   FolderOpen,
   File,
-  ShoppingCart,
+  BarChart3,
   CheckCircle2,
   XCircle
 } from "lucide-react";
@@ -58,13 +58,13 @@ export function SidebarNavigation() {
       type: "file",
       label: "Universe",
       icon: Globe,
-      path: "/",
+      path: "/universe",
     },
     {
       type: "file",
-      label: "Financial Hub",
-      icon: ShoppingCart,
-      path: "/financial-hub",
+      label: "Dashboard",
+      icon: BarChart3,
+      path: "/dashboard",
     },
   ];
 

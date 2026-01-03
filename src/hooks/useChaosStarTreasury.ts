@@ -173,10 +173,7 @@ export function useChaosStarTreasury() {
   // Initial fetch
   useEffect(() => {
     fetchTreasury();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchTreasury, 30000);
-    return () => clearInterval(interval);
+    // No auto-refresh - manual refresh only
   }, [fetchTreasury]);
 
   return {

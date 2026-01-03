@@ -87,9 +87,17 @@ export default function PlotPurchase() {
       if (purchaseWalletType === "connected" && address) {
         try {
           const { getUserBalance } = await import("@/lib/supabase-service");
-          const balance = await getUserBalance(address);
+          const balance = await getUserBalance(address).catch((err: any) => {
+            // Handle 406 errors gracefully
+            if (err?.status === 406 || err?.code === "PGRST301") {
+              return null;
+            }
+            throw err;
+          });
           if (balance) {
             setPurchaseBalance(balance.xbgl_balance?.toString() || "0");
+          } else {
+            setPurchaseBalance("0");
           }
         } catch (error) {
           console.error("Failed to load balance:", error);
@@ -224,7 +232,14 @@ export default function PlotPurchase() {
 
       // Check balance from Supabase
       const { getUserBalance, purchasePlot, registerOwnership } = await import("@/lib/supabase-service");
-      const balance = await getUserBalance(purchaseAddress);
+      const balance = await getUserBalance(purchaseAddress).catch((err: any) => {
+        // Handle 406 errors gracefully
+        if (err?.status === 406 || err?.code === "PGRST301") {
+          console.debug("Cannot access user_balances (RLS policy)");
+          return null;
+        }
+        throw err;
+      });
       
       if (!balance || (balance.xbgl_balance || 0) < totalCost) {
         toast.error(`Insufficient balance. You need ${totalCost} xBGL but have ${balance?.xbgl_balance || 0} xBGL.`);
@@ -267,6 +282,52 @@ export default function PlotPurchase() {
       }
       
       toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL!`);
+      
+      // Generate certificates and send emails (async, don't block)
+      Promise.all(
+        purchaseResults.map(async ({ plotId, txHash }) => {
+          try {
+            const { getPlotById } = await import("@/lib/supabase-service");
+            const { generateAndSaveCertificate } = await import("@/lib/plot-documents");
+            const { sendPlotPurchaseEmail } = await import("@/lib/email-service");
+            
+            // Get plot data
+            const plot = await getPlotById(plotId);
+            if (!plot) return;
+            
+            // Generate certificate
+            const certificate = await generateAndSaveCertificate({
+              plotId: plotId,
+              ownerName: purchaseAddress.slice(0, 8) + "..." + purchaseAddress.slice(-6),
+              ownerWallet: purchaseAddress,
+              ownerEmail: buyerEmail,
+              coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
+              zoneType: plot.zone_type || "Residential",
+              purchasePrice: PLOT_PRICE_xBGL,
+              purchaseDate: new Date().toISOString(),
+              transactionHash: txHash,
+            });
+
+            // Send email with certificate
+            await sendPlotPurchaseEmail({
+              plotId: plotId,
+              ownerName: purchaseAddress.slice(0, 8) + "..." + purchaseAddress.slice(-6),
+              ownerWallet: purchaseAddress,
+              ownerEmail: buyerEmail,
+              purchasePrice: PLOT_PRICE_xBGL,
+              purchaseDate: new Date().toISOString(),
+              coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
+              zoneType: plot.zone_type || "Residential",
+              certificateUrl: certificate.url,
+            });
+          } catch (error) {
+            console.error(`Failed to generate certificate or send email for plot #${plotId}:`, error);
+            // Don't fail the purchase if email/certificate generation fails
+          }
+        })
+      ).catch((error) => {
+        console.error("Error in background certificate/email tasks:", error);
+      });
       
       // Clear selection and refresh
       setSelectedPlotIds(new Set());

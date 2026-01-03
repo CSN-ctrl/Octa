@@ -418,7 +418,7 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
 
       // Rotate galaxy - Use delta for smooth, frame-rate independent rotation
       if (galaxyRef.current) {
-        galaxyRef.current.rotation.y += 0.15 * delta; // Increased speed (was 0.05)
+        galaxyRef.current.rotation.y += 0.05 * delta; // Slower rotation
       }
 
       // Pulse Sarakt star - static animation, detached from data
@@ -430,11 +430,11 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
 
       // Planetary orbits - Use delta time for frame-rate independent animation, static speeds
       if (octaviaOrbitRef.current) {
-        const speed = 0.25; // Static speed, detached from progress
+        const speed = 0.1; // Slower orbit speed
         octaviaOrbitRef.current.rotation.y += speed * delta;
       }
       if (zytheraOrbitRef.current) {
-        const speed = 0.2; // Static speed, detached from progress
+        const speed = 0.08; // Slower orbit speed
         zytheraOrbitRef.current.rotation.y += speed * delta;
       }
 
@@ -481,7 +481,7 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
         const orbitRadius = 4 * getDistanceMultiplierRef.current();
         const galaxyCenter = new THREE.Vector3(0, 0, 0);
         // Use accumulated rotation for smooth camera orbit around galaxy center
-        const orbitAngle = elapsedTime * 0.15; // Increased speed to match galaxy rotation (was 0.05)
+        const orbitAngle = elapsedTime * 0.05; // Slower camera orbit to match galaxy rotation
         const autoX = galaxyCenter.x + Math.cos(orbitAngle) * orbitRadius;
         const autoZ = galaxyCenter.z + Math.sin(orbitAngle) * orbitRadius;
         const autoY = galaxyCenter.y + 2 * getDistanceMultiplierRef.current(); // Slight elevation

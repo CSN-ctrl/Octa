@@ -181,10 +181,7 @@ export function useRealPlanetStats() {
 
   useEffect(() => {
     fetchRealPlanetStats();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchRealPlanetStats, 30000);
-    return () => clearInterval(interval);
+    // No auto-refresh - manual refresh only
   }, [fetchRealPlanetStats]);
 
   return {

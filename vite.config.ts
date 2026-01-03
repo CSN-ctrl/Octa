@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -6,7 +6,7 @@ import { componentTagger } from "lovable-tagger";
 // Plugin to bypass host checking in development
 const bypassHostCheck = () => ({
   name: "bypass-host-check",
-  configureServer(server) {
+  configureServer(server: ViteDevServer) {
     // Insert middleware before host check to always allow requests
     server.middlewares.stack.unshift({
       route: "",
@@ -24,7 +24,7 @@ const bypassHostCheck = () => ({
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "localhost",
+    host: "0.0.0.0", // Expose on local network
     port: 8080,
     strictPort: false,
     hmr: {

@@ -84,10 +84,6 @@ export default function UnifiedUniverse() {
       }
     }
     fetchPlanets();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchPlanets, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   // Fetch population count (unique plot owners) from Supabase
@@ -108,10 +104,6 @@ export default function UnifiedUniverse() {
       }
     }
     fetchPopulation();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchPopulation, 30000);
-    return () => clearInterval(interval);
   }, []);
   
   const displayPlanets = planetsList;
@@ -177,10 +169,8 @@ export default function UnifiedUniverse() {
       }
     }
     load();
-    const id = setInterval(load, 30000);
     return () => {
       cancelled = true;
-      clearInterval(id);
     };
   }, [address]);
 
@@ -256,14 +246,11 @@ export default function UnifiedUniverse() {
     
     window.addEventListener('portfolio-updated', handlePortfolioUpdate as EventListener);
     
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchOwnedPlots, 30000);
     return () => {
       cancelled = true;
-      clearInterval(interval);
       window.removeEventListener('portfolio-updated', handlePortfolioUpdate as EventListener);
     };
-  }, [address, userPlots]); // Add userPlots as dependency to update when hook data changes
+  }, [address, isConnected, userPlots]); // Add userPlots as dependency to update when hook data changes
 
   // Generate and load city plots when city is selected
   useEffect(() => {
@@ -530,10 +517,6 @@ export default function UnifiedUniverse() {
     };
 
     fetchPlots();
-    
-    // Refresh plots every 30 seconds to get latest blockchain state
-    const interval = setInterval(fetchPlots, 30000);
-    return () => clearInterval(interval);
   }, [selectedCity, address, selectedPlanet, plotsSold]);
 
   const handlePlanetSelect = (planetId: string) => {
@@ -1672,20 +1655,19 @@ export default function UnifiedUniverse() {
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h2 className="text-4xl font-bold mb-2">Capital city of Zarathis</h2>
-                      <p className="text-muted-foreground">The notorious black market capital - where ShadowCoin flows freely</p>
+                      <p className="text-muted-foreground">A frontier city on Zythera</p>
                     </div>
                     <Badge variant="destructive" className="text-lg px-4 py-2">
-                      Black Market
+                      Frontier City
                     </Badge>
                   </div>
                 </div>
                 <div className="lg:col-span-1"></div>
               </div>
               <Card 
-                className="glass border-red-500/30 w-full max-w-2xl mx-auto hover:border-red-500/60 transition-all cursor-pointer bg-gradient-to-br from-red-950/20 to-background"
+                className="glass border-red-500/30 w-full max-w-2xl mx-auto bg-gradient-to-br from-red-950/20 to-background"
                 onClick={() => {
-                  // Navigate to black market DEX page
-                  navigate("/black-market-dex");
+                  navigate("/nanofiber-research");
                 }}
               >
                 <CardHeader>
@@ -1705,7 +1687,7 @@ export default function UnifiedUniverse() {
                   )}
                   {!zarathisCity?.description && (
                     <p className="text-muted-foreground text-lg leading-relaxed mb-4">
-                      Zarathis - the notorious black market capital of Zythera. A lawless frontier city where ShadowCoin flows freely and nanofiber tech deals are made in the shadows. <span className="text-yellow-400 font-semibold">No land ownership - research and harvest nanofiber web circles with a license.</span>
+                      Zarathis - A frontier city on Zythera. Research and harvest nanofiber web circles with a license. <span className="text-yellow-400 font-semibold">No land ownership - research and harvest nanofiber web circles with a license.</span>
                     </p>
                   )}
                 </CardHeader>
@@ -1797,16 +1779,12 @@ export default function UnifiedUniverse() {
                       Research & Harvest
                     </Button>
                     <Button 
-                      variant="destructive" 
-                      className="gap-3 text-lg py-6 bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigate("/black-market-dex");
-                      }}
+                      variant="outline" 
+                      className="gap-3 text-lg py-6"
+                      disabled
                     >
                       <ShoppingCart className="h-5 w-5" />
-                      Black Market DEX
+                      Coming Soon
                     </Button>
                   </div>
                 </CardContent>
@@ -2101,7 +2079,7 @@ export default function UnifiedUniverse() {
                 className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-6 py-3 text-sm font-semibold hover:opacity-90 transition"
                 size="lg"
               >
-                Pledge Allegiance
+                Get Started
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <div className="glass border-2 border-accent/50 bg-accent/10 rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg hover:shadow-glow-accent transition-all">

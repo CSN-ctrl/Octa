@@ -13,7 +13,6 @@ import {
   listZones,
   listCityPlots,
   listFactions,
-  getBlackMarket,
 } from "@/lib/api";
 import { useWallet } from "@/contexts/WalletContext";
 
@@ -28,7 +27,6 @@ export default function Admin() {
   const [zones, setZones] = useState<any | null>(null);
   const [cityPlots, setCityPlots] = useState<any[]>([]);
   const [factions, setFactions] = useState<any[]>([]);
-  const [blackMarket, setBlackMarket] = useState<any | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -51,20 +49,18 @@ export default function Admin() {
   useEffect(() => {
     (async () => {
       try {
-        const [t, npcList, z, plots, f, bm] = await Promise.all([
+        const [t, npcList, z, plots, f] = await Promise.all([
           getTreasury().catch(() => null),
           listNpcs().catch(() => ({ npcs: [] })),
           listZones().catch(() => ({ zones: {} })),
           listCityPlots().catch(() => ({ plots: [] })),
           listFactions().catch(() => ({ factions: [] })),
-          getBlackMarket().catch(() => null),
         ]);
         setTreasury(t);
         setNpcs(npcList?.npcs || []);
         setZones(z?.zones || {});
         setCityPlots(plots?.plots || []);
         setFactions(f?.factions || []);
-        setBlackMarket(bm);
       } catch {
         // best-effort; show what we have
       }
@@ -266,17 +262,6 @@ export default function Admin() {
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-              <div>
-                <div className="font-medium mb-1">Black Market</div>
-                {blackMarket ? (
-                  <div className="text-muted-foreground">
-                    Invite-only: {blackMarket.invite_only ? "Yes" : "No"} • Liquidity:{" "}
-                    {Object.entries(blackMarket.liquidity || {}).map(([k, v]: any) => `${k}:${v}`).join(", ") || "—"}
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground">No data</div>
                 )}
               </div>
             </CardContent>

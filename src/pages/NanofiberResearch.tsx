@@ -89,8 +89,7 @@ export default function NanofiberResearch() {
     };
     
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    // No auto-refresh - manual refresh only
   }, [address]);
 
   const generateMockCircles = (): NanofiberCircle[] => {

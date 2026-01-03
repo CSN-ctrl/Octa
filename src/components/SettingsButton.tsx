@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Settings, Wallet, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,17 +22,34 @@ import { ChaosStarStatus } from "./ChaosStarStatus";
 import { useState } from "react";
 
 export function SettingsButton() {
-  const { address, isConnected } = useWallet();
+  const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
   const { simulation, setSimulation } = useSim();
   const navigate = useNavigate();
   const [showNetworkDialog, setShowNetworkDialog] = useState(false);
+
+  const handleConnectWallet = async (walletId?: string) => {
+    try {
+      await connect(false, walletId);
+      toast.success("Wallet connected!");
+    } catch (error: any) {
+      console.error("Wallet connection failed:", error);
+    }
+  };
+
+  const handleDisconnectWallet = async () => {
+    await disconnect();
+    toast.info("Wallet disconnected");
+  };
 
   const handleClearCache = () => {
     try {
       localStorage.clear();
       sessionStorage.clear();
-      toast.success("Cache cleared");
-      setTimeout(() => window.location.reload(), 500);
+      toast.success("Cache cleared. Page will refresh in 2 seconds...");
+      // Only reload if really necessary - give user time to see the message
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
       toast.error("Failed to clear cache");
     }
@@ -78,14 +95,15 @@ export function SettingsButton() {
         <div className="px-2 py-1.5">
           <div className="flex items-center justify-between">
             <span className="text-sm">Simulation Mode</span>
-            <Switch
-              checked={simulation}
-              onCheckedChange={(checked) => {
-                setSimulation(checked);
-                toast.info("Simulation mode " + (checked ? "enabled" : "disabled"));
-                setTimeout(() => window.location.reload(), 50);
-              }}
-            />
+                    <Switch
+                      checked={simulation}
+                      onCheckedChange={(checked) => {
+                        setSimulation(checked);
+                        toast.info("Simulation mode " + (checked ? "enabled" : "disabled") + ". Changes will apply on next navigation.");
+                        // Don't reload immediately - let user continue working
+                        // The simulation mode will be applied on next page navigation
+                      }}
+                    />
           </div>
         </div>
 
@@ -107,15 +125,65 @@ export function SettingsButton() {
 
         <DropdownMenuSeparator />
 
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-          {isConnected && address ? (
-            <div>
-              <div>Wallet: {address.slice(0, 6)}...{address.slice(-4)}</div>
+        {/* Wallet Connection */}
+        <DropdownMenuLabel>Wallet</DropdownMenuLabel>
+        {isConnected && address ? (
+          <>
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              <div>Connected: {address.slice(0, 6)}...{address.slice(-4)}</div>
             </div>
-          ) : (
-            <div>Not connected</div>
-          )}
-        </div>
+            {availableWallets.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Switch Wallet
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {availableWallets.map((wallet) => (
+                    <DropdownMenuItem 
+                      key={wallet.id} 
+                      onClick={() => handleConnectWallet(wallet.id)}
+                    >
+                      <span className="mr-2">{wallet.icon || "💼"}</span>
+                      {wallet.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            <DropdownMenuItem onClick={handleDisconnectWallet}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Disconnect Wallet
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            {availableWallets.length > 0 ? (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Connect Wallet
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {availableWallets.map((wallet) => (
+                    <DropdownMenuItem 
+                      key={wallet.id} 
+                      onClick={() => handleConnectWallet(wallet.id)}
+                    >
+                      <span className="mr-2">{wallet.icon || "💼"}</span>
+                      {wallet.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ) : (
+              <DropdownMenuItem disabled>
+                <Wallet className="mr-2 h-4 w-4" />
+                No wallets available
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
       </DropdownMenuContent>
       
       {/* Network Settings Dialog */}

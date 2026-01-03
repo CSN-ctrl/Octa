@@ -58,10 +58,7 @@ export function usePlotPurchases(address?: string) {
     };
 
     fetchPurchases();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchPurchases, 30000);
-    return () => clearInterval(interval);
+    // No auto-refresh - manual refresh only
   }, [address]);
 
   return {

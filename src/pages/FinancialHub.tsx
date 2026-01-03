@@ -44,8 +44,7 @@ export default function FinancialHub() {
     };
 
     fetchOwnership();
-    const interval = setInterval(fetchOwnership, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    // Manual refresh only - no auto-refresh
   }, [address]);
 
   const totalPlots = ownedPlots.length;

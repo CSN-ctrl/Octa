@@ -86,6 +86,8 @@ export function useLandPlots() {
       setLoading(false);
       return;
       
+      /* Unreachable code - commented out to fix linting error
+      // All contract interaction code below is disabled since we're using Supabase only
       const contract = getLandContract();
 
       // Verify contract exists at address by checking code
@@ -241,6 +243,7 @@ export function useLandPlots() {
       } else {
         setPendingPlots([]);
       }
+      */
     } catch (error: any) {
       // Check if this is an RPC connection error (expected when node isn't running)
       const isRpcError = error?.message?.includes('404') || 
@@ -449,18 +452,15 @@ export function useLandPlots() {
 
     initialize();
 
-    // Refresh every 30 seconds if we have an address
-    const interval = setInterval(() => {
-      if (hasLandContract() && address) {
-        fetchLandData();
-      }
-    }, 30000);
+    // No auto-refresh - manual refresh only
 
     // Set up event listeners for real-time updates
     let cleanup: (() => void) | undefined;
     try {
       if (!hasLandContract()) {
-        return () => clearInterval(interval);
+        return () => {
+          // No interval to clean up
+        };
       }
       const contract = getLandContract();
 
@@ -482,7 +482,7 @@ export function useLandPlots() {
     }
 
     return () => {
-      clearInterval(interval);
+      // No interval to clean up
       if (cleanup) cleanup();
     };
   }, [fetchLandData, address]);
