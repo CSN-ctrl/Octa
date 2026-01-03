@@ -20,6 +20,11 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Business from "./pages/Business";
 import ILOLanding from "./pages/ILOLanding";
 import NotFound from "./pages/NotFound";
+import FinancialHub from "./pages/FinancialHub";
+import NanofiberResearch from "./pages/NanofiberResearch";
+import DigitalID from "./pages/DigitalID";
+import QuickActions from "./pages/QuickActions";
+import PurchaseConfirmation from "./pages/PurchaseConfirmation";
 import { loadContractAddresses } from "@/lib/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -64,6 +69,12 @@ const App = () => {
                     <Route path="/business" element={<Business />} />
                     <Route path="/ilo" element={<ILOLanding />} />
                     <Route path="/ilo-landing" element={<ILOLanding />} />
+                    <Route path="/financial-hub" element={<FinancialHub />} />
+                    <Route path="/nanofiber-research" element={<NanofiberResearch />} />
+                    <Route path="/digital-id" element={<DigitalID />} />
+                    <Route path="/quick-actions" element={<QuickActions />} />
+                    <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
+                    <Route path="/plots" element={<Navigate to="/dashboard" replace />} />
                     
                     {/* Protected routes */}
                     <Route path="/dashboard" element={
