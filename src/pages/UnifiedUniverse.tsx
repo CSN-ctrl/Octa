@@ -2075,7 +2075,7 @@ export default function UnifiedUniverse() {
             </p>
             <div className="mt-6 flex items-center justify-center gap-4 flex-wrap">
               <Button
-                onClick={() => navigate("/plot-purchase")}
+                onClick={() => navigate("/ilo")}
                 className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-6 py-3 text-sm font-semibold hover:opacity-90 transition"
                 size="lg"
               >
@@ -2094,7 +2094,7 @@ export default function UnifiedUniverse() {
                   <span className="text-sm text-muted-foreground">{totalPlots.toLocaleString()}</span>
                 </div>
                 <div className="text-xs text-muted-foreground font-medium">
-                  Plots Available
+                  participants
                 </div>
               </div>
             </div>
