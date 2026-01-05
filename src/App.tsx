@@ -25,6 +25,8 @@ import NanofiberResearch from "./pages/NanofiberResearch";
 import DigitalID from "./pages/DigitalID";
 import QuickActions from "./pages/QuickActions";
 import PurchaseConfirmation from "./pages/PurchaseConfirmation";
+import Lore from "./pages/Lore";
+import HowItWorks from "./pages/HowItWorks";
 import { loadContractAddresses } from "@/lib/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -74,6 +76,8 @@ const App = () => {
                     <Route path="/digital-id" element={<DigitalID />} />
                     <Route path="/quick-actions" element={<QuickActions />} />
                     <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
+                    <Route path="/lore" element={<Lore />} />
+                    <Route path="/how-it-works" element={<HowItWorks />} />
                     <Route path="/plots" element={<Navigate to="/dashboard" replace />} />
                     
                     {/* Protected routes */}

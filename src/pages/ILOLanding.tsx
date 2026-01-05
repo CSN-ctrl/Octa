@@ -208,7 +208,7 @@ export default function ILOLanding() {
                 ) : (
                   <>
                     <Lock className="h-5 w-5 mr-2" />
-                    Phase Closed
+                    Coming Soon
                   </>
                 )}
                 <ArrowRight className="h-5 w-5 ml-2" />
@@ -286,7 +286,7 @@ export default function ILOLanding() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  The first 10,000 land plots are available at the exclusive Genesis price of {PLOT_PRICE_EUR} EUR equivalent (paid in USDC, displayed as ~{PLOT_PRICE_XBGL.toFixed(2)} xBGL).
+                  Phase 1 is limited to 10,000 participants. Each participant can purchase multiple plots at the exclusive Genesis price of {PLOT_PRICE_EUR} EUR equivalent (paid in USDC, displayed as ~{PLOT_PRICE_XBGL.toFixed(2)} xBGL).
                 </p>
               </CardContent>
             </Card>
@@ -300,7 +300,7 @@ export default function ILOLanding() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Once 10,000 plots are sold, the ILO closes and the secondary market opens for peer-to-peer trading.
+                  Once 10,000 participants have joined Phase 1, the ILO closes and the secondary market opens for peer-to-peer trading.
                 </p>
               </CardContent>
             </Card>
@@ -511,7 +511,7 @@ export default function ILOLanding() {
                   <div>
                     <div className="font-semibold mb-1">ILO Closes</div>
                     <p className="text-sm text-muted-foreground">
-                      Once 10,000 plots are sold, the Initial Land Offering closes permanently.
+                      Once 10,000 participants have joined Phase 1, the Initial Land Offering closes permanently.
                     </p>
                   </div>
                 </div>
@@ -566,7 +566,7 @@ export default function ILOLanding() {
               ) : (
                 <>
                   <Lock className="h-5 w-5 mr-2" />
-                  Phase Closed
+                  Coming Soon
                 </>
               )}
               <ArrowRight className="h-5 w-5 ml-2" />

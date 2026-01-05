@@ -77,28 +77,32 @@ function getZoneType(plotId: number): string {
 }
 
 /**
- * Seed 10,000 plots in the database
- * This function creates all plots from ID 1 to 10000
+ * Seed plots in the database
+ * This function creates plots dynamically (no hard limit)
+ * Phase 1 is limited to 10,000 participants, not plots
  */
-export async function seedPlots(batchSize: number = 100): Promise<{ success: boolean; message: string; created: number }> {
+export async function seedPlots(
+  maxPlotId: number = 10000, // Default to 10k for initial seeding, but can be higher
+  batchSize: number = 100
+): Promise<{ success: boolean; message: string; created: number }> {
   try {
     // Check how many plots already exist
     const { count: existingCount } = await supabase
       .from("plots")
       .select("*", { count: "exact", head: true });
 
-    if (existingCount && existingCount >= 10000) {
+    if (existingCount && existingCount >= maxPlotId) {
       return {
         success: true,
-        message: "All 10,000 plots already exist in the database",
+        message: `All ${maxPlotId} plots already exist in the database`,
         created: 0,
       };
     }
 
     const plotsToCreate: any[] = [];
     
-    // Generate all 10,000 plots
-    for (let plotId = 1; plotId <= 10000; plotId++) {
+    // Generate plots up to maxPlotId
+    for (let plotId = 1; plotId <= maxPlotId; plotId++) {
       // Check if plot already exists
       const { data: existing } = await supabase
         .from("plots")

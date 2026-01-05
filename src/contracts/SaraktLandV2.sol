@@ -18,7 +18,7 @@ interface IDigitalID {
 }
 
 contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
-    uint256 public constant TOTAL_PLOTS = 10000;
+    // Removed TOTAL_PLOTS limit - plots are unlimited, but Phase 1 is limited to 10,000 participants
     uint256 public plotsSold = 0;
     uint256 public priceInAVAX = 0.5 ether; // legacy price (kept for compatibility)
     uint256 public phase1PriceAVAX = 0.5 ether; // admin-settable
@@ -81,7 +81,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
 
     for (uint i = 0; i < plotIds.length; i++) {
         uint256 plotId = plotIds[i];
-        require(plotId > 0 && plotId <= TOTAL_PLOTS, "Invalid plot");
+        require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already sold");
 
         plotMinted[plotId] = true;
@@ -111,7 +111,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
 
     function buyPlotERC20(uint256 plotId, address token, uint256 amount, address recipient) external nonReentrant {
         require(salesActive, "Sales not active");
-        require(plotId > 0 && plotId <= TOTAL_PLOTS, "Invalid plot");
+        require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already sold");
         require(amount > 0, "Amount > 0");
 
@@ -129,7 +129,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
 
     function _buy(uint256 plotId, address recipient, bool coldWallet, uint256 value, bool requireID) internal {
         require(salesActive, "Sales not active");
-        require(plotId > 0 && plotId <= TOTAL_PLOTS, "Invalid plot");
+        require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already sold");
         if (requireID) {
             (, , , bool active) = digitalID.ids(msg.sender);
@@ -149,7 +149,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
     // ===== Phase 1 Minimal Payment Flow (Pending Activation + Split) =====
     function buyPlotWithAVAX(uint256 plotId) external payable nonReentrant {
         require(salesActive, "Sales not active");
-        require(plotId > 0 && plotId <= TOTAL_PLOTS, "Invalid plot");
+        require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already sold");
         require(pendingBuyer[plotId] == address(0), "Activation pending");
         if (requireDigitalID) {
@@ -181,7 +181,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
 
     function buyPlotWithUSDC(uint256 plotId, uint256 amount) external nonReentrant {
         require(salesActive, "Sales not active");
-        require(plotId > 0 && plotId <= TOTAL_PLOTS, "Invalid plot");
+        require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already sold");
         require(pendingBuyer[plotId] == address(0), "Activation pending");
         if (requireDigitalID) {
@@ -214,7 +214,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
     }
 
     function activatePlot(uint256 plotId, address recipient) external onlyOwner nonReentrant {
-        require(plotId > 0 && plotId <= TOTAL_PLOTS, "Invalid plot");
+        require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already minted");
         address buyer = pendingBuyer[plotId];
         require(buyer != address(0) || recipient != address(0), "No pending buyer");
@@ -255,7 +255,6 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
         salesActive = active;
     }
 
-    function plotsRemaining() external view returns (uint256) {
-        return TOTAL_PLOTS - plotsSold;
-    }
+    // Removed plotsRemaining() - plots are unlimited, participant limit is handled off-chain
+    // Phase 1 is limited to 10,000 participants, not plots
 }

@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, Gift } from "lucide-react";
+import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, Gift, BookOpen, HelpCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -222,6 +222,45 @@ export const Navigation = () => {
                 className="h-12 w-12 rounded-lg select-none"
               />
             </Link>
+            <div className="flex items-center gap-1 ml-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 hover:bg-transparent"
+                onClick={() => navigate("/lore")}
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Lore</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 hover:bg-transparent"
+                onClick={() => navigate("/how-it-works")}
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">How It Works</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 hover:bg-transparent"
+                onClick={() => navigate("/business")}
+              >
+                <Briefcase className="h-4 w-4" />
+                <span className="hidden sm:inline">Business</span>
+              </Button>
+              <Button
+                variant="cosmic"
+                size="sm"
+                className="gap-2 relative overflow-hidden border border-primary/50 hover:border-primary hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-primary/50"
+                onClick={() => navigate("/ilo")}
+              >
+                <Gift className="h-4 w-4" />
+                <span className="hidden sm:inline font-bold">ILO</span>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000"></span>
+              </Button>
+            </div>
           </div>
 
           {/* Treasury Balance - Only show on admin dashboard */}
@@ -449,35 +488,15 @@ export const Navigation = () => {
                   </Dialog>
                 </DropdownMenu>
               ) : (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 hover:bg-transparent"
-                    onClick={() => navigate("/ilo")}
-                  >
-                    <Gift className="h-4 w-4" />
-                    <span className="hidden sm:inline">ILO</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 hover:bg-transparent"
-                    onClick={() => navigate("/business")}
-                  >
-                    <Briefcase className="h-4 w-4" />
-                    <span className="hidden sm:inline">Business</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 hover:bg-transparent"
-                    onClick={() => navigate("/login")}
-                  >
-                    <LogIn className="h-4 w-4" />
-                    <span className="hidden sm:inline">Login</span>
-                  </Button>
-                </>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 hover:bg-transparent"
+                  onClick={() => navigate("/login")}
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span className="hidden sm:inline">Login</span>
+                </Button>
               )}
             </div>
           </div>

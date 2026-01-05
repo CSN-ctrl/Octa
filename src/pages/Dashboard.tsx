@@ -450,17 +450,17 @@ export default function Dashboard() {
     }
   };
 
-  // Load all plots for purchase (1-10000)
+  // Load available plots for purchase (limited to 10k for performance, but no hard limit on plot IDs)
   const loadAvailablePlots = async () => {
     if (!address) return;
     setLoadingPlots(true);
     try {
-      // Fetch all plots from database
+      // Fetch plots from database (limit for performance, but plots can have any ID)
       const { data: allPlots, error: plotsError } = await supabase
         .from("plots")
         .select("*")
         .order("id", { ascending: true })
-        .limit(10000);
+        .limit(10000); // Performance limit, not a hard restriction
 
       if (plotsError) throw plotsError;
       setAvailablePlots(allPlots || []);
@@ -1438,7 +1438,7 @@ export default function Dashboard() {
                 <div>
                   <CardTitle>Plot Purchase</CardTitle>
                   <CardDescription>
-                    Purchase plots - Plot 1 is closest to city center, Plot 10000 is furthest
+                    Purchase plots - Available plots from the city grid
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -1456,75 +1456,81 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {/* Generate all 10,000 plots */}
-                  {Array.from({ length: 10000 }, (_, i) => {
-                    const plotId = i + 1;
-                    const plot = availablePlots.find((p: any) => p.id === plotId);
-                    const isOwned = plot?.owner_wallet && plot.owner_wallet !== null;
-                    const distanceFromCenter = plotId; // Plot 1 = closest (1), Plot 10000 = furthest (10000)
-                    
-                    return (
-                      <div
-                        key={plotId}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                          isOwned 
-                            ? 'bg-muted/50 border-border/50 opacity-75' 
-                            : 'bg-card border-border/50 hover:border-primary/30 hover:bg-card/80'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="flex items-center gap-3 min-w-[200px]">
-                            <span className="font-semibold text-lg select-none">Plot {plotId}</span>
-                            {isOwned ? (
-                              <Badge variant="secondary" className="select-none">Owned</Badge>
-                            ) : (
-                              <Badge variant="default" className="select-none">Available</Badge>
+                  {/* Display available plots from database */}
+                  {availablePlots.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No plots available</p>
+                      <p className="text-sm mt-2">Plots will appear here as they are created</p>
+                    </div>
+                  ) : (
+                    availablePlots.map((plot: any) => {
+                      const plotId = plot.id;
+                      const isOwned = plot?.owner_wallet && plot.owner_wallet !== null;
+                      const distanceFromCenter = Math.sqrt((plot.coord_x || 0) ** 2 + (plot.coord_y || 0) ** 2);
+                      
+                      return (
+                        <div
+                          key={plotId}
+                          className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                            isOwned 
+                              ? 'bg-muted/50 border-border/50 opacity-75' 
+                              : 'bg-card border-border/50 hover:border-primary/30 hover:bg-card/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="flex items-center gap-3 min-w-[200px]">
+                              <span className="font-semibold text-lg select-none">Plot {plotId}</span>
+                              {isOwned ? (
+                                <Badge variant="secondary" className="select-none">Owned</Badge>
+                              ) : (
+                                <Badge variant="default" className="select-none">Available</Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground select-none">
+                              Location: ({plot.coord_x || 0}, {plot.coord_y || 0})
+                              {plot.zone_type && <span className="ml-2">• {plot.zone_type}</span>}
+                            </div>
+                            {plot?.zone_type && (
+                              <div className="text-sm text-muted-foreground select-none hidden md:block">
+                                Zone: {plot.zone_type}
+                              </div>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground select-none">
-                            Distance from center: {distanceFromCenter.toLocaleString()} units
-                            {plotId === 1 && <span className="ml-2 text-primary">(Closest)</span>}
-                            {plotId === 10000 && <span className="ml-2 text-muted-foreground">(Furthest)</span>}
-                          </div>
-                          {plot?.zone_type && (
-                            <div className="text-sm text-muted-foreground select-none hidden md:block">
-                              Zone: {plot.zone_type}
+                          <div className="flex items-center gap-3">
+                            <div className="text-sm font-medium select-none">
+                              100 xBGL
                             </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-sm font-medium select-none">
-                            100 xBGL
+                            {!isOwned ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handlePurchasePlotFromList(plotId)}
+                                disabled={purchasingItem === `plot-${plotId}` || !address}
+                              >
+                                {purchasingItem === `plot-${plotId}` ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Purchasing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingBag className="h-4 w-4 mr-2" /> Purchase
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                              >
+                                <CheckCircle2 className="h-4 w-4 mr-2" /> Owned
+                              </Button>
+                            )}
                           </div>
-                          {!isOwned ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handlePurchasePlotFromList(plotId)}
-                              disabled={purchasingItem === `plot-${plotId}` || !address}
-                            >
-                              {purchasingItem === `plot-${plotId}` ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Purchasing...
-                                </>
-                              ) : (
-                                <>
-                                  <ShoppingBag className="h-4 w-4 mr-2" /> Purchase
-                                </>
-                              )}
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled
-                            >
-                              <CheckCircle2 className="h-4 w-4 mr-2" /> Owned
-                            </Button>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               )}
             </CardContent>

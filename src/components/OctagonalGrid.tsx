@@ -47,7 +47,7 @@ interface OctagonalGridProps {
 export function OctagonalGrid({ 
   cityName, 
   plots, 
-  totalPlots = 10000, 
+  totalPlots, // No default limit - use plots.length or dynamic value
   onPlotClick, 
   onPlotSelect,
   onPurchase,
@@ -56,6 +56,8 @@ export function OctagonalGrid({
   isConnected = false,
   isLoading = false
 }: OctagonalGridProps) {
+  // Use plots length if totalPlots not provided, or a reasonable default for visualization
+  const effectiveTotalPlots = totalPlots || plots.length || 1000;
   const navigate = useNavigate();
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [hoveredPlot, setHoveredPlot] = useState<Plot | null>(null);
@@ -88,12 +90,12 @@ export function OctagonalGrid({
     let currentRadius = townCenterRadius + plotSpacing; // Start outside town center
     
     // Generate plots in concentric circles
-    while (plotIndex < totalPlots && ringNumber < 300) {
+    while (plotIndex < effectiveTotalPlots && ringNumber < 300) {
       // Calculate number of plots in this ring (circumference / spacing)
       const circumference = 2 * Math.PI * currentRadius;
       const plotsInThisRing = Math.max(8, Math.min(
         Math.floor(circumference / plotSpacing),
-        totalPlots - plotIndex
+        effectiveTotalPlots - plotIndex
       ));
       
       if (plotsInThisRing === 0) break;
@@ -103,7 +105,7 @@ export function OctagonalGrid({
       // Add small random offset to prevent perfect alignment between rings
       const offsetAngle = ringNumber * 0.1;
       
-      for (let i = 0; i < plotsInThisRing && plotIndex < totalPlots; i++) {
+      for (let i = 0; i < plotsInThisRing && plotIndex < effectiveTotalPlots; i++) {
         const angle = i * angleStep + offsetAngle;
         const x = centerX + currentRadius * Math.cos(angle);
         const y = centerY + currentRadius * Math.sin(angle);
@@ -118,9 +120,9 @@ export function OctagonalGrid({
     }
     
     // If we still have plots left, add them in outer spiral pattern
-    if (plotIndex < totalPlots) {
+    if (plotIndex < effectiveTotalPlots) {
       let spiralAngle = 0;
-      while (plotIndex < totalPlots) {
+      while (plotIndex < effectiveTotalPlots) {
         const angle = spiralAngle;
         const x = centerX + currentRadius * Math.cos(angle);
         const y = centerY + currentRadius * Math.sin(angle);
@@ -897,13 +899,10 @@ export function OctagonalGrid({
                             </div>
                             <div className="text-lg font-bold text-blue-100 mt-1">
                               {plotPrice ? formatPrice(plotPrice) : (() => {
-                                // Calculate price based on plot ID
-                                // First 10k plots: 100 xBGL, After 10k: 400 xBGL
-                                const sold = plots.filter(p => p.owner).length;
-                                if (selectedPlot.id <= 10000 && sold < 10000) {
-                                  return "100 xBGL";
-                                }
-                                return "400 xBGL";
+                                // Price is 100 xBGL for Phase 1 (first 10k participants)
+                                // After Phase 1, price becomes 400 xBGL
+                                // Default to Phase 1 price - actual price determined at purchase time
+                                return "100 xBGL";
                               })()}
                             </div>
                           </div>

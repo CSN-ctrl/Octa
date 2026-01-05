@@ -130,7 +130,7 @@ export default function PlotPurchase() {
   };
 
   const addPlot = async (plotId: number) => {
-    if (plotId > 0 && plotId <= 10000) {
+    if (plotId > 0 && Number.isInteger(plotId)) {
       // Check if plot is already owned
       const ownership = await checkPlotOwnership(plotId);
       if (ownership.isOwned) {
@@ -143,7 +143,7 @@ export default function PlotPurchase() {
       toast.success(`Plot #${plotId} added to selection`);
       setShowAddPlotDialog(false);
     } else {
-      toast.error("Plot ID must be between 1 and 10000");
+      toast.error("Plot ID must be a positive integer");
     }
   };
 
@@ -226,6 +226,31 @@ export default function PlotPurchase() {
       // Validate email
       if (!buyerEmail || !buyerEmail.includes("@")) {
         toast.error("Please enter a valid email address");
+        setPurchasing(false);
+        return;
+      }
+
+      // Check ILO participant limit (Phase 1: 10,000 participants)
+      const { registerILOParticipant, getILOStatus } = await import("@/lib/ilo-service");
+      const iloStatus = await getILOStatus();
+      
+      if (!iloStatus.isOpen) {
+        toast.error(iloStatus.secondaryMarketActive 
+          ? "Phase 1 is full! Secondary market is now active." 
+          : "Phase 1 is currently closed.");
+        setPurchasing(false);
+        return;
+      }
+
+      // Register participant if this is their first purchase
+      const participantResult = await registerILOParticipant(
+        purchaseAddress,
+        plotIdsArray[0], // First plot ID for registration
+        buyerEmail
+      );
+
+      if (!participantResult.success && participantResult.iloClosed) {
+        toast.error(participantResult.message);
         setPurchasing(false);
         return;
       }
@@ -407,14 +432,14 @@ export default function PlotPurchase() {
               <DialogHeader>
                 <DialogTitle>Add Plot</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Enter a plot ID between 1 and 10000
+                  Enter a plot ID (any positive integer). Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Input
                     type="number"
-                    placeholder="Plot ID (1-10000)"
+                    placeholder="Plot ID"
                     value={customPlotId}
                     onChange={(e) => setCustomPlotId(e.target.value)}
                     onKeyDown={(e) => {
@@ -423,7 +448,6 @@ export default function PlotPurchase() {
                       }
                     }}
                     min={1}
-                    max={10000}
                     className="bg-background/50 border-border/50"
                   />
                 </div>

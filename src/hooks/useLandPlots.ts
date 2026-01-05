@@ -15,27 +15,38 @@ export function useLandPlots() {
   const { address, signer, isConnected } = useWallet();
   const [plots, setPlots] = useState<PlotInfo[]>([]);
   const [plotsSold, setPlotsSold] = useState<bigint>(0n);
-  const [totalPlots, setTotalPlots] = useState<bigint>(10000n); // 10,000 plots total
+  const [totalPlots, setTotalPlots] = useState<bigint>(0n); // No limit on total plots - Phase 1 limited to 10,000 participants
   const [priceInNative, setPriceInNative] = useState<bigint>(0n);
 
-  // Price calculation: 100 xBGL for first 10k, 400 xBGL for 10k-100k
-  const getPriceInXBGL = useCallback((plotId: number, soldCount: number): number => {
-    // If plot is in first 10,000 range and less than 10k sold, price is 100 xBGL
-    if (plotId <= 10000 && soldCount < 10000) {
+  // Price calculation: 100 xBGL for Phase 1 (first 10k participants), 400 xBGL after
+  // Note: Price is based on participant count, not plot count
+  const getPriceInXBGL = useCallback((plotId: number, participantCount: number): number => {
+    // Phase 1: First 10,000 participants pay 100 xBGL per plot
+    if (participantCount < 10000) {
       return 100;
     }
-    // After 10k plots sold, price is 400 xBGL (for plots 10,001 to 100,000)
+    // After 10k participants, price is 400 xBGL
     return 400;
   }, []);
 
-  // Get current price based on plots sold
-  const getCurrentPriceInXBGL = useCallback((): number => {
-    const sold = Number(plotsSold);
-    if (sold < 10000) {
-      return 100; // First 10k plots
+  // Get current price based on participant count (not plot count)
+  // Defaults to Phase 1 price (100 xBGL) if participant count unavailable
+  const getCurrentPriceInXBGL = useCallback(async (): Promise<number> => {
+    try {
+      // Try to get participant count from ILO service
+      const { getILOStatus } = await import("@/lib/ilo-service");
+      const iloStatus = await getILOStatus();
+      const participantCount = iloStatus.currentPhase?.current_participants || 0;
+      
+      if (participantCount < 10000) {
+        return 100; // Phase 1: First 10k participants
+      }
+      return 400; // After 10k participants
+    } catch {
+      // Default to Phase 1 price if check fails
+      return 100;
     }
-    return 400; // After 10k plots sold
-  }, [plotsSold]);
+  }, []);
   const [salesActive, setSalesActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userPlots, setUserPlots] = useState<number[]>([]);

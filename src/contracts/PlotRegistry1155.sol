@@ -7,13 +7,14 @@ import "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 
 /**
  * @title PlotRegistry1155
- * @notice ERC-1155 land registry for plot IDs 1..10000, max supply 1 each.
+ * @notice ERC-1155 land registry for unlimited plot IDs, max supply 1 each.
  *         Admin/minter activates plots (mints), metadata stored per id.
  *         Owner-requested transfer workflow with admin approval.
+ *         Phase 1 limited to 10,000 participants (not plots).
  */
 contract PlotRegistry1155 is ERC1155, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    uint256 public constant MAX_PLOT_ID = 10000;
+    // Removed MAX_PLOT_ID limit - plots are unlimited, but Phase 1 is limited to 10,000 participants
 
     // Per-plot owner, exists only when minted (supply == 1)
     mapping(uint256 => address) public ownerOfPlot;
@@ -34,7 +35,7 @@ contract PlotRegistry1155 is ERC1155, AccessControl, Pausable {
     }
 
     modifier onlyValidPlot(uint256 plotId) {
-        require(plotId > 0 && plotId <= MAX_PLOT_ID, "Invalid plotId");
+        require(plotId > 0, "Invalid plotId");
         _;
     }
 
