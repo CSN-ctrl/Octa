@@ -144,6 +144,7 @@ export default function Login() {
           data: {
             wallet_address: address.toLowerCase(),
           },
+          emailRedirectTo: `${window.location.origin}/email-verified`,
         },
       });
 

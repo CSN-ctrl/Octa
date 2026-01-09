@@ -27,6 +27,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { getAndStoreAffiliateCode, recordAffiliateReferral } from "@/lib/affiliate-service";
 import {
   Dialog,
   DialogContent,
@@ -77,6 +78,7 @@ export default function PlotPurchase() {
   });
   const [customPlotId, setCustomPlotId] = useState("");
   const [purchasing, setPurchasing] = useState(false);
+  const [affiliateCode, setAffiliateCode] = useState<string | null>(null);
   // Contract addresses removed - using Supabase only
 
   // Contract events removed - using Supabase real-time subscriptions instead
@@ -107,6 +109,18 @@ export default function PlotPurchase() {
     };
     loadBalance();
   }, [purchaseWalletType, address]);
+
+  // Load and store affiliate code from URL or Supabase
+  useEffect(() => {
+    const loadAffiliateCode = async () => {
+      const code = await getAndStoreAffiliateCode(address || null);
+      if (code) {
+        setAffiliateCode(code);
+        console.log("Affiliate code detected:", code);
+      }
+    };
+    loadAffiliateCode();
+  }, [address]);
 
   // Check if a plot is owned using Supabase
   const checkPlotOwnership = async (plotId: number, checkAddress?: string): Promise<{ isOwned: boolean; owner: string | null }> => {
@@ -307,6 +321,30 @@ export default function PlotPurchase() {
       }
       
       toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL!`);
+      
+      // Record affiliate referral if affiliate code exists
+      if (affiliateCode) {
+        try {
+          const referralResult = await recordAffiliateReferral(
+            affiliateCode,
+            purchaseAddress,
+            buyerEmail,
+            totalCost,
+            plotIdsArray
+          );
+
+          if (referralResult.success) {
+            console.log(`✓ Affiliate referral recorded. Commission: ${referralResult.commission} xBGL`);
+            toast.success(`Affiliate referral recorded! Commission: ${referralResult.commission?.toFixed(2)} xBGL`);
+          } else {
+            console.debug("Affiliate referral failed:", referralResult.error);
+            // Don't show error to user, just log it
+          }
+        } catch (error) {
+          console.error("Failed to record affiliate referral:", error);
+          // Don't fail purchase if affiliate tracking fails
+        }
+      }
       
       // Generate certificates and send emails (async, don't block)
       Promise.all(

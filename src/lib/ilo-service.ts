@@ -7,6 +7,11 @@ export const PLOT_PRICE_EUR = 100;
 export const PLOT_PRICE_XBGL = PLOT_PRICE_EUR * EUR_TO_XBGL; // ~195.58 xBGL
 // Payment is made in USDC (equivalent to 100 EUR at time of purchase)
 
+// Cache to track if ilo_phases table exists (to avoid repeated 404 queries)
+let iloPhasesTableExists: boolean | null = null;
+let lastTableCheck: number = 0;
+const TABLE_CHECK_INTERVAL = 60000; // Check once per minute
+
 export interface ILOPhase {
   phase_name: string;
   phase_status: 'active' | 'closed' | 'upcoming';
@@ -27,15 +32,56 @@ export async function getILOStatus(): Promise<{
   plotsRemaining: number;
   secondaryMarketActive: boolean;
 }> {
+  // Check if we know the table doesn't exist (and recently checked)
+  const now = Date.now();
+  if (iloPhasesTableExists === false && (now - lastTableCheck) < TABLE_CHECK_INTERVAL) {
+    // Table doesn't exist, return defaults without querying
+    return {
+      isOpen: true,
+      currentPhase: null,
+      plotsRemaining: 10000,
+      secondaryMarketActive: false,
+    };
+  }
+
   try {
-    const { data: genesisPhase } = await (supabase as any)
+    const { data: genesisPhase, error } = await (supabase as any)
       .from("ilo_phases")
       .select("*")
       .eq("phase_name", "genesis")
       .single();
 
+    // Handle 404 or table doesn't exist
+    if (error) {
+      // Suppress 404 errors (table doesn't exist) - this is expected
+      if (error.code === "PGRST116" || error.message?.includes("404") || error.message?.includes("not found")) {
+        // Mark that table doesn't exist to avoid future queries
+        iloPhasesTableExists = false;
+        lastTableCheck = now;
+        // Table doesn't exist, return default open status
+        return {
+          isOpen: true,
+          currentPhase: null,
+          plotsRemaining: 10000,
+          secondaryMarketActive: false,
+        };
+      }
+      // For other errors, log but still return default
+      console.debug("ILO status query error:", error.message);
+      return {
+        isOpen: true,
+        currentPhase: null,
+        plotsRemaining: 10000,
+        secondaryMarketActive: false,
+      };
+    }
+
+    // Table exists and we got data
+    iloPhasesTableExists = true;
+    lastTableCheck = now;
+
     if (!genesisPhase) {
-      // If table doesn't exist, return default open status
+      // If no data returned, return default open status
       return {
         isOpen: true,
         currentPhase: null,
@@ -53,8 +99,19 @@ export async function getILOStatus(): Promise<{
       plotsRemaining,
       secondaryMarketActive: genesisPhase.secondary_market_active || false,
     };
-  } catch (error) {
-    console.error("Failed to get ILO status:", error);
+  } catch (error: any) {
+    // Suppress 404 errors - table doesn't exist yet
+    if (error?.code === "PGRST116" || error?.message?.includes("404") || error?.message?.includes("not found")) {
+      iloPhasesTableExists = false;
+      lastTableCheck = now;
+      return {
+        isOpen: true,
+        currentPhase: null,
+        plotsRemaining: 10000,
+        secondaryMarketActive: false,
+      };
+    }
+    console.debug("Failed to get ILO status:", error?.message || error);
     // Return default open status if table doesn't exist
     return {
       isOpen: true,
@@ -155,20 +212,31 @@ export async function registerILOParticipant(
 
     if (error) throw error;
 
-    // Update phase count
-    await (supabase as any)
-      .from("ilo_phases")
-      .update({
-        current_participants: participationNumber,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("phase_name", "genesis")
-      .then(() => {
+    // Update phase count (only if table exists)
+    try {
+      const { error: updateError } = await (supabase as any)
+        .from("ilo_phases")
+        .update({
+          current_participants: participationNumber,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("phase_name", "genesis");
+      
+      // Suppress 404 errors - table doesn't exist yet
+      if (!updateError) {
         // Check if ILO is now full
         if (participationNumber >= 10000) {
           closeILOAndActivateSecondaryMarket();
         }
-      });
+      } else if (updateError.code !== "PGRST116" && !updateError.message?.includes("404")) {
+        console.debug("Failed to update ILO phase:", updateError.message);
+      }
+    } catch (updateErr: any) {
+      // Suppress 404 errors
+      if (updateErr?.code !== "PGRST116" && !updateErr?.message?.includes("404")) {
+        console.debug("ILO phase update error:", updateErr?.message);
+      }
+    }
 
     // Update stats
     await updateGenesisStats();
@@ -192,16 +260,28 @@ export async function registerILOParticipant(
  */
 async function closeILOAndActivateSecondaryMarket(): Promise<void> {
   try {
-    // Close Genesis Phase
-    await (supabase as any)
-      .from("ilo_phases")
-      .update({
-        phase_status: 'closed',
-        closed_at: new Date().toISOString(),
-        secondary_market_active: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("phase_name", "genesis");
+    // Close Genesis Phase (only if table exists)
+    try {
+      const { error: updateError } = await (supabase as any)
+        .from("ilo_phases")
+        .update({
+          phase_status: 'closed',
+          closed_at: new Date().toISOString(),
+          secondary_market_active: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("phase_name", "genesis");
+      
+      // Suppress 404 errors - table doesn't exist yet
+      if (updateError && updateError.code !== "PGRST116" && !updateError.message?.includes("404")) {
+        console.debug("Failed to close ILO phase:", updateError.message);
+      }
+    } catch (updateErr: any) {
+      // Suppress 404 errors
+      if (updateErr?.code !== "PGRST116" && !updateErr?.message?.includes("404")) {
+        console.debug("ILO phase close error:", updateErr?.message);
+      }
+    }
 
     // Update stats
     const { data: statsData } = await supabase
@@ -220,26 +300,50 @@ async function closeILOAndActivateSecondaryMarket(): Promise<void> {
         onConflict: "id",
       });
 
-    // Create Phase 2 (for early access participants)
-    const { data: existingPhase2 } = await (supabase as any)
-      .from("ilo_phases")
-      .select("*")
-      .eq("phase_name", "phase_2")
-      .single();
-
-    if (!existingPhase2) {
-      await (supabase as any)
+    // Create Phase 2 (for early access participants) - only if table exists
+    try {
+      const { data: existingPhase2, error: checkError } = await (supabase as any)
         .from("ilo_phases")
-        .insert({
-          phase_name: "phase_2",
-          phase_status: "upcoming",
-          max_participants: 0, // TBD
-          current_participants: 0,
-          plot_price_eur: 400, // Higher price for Phase 2
-          plot_price_usdc: 400, // Paid in USDC
-          plot_price_xbgl: 400 * EUR_TO_XBGL, // Displayed in xBGL
-          secondary_market_active: false,
-        });
+        .select("*")
+        .eq("phase_name", "phase_2")
+        .single();
+
+      // Suppress 404 errors - table doesn't exist yet
+      if (checkError && checkError.code !== "PGRST116" && !checkError.message?.includes("404")) {
+        console.debug("Failed to check Phase 2:", checkError.message);
+        return;
+      }
+
+      if (!existingPhase2) {
+        try {
+          const { error: insertError } = await (supabase as any)
+            .from("ilo_phases")
+            .insert({
+              phase_name: "phase_2",
+              phase_status: "upcoming",
+              max_participants: 0, // TBD
+              current_participants: 0,
+              plot_price_eur: 400, // Higher price for Phase 2
+              plot_price_usdc: 400, // Paid in USDC
+              plot_price_xbgl: 400 * EUR_TO_XBGL, // Displayed in xBGL
+              secondary_market_active: false,
+            });
+          
+          if (insertError && insertError.code !== "PGRST116" && !insertError.message?.includes("404")) {
+            console.debug("Failed to create Phase 2:", insertError.message);
+          }
+        } catch (insertErr: any) {
+          // Suppress 404 errors
+          if (insertErr?.code !== "PGRST116" && !insertErr?.message?.includes("404")) {
+            console.debug("Phase 2 creation error:", insertErr?.message);
+          }
+        }
+      }
+    } catch (err: any) {
+      // Suppress 404 errors - table doesn't exist yet
+      if (err?.code !== "PGRST116" && !err?.message?.includes("404")) {
+        console.debug("Phase 2 check error:", err?.message);
+      }
     }
   } catch (error) {
     console.error("Failed to close ILO:", error);
@@ -297,29 +401,49 @@ export async function getILOParticipantInfo(walletAddress: string): Promise<{
  */
 export async function initializeGenesisPhase(): Promise<void> {
   try {
-    const { data: existing } = await (supabase as any)
+    const { data: existing, error: checkError } = await (supabase as any)
       .from("ilo_phases")
       .select("*")
       .eq("phase_name", "genesis")
       .single();
 
-    if (!existing) {
-      await (supabase as any)
-        .from("ilo_phases")
-        .insert({
-          phase_name: "genesis",
-          phase_status: "active",
-          max_participants: 10000,
-          current_participants: 0,
-          plot_price_eur: PLOT_PRICE_EUR,
-          plot_price_usdc: PLOT_PRICE_EUR, // Paid in USDC (equivalent to 100 EUR)
-          plot_price_xbgl: PLOT_PRICE_XBGL, // Displayed in xBGL
-          started_at: new Date().toISOString(),
-          secondary_market_active: false,
-        });
+    // Suppress 404 errors - table doesn't exist yet
+    if (checkError && checkError.code !== "PGRST116" && !checkError.message?.includes("404")) {
+      console.debug("Failed to check genesis phase:", checkError.message);
+      return;
     }
-  } catch (error) {
-    console.error("Failed to initialize Genesis Phase:", error);
+
+    if (!existing) {
+      try {
+        const { error: insertError } = await (supabase as any)
+          .from("ilo_phases")
+          .insert({
+            phase_name: "genesis",
+            phase_status: "active",
+            max_participants: 10000,
+            current_participants: 0,
+            plot_price_eur: PLOT_PRICE_EUR,
+            plot_price_usdc: PLOT_PRICE_EUR, // Paid in USDC (equivalent to 100 EUR)
+            plot_price_xbgl: PLOT_PRICE_XBGL, // Displayed in xBGL
+            started_at: new Date().toISOString(),
+            secondary_market_active: false,
+          });
+        
+        if (insertError && insertError.code !== "PGRST116" && !insertError.message?.includes("404")) {
+          console.debug("Failed to create genesis phase:", insertError.message);
+        }
+      } catch (insertErr: any) {
+        // Suppress 404 errors
+        if (insertErr?.code !== "PGRST116" && !insertErr?.message?.includes("404")) {
+          console.debug("Genesis phase creation error:", insertErr?.message);
+        }
+      }
+    }
+  } catch (error: any) {
+    // Suppress 404 errors - table doesn't exist yet
+    if (error?.code !== "PGRST116" && !error?.message?.includes("404")) {
+      console.debug("Failed to initialize Genesis Phase:", error?.message);
+    }
   }
 }
 

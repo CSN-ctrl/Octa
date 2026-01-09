@@ -498,7 +498,7 @@ export function OctagonalGrid({
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
               <FileCheck className="h-4 w-4 text-green-400" />
-              <span className="text-blue-200/80">Total Parcels: <strong className="text-blue-100">{totalPlots.toLocaleString()}</strong></span>
+              <span className="text-blue-200/80">Total Parcels: <strong className="text-blue-100">{(totalPlots || plots.length || 0).toLocaleString()}</strong></span>
             </div>
             <Separator orientation="vertical" className="h-4" />
             <div className="flex items-center gap-2">
@@ -902,7 +902,7 @@ export function OctagonalGrid({
                                 // Price is 100 xBGL for Phase 1 (first 10k participants)
                                 // After Phase 1, price becomes 400 xBGL
                                 // Default to Phase 1 price - actual price determined at purchase time
-                                return "100 xBGL";
+                                  return "100 xBGL";
                               })()}
                             </div>
                           </div>

@@ -59,10 +59,25 @@ import {
   Crown,
   FileText,
   Download,
+  Users,
+  Copy,
+  ExternalLink,
+  Link2,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCelestialForge } from "@/hooks/useCelestialForge";
 import { ethers } from "ethers";
+import {
+  applyForAffiliate,
+  getAffiliateStatus,
+  getAffiliateStats,
+  getAffiliateReferrals,
+  getOrCreateAffiliateCode,
+  type Affiliate,
+  type AffiliateStats,
+  type AffiliateReferral,
+} from "@/lib/affiliate-service";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -78,6 +93,7 @@ export default function Dashboard() {
   const [totalPlots, setTotalPlots] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"asset-management" | "transfers" | "market-primary" | "market-speculative" | "hnwi-purchases">("asset-management");
+  const [activeTab, setActiveTab] = useState("land");
   const [governmentPlots, setGovernmentPlots] = useState<any[]>([]);
   const [governmentResources, setGovernmentResources] = useState<any[]>([]);
   const [loadingMarket, setLoadingMarket] = useState(false);
@@ -108,6 +124,14 @@ export default function Dashboard() {
   // Plot Purchase List state
   const [availablePlots, setAvailablePlots] = useState<any[]>([]);
   const [loadingPlots, setLoadingPlots] = useState(false);
+
+  // Affiliate state
+  const [affiliateStatus, setAffiliateStatus] = useState<Affiliate | null>(null);
+  const [affiliateStats, setAffiliateStats] = useState<AffiliateStats | null>(null);
+  const [affiliateReferrals, setAffiliateReferrals] = useState<AffiliateReferral[]>([]);
+  const [loadingAffiliate, setLoadingAffiliate] = useState(false);
+  const [applicationReason, setApplicationReason] = useState("");
+  const [submittingApplication, setSubmittingApplication] = useState(false);
   const [plotDocuments, setPlotDocuments] = useState<Record<number, any[]>>({});
   const [loadingDocuments, setLoadingDocuments] = useState<Record<number, boolean>>({});
   
@@ -252,6 +276,55 @@ export default function Dashboard() {
       toast.error("Failed to refresh");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAffiliateData = async () => {
+    if (!address) return;
+    
+    setLoadingAffiliate(true);
+    try {
+      const status = await getAffiliateStatus(address);
+      setAffiliateStatus(status);
+      
+      if (status?.status === 'approved') {
+        const [stats, referrals] = await Promise.all([
+          getAffiliateStats(address),
+          getAffiliateReferrals(address),
+        ]);
+        setAffiliateStats(stats);
+        setAffiliateReferrals(referrals);
+      }
+    } catch (error: any) {
+      console.error("Failed to load affiliate data:", error);
+      toast.error("Failed to load affiliate data");
+    } finally {
+      setLoadingAffiliate(false);
+    }
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!address) {
+      toast.error("Wallet address not found");
+      return;
+    }
+
+    setSubmittingApplication(true);
+    try {
+      const result = await applyForAffiliate(address, applicationReason || undefined);
+      
+      if (result.success) {
+        toast.success("Application submitted successfully! We'll review it soon.");
+        setApplicationReason("");
+        await loadAffiliateData();
+      } else {
+        toast.error(result.error || "Failed to submit application");
+      }
+    } catch (error: any) {
+      console.error("Failed to submit application:", error);
+      toast.error("Failed to submit application");
+    } finally {
+      setSubmittingApplication(false);
     }
   };
 
@@ -1179,7 +1252,7 @@ export default function Dashboard() {
                     }`}
                   >
                     <Crown className={`h-4 w-4 transition-transform ${activeSection === "hnwi-purchases" ? "scale-110" : ""}`} />
-                    <span>HNWI Purchases</span>
+                    <span>Premium Assets</span>
                   </button>
                 </div>
               </nav>
@@ -1201,6 +1274,16 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant={activeTab === "affiliate" ? "default" : "outline"} 
+            onClick={() => {
+              setActiveTab("affiliate");
+              loadAffiliateData();
+            }}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Affiliate
+          </Button>
           <Button variant="outline" onClick={handleRefresh} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -1270,15 +1353,11 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="land" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="land">
             <MapPin className="h-4 w-4 mr-2" />
             My Land
-          </TabsTrigger>
-          <TabsTrigger value="purchase-plots" onClick={loadAvailablePlots}>
-            <ShoppingBag className="h-4 w-4 mr-2" />
-            Purchase Plots
           </TabsTrigger>
           <TabsTrigger value="portfolio">
             <TrendingUp className="h-4 w-4 mr-2" />
@@ -1424,113 +1503,6 @@ export default function Dashboard() {
                       </CardContent>
                     </Card>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Purchase Plots Tab */}
-        <TabsContent value="purchase-plots" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Plot Purchase</CardTitle>
-                  <CardDescription>
-                    Purchase plots - Available plots from the city grid
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={loadAvailablePlots} disabled={loadingPlots}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingPlots ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingPlots ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {/* Display available plots from database */}
-                  {availablePlots.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No plots available</p>
-                      <p className="text-sm mt-2">Plots will appear here as they are created</p>
-                    </div>
-                  ) : (
-                    availablePlots.map((plot: any) => {
-                      const plotId = plot.id;
-                      const isOwned = plot?.owner_wallet && plot.owner_wallet !== null;
-                      const distanceFromCenter = Math.sqrt((plot.coord_x || 0) ** 2 + (plot.coord_y || 0) ** 2);
-                      
-                      return (
-                        <div
-                          key={plotId}
-                          className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                            isOwned 
-                              ? 'bg-muted/50 border-border/50 opacity-75' 
-                              : 'bg-card border-border/50 hover:border-primary/30 hover:bg-card/80'
-                          }`}
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="flex items-center gap-3 min-w-[200px]">
-                              <span className="font-semibold text-lg select-none">Plot {plotId}</span>
-                              {isOwned ? (
-                                <Badge variant="secondary" className="select-none">Owned</Badge>
-                              ) : (
-                                <Badge variant="default" className="select-none">Available</Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-muted-foreground select-none">
-                              Location: ({plot.coord_x || 0}, {plot.coord_y || 0})
-                              {plot.zone_type && <span className="ml-2">• {plot.zone_type}</span>}
-                            </div>
-                            {plot?.zone_type && (
-                              <div className="text-sm text-muted-foreground select-none hidden md:block">
-                                Zone: {plot.zone_type}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-sm font-medium select-none">
-                              100 xBGL
-                            </div>
-                            {!isOwned ? (
-                              <Button
-                                size="sm"
-                                onClick={() => handlePurchasePlotFromList(plotId)}
-                                disabled={purchasingItem === `plot-${plotId}` || !address}
-                              >
-                                {purchasingItem === `plot-${plotId}` ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Purchasing...
-                                  </>
-                                ) : (
-                                  <>
-                                    <ShoppingBag className="h-4 w-4 mr-2" /> Purchase
-                                  </>
-                                )}
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled
-                              >
-                                <CheckCircle2 className="h-4 w-4 mr-2" /> Owned
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
                 </div>
               )}
             </CardContent>
@@ -1685,6 +1657,265 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Affiliate Tab */}
+        <TabsContent value="affiliate" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Affiliate Program
+              </CardTitle>
+              <CardDescription>
+                Earn 15% commission on every plot purchase made through your referral link
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingAffiliate ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : !affiliateStatus ? (
+                // No application - show application form
+                <div className="space-y-6">
+                  <div className="p-6 rounded-lg bg-primary/5 border border-primary/20">
+                    <h3 className="text-lg font-semibold mb-2">Become an Affiliate</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Join our affiliate program and earn competitive commissions on every plot purchase made through your unique referral link.
+                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="application-reason">Why do you want to become an affiliate? (Optional)</Label>
+                        <Textarea
+                          id="application-reason"
+                          placeholder="Tell us about your plans to promote Chaos Star Universe..."
+                          value={applicationReason}
+                          onChange={(e) => setApplicationReason(e.target.value)}
+                          className="mt-2"
+                          rows={4}
+                        />
+                      </div>
+                      <Button
+                        onClick={handleSubmitApplication}
+                        disabled={submittingApplication}
+                        className="w-full"
+                      >
+                        {submittingApplication ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Apply for Affiliate Program
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : affiliateStatus.status === 'pending' ? (
+                // Pending application
+                <div className="space-y-6">
+                  <div className="p-6 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
+                      <h3 className="text-lg font-semibold">Application Pending</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Your affiliate application is under review. We'll notify you once it's been processed.
+                    </p>
+                    {affiliateStatus.application_date && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Applied on: {new Date(affiliateStatus.application_date).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : affiliateStatus.status === 'rejected' ? (
+                // Rejected application
+                <div className="space-y-6">
+                  <div className="p-6 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <X className="h-5 w-5 text-destructive" />
+                      <h3 className="text-lg font-semibold">Application Rejected</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {affiliateStatus.rejection_reason || "Your affiliate application was not approved at this time."}
+                    </p>
+                    {affiliateStatus.reviewed_at && (
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Reviewed on: {new Date(affiliateStatus.reviewed_at).toLocaleDateString()}
+                      </p>
+                    )}
+                    <Button
+                      onClick={handleSubmitApplication}
+                      disabled={submittingApplication}
+                      variant="outline"
+                    >
+                      {submittingApplication ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Re-apply
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : affiliateStatus.status === 'approved' ? (
+                // Approved - show affiliate dashboard
+                <div className="space-y-6">
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="glass border-primary/20">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{affiliateStats?.total_referrals || 0}</div>
+                        <p className="text-xs text-muted-foreground">People referred</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="glass border-primary/20">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
+                        <Coins className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">
+                          {(affiliateStats?.total_commission || 0).toFixed(2)} xBGL
+                        </div>
+                        <p className="text-xs text-muted-foreground">All time earnings</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="glass border-primary/20">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                        <Loader2 className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">
+                          {(affiliateStats?.pending_commission || 0).toFixed(2)} xBGL
+                        </div>
+                        <p className="text-xs text-muted-foreground">Awaiting payment</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="glass border-primary/20">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Paid</CardTitle>
+                        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">
+                          {(affiliateStats?.paid_commission || 0).toFixed(2)} xBGL
+                        </div>
+                        <p className="text-xs text-muted-foreground">Received</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Affiliate Code Section */}
+                  <Card className="glass border-primary/20">
+                    <CardHeader>
+                      <CardTitle>Your Affiliate Code</CardTitle>
+                      <CardDescription>Share this link to earn commissions</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 p-3 rounded-lg bg-background border border-border font-mono text-sm">
+                          {affiliateStatus.affiliate_code}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            navigator.clipboard.writeText(affiliateStatus.affiliate_code || '');
+                            toast.success("Affiliate code copied!");
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 p-3 rounded-lg bg-background border border-border font-mono text-sm break-all">
+                          {window.location.origin}?ref={affiliateStatus.affiliate_code}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            const link = `${window.location.origin}?ref=${affiliateStatus.affiliate_code}`;
+                            navigator.clipboard.writeText(link);
+                            toast.success("Referral link copied!");
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Share this link with others. When they purchase plots using your link, you'll earn 15% commission!
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Referrals Table */}
+                  <Card className="glass border-primary/20">
+                    <CardHeader>
+                      <CardTitle>Referral History</CardTitle>
+                      <CardDescription>View all your referrals and commissions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {affiliateReferrals.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No referrals yet</p>
+                          <p className="text-xs mt-2">Share your link to start earning!</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {affiliateReferrals.map((referral) => (
+                            <div
+                              key={referral.id}
+                              className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-accent/50 transition-colors"
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-mono text-sm">
+                                    {referral.referred_wallet.slice(0, 6)}...{referral.referred_wallet.slice(-4)}
+                                  </span>
+                                  <Badge variant={referral.status === 'paid' ? 'default' : referral.status === 'pending' ? 'secondary' : 'destructive'}>
+                                    {referral.status}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Purchase: {referral.purchase_amount.toFixed(2)} xBGL • 
+                                  Commission: {referral.commission_amount.toFixed(2)} xBGL
+                                </div>
+                                {referral.created_at && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {new Date(referral.created_at).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>
@@ -2501,7 +2732,7 @@ export default function Dashboard() {
                 <div>
                   <h1 className="text-3xl font-bold tracking-tight select-none flex items-center gap-2">
                     <Crown className="h-8 w-8 text-primary" />
-                    HNWI Purchases
+                    Premium Assets
                   </h1>
                   <p className="text-muted-foreground mt-1 select-none">
                     Premium assets for high net worth individuals - Star Systems, Planets, and Cities

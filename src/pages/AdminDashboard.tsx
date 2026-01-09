@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ import {
   Menu,
   X,
   Info,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as supabaseService from "@/lib/supabase-service";
@@ -126,8 +128,16 @@ export default function AdminDashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState<"all" | "treasury" | "admin" | "user">("all");
-  const [activeTab, setActiveTab] = useState<"star-systems" | "planets" | "cities" | "resources" | "documents" | "transactions" | "users" | "treasury">("users");
+  const [activeTab, setActiveTab] = useState<"star-systems" | "planets" | "cities" | "resources" | "documents" | "transactions" | "users" | "treasury" | "affiliates">("users");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // Affiliate management state
+  const [affiliateApplications, setAffiliateApplications] = useState<Affiliate[]>([]);
+  const [loadingAffiliates, setLoadingAffiliates] = useState(false);
+  const [affiliateFilter, setAffiliateFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   // Sync with Navigation component's sidebar state
   useEffect(() => {
@@ -383,6 +393,69 @@ export default function AdminDashboard() {
     } catch (error: any) {
       console.error("Failed to remove treasury manager:", error);
       toast.error(error.message || "Failed to remove treasury manager");
+    }
+  };
+
+  // Load affiliate applications
+  const loadAffiliateApplications = async () => {
+    try {
+      setLoadingAffiliates(true);
+      const applications = await getAllAffiliateApplications();
+      setAffiliateApplications(applications);
+    } catch (error: any) {
+      console.error("Failed to load affiliate applications:", error);
+      toast.error("Failed to load affiliate applications");
+    } finally {
+      setLoadingAffiliates(false);
+    }
+  };
+
+  // Approve affiliate
+  const handleApproveAffiliate = async (affiliate: Affiliate) => {
+    if (!adminWallet) {
+      toast.error("Admin wallet not found");
+      return;
+    }
+
+    try {
+      const result = await approveAffiliate(affiliate.wallet_address, adminWallet);
+      if (result.success) {
+        toast.success("Affiliate approved successfully");
+        await loadAffiliateApplications();
+      } else {
+        toast.error(result.error || "Failed to approve affiliate");
+      }
+    } catch (error: any) {
+      console.error("Failed to approve affiliate:", error);
+      toast.error("Failed to approve affiliate");
+    }
+  };
+
+  // Reject affiliate
+  const handleRejectAffiliate = async () => {
+    if (!selectedAffiliate || !adminWallet) {
+      toast.error("Missing information");
+      return;
+    }
+
+    try {
+      const result = await rejectAffiliate(
+        selectedAffiliate.wallet_address,
+        adminWallet,
+        rejectionReason || undefined
+      );
+      if (result.success) {
+        toast.success("Affiliate rejected");
+        setShowRejectDialog(false);
+        setRejectionReason("");
+        setSelectedAffiliate(null);
+        await loadAffiliateApplications();
+      } else {
+        toast.error(result.error || "Failed to reject affiliate");
+      }
+    } catch (error: any) {
+      console.error("Failed to reject affiliate:", error);
+      toast.error("Failed to reject affiliate");
     }
   };
 
@@ -1033,6 +1106,21 @@ export default function AdminDashboard() {
                 >
                   <Wallet className={`h-4 w-4 transition-transform ${activeTab === "treasury" ? "scale-110" : ""}`} />
                   <span>Treasury</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab("affiliates");
+                    loadAffiliateApplications();
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    activeTab === "affiliates"
+                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
+                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
+                  }`}
+                >
+                  <Users className={`h-4 w-4 transition-transform ${activeTab === "affiliates" ? "scale-110" : ""}`} />
+                  <span>Affiliates</span>
                 </button>
               </nav>
             </CardContent>
@@ -3516,6 +3604,222 @@ export default function AdminDashboard() {
                 Transfer xBGL
               </Button>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Affiliate Management Section */}
+      {activeTab === "affiliates" && (
+        <div className="space-y-6">
+          <Card className="glass-enhanced border-primary/20 shadow-glow-card card-hover">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <Users className="h-6 w-6 text-primary" />
+                    Affiliate Management
+                  </CardTitle>
+                  <CardDescription>
+                    Review and manage affiliate applications
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={loadAffiliateApplications}
+                  disabled={loadingAffiliates}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loadingAffiliates ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Filter Tabs */}
+              <div className="flex gap-2 mb-6">
+                <Button
+                  variant={affiliateFilter === "pending" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAffiliateFilter("pending")}
+                >
+                  Pending ({affiliateApplications.filter(a => a.status === 'pending').length})
+                </Button>
+                <Button
+                  variant={affiliateFilter === "approved" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAffiliateFilter("approved")}
+                >
+                  Approved ({affiliateApplications.filter(a => a.status === 'approved').length})
+                </Button>
+                <Button
+                  variant={affiliateFilter === "rejected" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAffiliateFilter("rejected")}
+                >
+                  Rejected ({affiliateApplications.filter(a => a.status === 'rejected').length})
+                </Button>
+                <Button
+                  variant={affiliateFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAffiliateFilter("all")}
+                >
+                  All ({affiliateApplications.length})
+                </Button>
+              </div>
+
+              {/* Applications Table */}
+              {loadingAffiliates ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : affiliateApplications.filter(a => affiliateFilter === "all" || a.status === affiliateFilter).length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No {affiliateFilter === "all" ? "" : affiliateFilter} applications found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {affiliateApplications
+                    .filter(a => affiliateFilter === "all" || a.status === affiliateFilter)
+                    .map((affiliate) => (
+                      <Card key={affiliate.id} className="glass border-primary/20">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 space-y-3">
+                              <div className="flex items-center gap-3">
+                                <Wallet className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-mono text-sm">{affiliate.wallet_address}</span>
+                                <Badge
+                                  variant={
+                                    affiliate.status === 'approved' ? 'default' :
+                                    affiliate.status === 'pending' ? 'secondary' :
+                                    'destructive'
+                                  }
+                                >
+                                  {affiliate.status}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-muted-foreground">Code:</span>
+                                <span className="font-mono text-sm font-semibold">{affiliate.affiliate_code}</span>
+                              </div>
+                              {affiliate.application_reason && (
+                                <div>
+                                  <span className="text-sm text-muted-foreground">Reason:</span>
+                                  <p className="text-sm mt-1">{affiliate.application_reason}</p>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                {affiliate.application_date && (
+                                  <span>Applied: {new Date(affiliate.application_date).toLocaleDateString()}</span>
+                                )}
+                                {affiliate.reviewed_at && (
+                                  <span>Reviewed: {new Date(affiliate.reviewed_at).toLocaleDateString()}</span>
+                                )}
+                                {affiliate.reviewed_by && (
+                                  <span>By: {affiliate.reviewed_by}</span>
+                                )}
+                              </div>
+                              {affiliate.rejection_reason && (
+                                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                                  <span className="text-sm font-semibold text-destructive">Rejection Reason:</span>
+                                  <p className="text-sm mt-1">{affiliate.rejection_reason}</p>
+                                </div>
+                              )}
+                              {affiliate.status === 'approved' && (
+                                <div className="grid grid-cols-3 gap-4 pt-2">
+                                  <div>
+                                    <span className="text-xs text-muted-foreground">Referrals</span>
+                                    <p className="text-lg font-bold">{affiliate.total_referrals || 0}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-xs text-muted-foreground">Total Commission</span>
+                                    <p className="text-lg font-bold">{(affiliate.total_commission || 0).toFixed(2)} xBGL</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-xs text-muted-foreground">Rate</span>
+                                    <p className="text-lg font-bold">{(affiliate.commission_rate * 100).toFixed(0)}%</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-2 ml-4">
+                              {affiliate.status === 'pending' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApproveAffiliate(affiliate)}
+                                    className="w-full"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setSelectedAffiliate(affiliate);
+                                      setShowRejectDialog(true);
+                                    }}
+                                    className="w-full"
+                                  >
+                                    <X className="h-4 w-4 mr-2" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Reject Affiliate Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Affiliate Application</DialogTitle>
+            <DialogDescription>
+              Provide a reason for rejecting this application (optional)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="rejection-reason">Rejection Reason</Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="Enter reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRejectDialog(false);
+                  setRejectionReason("");
+                  setSelectedAffiliate(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleRejectAffiliate}
+                className="flex-1"
+              >
+                Reject Application
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

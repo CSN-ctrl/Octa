@@ -105,7 +105,7 @@ export default function UnifiedUniverse() {
     }
     fetchPopulation();
   }, []);
-
+  
   // Fetch ILO participant status (Phase 1: 10,000 participants limit)
   useEffect(() => {
     async function fetchILOStatus() {
@@ -129,8 +129,33 @@ export default function UnifiedUniverse() {
       }
     }
     fetchILOStatus();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchILOStatus, 30000);
+    // Refresh every 5 minutes (reduced frequency to avoid 404 spam)
+    const interval = setInterval(fetchILOStatus, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch total users count from user_stats table
+  useEffect(() => {
+    const fetchTotalUsers = async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        // Fetch user count from user_stats table (maintained by database triggers)
+        const { data, error } = await supabase
+          .from("user_stats")
+          .select("total_users")
+          .single();
+        
+        if (!error && data && data.total_users !== null) {
+          setTotalUsers(data.total_users);
+        }
+      } catch (error) {
+        console.debug("Could not fetch total users count:", error);
+      }
+    };
+    
+    fetchTotalUsers();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchTotalUsers, 300000);
     return () => clearInterval(interval);
   }, []);
   
@@ -165,6 +190,7 @@ export default function UnifiedUniverse() {
   const [populationCount, setPopulationCount] = useState<number>(0);
   const [cityStats, setCityStats] = useState<any>(null);
   const [loadingCityStats, setLoadingCityStats] = useState(false);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
   const [ownedPlotIds, setOwnedPlotIds] = useState<number[]>([]);
   const [showSpawnSystemDialog, setShowSpawnSystemDialog] = useState(false);
   
@@ -2240,14 +2266,14 @@ export default function UnifiedUniverse() {
                                   <Users className="w-2.5 h-2.5 text-primary" />
                                   <span className="text-[10px] text-muted-foreground">Pop</span>
                                 </div>
-                                <p className="text-sm font-bold">{planet.population}k</p>
+                                <p className="text-sm font-bold">{(planet.population || 0).toLocaleString()}k</p>
                               </div>
                               <div className="glass p-1.5 rounded">
                                 <div className="flex items-center gap-1 mb-0.5">
                                   <MapPin className="w-2.5 h-2.5 text-primary" />
                                   <span className="text-[10px] text-muted-foreground">Map</span>
                                 </div>
-                                <p className="text-sm font-bold">{planet.coverage}%</p>
+                                <p className="text-sm font-bold">{(planet.coverage || 0)}%</p>
                               </div>
                             </div>
                             <Button variant="cosmic" size="sm" className="w-full h-7 text-xs gap-1 group-hover:shadow-glow-accent transition-all">
@@ -2290,11 +2316,11 @@ export default function UnifiedUniverse() {
               </Card>
               <Card className="glass p-6 border-primary/20">
                 <div className="flex items-center gap-2 text-xl font-bold mb-2">
-                  <Globe className="w-5 h-5 text-primary" />
-                  Worlds
+                  <Users className="w-5 h-5 text-primary" />
+                  Users
                 </div>
-                <p className="text-3xl font-bold">2</p>
-                <p className="text-sm text-muted-foreground">Sarakt Prime & Zythera</p>
+                <p className="text-3xl font-bold">{totalUsers.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Total accounts</p>
               </Card>
             </div>
             {/* Your Plots (from backend) */}

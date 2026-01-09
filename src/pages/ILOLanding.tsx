@@ -48,47 +48,86 @@ export default function ILOLanding() {
 
   useEffect(() => {
     loadILOData();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadILOData, 30000);
+    // Refresh every 5 minutes (reduced frequency to avoid 404 spam)
+    const interval = setInterval(loadILOData, 300000);
     return () => clearInterval(interval);
   }, []);
 
   const loadILOData = async () => {
     setLoading(true);
     try {
-      // Load ILO status
-      const { data: phase } = await (supabase as any)
-        .from("ilo_phases")
-        .select("*")
-        .eq("phase_name", "genesis")
-        .single();
+      // Load ILO status (handle missing table gracefully)
+      let phase = null;
+      try {
+        const { data, error } = await (supabase as any)
+          .from("ilo_phases")
+          .select("*")
+          .eq("phase_name", "genesis")
+          .single();
+        
+        if (!error && data) {
+          phase = data;
+        }
+      } catch (phaseError: any) {
+        // Suppress 404 errors - table doesn't exist yet
+        if (phaseError?.code !== "PGRST116" && !phaseError?.message?.includes("404")) {
+          console.debug("ILO phase query error:", phaseError?.message);
+        }
+      }
 
-      // Load stats
-      const { data: genesisStats } = await (supabase as any)
-        .from("genesis_stats")
-        .select("*")
-        .single();
+      // Load stats (handle missing table gracefully)
+      let genesisStats = null;
+      try {
+        const { data, error } = await (supabase as any)
+          .from("genesis_stats")
+          .select("*")
+          .single();
+        
+        if (!error && data) {
+          genesisStats = data;
+        }
+      } catch (statsError: any) {
+        // Suppress 404 errors - table doesn't exist yet
+        if (statsError?.code !== "PGRST116" && !statsError?.message?.includes("404")) {
+          console.debug("Genesis stats query error:", statsError?.message);
+        }
+      }
 
-      // Load participant count
-      const { count: participants } = await (supabase as any)
-        .from("ilo_participants")
-        .select("*", { count: "exact", head: true });
+      // Load participant count (handle missing table gracefully)
+      let participants = 0;
+      try {
+        const { count, error } = await (supabase as any)
+          .from("ilo_participants")
+          .select("*", { count: "exact", head: true });
+        
+        if (!error && count !== null) {
+          participants = count;
+        }
+      } catch (participantsError: any) {
+        // Suppress 404 errors - table doesn't exist yet
+        if (participantsError?.code !== "PGRST116" && !participantsError?.message?.includes("404")) {
+          console.debug("ILO participants query error:", participantsError?.message);
+        }
+      }
 
       setILOStatus({
-        isOpen: phase?.phase_status === 'active',
-        plotsRemaining: Math.max(0, (phase?.max_participants || 10000) - (participants || 0)),
+        isOpen: phase?.phase_status === 'active' ?? true,
+        plotsRemaining: Math.max(0, (phase?.max_participants || 10000) - participants),
         totalPlots: phase?.max_participants || 10000,
         secondaryMarketActive: phase?.secondary_market_active || false,
       });
 
       setStats({
-        totalParticipants: participants || 0,
+        totalParticipants: participants,
         eligibleForBTC: genesisStats?.eligible_for_btc || 0,
         structuresDistributed: genesisStats?.structures_distributed || 0,
         btcWinnerSelected: genesisStats?.btc_winner_selected || false,
       });
-    } catch (error) {
-      console.error("Failed to load ILO data:", error);
+    } catch (error: any) {
+      // Only log unexpected errors
+      if (!error?.message?.includes("404") && error?.code !== "PGRST116") {
+        console.debug("Failed to load ILO data:", error?.message);
+      }
       // Set defaults if tables don't exist yet
       setILOStatus({
         isOpen: true,
