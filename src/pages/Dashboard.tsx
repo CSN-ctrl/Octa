@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/contexts/WalletContext";
 import * as supabaseService from "@/lib/supabase-service";
@@ -81,6 +81,7 @@ import {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { address: walletAddress } = useWallet();
   const [address, setAddress] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -167,6 +168,21 @@ export default function Dashboard() {
       window.removeEventListener('userSidebarToggle', handleSidebarToggle as EventListener);
     };
   }, []);
+
+  // Handle URL params for section/tab navigation and refresh
+  useEffect(() => {
+    const section = searchParams.get('section');
+    const tab = searchParams.get('tab');
+    const refresh = searchParams.get('refresh');
+    
+    if (section && ['asset-management', 'transfers', 'market-primary', 'market-speculative', 'hnwi-purchases'].includes(section)) {
+      setActiveSection(section as any);
+    }
+    
+    if (tab && ['land', 'portfolio', 'assets'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Get wallet address from authenticated user
   useEffect(() => {
@@ -257,6 +273,71 @@ export default function Dashboard() {
 
     fetchData();
   }, [address]);
+
+  // Listen for plots-purchased event and URL refresh param
+  useEffect(() => {
+    const handlePlotsPurchased = async (e: CustomEvent) => {
+      if (address && (e.detail.wallet === address || e.detail.email === userEmail)) {
+        // Refresh data when plots are purchased
+        if (!address) return;
+        setLoading(true);
+        try {
+          // Fetch balance - try wallet address first, then email if user has no wallet
+          let balanceData = null;
+          if (address) {
+            balanceData = await supabaseService.getUserBalance(address).catch((err: any) => {
+              if (err?.status === 406 || err?.code === "PGRST301") {
+                return null;
+              }
+              throw err;
+            });
+          }
+          // If no balance found and user has email, try email as identifier
+          if (!balanceData && userEmail) {
+            balanceData = await supabaseService.getUserBalance(userEmail).catch(() => null);
+          }
+
+          const [plots, portfolioData, txData] = await Promise.all([
+            supabaseService.getPlots({ ownerWallet: address }),
+            supabaseService.getPortfolios(address),
+            supabaseService.getTransactions({ walletAddress: address, limit: 20 }),
+          ]);
+
+          setOwnedPlots(plots || []);
+          setTotalPlots(plots?.length || 0);
+          setPortfolios(portfolioData || []);
+          setTransactions(txData || []);
+          setBalance(balanceData);
+
+          const plotsValue = (plots?.length || 0) * 100;
+          const portfolioValue = (portfolioData || []).reduce(
+            (sum, p) => sum + Number(p.current_value || 0),
+            0
+          );
+          setTotalValue(plotsValue + portfolioValue);
+        } catch (error: any) {
+          console.error("Failed to refresh dashboard data after purchase:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Check for refresh URL param
+    if (searchParams.get('refresh') === 'true' && address) {
+      handleRefresh();
+      // Clean up URL params after refresh
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('refresh');
+      setSearchParams(newParams, { replace: true });
+    }
+    
+    window.addEventListener('plots-purchased', handlePlotsPurchased as EventListener);
+    
+    return () => {
+      window.removeEventListener('plots-purchased', handlePlotsPurchased as EventListener);
+    };
+  }, [address, userEmail, searchParams, setSearchParams]);
 
   // Manual refresh function
   const handleRefresh = async () => {

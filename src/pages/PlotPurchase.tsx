@@ -465,32 +465,29 @@ export default function PlotPurchase() {
         console.error("Error in background certificate/email tasks:", error);
       });
       
-      // Clear selection and refresh
+      // Clear selection
       setSelectedPlotIds(new Set());
       
-      // Refresh plot data
-      if (purchaseAddress) {
-        try {
-          const { getPlotsByOwner } = await import("@/lib/supabase-service");
-          await getPlotsByOwner(purchaseAddress);
-        } catch (error) {
-          console.debug("Failed to refresh plots:", error);
-        }
-      }
-      
-      // Trigger refresh event
+      // Dispatch event for dashboard to listen to
       window.dispatchEvent(new CustomEvent('plots-purchased', { 
         detail: { 
           wallet: purchaseAddress,
           plotIds: plotIdsArray,
-          email: buyerEmail
-        } 
+          email: buyerEmail,
+          totalCost: totalCost
+        }
       }));
       
-      // Navigate back to universe or show success
+      // Show success message
+      toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL! Redirecting to Asset Management...`);
+      
+      // Wait a moment then redirect to dashboard/asset management
       setTimeout(() => {
-        navigate("/universe");
-      }, 2000);
+        navigate("/dashboard?section=asset-management&tab=land&refresh=true");
+      }, 1500);
+      
+      // Reset purchasing state after redirect
+      setPurchasing(false);
     } catch (error: any) {
       console.error("Purchase error:", error);
       toast.error(error.reason || error.message || "Failed to purchase plots");
