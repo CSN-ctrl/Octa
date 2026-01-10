@@ -244,10 +244,12 @@ export default function PlotPurchase() {
         purchaseAddress = buyerEmail.toLowerCase();
       }
       
-      // Quick check for obvious duplicates (plots that exist and are owned)
+      // Import all required functions at once
       toast.info("Checking plot availability...");
-      const { getPlotById } = await import("@/lib/supabase-service");
+      const { getPlotById, createPlot, updatePlot, getUserBalance, purchasePlot, registerOwnership } = await import("@/lib/supabase-service");
+      const { registerILOParticipant, getILOStatus } = await import("@/lib/ilo-service");
       
+      // Quick check for obvious duplicates (plots that exist and are owned)
       const quickChecks = await Promise.all(
         plotIdsArray.map(async (plotId) => {
           const plot = await getPlotById(plotId);
@@ -262,7 +264,6 @@ export default function PlotPurchase() {
       }
 
       // Check ILO participant limit (Phase 1: 10,000 participants)
-      const { registerILOParticipant, getILOStatus } = await import("@/lib/ilo-service");
       const iloStatus = await getILOStatus();
       
       if (!iloStatus.isOpen) {
@@ -287,7 +288,6 @@ export default function PlotPurchase() {
       }
 
       // Check balance from Supabase - try wallet address first, then email
-      const { getUserBalance, purchasePlot, registerOwnership } = await import("@/lib/supabase-service");
       let balance = null;
       
       // Try wallet address first
@@ -322,7 +322,6 @@ export default function PlotPurchase() {
 
       // Purchase each plot - create if doesn't exist, prevent duplicates
       const purchaseResults = [];
-      const { getPlotById, createPlot, updatePlot } = await import("@/lib/supabase-service");
       
       for (const plotId of plotIdsArray) {
         try {
