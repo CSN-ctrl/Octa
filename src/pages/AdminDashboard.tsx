@@ -541,7 +541,7 @@ export default function AdminDashboard() {
         registeredUsers = (regData || []) as any[];
       }
 
-      // Get all user balances
+      // Get all user balances (including those using email as identifier)
       const { data: balances, error: balanceError } = await supabase
         .from("user_balances")
         .select("wallet_address, xbgl_balance, avax_balance, chaos_balance")
@@ -551,9 +551,10 @@ export default function AdminDashboard() {
         console.error("Failed to load balances:", balanceError);
       }
 
-      // Create a map of balances by wallet
+      // Create a map of balances by wallet/email identifier
       const balanceMap = new Map<string, any>();
       balances?.forEach((balance: any) => {
+        // Store by wallet_address (could be email for users without wallets)
         balanceMap.set(balance.wallet_address.toLowerCase(), balance);
       });
 
@@ -636,25 +637,40 @@ export default function AdminDashboard() {
       let usersData: UserData[] = [];
       
       if (authUsersData.length > 0) {
-        // Use data from RPC function (already includes balances, plots, portfolios, names)
+        // Use data from RPC function, but also check balanceMap for users without wallets
         usersData = authUsersData.map((user: any) => {
           const wallet = user.wallet_address;
           const walletLower = wallet?.toLowerCase();
+          const email = user.email?.toLowerCase();
           const plotsValue = (user.plots_count || 0) * 100;
           const portfolioValue = portfolioValuesByOwner.get(walletLower || "") || 0;
+
+          // Check balanceMap by wallet first, then by email (for users without wallets)
+          let balance = null;
+          if (walletLower) {
+            balance = balanceMap.get(walletLower);
+          }
+          if (!balance && email) {
+            balance = balanceMap.get(email);
+          }
+
+          // Use balance from RPC function, or from balanceMap, or default to 0
+          const xbglBalance = balance?.xbgl_balance ?? Number(user.xbgl_balance || 0);
+          const avaxBalance = balance?.avax_balance ?? Number(user.avax_balance || 0);
+          const chaosBalance = balance?.chaos_balance ?? Number(user.chaos_balance || 0);
 
           return {
             email: user.email || "",
             name: user.account_name || undefined,
             wallet_address: wallet || null,
             balance: {
-              xbgl_balance: Number(user.xbgl_balance || 0),
-              avax_balance: Number(user.avax_balance || 0),
-              chaos_balance: Number(user.chaos_balance || 0),
+              xbgl_balance: xbglBalance,
+              avax_balance: avaxBalance,
+              chaos_balance: chaosBalance,
             },
             plots: Number(user.plots_count || 0),
             portfolios: Number(user.portfolios_count || 0),
-            totalValue: portfolioValue + plotsValue + Number(user.xbgl_balance || 0),
+            totalValue: portfolioValue + plotsValue + xbglBalance,
           };
         });
       } else {
@@ -1054,6 +1070,88 @@ export default function AdminDashboard() {
     } else if (activeTab === "transactions" && transactions.length === 0 && !loadingTransactions) {
       loadTransactions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Auto-load users when treasury transfer dialog opens
+  useEffect(() => {
+    if (showTreasuryTransferDialog) {
+      // Always refresh users list when opening the dialog
+      loadUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTreasuryTransferDialog]);
+
+  // Set up real-time subscription for users and balances
+  useEffect(() => {
+    // Always subscribe to balance changes, not just when on users tab
+    // This ensures balances auto-sync across the entire admin dashboard
+
+    // Subscribe to user_balances changes
+    const balanceSubscription = supabase
+      .channel('user_balances_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_balances'
+        },
+        (payload) => {
+          console.log('Balance change detected:', payload);
+          // Reload users when balances change to auto-sync
+          if (activeTab === "users" || activeTab === "treasury") {
+            loadUsers();
+          }
+          // Always reload treasury balance
+          loadTreasuryBalance();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to ownership_registry changes (new users)
+    const ownershipSubscription = supabase
+      .channel('ownership_registry_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ownership_registry'
+        },
+        (payload) => {
+          console.log('Ownership registry change detected:', payload);
+          if (activeTab === "users") {
+            loadUsers();
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to digital_identities changes
+    const identitiesSubscription = supabase
+      .channel('digital_identities_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'digital_identities'
+        },
+        (payload) => {
+          console.log('Digital identity change detected:', payload);
+          if (activeTab === "users") {
+            loadUsers();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      balanceSubscription.unsubscribe();
+      ownershipSubscription.unsubscribe();
+      identitiesSubscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -2463,7 +2561,21 @@ export default function AdminDashboard() {
                     </TableHeader>
                     <TableBody>
                       {filteredUsers.map((user) => (
-                        <TableRow key={user.wallet_address} className="border-primary/5 hover:bg-primary/5 transition-colors">
+                        <TableRow 
+                          key={user.wallet_address} 
+                          className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
+                            onClick={(e) => {
+                              // Only trigger if clicking on the row itself, not buttons
+                              if ((e.target as HTMLElement).closest('button')) {
+                                return;
+                              }
+                              // Use same identifier logic as Select dropdown
+                              const identifier = (user.wallet_address || user.email || `user_${user.email?.split('@')[0] || 'unknown'}`).toLowerCase();
+                              setTreasuryTransferTo(identifier);
+                              setTreasuryTransferAmount("");
+                              setShowTreasuryTransferDialog(true);
+                            }}
+                        >
                         <TableCell>
                           <div className="font-medium">
                             {user.name || userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email}
@@ -2509,9 +2621,24 @@ export default function AdminDashboard() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
+                                // Use same identifier logic as Select dropdown
+                                const identifier = (user.wallet_address || user.email || `user_${user.email?.split('@')[0] || 'unknown'}`).toLowerCase();
+                                setTreasuryTransferTo(identifier);
+                                setTreasuryTransferAmount("");
+                                setShowTreasuryTransferDialog(true);
+                              }}
+                              title="Quick transfer from treasury"
+                            >
+                              <Coins className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
                                 setSelectedUser(user);
                                 setShowTransferDialog(true);
                               }}
+                              title="Transfer between users"
                             >
                               <Send className="h-4 w-4" />
                             </Button>
@@ -2550,6 +2677,7 @@ export default function AdminDashboard() {
                                   setUserDetailsLoading(false);
                                 }
                               }}
+                              title="View user details"
                             >
                               <Info className="h-4 w-4" />
                             </Button>
@@ -2637,42 +2765,60 @@ export default function AdminDashboard() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>To Wallet Address</Label>
+              <Label>Select Authenticated User</Label>
               <Select
                 value={treasuryTransferTo}
                 onValueChange={(value) => setTreasuryTransferTo(value)}
+                onOpenChange={(open) => {
+                  // Always load users when Select opens to ensure fresh data
+                  if (open && !loading) {
+                    loadUsers();
+                  }
+                }}
               >
                 <SelectTrigger className="font-mono">
-                  <SelectValue placeholder="Select a user account or enter address manually" />
+                  <SelectValue placeholder="Select an authenticated user" />
                 </SelectTrigger>
-                <SelectContent>
-                  {users
-                    .filter((user) => user.wallet_address)
-                    .map((user) => (
-                      <SelectItem key={user.wallet_address} value={user.wallet_address!}>
-                        <div className="flex flex-col py-1">
-                          <span className="text-sm font-medium">{user.name || user.email}</span>
-                          <span className="text-xs text-muted-foreground font-mono">{user.wallet_address}</span>
-                          {user.name && user.email !== (user.wallet_address?.slice(0, 8) + "...") && (
-                            <span className="text-xs text-muted-foreground">{user.email}</span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  {users.filter((user) => user.wallet_address).length === 0 && (
-                    <SelectItem value="" disabled>
-                      No users with wallet addresses found
+                <SelectContent className="max-h-[300px]">
+                  {loading && users.length === 0 ? (
+                    <SelectItem value="loading" disabled>
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading users...
+                      </div>
                     </SelectItem>
+                  ) : users.length === 0 ? (
+                    <SelectItem value="no-users-loaded" disabled>
+                      <div className="flex flex-col py-1">
+                        <span className="text-sm">No users loaded</span>
+                        <span className="text-xs text-muted-foreground">Users will be loaded automatically</span>
+                      </div>
+                    </SelectItem>
+                  ) : (
+                    users.map((user) => {
+                      // For users without wallet_address, use email as identifier (ensure lowercase)
+                      const identifier = (user.wallet_address || user.email || `user_${user.email?.split('@')[0] || 'unknown'}`).toLowerCase();
+                      
+                      return (
+                        <SelectItem key={identifier} value={identifier}>
+                          <div className="flex flex-col py-1">
+                            <span className="text-sm font-medium">{user.name || user.email}</span>
+                            {user.wallet_address ? (
+                              <span className="text-xs text-muted-foreground font-mono">{user.wallet_address}</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">No wallet registered</span>
+                            )}
+                            {user.name && user.email && (
+                              <span className="text-xs text-muted-foreground">{user.email}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })
                   )}
                 </SelectContent>
               </Select>
-              <Input
-                value={treasuryTransferTo}
-                onChange={(e) => setTreasuryTransferTo(e.target.value)}
-                placeholder="Or enter wallet address manually (0x...)"
-                className="font-mono text-xs"
-              />
-              <p className="text-xs text-muted-foreground">Select a user account from the dropdown or enter wallet address manually</p>
+              <p className="text-xs text-muted-foreground">All authenticated users can receive transfers. Funds will be available in their asset management page.</p>
             </div>
             <div className="space-y-2">
               <Label>Amount (xBGL)</Label>
@@ -2689,7 +2835,19 @@ export default function AdminDashboard() {
             <Button
               onClick={async () => {
                 if (!treasuryTransferTo || !treasuryTransferAmount) {
-                  toast.error("Please fill in all fields");
+                  toast.error("Please select a user and enter an amount");
+                  return;
+                }
+
+                // Find the selected user by matching the identifier exactly
+                // The identifier is either wallet_address or email (lowercased)
+                const selectedUser = users.find(u => {
+                  const userIdentifier = (u.wallet_address || u.email || `user_${u.email?.split('@')[0] || 'unknown'}`).toLowerCase();
+                  return userIdentifier === treasuryTransferTo.toLowerCase();
+                });
+                
+                if (!selectedUser) {
+                  toast.error("Please select a valid authenticated user");
                   return;
                 }
 
@@ -2706,12 +2864,44 @@ export default function AdminDashboard() {
 
                 setTransferringFromTreasury(true);
                 try {
-                  // Get recipient balance
-                  const { data: toBalance } = await supabase
+                  // Determine the wallet_address identifier using the selected user
+                  // Use the same identifier logic as the Select dropdown
+                  let recipientWalletAddress: string;
+                  
+                  if (selectedUser.wallet_address) {
+                    recipientWalletAddress = selectedUser.wallet_address.toLowerCase();
+                  } else if (selectedUser.email) {
+                    // Use email as the wallet_address identifier for users without registered wallet
+                    recipientWalletAddress = selectedUser.email.toLowerCase();
+                  } else {
+                    // Fallback: use the identifier from treasuryTransferTo
+                    recipientWalletAddress = treasuryTransferTo.toLowerCase();
+                  }
+
+                  // Get or create recipient balance
+                  let toBalance: any = null;
+                  const { data: balanceData } = await supabase
                     .from("user_balances")
                     .select("*")
-                    .eq("wallet_address", treasuryTransferTo.toLowerCase())
+                    .eq("wallet_address", recipientWalletAddress)
                     .single();
+
+                  toBalance = balanceData;
+
+                  // If balance doesn't exist, create it
+                  if (!toBalance) {
+                    const { data: newBalance } = await supabase
+                      .from("user_balances")
+                      .insert({
+                        wallet_address: recipientWalletAddress,
+                        xbgl_balance: 0,
+                        avax_balance: 0,
+                        chaos_balance: 0,
+                      })
+                      .select()
+                      .single();
+                    toBalance = newBalance;
+                  }
 
                   const newToBalance = (toBalance?.xbgl_balance || 0) + amount;
                   const newTreasuryBalance = treasuryBalance - amount;
@@ -2725,7 +2915,7 @@ export default function AdminDashboard() {
                     supabase
                       .from("user_balances")
                       .upsert({
-                        wallet_address: treasuryTransferTo.toLowerCase(),
+                        wallet_address: recipientWalletAddress,
                         xbgl_balance: newToBalance,
                         avax_balance: toBalance?.avax_balance || 0,
                         chaos_balance: toBalance?.chaos_balance || 0,
@@ -2736,7 +2926,7 @@ export default function AdminDashboard() {
                   const txHash = `treasury_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                   await supabaseService.createTransaction({
                     from_address: TREASURY_WALLET.toLowerCase(),
-                    to_address: treasuryTransferTo.toLowerCase(),
+                    to_address: recipientWalletAddress,
                     amount: amount,
                     token_type: "xBGL",
                     type: "transfer",
@@ -2747,6 +2937,9 @@ export default function AdminDashboard() {
                       treasury_transfer: true,
                       admin_transfer: true,
                       timestamp: new Date().toISOString(),
+                      recipient_email: selectedUser.email || null,
+                      recipient_name: selectedUser.name || null,
+                      recipient_wallet: selectedUser.wallet_address || null,
                     },
                   });
 
@@ -2754,19 +2947,31 @@ export default function AdminDashboard() {
                   setTreasuryBalance(newTreasuryBalance);
                   (window as any).treasuryBalance = newTreasuryBalance;
                   window.dispatchEvent(new CustomEvent('treasuryBalanceUpdate'));
+                  
+                  // Update the specific user's balance in state
                   setUsers(prev => prev.map(u => {
-                    if (u.wallet_address?.toLowerCase() === treasuryTransferTo.toLowerCase()) {
-                      return { ...u, balance: { ...u.balance!, xbgl_balance: newToBalance } };
+                    const userIdentifier = (u.wallet_address || u.email || `user_${u.email?.split('@')[0] || 'unknown'}`).toLowerCase();
+                    if (userIdentifier === treasuryTransferTo.toLowerCase()) {
+                      return { 
+                        ...u, 
+                        balance: { 
+                          ...(u.balance || { xbgl_balance: 0, avax_balance: 0, chaos_balance: 0 }), 
+                          xbgl_balance: newToBalance 
+                        } 
+                      };
                     }
                     return u;
                   }));
+
+                  // Auto-sync: Reload users to get fresh balance data from Supabase
+                  await loadUsers();
 
                   // Refresh transactions if on transactions tab
                   if (activeTab === "transactions") {
                     loadTransactions();
                   }
 
-                  toast.success(`Transferred ${amount} xBGL from treasury`);
+                  toast.success(`Transferred ${amount} xBGL from treasury to ${selectedUser.name || selectedUser.email}`);
                   setTreasuryTransferAmount("");
                   setTreasuryTransferTo("");
                   setShowTreasuryTransferDialog(false);
