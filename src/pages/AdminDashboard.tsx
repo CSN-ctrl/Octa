@@ -655,19 +655,23 @@ export default function AdminDashboard() {
           }
 
           // Use balance from RPC function, or from balanceMap, or default to 0
+          // Ensure we always have a valid number, not null or undefined
           const xbglBalance = balance?.xbgl_balance ?? Number(user.xbgl_balance || 0);
           const avaxBalance = balance?.avax_balance ?? Number(user.avax_balance || 0);
           const chaosBalance = balance?.chaos_balance ?? Number(user.chaos_balance || 0);
+
+          // Ensure balance is never null
+          const userBalance = {
+            xbgl_balance: isNaN(xbglBalance) ? 0 : xbglBalance,
+            avax_balance: isNaN(avaxBalance) ? 0 : avaxBalance,
+            chaos_balance: isNaN(chaosBalance) ? 0 : chaosBalance,
+          };
 
           return {
             email: user.email || "",
             name: user.account_name || undefined,
             wallet_address: wallet || null,
-            balance: {
-              xbgl_balance: xbglBalance,
-              avax_balance: avaxBalance,
-              chaos_balance: chaosBalance,
-            },
+            balance: userBalance,
             plots: Number(user.plots_count || 0),
             portfolios: Number(user.portfolios_count || 0),
             totalValue: portfolioValue + plotsValue + xbglBalance,
@@ -682,19 +686,22 @@ export default function AdminDashboard() {
           const portfolios = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
           const plotsValue = plots * 100;
 
+          // Ensure balance is never null
+          const userBalance = balance ? {
+            xbgl_balance: Number(balance.xbgl_balance || 0),
+            avax_balance: Number(balance.avax_balance || 0),
+            chaos_balance: Number(balance.chaos_balance || 0),
+          } : {
+            xbgl_balance: 0,
+            avax_balance: 0,
+            chaos_balance: 0,
+          };
+
           return {
             email: user.email || wallet?.slice(0, 8) + "...",
             name: namesByWallet.get(wallet) || undefined,
             wallet_address: user.wallet_address,
-            balance: balance ? {
-              xbgl_balance: balance.xbgl_balance || 0,
-              avax_balance: balance.avax_balance || 0,
-              chaos_balance: balance.chaos_balance || 0,
-            } : {
-              xbgl_balance: 0,
-              avax_balance: 0,
-              chaos_balance: 0,
-            },
+            balance: userBalance,
             plots,
             portfolios: portfolios.count,
             totalValue: portfolios.value + plotsValue + (balance?.xbgl_balance || 0),
@@ -710,18 +717,21 @@ export default function AdminDashboard() {
           const portfolios = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
           const plotsValue = plots * 100;
 
+          // Ensure balance is never null
+          const userBalance = {
+            xbgl_balance: Number(balance.xbgl_balance || 0),
+            avax_balance: Number(balance.avax_balance || 0),
+            chaos_balance: Number(balance.chaos_balance || 0),
+          };
+
           return {
             email: wallet.slice(0, 8) + "...",
             name: namesByWallet.get(wallet) || undefined,
             wallet_address: balance.wallet_address,
-            balance: {
-              xbgl_balance: balance.xbgl_balance || 0,
-              avax_balance: balance.avax_balance || 0,
-              chaos_balance: balance.chaos_balance || 0,
-            },
+            balance: userBalance,
             plots,
             portfolios: portfolios.count,
-            totalValue: portfolios.value + plotsValue + (balance.xbgl_balance || 0),
+            totalValue: portfolios.value + plotsValue + userBalance.xbgl_balance,
           };
         });
         setUsers(fallbackUsers);
@@ -2641,10 +2651,10 @@ export default function AdminDashboard() {
                         <TableCell>
                           <div className="space-y-1">
                             <div className="text-sm font-semibold">
-                              {user.balance?.xbgl_balance.toFixed(2) || "0.00"} xBGL
+                              {(user.balance?.xbgl_balance ?? 0).toFixed(2)} xBGL
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {user.balance?.avax_balance.toFixed(4) || "0.0000"} AVAX
+                              {(user.balance?.avax_balance ?? 0).toFixed(4)} AVAX
                             </div>
                           </div>
                         </TableCell>
