@@ -110,10 +110,10 @@ export default function ILOLanding() {
         }
       }
 
-      setILOStatus({
-        isOpen: phase?.phase_status === 'active' ?? true,
-        plotsRemaining: Math.max(0, (phase?.max_participants || 10000) - participants),
-        totalPlots: phase?.max_participants || 10000,
+        setILOStatus({
+          isOpen: phase === undefined || phase?.phase_status === 'active',
+          plotsRemaining: Math.max(0, (phase?.max_participants || 10000) - participants),
+          totalPlots: phase?.max_participants || 10000,
         secondaryMarketActive: phase?.secondary_market_active || false,
       });
 
