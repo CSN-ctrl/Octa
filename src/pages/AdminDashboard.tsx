@@ -68,6 +68,7 @@ import * as supabaseService from "@/lib/supabase-service";
 
 interface UserData {
   email: string;
+  name?: string;
   wallet_address: string | null;
   balance: {
     xbgl_balance: number;
@@ -130,6 +131,8 @@ export default function AdminDashboard() {
   const [transactionFilter, setTransactionFilter] = useState<"all" | "treasury" | "admin" | "user">("all");
   const [activeTab, setActiveTab] = useState<"star-systems" | "planets" | "cities" | "resources" | "documents" | "transactions" | "users" | "treasury" | "affiliates">("users");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [plotsToSeed, setPlotsToSeed] = useState<string>("100");
+  const [seedingPlots, setSeedingPlots] = useState(false);
   
   // Affiliate management state
   const [affiliateApplications, setAffiliateApplications] = useState<Affiliate[]>([]);
@@ -501,15 +504,58 @@ export default function AdminDashboard() {
       // Load treasury balance first
       await initializeTreasury();
       
-      // Single batch query - get all data at once
-      const { data: balances, error } = await supabase
+      // Get all authenticated users using database function (via MCP/SQL)
+      let authUsersData: any[] = [];
+      let registeredUsers: any[] = [];
+      
+      try {
+        // Use RPC function to get all authenticated users from auth.users
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_all_auth_users' as any);
+
+        if (rpcError) {
+          console.warn("RPC function failed, falling back to ownership_registry:", rpcError.message);
+          // Fallback: Get users from ownership_registry
+          const { data: regData, error: regError } = await supabase
+            .from("ownership_registry" as any)
+            .select("wallet_address, email")
+            .order("created_at", { ascending: false });
+
+          if (regError) {
+            console.error("Failed to load registered users:", regError);
+            toast.error("Failed to load users");
+          } else {
+            registeredUsers = (regData || []) as any[];
+          }
+        } else {
+          authUsersData = (rpcData || []) as any[];
+        }
+      } catch (err: any) {
+        console.error("Error loading users:", err);
+        toast.error("Failed to load users");
+        // Fallback: Get users from ownership_registry
+        const { data: regData, error: regError } = await supabase
+          .from("ownership_registry" as any)
+          .select("wallet_address, email")
+          .order("created_at", { ascending: false });
+        registeredUsers = (regData || []) as any[];
+      }
+
+      // Get all user balances
+      const { data: balances, error: balanceError } = await supabase
         .from("user_balances")
         .select("wallet_address, xbgl_balance, avax_balance, chaos_balance")
-        .neq("wallet_address", TREASURY_WALLET.toLowerCase()) // Exclude treasury from user list
-        .limit(100); // Limit to reduce API usage
+        .neq("wallet_address", TREASURY_WALLET.toLowerCase());
 
-      if (error) throw error;
-      if (!balances) return;
+      if (balanceError) {
+        console.error("Failed to load balances:", balanceError);
+      }
+
+      // Create a map of balances by wallet
+      const balanceMap = new Map<string, any>();
+      balances?.forEach((balance: any) => {
+        balanceMap.set(balance.wallet_address.toLowerCase(), balance);
+      });
 
       // Get plots count in single query
       const { data: plotsData } = await supabase
@@ -517,10 +563,14 @@ export default function AdminDashboard() {
         .select("owner_wallet")
         .not("owner_wallet", "is", null);
 
-      // Get portfolios in single query
-      const { data: portfoliosData } = await supabase
-        .from("portfolios")
-        .select("owner_wallet, current_value");
+      // Get portfolios in single query (only needed for fallback scenario)
+      let portfoliosDataForProcessing: any[] = [];
+      if (authUsersData.length === 0) {
+        const { data: portfoliosQuery } = await supabase
+          .from("portfolios")
+          .select("owner_wallet, current_value");
+        portfoliosDataForProcessing = portfoliosQuery || [];
+      }
 
       // Process in memory (no more Supabase calls)
       const plotsByOwner = new Map<string, number>();
@@ -532,7 +582,7 @@ export default function AdminDashboard() {
       });
 
       const portfoliosByOwner = new Map<string, { count: number; value: number }>();
-      portfoliosData?.forEach((p: any) => {
+      portfoliosDataForProcessing?.forEach((p: any) => {
         const wallet = p.owner_wallet?.toLowerCase();
         if (wallet) {
           const existing = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
@@ -543,33 +593,146 @@ export default function AdminDashboard() {
         }
       });
 
-      const usersData: UserData[] = balances.map((balance) => {
-        const wallet = balance.wallet_address.toLowerCase();
-        const plots = plotsByOwner.get(wallet) || 0;
-        const portfolios = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
-        const plotsValue = plots * 100;
+      // Get user names from digital_identities
+      const { data: digitalIdentities } = await supabase
+        .from("digital_identities")
+        .select("wallet_address, name");
 
-        return {
-          email: wallet.slice(0, 8) + "...",
-          wallet_address: balance.wallet_address,
-          balance: {
-            xbgl_balance: balance.xbgl_balance || 0,
-            avax_balance: balance.avax_balance || 0,
-            chaos_balance: balance.chaos_balance || 0,
-          },
-          plots,
-          portfolios: portfolios.count,
-          totalValue: portfolios.value + plotsValue + (balance.xbgl_balance || 0),
-        };
+      const namesByWallet = new Map<string, string>();
+      digitalIdentities?.forEach((identity: any) => {
+        if (identity.wallet_address && identity.name) {
+          namesByWallet.set(identity.wallet_address.toLowerCase(), identity.name);
+        }
       });
 
-      setUsers(usersData);
+      // Get wallet addresses from ownership_registry for email mapping
+      const { data: ownershipData } = await supabase
+        .from("ownership_registry" as any)
+        .select("wallet_address, email");
+
+      const walletByEmail = new Map<string, string>();
+      ownershipData?.forEach((record: any) => {
+        if (record.email && record.wallet_address) {
+          walletByEmail.set(record.email.toLowerCase(), record.wallet_address);
+        }
+      });
+
+      // Get portfolio values for total value calculation (only if using RPC function data)
+      const portfolioValuesByOwner = new Map<string, number>();
+      if (authUsersData.length > 0) {
+        const { data: portfoliosForValues } = await supabase
+          .from("portfolios")
+          .select("owner_wallet, current_value");
+        portfoliosForValues?.forEach((p: any) => {
+          const wallet = p.owner_wallet?.toLowerCase();
+          if (wallet) {
+            const existing = portfolioValuesByOwner.get(wallet) || 0;
+            portfolioValuesByOwner.set(wallet, existing + Number(p.current_value || 0));
+          }
+        });
+      }
+
+      // Create users from RPC function data (authenticated users from auth.users)
+      let usersData: UserData[] = [];
       
-      // Load user emails for display
-      const wallets = usersData.map(u => u.wallet_address!).filter(Boolean);
-      await loadUserEmails(wallets);
+      if (authUsersData.length > 0) {
+        // Use data from RPC function (already includes balances, plots, portfolios, names)
+        usersData = authUsersData.map((user: any) => {
+          const wallet = user.wallet_address;
+          const walletLower = wallet?.toLowerCase();
+          const plotsValue = (user.plots_count || 0) * 100;
+          const portfolioValue = portfolioValuesByOwner.get(walletLower || "") || 0;
+
+          return {
+            email: user.email || "",
+            name: user.account_name || undefined,
+            wallet_address: wallet || null,
+            balance: {
+              xbgl_balance: Number(user.xbgl_balance || 0),
+              avax_balance: Number(user.avax_balance || 0),
+              chaos_balance: Number(user.chaos_balance || 0),
+            },
+            plots: Number(user.plots_count || 0),
+            portfolios: Number(user.portfolios_count || 0),
+            totalValue: portfolioValue + plotsValue + Number(user.xbgl_balance || 0),
+          };
+        });
+      } else {
+        // Fallback: Use registered users from ownership_registry
+        usersData = (registeredUsers || []).map((user: any) => {
+          const wallet = user.wallet_address?.toLowerCase();
+          const balance = balanceMap.get(wallet);
+          const plots = plotsByOwner.get(wallet) || 0;
+          const portfolios = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
+          const plotsValue = plots * 100;
+
+          return {
+            email: user.email || wallet?.slice(0, 8) + "...",
+            name: namesByWallet.get(wallet) || undefined,
+            wallet_address: user.wallet_address,
+            balance: balance ? {
+              xbgl_balance: balance.xbgl_balance || 0,
+              avax_balance: balance.avax_balance || 0,
+              chaos_balance: balance.chaos_balance || 0,
+            } : {
+              xbgl_balance: 0,
+              avax_balance: 0,
+              chaos_balance: 0,
+            },
+            plots,
+            portfolios: portfolios.count,
+            totalValue: portfolios.value + plotsValue + (balance?.xbgl_balance || 0),
+          };
+        });
+      }
+
+      // If no users found, fall back to users with balances (for backward compatibility)
+      if (usersData.length === 0 && balances && balances.length > 0) {
+        const fallbackUsers: UserData[] = balances.map((balance) => {
+          const wallet = balance.wallet_address.toLowerCase();
+          const plots = plotsByOwner.get(wallet) || 0;
+          const portfolios = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
+          const plotsValue = plots * 100;
+
+          return {
+            email: wallet.slice(0, 8) + "...",
+            name: namesByWallet.get(wallet) || undefined,
+            wallet_address: balance.wallet_address,
+            balance: {
+              xbgl_balance: balance.xbgl_balance || 0,
+              avax_balance: balance.avax_balance || 0,
+              chaos_balance: balance.chaos_balance || 0,
+            },
+            plots,
+            portfolios: portfolios.count,
+            totalValue: portfolios.value + plotsValue + (balance.xbgl_balance || 0),
+          };
+        });
+        setUsers(fallbackUsers);
+      } else {
+        setUsers(usersData);
+      }
       
-      toast.success(`Loaded ${usersData.length} users`);
+      // Update email map from auth users or ownership_registry
+      const emailMap = new Map<string, string>();
+      if (authUsersData.length > 0) {
+        authUsersData.forEach((user: any) => {
+          if (user.email && user.wallet_address) {
+            emailMap.set(user.wallet_address.toLowerCase(), user.email);
+          }
+        });
+      } else {
+        registeredUsers?.forEach((user: any) => {
+          if (user.wallet_address && user.email) {
+            emailMap.set(user.wallet_address.toLowerCase(), user.email);
+          }
+        });
+      }
+      setUserEmails(emailMap);
+      
+      const userCount = usersData.length || balances?.length || 0;
+      const source = authUsersData.length > 0 ? "authenticated" : "registered";
+      toast.success(`Loaded ${userCount} ${source} users`);
     } catch (error: any) {
       console.error("Failed to load users:", error);
       toast.error("Failed to load users");
@@ -920,6 +1083,7 @@ export default function AdminDashboard() {
   };
 
   const filteredUsers = users.filter(user =>
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.wallet_address?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -2115,14 +2279,32 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="plots-to-seed">Number of Plots to Seed</Label>
+                  <Input
+                    id="plots-to-seed"
+                    type="number"
+                    min="1"
+                    value={plotsToSeed}
+                    onChange={(e) => setPlotsToSeed(e.target.value)}
+                    placeholder="Enter number of plots"
+                    className="w-full"
+                  />
+                </div>
                 <Button
                   variant="outline"
                   onClick={async () => {
+                    const count = parseInt(plotsToSeed);
+                    if (isNaN(count) || count < 1) {
+                      toast.error("Please enter a valid number of plots (at least 1)");
+                      return;
+                    }
                     try {
-                      toast.info("Seeding plots... This may take a moment.");
+                      setSeedingPlots(true);
+                      toast.info(`Seeding ${count} plots... This may take a moment.`);
                       const { seedPlots } = await import("@/lib/seed-plots");
-                      const result = await seedPlots(100);
+                      const result = await seedPlots(count);
                       if (result.success) {
                         toast.success(result.message);
                       } else {
@@ -2130,11 +2312,23 @@ export default function AdminDashboard() {
                       }
                     } catch (error: any) {
                       toast.error(error.message || "Failed to seed plots");
+                    } finally {
+                      setSeedingPlots(false);
                     }
                   }}
+                  disabled={seedingPlots}
                 >
-                  <Grid3x3 className="h-4 w-4 mr-2" />
-                  Seed 10,000 Plots
+                  {seedingPlots ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Seeding...
+                    </>
+                  ) : (
+                    <>
+                      <Grid3x3 className="h-4 w-4 mr-2" />
+                      Seed Plots
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -2209,14 +2403,34 @@ export default function AdminDashboard() {
                     View and manage all user accounts, assets, and portfolios
                   </CardDescription>
                 </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search users..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 w-64"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadUsers()}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Load Users
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -2252,8 +2466,13 @@ export default function AdminDashboard() {
                         <TableRow key={user.wallet_address} className="border-primary/5 hover:bg-primary/5 transition-colors">
                         <TableCell>
                           <div className="font-medium">
-                            {userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email}
+                            {user.name || userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email}
                           </div>
+                          {user.name && (userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email !== (user.wallet_address?.slice(0, 8) + "...")) && (
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email}
+                            </div>
+                          )}
                           <div className="text-xs text-muted-foreground mt-1">
                             {user.wallet_address?.slice(0, 8)}...{user.wallet_address?.slice(-6)}
                           </div>
@@ -2419,13 +2638,41 @@ export default function AdminDashboard() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>To Wallet Address</Label>
+              <Select
+                value={treasuryTransferTo}
+                onValueChange={(value) => setTreasuryTransferTo(value)}
+              >
+                <SelectTrigger className="font-mono">
+                  <SelectValue placeholder="Select a user account or enter address manually" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users
+                    .filter((user) => user.wallet_address)
+                    .map((user) => (
+                      <SelectItem key={user.wallet_address} value={user.wallet_address!}>
+                        <div className="flex flex-col py-1">
+                          <span className="text-sm font-medium">{user.name || user.email}</span>
+                          <span className="text-xs text-muted-foreground font-mono">{user.wallet_address}</span>
+                          {user.name && user.email !== (user.wallet_address?.slice(0, 8) + "...") && (
+                            <span className="text-xs text-muted-foreground">{user.email}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  {users.filter((user) => user.wallet_address).length === 0 && (
+                    <SelectItem value="" disabled>
+                      No users with wallet addresses found
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
               <Input
-                placeholder="0x..."
                 value={treasuryTransferTo}
                 onChange={(e) => setTreasuryTransferTo(e.target.value)}
-                className="font-mono"
+                placeholder="Or enter wallet address manually (0x...)"
+                className="font-mono text-xs"
               />
-              <p className="text-xs text-muted-foreground">User wallet address to receive funds</p>
+              <p className="text-xs text-muted-foreground">Select a user account from the dropdown or enter wallet address manually</p>
             </div>
             <div className="space-y-2">
               <Label>Amount (xBGL)</Label>
