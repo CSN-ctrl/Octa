@@ -13,5 +13,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+  },
+  realtime: {
+    // Only use WebSocket if available
+    transport: typeof WebSocket !== 'undefined' ? 'websocket' : undefined,
+    params: {
+      eventsPerSecond: 10
+    },
+    heartbeatIntervalMs: 30000,
+  },
+  global: {
+    headers: {
+      'x-client-info': 'chaosstar-web'
+    }
   }
 });

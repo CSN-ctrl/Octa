@@ -1084,73 +1084,117 @@ export default function AdminDashboard() {
 
   // Set up real-time subscription for users and balances
   useEffect(() => {
-    // Always subscribe to balance changes, not just when on users tab
-    // This ensures balances auto-sync across the entire admin dashboard
+    // Check if WebSocket is available (required for Supabase real-time)
+    if (typeof window === 'undefined' || typeof WebSocket === 'undefined') {
+      console.warn('WebSocket not available, skipping real-time subscriptions');
+      return;
+    }
 
-    // Subscribe to user_balances changes
-    const balanceSubscription = supabase
-      .channel('user_balances_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_balances'
-        },
-        (payload) => {
-          console.log('Balance change detected:', payload);
-          // Reload users when balances change to auto-sync
-          if (activeTab === "users" || activeTab === "treasury") {
-            loadUsers();
-          }
-          // Always reload treasury balance
-          loadTreasuryBalance();
-        }
-      )
-      .subscribe();
+    let balanceSubscription: any;
+    let ownershipSubscription: any;
+    let identitiesSubscription: any;
 
-    // Subscribe to ownership_registry changes (new users)
-    const ownershipSubscription = supabase
-      .channel('ownership_registry_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ownership_registry'
-        },
-        (payload) => {
-          console.log('Ownership registry change detected:', payload);
-          if (activeTab === "users") {
-            loadUsers();
-          }
-        }
-      )
-      .subscribe();
+    // Wrap in try-catch to prevent app crash if subscriptions fail
+    const setupSubscriptions = async () => {
+      try {
+        // Subscribe to user_balances changes
+        balanceSubscription = supabase
+          .channel('user_balances_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'user_balances'
+            },
+            (payload) => {
+              console.log('Balance change detected:', payload);
+              if (activeTab === "users" || activeTab === "treasury") {
+                loadUsers();
+              }
+              loadTreasuryBalance();
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Balance subscription active');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.warn('Balance subscription error, real-time updates disabled');
+            }
+          });
 
-    // Subscribe to digital_identities changes
-    const identitiesSubscription = supabase
-      .channel('digital_identities_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'digital_identities'
-        },
-        (payload) => {
-          console.log('Digital identity change detected:', payload);
-          if (activeTab === "users") {
-            loadUsers();
-          }
-        }
-      )
-      .subscribe();
+        // Subscribe to ownership_registry changes (new users)
+        ownershipSubscription = supabase
+          .channel('ownership_registry_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'ownership_registry'
+            },
+            (payload) => {
+              console.log('Ownership registry change detected:', payload);
+              if (activeTab === "users") {
+                loadUsers();
+              }
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Ownership subscription active');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.warn('Ownership subscription error');
+            }
+          });
+
+        // Subscribe to digital_identities changes
+        identitiesSubscription = supabase
+          .channel('digital_identities_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'digital_identities'
+            },
+            (payload) => {
+              console.log('Digital identity change detected:', payload);
+              if (activeTab === "users") {
+                loadUsers();
+              }
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Identities subscription active');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.warn('Identities subscription error');
+            }
+          });
+      } catch (error: any) {
+        // Gracefully handle subscription errors - app continues to work without real-time
+        console.warn('Real-time subscriptions not available:', error.message);
+      }
+    };
+
+    setupSubscriptions();
 
     return () => {
-      balanceSubscription.unsubscribe();
-      ownershipSubscription.unsubscribe();
-      identitiesSubscription.unsubscribe();
+      // Cleanup subscriptions
+      try {
+        if (balanceSubscription) {
+          balanceSubscription.unsubscribe().catch(() => {});
+        }
+        if (ownershipSubscription) {
+          ownershipSubscription.unsubscribe().catch(() => {});
+        }
+        if (identitiesSubscription) {
+          identitiesSubscription.unsubscribe().catch(() => {});
+        }
+      } catch (error) {
+        // Ignore cleanup errors
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
