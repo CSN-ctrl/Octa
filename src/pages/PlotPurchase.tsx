@@ -24,6 +24,7 @@ import {
   Send
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -65,6 +66,7 @@ export default function PlotPurchase() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [purchaseBalance, setPurchaseBalance] = useState<string>("0");
   const [buyerEmail, setBuyerEmail] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showAddPlotDialog, setShowAddPlotDialog] = useState(false);
   
   // Get initial plot ID from URL
@@ -83,19 +85,48 @@ export default function PlotPurchase() {
 
   // Contract events removed - using Supabase real-time subscriptions instead
 
+  // Get user email from auth session
+  useEffect(() => {
+    const getUserEmail = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.email) {
+          setUserEmail(session.user.email);
+          // Set buyerEmail if not already set
+          if (!buyerEmail) {
+            setBuyerEmail(session.user.email);
+          }
+        }
+      } catch (error) {
+        console.debug("Failed to get user email:", error);
+      }
+    };
+    getUserEmail();
+  }, []);
+
   // Load balance for selected wallet from Supabase
   useEffect(() => {
     const loadBalance = async () => {
-      if (purchaseWalletType === "connected" && address) {
+      if (purchaseWalletType === "connected") {
         try {
           const { getUserBalance } = await import("@/lib/supabase-service");
-          const balance = await getUserBalance(address).catch((err: any) => {
-            // Handle 406 errors gracefully
-            if (err?.status === 406 || err?.code === "PGRST301") {
-              return null;
-            }
-            throw err;
-          });
+          let balance = null;
+          
+          // Try wallet address first
+          if (address) {
+            balance = await getUserBalance(address).catch((err: any) => {
+              if (err?.status === 406 || err?.code === "PGRST301") {
+                return null;
+              }
+              throw err;
+            });
+          }
+          
+          // If no balance found and user has email, try email as identifier
+          if (!balance && userEmail) {
+            balance = await getUserBalance(userEmail).catch(() => null);
+          }
+          
           if (balance) {
             setPurchaseBalance(balance.xbgl_balance?.toString() || "0");
           } else {
@@ -103,12 +134,13 @@ export default function PlotPurchase() {
           }
         } catch (error) {
           console.error("Failed to load balance:", error);
+          setPurchaseBalance("0");
         }
       }
       // CLI key wallet type removed
     };
     loadBalance();
-  }, [purchaseWalletType, address]);
+  }, [purchaseWalletType, address, userEmail]);
 
   // Load and store affiliate code from URL or Supabase
   useEffect(() => {
@@ -269,16 +301,25 @@ export default function PlotPurchase() {
         return;
       }
 
-      // Check balance from Supabase
+      // Check balance from Supabase - try wallet address first, then email
       const { getUserBalance, purchasePlot, registerOwnership } = await import("@/lib/supabase-service");
-      const balance = await getUserBalance(purchaseAddress).catch((err: any) => {
-        // Handle 406 errors gracefully
-        if (err?.status === 406 || err?.code === "PGRST301") {
-          console.debug("Cannot access user_balances (RLS policy)");
-          return null;
-        }
-        throw err;
-      });
+      let balance = null;
+      
+      // Try wallet address first
+      if (purchaseAddress) {
+        balance = await getUserBalance(purchaseAddress).catch((err: any) => {
+          if (err?.status === 406 || err?.code === "PGRST301") {
+            console.debug("Cannot access user_balances (RLS policy)");
+            return null;
+          }
+          throw err;
+        });
+      }
+      
+      // If no balance found and user has email, try email as identifier
+      if (!balance && buyerEmail) {
+        balance = await getUserBalance(buyerEmail).catch(() => null);
+      }
       
       if (!balance || (balance.xbgl_balance || 0) < totalCost) {
         toast.error(`Insufficient balance. You need ${totalCost} xBGL but have ${balance?.xbgl_balance || 0} xBGL.`);
