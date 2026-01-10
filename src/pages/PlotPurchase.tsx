@@ -26,7 +26,6 @@ import {
 import { useWallet } from "@/contexts/WalletContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { getAndStoreAffiliateCode, recordAffiliateReferral } from "@/lib/affiliate-service";
 import {
@@ -61,9 +60,7 @@ export default function PlotPurchase() {
   // Loading state for general operations
   const [loading, setLoading] = useState(false);
   
-  // Account selection for purchase (CLI keys removed)
-  const [purchaseWalletType, setPurchaseWalletType] = useState<"connected" | "account">("connected");
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  // Balance and email for purchase
   const [purchaseBalance, setPurchaseBalance] = useState<string>("0");
   const [buyerEmail, setBuyerEmail] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -104,43 +101,45 @@ export default function PlotPurchase() {
     getUserEmail();
   }, []);
 
-  // Load balance for selected wallet from Supabase
+  // Load balance from Supabase (works with or without wallet)
   useEffect(() => {
     const loadBalance = async () => {
-      if (purchaseWalletType === "connected") {
-        try {
-          const { getUserBalance } = await import("@/lib/supabase-service");
-          let balance = null;
-          
-          // Try wallet address first
-          if (address) {
-            balance = await getUserBalance(address).catch((err: any) => {
-              if (err?.status === 406 || err?.code === "PGRST301") {
-                return null;
-              }
-              throw err;
-            });
-          }
-          
-          // If no balance found and user has email, try email as identifier
-          if (!balance && userEmail) {
-            balance = await getUserBalance(userEmail).catch(() => null);
-          }
-          
-          if (balance) {
-            setPurchaseBalance(balance.xbgl_balance?.toString() || "0");
-          } else {
-            setPurchaseBalance("0");
-          }
-        } catch (error) {
-          console.error("Failed to load balance:", error);
+      try {
+        const { getUserBalance } = await import("@/lib/supabase-service");
+        let balance = null;
+        
+        // Try wallet address first (if connected)
+        if (address) {
+          balance = await getUserBalance(address).catch((err: any) => {
+            if (err?.status === 406 || err?.code === "PGRST301") {
+              return null;
+            }
+            throw err;
+          });
+        }
+        
+        // If no balance found and user has email, try email as identifier
+        if (!balance && userEmail) {
+          balance = await getUserBalance(userEmail).catch(() => null);
+        }
+        
+        // If still no balance and buyerEmail is set, try that
+        if (!balance && buyerEmail && buyerEmail.includes("@")) {
+          balance = await getUserBalance(buyerEmail).catch(() => null);
+        }
+        
+        if (balance) {
+          setPurchaseBalance(balance.xbgl_balance?.toString() || "0");
+        } else {
           setPurchaseBalance("0");
         }
+      } catch (error) {
+        console.error("Failed to load balance:", error);
+        setPurchaseBalance("0");
       }
-      // CLI key wallet type removed
     };
     loadBalance();
-  }, [purchaseWalletType, address, userEmail]);
+  }, [address, userEmail, buyerEmail]);
 
   // Load and store affiliate code from URL or Supabase
   useEffect(() => {
@@ -251,29 +250,23 @@ export default function PlotPurchase() {
     }
     
     try {
-      let purchaseSigner: ethers.Signer | null = null;
-      let purchaseAddress: string = "";
-
-      // Get signer based on wallet type (CLI keys removed)
-      if (purchaseWalletType === "connected") {
-        if (!isConnected || !signer || !address) {
-          toast.error("Please connect your wallet or select an ChaosStar Key");
-          setPurchasing(false);
-          return;
-        }
-        purchaseSigner = signer;
-        purchaseAddress = address;
-      } else {
-        toast.error("Please select a wallet (ChaosStar Key recommended)");
-        setPurchasing(false);
-        return;
-      }
-
-      // Validate email
+      // Validate email (required for purchase)
       if (!buyerEmail || !buyerEmail.includes("@")) {
         toast.error("Please enter a valid email address");
         setPurchasing(false);
         return;
+      }
+
+      // Use email as purchase address if no wallet connected, otherwise use wallet address
+      let purchaseAddress: string = "";
+      if (address) {
+        purchaseAddress = address.toLowerCase();
+      } else if (userEmail) {
+        // Use email as identifier for users without wallets
+        purchaseAddress = userEmail.toLowerCase();
+      } else {
+        // Fallback to buyerEmail
+        purchaseAddress = buyerEmail.toLowerCase();
       }
 
       // Check ILO participant limit (Phase 1: 10,000 participants)
@@ -584,33 +577,19 @@ export default function PlotPurchase() {
                   <p className="text-xs text-muted-foreground mt-1">{selectedPlotIds.size} plot{selectedPlotIds.size !== 1 ? 's' : ''} × {PLOT_PRICE_xBGL} xBGL</p>
                 </div>
 
-                {/* Wallet & Email - Compact */}
-                <div className="space-y-3">
-                  <Select 
-                    value={purchaseWalletType} 
-                    onValueChange={(value) => setPurchaseWalletType(value as "connected" | "account")}
-                  >
-                    <SelectTrigger className="h-9 bg-background/50 border-border/50">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="connected">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-3.5 w-3.5" />
-                          Connected Wallet
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-
+                {/* Email Input - Required */}
+                <div className="space-y-2">
+                  <Label htmlFor="buyer-email" className="text-xs text-muted-foreground">Email Address</Label>
                   <Input
+                    id="buyer-email"
                     type="email"
-                    placeholder="Email address"
+                    placeholder="your.email@example.com"
                     value={buyerEmail}
                     onChange={(e) => setBuyerEmail(e.target.value)}
                     className="h-9 bg-background/50 border-border/50"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">Your email will be used to identify your account and send purchase confirmations</p>
                 </div>
 
                 {/* Purchase Button - Sleek */}
