@@ -172,9 +172,20 @@ export default function Dashboard() {
   useEffect(() => {
     const getAuthWallet = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.user_metadata?.wallet_address) {
-        setAddress(session.user.user_metadata.wallet_address);
-        setUserEmail(session.user.email);
+      if (session?.user) {
+        // Always set email if available
+        if (session.user.email) {
+          setUserEmail(session.user.email);
+        }
+        
+        if (session.user.user_metadata?.wallet_address) {
+          setAddress(session.user.user_metadata.wallet_address);
+        } else if (walletAddress) {
+          setAddress(walletAddress);
+        } else if (session.user.email) {
+          // If no wallet, use email as identifier
+          setAddress(session.user.email);
+        }
       } else if (walletAddress) {
         setAddress(walletAddress);
       }
@@ -208,9 +219,16 @@ export default function Dashboard() {
         });
         setTransactions(txData || []);
 
-        // Fetch balance
+        // Fetch balance - try wallet address first, then email if user has no wallet
         try {
-          const balanceData = await supabaseService.getUserBalance(address);
+          let balanceData = null;
+          if (address) {
+            balanceData = await supabaseService.getUserBalance(address);
+          }
+          // If no balance found and user has email, try email as identifier
+          if (!balanceData && userEmail) {
+            balanceData = await supabaseService.getUserBalance(userEmail);
+          }
           setBalance(balanceData);
         } catch (err) {
           console.debug("Balance fetch failed:", err);
@@ -245,17 +263,25 @@ export default function Dashboard() {
     if (!address) return;
     setLoading(true);
     try {
-      const [plots, portfolioData, txData, balanceData] = await Promise.all([
-        supabaseService.getPlots({ ownerWallet: address }),
-        supabaseService.getPortfolios(address),
-        supabaseService.getTransactions({ walletAddress: address, limit: 20 }),
-        supabaseService.getUserBalance(address).catch((err: any) => {
-          // Handle 406 errors gracefully
+      // Fetch balance - try wallet address first, then email if user has no wallet
+      let balanceData = null;
+      if (address) {
+        balanceData = await supabaseService.getUserBalance(address).catch((err: any) => {
           if (err?.status === 406 || err?.code === "PGRST301") {
             return null;
           }
           throw err;
-        }),
+        });
+      }
+      // If no balance found and user has email, try email as identifier
+      if (!balanceData && userEmail) {
+        balanceData = await supabaseService.getUserBalance(userEmail).catch(() => null);
+      }
+
+      const [plots, portfolioData, txData] = await Promise.all([
+        supabaseService.getPlots({ ownerWallet: address }),
+        supabaseService.getPortfolios(address),
+        supabaseService.getTransactions({ walletAddress: address, limit: 20 }),
       ]);
 
       setOwnedPlots(plots || []);

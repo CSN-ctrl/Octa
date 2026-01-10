@@ -624,13 +624,30 @@ export async function deleteDigitalIdentity(identityId: string): Promise<void> {
 }
 
 // ==================== USER BALANCES ====================
-export async function getUserBalance(walletAddress: string): Promise<UserBalance | null> {
+export async function getUserBalance(walletAddressOrEmail: string): Promise<UserBalance | null> {
   try {
-    const { data, error } = await supabase
+    const identifier = walletAddressOrEmail.toLowerCase();
+    
+    // First try to get balance by wallet_address
+    let { data, error } = await supabase
       .from("user_balances")
       .select("*")
-      .eq("wallet_address", walletAddress.toLowerCase())
-      .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no row exists
+      .eq("wallet_address", identifier)
+      .maybeSingle();
+    
+    // If not found and identifier looks like an email, try by email
+    if (!data && error?.code === "PGRST116" && identifier.includes("@")) {
+      const { data: emailData, error: emailError } = await supabase
+        .from("user_balances")
+        .select("*")
+        .eq("wallet_address", identifier) // Email is stored as wallet_address for users without wallets
+        .maybeSingle();
+      
+      if (emailData) {
+        return emailData;
+      }
+      error = emailError;
+    }
     
     if (error) {
       // PGRST116 = no rows returned (not an error, just no data)
