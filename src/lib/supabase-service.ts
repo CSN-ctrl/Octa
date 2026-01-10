@@ -43,6 +43,7 @@ function handleSupabaseError(error: any, defaultValue: any = null): any {
 // ==================== PLOTS ====================
 export async function getPlots(filters?: {
   ownerWallet?: string;
+  ownerEmail?: string;
   cityName?: string;
   zoneType?: string;
   limit?: number;
@@ -51,8 +52,25 @@ export async function getPlots(filters?: {
   try {
     let query = supabase.from("plots").select("*");
 
-    if (filters?.ownerWallet) {
-      query = query.eq("owner_wallet", filters.ownerWallet);
+    // Query by wallet or email (plots can be owned by either)
+    if (filters?.ownerWallet || filters?.ownerEmail) {
+      const identifiers: string[] = [];
+      if (filters?.ownerWallet) {
+        identifiers.push(filters.ownerWallet.toLowerCase());
+      }
+      if (filters?.ownerEmail) {
+        identifiers.push(filters.ownerEmail.toLowerCase());
+      }
+      
+      if (identifiers.length === 1) {
+        // Single identifier - use direct equality
+        query = query.eq("owner_wallet", identifiers[0]);
+      } else if (identifiers.length > 1) {
+        // Multiple identifiers - use OR query (check for matches with any identifier)
+        // Since owner_wallet can store either wallet address or email, we check both
+        const uniqueIdentifiers = [...new Set(identifiers)];
+        query = query.in("owner_wallet", uniqueIdentifiers);
+      }
     }
     if (filters?.zoneType) {
       query = query.eq("zone_type", filters.zoneType);

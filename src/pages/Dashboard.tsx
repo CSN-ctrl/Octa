@@ -219,8 +219,11 @@ export default function Dashboard() {
 
       setLoading(true);
       try {
-        // Fetch plots
-        const plots = await supabaseService.getPlots({ ownerWallet: address });
+        // Fetch plots - try by wallet address and email
+        let plots = await supabaseService.getPlots({ 
+          ownerWallet: address,
+          ownerEmail: userEmail || undefined
+        });
         setOwnedPlots(plots || []);
         setTotalPlots(plots?.length || 0);
 
@@ -298,7 +301,10 @@ export default function Dashboard() {
           }
 
           const [plots, portfolioData, txData] = await Promise.all([
-            supabaseService.getPlots({ ownerWallet: address }),
+            supabaseService.getPlots({ 
+              ownerWallet: address,
+              ownerEmail: userEmail || undefined
+            }),
             supabaseService.getPortfolios(address),
             supabaseService.getTransactions({ walletAddress: address, limit: 20 }),
           ]);
@@ -360,7 +366,10 @@ export default function Dashboard() {
       }
 
       const [plots, portfolioData, txData] = await Promise.all([
-        supabaseService.getPlots({ ownerWallet: address }),
+        supabaseService.getPlots({ 
+          ownerWallet: address,
+          ownerEmail: userEmail || undefined
+        }),
         supabaseService.getPortfolios(address),
         supabaseService.getTransactions({ walletAddress: address, limit: 20 }),
       ]);
