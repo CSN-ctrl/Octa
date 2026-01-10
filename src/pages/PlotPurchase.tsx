@@ -656,27 +656,36 @@ export default function PlotPurchase() {
                     {sortedPlotIds.map((plotId) => (
                       <div
                         key={plotId}
-                        className="group relative p-3 rounded-lg border border-border/50 bg-background/30 hover:bg-accent/30 hover:border-primary/30 transition-all cursor-pointer"
+                        className="group relative p-3 rounded-lg border border-border/50 overflow-hidden hover:border-primary/30 transition-all cursor-pointer aspect-square"
+                        style={{
+                          lineHeight: '30px',
+                          backgroundImage: 'url(/plot-preview.png)',
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                        }}
                       >
-                        <div className="flex flex-col items-center gap-1.5">
-                          <div className="p-1.5 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                            <MapPin className="h-3.5 w-3.5 text-primary" />
-                          </div>
-                          <span className="font-semibold text-sm">#{plotId}</span>
-                          <span className="text-xs text-muted-foreground">{PLOT_PRICE_xBGL} xBGL</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive absolute top-1 right-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removePlot(plotId);
-                            }}
-                            title="Remove"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
+                        {/* Overlay for text readability - square shape */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-square bg-background/30 group-hover:bg-background/20 transition-colors" style={{ lineHeight: '30px' }}></div>
+                        
+                        {/* Content */}
+                        <div className="relative flex flex-col items-center gap-1.5 z-10">
+                          <span className="font-semibold text-sm drop-shadow-sm">#{plotId}</span>
                         </div>
+                        
+                        {/* Remove button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive absolute top-1 right-1 z-20"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removePlot(plotId);
+                          }}
+                          title="Remove"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
                     ))}
                   </div>
