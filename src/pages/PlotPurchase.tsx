@@ -223,32 +223,7 @@ export default function PlotPurchase() {
     const plotIdsArray = Array.from(selectedPlotIds).sort((a, b) => a - b);
     const totalCost = PLOT_PRICE_xBGL * plotIdsArray.length;
     
-    // Check ownership of all selected plots before purchase
     setPurchasing(true);
-    try {
-      toast.info("Checking plot availability...");
-      const ownershipChecks = await Promise.all(
-        plotIdsArray.map(plotId => checkPlotOwnership(plotId))
-      );
-      
-      const ownedPlots = plotIdsArray.filter((plotId, index) => ownershipChecks[index].isOwned);
-      if (ownedPlots.length > 0) {
-        toast.error(`Plot(s) ${ownedPlots.join(", #")} are already owned and cannot be purchased`);
-        setPurchasing(false);
-        // Remove owned plots from selection
-        setSelectedPlotIds(prev => {
-          const next = new Set(prev);
-          ownedPlots.forEach(id => next.delete(id));
-          return next;
-        });
-        return;
-      }
-      
-    } catch (error) {
-      console.error("Failed to check plot ownership:", error);
-      // Continue with purchase if check fails (contract might not be fully deployed)
-    }
-    
     try {
       // Validate email (required for purchase)
       if (!buyerEmail || !buyerEmail.includes("@")) {
@@ -267,6 +242,23 @@ export default function PlotPurchase() {
       } else {
         // Fallback to buyerEmail
         purchaseAddress = buyerEmail.toLowerCase();
+      }
+      
+      // Quick check for obvious duplicates (plots that exist and are owned)
+      toast.info("Checking plot availability...");
+      const { getPlotById } = await import("@/lib/supabase-service");
+      
+      const quickChecks = await Promise.all(
+        plotIdsArray.map(async (plotId) => {
+          const plot = await getPlotById(plotId);
+          return { plotId, plot, exists: !!plot, isOwned: !!(plot?.owner_wallet) };
+        })
+      );
+      
+      // Warn about plots that exist and are owned (will check more carefully during purchase)
+      const potentiallyOwned = quickChecks.filter(check => check.isOwned);
+      if (potentiallyOwned.length > 0) {
+        console.log(`Warning: ${potentiallyOwned.length} plot(s) may already be owned - will verify during purchase`);
       }
 
       // Check ILO participant limit (Phase 1: 10,000 participants)
@@ -328,10 +320,58 @@ export default function PlotPurchase() {
         // Continue with purchase even if registration fails
       }
 
-      // Purchase each plot using Supabase RPC function
+      // Purchase each plot - create if doesn't exist, prevent duplicates
       const purchaseResults = [];
+      const { getPlotById, createPlot, updatePlot } = await import("@/lib/supabase-service");
+      
       for (const plotId of plotIdsArray) {
         try {
+          // Check if plot exists and is already owned
+          let plot = await getPlotById(plotId);
+          
+          if (plot && plot.owner_wallet) {
+            // Plot exists and is owned - check if it's owned by this user
+            const isOwnedByUser = plot.owner_wallet.toLowerCase() === purchaseAddress.toLowerCase() ||
+                                  (plot.owner_wallet && buyerEmail && plot.owner_wallet.toLowerCase() === buyerEmail.toLowerCase());
+            
+            if (isOwnedByUser) {
+              toast.warning(`Plot #${plotId} is already owned by you`);
+              continue; // Skip this plot, continue with others
+            } else {
+              toast.error(`Plot #${plotId} is already owned by another user`);
+              setPurchasing(false);
+              return;
+            }
+          }
+          
+          // Calculate coordinates based on plot ID (simple algorithm)
+          // You can adjust this based on your coordinate system
+          const coordX = (plotId % 100) - 50; // Range: -50 to 49
+          const coordY = Math.floor(plotId / 100) - 50; // Range: -50 to 49
+          const zoneType = getZoneType(coordX, coordY);
+          
+          // If plot doesn't exist, create it
+          if (!plot) {
+            plot = await createPlot({
+              id: plotId,
+              coord_x: coordX,
+              coord_y: coordY,
+              zone_type: zoneType,
+              owner_wallet: purchaseAddress,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+            console.log(`✓ Created plot #${plotId} with coordinates (${coordX}, ${coordY})`);
+          } else {
+            // Plot exists but not owned - update ownership
+            plot = await updatePlot(plotId, {
+              owner_wallet: purchaseAddress,
+              updated_at: new Date().toISOString(),
+            });
+            console.log(`✓ Updated plot #${plotId} ownership`);
+          }
+          
+          // Now purchase the plot using RPC function
           const result = await purchasePlot(
             plotId,
             purchaseAddress,
@@ -344,8 +384,8 @@ export default function PlotPurchase() {
             throw new Error(result.error || "Purchase failed");
           }
           
-          purchaseResults.push({ plotId, txHash: result.txHash });
-          console.log(`✓ Purchased plot #${plotId} - TX: ${result.txHash}`);
+          purchaseResults.push({ plotId, txHash: result.txHash || `plot_${plotId}_${Date.now()}` });
+          console.log(`✓ Purchased plot #${plotId} - TX: ${result.txHash || 'N/A'}`);
         } catch (error: any) {
           console.error(`Failed to purchase plot #${plotId}:`, error);
           toast.error(`Failed to purchase plot #${plotId}: ${error.message}`);
