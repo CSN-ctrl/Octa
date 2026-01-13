@@ -22,6 +22,8 @@ import {
   MapPin,
   Coins,
   Grid3x3,
+  Mail,
+  Wallet,
 } from "lucide-react";
 import { usePlotTransfer, PlotMetadata } from "@/hooks/usePlotTransfer";
 import { useWallet } from "@/contexts/WalletContext";
@@ -48,6 +50,8 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
   const [ownedPlots, setOwnedPlots] = useState<number[]>([]);
   const [selectedPlots, setSelectedPlots] = useState<Set<number>>(new Set());
   const [recipient, setRecipient] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [transferMethod, setTransferMethod] = useState<"wallet" | "email">("wallet");
   const [loading, setLoading] = useState(false);
   const [plotMetadata, setPlotMetadata] = useState<Map<number, PlotMetadata>>(new Map());
   const [showDialog, setShowDialog] = useState(false);
@@ -193,27 +197,155 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
     setSelectedPlots(new Set());
   };
 
+  // Email validation helper
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  // Email-based transfer handler
+  const handleEmailTransfer = async (plotIds: number[], email: string) => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { getAuthUserEmail, reconcileBalance } = await import("@/lib/supabase-service");
+      const authUserEmail = await getAuthUserEmail();
+      
+      if (!authUserEmail) {
+        throw new Error("Please sign in to transfer plots");
+      }
+
+      // Get recipient's wallet address (if they have one) or use email as identifier
+      const { data: recipientOwnership } = await supabase
+        .from("ownership")
+        .select("wallet_address")
+        .eq("email", email.toLowerCase())
+        .single();
+
+      const newOwnerIdentifier = recipientOwnership?.wallet_address || email.toLowerCase();
+
+      // Update plot ownership in database
+      for (const plotId of plotIds) {
+        await supabase
+          .from("plots")
+          .update({ owner_wallet: newOwnerIdentifier })
+          .eq("id", plotId);
+
+        // Create transfer transaction record
+        await supabase.from("transactions").insert({
+          from_address: authUserEmail.toLowerCase(),
+          to_address: email.toLowerCase(),
+          amount: 0, // Plot transfers don't involve tokens
+          token_type: "PLOT",
+          transaction_type: "plot_transfer",
+          status: "completed",
+          metadata: {
+            plot_id: plotId,
+            plot_ids: plotIds,
+            transfer_method: "email",
+            recipient_email: email,
+          },
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      // Reconcile balances for both parties
+      try {
+        await reconcileBalance(authUserEmail);
+        await reconcileBalance(email.toLowerCase());
+      } catch (reconcileError) {
+        console.debug("Balance reconciliation failed:", reconcileError);
+      }
+
+      // Send email notification
+      try {
+        const { sendPlotTransferEmail } = await import("@/lib/email-service");
+        await sendPlotTransferEmail(
+          email,
+          plotIds,
+          authUserEmail
+        );
+      } catch (emailError) {
+        console.debug("Failed to send email notification:", emailError);
+        // Don't fail the transfer if email fails
+      }
+
+      toast.success(`Successfully transferred ${plotIds.length} plot(s) to ${email}`);
+      
+      // Refresh plots
+      await refreshLandPlots();
+      await loadOwnedPlots();
+      
+      // Clear form
+      setSelectedPlots(new Set());
+      setRecipientEmail("");
+      setShowDialog(false);
+      
+      if (onTransferComplete) {
+        onTransferComplete();
+      }
+    } catch (error: any) {
+      console.error("Email transfer failed:", error);
+      toast.error(error.message || "Failed to transfer plots");
+      throw error;
+    }
+  };
+
   const handleTransfer = async () => {
     if (selectedPlots.size === 0) {
       toast.error("Please select at least one plot to transfer");
       return;
     }
 
-    if (!recipient || !ethers.isAddress(recipient)) {
-      toast.error("Please enter a valid recipient address");
-      return;
+    const plotIds = Array.from(selectedPlots);
+    let recipientAddress = recipient;
+    let recipientEmailAddress = recipientEmail;
+
+    // Determine transfer method
+    if (transferMethod === "email") {
+      if (!recipientEmail || !isValidEmail(recipientEmail)) {
+        toast.error("Please enter a valid recipient email");
+        return;
+      }
+      
+      // Get wallet address from email (if user has registered)
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: ownership } = await supabase
+          .from("ownership")
+          .select("wallet_address")
+          .eq("email", recipientEmail.toLowerCase())
+          .single();
+        
+        if (ownership?.wallet_address) {
+          recipientAddress = ownership.wallet_address;
+          // Continue with wallet transfer
+        } else {
+          // Email-based transfer - update database only
+          await handleEmailTransfer(plotIds, recipientEmail);
+          return;
+        }
+      } catch (error) {
+        // If no wallet found, proceed with email-only transfer
+        await handleEmailTransfer(plotIds, recipientEmail);
+        return;
+      }
+    } else {
+      // Wallet-based transfer
+      if (!recipient || !ethers.isAddress(recipient)) {
+        toast.error("Please enter a valid recipient address");
+        return;
+      }
     }
 
     try {
-      const plotIds = Array.from(selectedPlots);
-      
       // Try PlotRegistry first (new contract), fallback to Land Contract
       let transferSuccess = false;
+      let txHash: string | undefined;
+      
       try {
         if (plotIds.length === 1) {
-          await transferPlot(plotIds[0], recipient, address);
+          txHash = await transferPlot(plotIds[0], recipientAddress, address);
         } else {
-          await transferPlotsBatch(plotIds, recipient, address);
+          txHash = await transferPlotsBatch(plotIds, recipientAddress, address);
         }
         transferSuccess = true;
       } catch (plotRegistryError: any) {
@@ -226,13 +358,15 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
             
             // Use ERC1155 safeTransferFrom for land contract
             if (plotIds.length === 1) {
-              const tx = await contract.safeTransferFrom(address, recipient, plotIds[0], 1, "0x");
-              await tx.wait();
+              const tx = await contract.safeTransferFrom(address, recipientAddress, plotIds[0], 1, "0x");
+              const receipt = await tx.wait();
+              txHash = receipt.transactionHash;
             } else {
               // Batch transfer
               const amounts = new Array(plotIds.length).fill(1);
-              const tx = await contract.safeBatchTransferFrom(address, recipient, plotIds, amounts, "0x");
-              await tx.wait();
+              const tx = await contract.safeBatchTransferFrom(address, recipientAddress, plotIds, amounts, "0x");
+              const receipt = await tx.wait();
+              txHash = receipt.transactionHash;
             }
             
             toast.success(`Successfully transferred ${plotIds.length} plot(s) via Land Contract`);
@@ -247,9 +381,53 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
       }
 
       if (transferSuccess) {
+        // Update ledger and create transaction
+        try {
+          const { getAuthUserEmail, reconcileBalance } = await import("@/lib/supabase-service");
+          const { supabase } = await import("@/integrations/supabase/client");
+          const authUserEmail = await getAuthUserEmail();
+          
+          if (authUserEmail) {
+            // Create plot transfer transaction
+            await supabase.from("transactions").insert({
+              from_address: authUserEmail.toLowerCase(),
+              to_address: recipientAddress.toLowerCase(),
+              amount: 0, // Plot transfers don't involve tokens
+              token_type: "PLOT",
+              transaction_type: "plot_transfer",
+              status: "completed",
+              tx_hash: txHash || null,
+              metadata: {
+                plot_ids: plotIds,
+                transfer_method: transferMethod,
+                recipient_email: recipientEmailAddress || null,
+              },
+              created_at: new Date().toISOString(),
+            });
+            
+            // Update plot ownership in database
+            for (const plotId of plotIds) {
+              await supabase
+                .from("plots")
+                .update({ owner_wallet: recipientAddress.toLowerCase() })
+                .eq("id", plotId);
+            }
+            
+            // Reconcile balances for both parties
+            await reconcileBalance(authUserEmail);
+            if (recipientEmailAddress) {
+              await reconcileBalance(recipientEmailAddress);
+            }
+          }
+        } catch (ledgerError) {
+          console.error("Ledger update failed:", ledgerError);
+          // Don't fail the transfer if ledger update fails
+        }
+
         // Clear selection and refresh
         setSelectedPlots(new Set());
         setRecipient("");
+        setRecipientEmail("");
         setShowDialog(false);
         
         // Refresh owned plots from both contracts
@@ -396,20 +574,62 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
             {selectedPlots.size > 0 && (
               <div className="border-t border-primary/20 pt-4 space-y-4">
                 <div className="space-y-2">
-                  <Label>Recipient Address</Label>
-                  <Input
-                    placeholder="0x..."
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
-                    className="font-mono"
-                  />
+                  <Label>Transfer Method</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={transferMethod === "wallet" ? "default" : "outline"}
+                      onClick={() => setTransferMethod("wallet")}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Wallet Address
+                    </Button>
+                    <Button
+                      variant={transferMethod === "email" ? "default" : "outline"}
+                      onClick={() => setTransferMethod("email")}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Email Address
+                    </Button>
+                  </div>
                 </div>
+
+                {transferMethod === "email" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientEmail">Recipient Email</Label>
+                    <Input
+                      id="recipientEmail"
+                      type="email"
+                      placeholder="recipient@example.com"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">Recipient Wallet Address</Label>
+                    <Input
+                      id="recipient"
+                      placeholder="0x..."
+                      value={recipient}
+                      onChange={(e) => setRecipient(e.target.value)}
+                      className="font-mono"
+                    />
+                  </div>
+                )}
 
                 <Dialog open={showDialog} onOpenChange={setShowDialog}>
                   <DialogTrigger asChild>
                     <Button
                       className="w-full"
-                      disabled={!recipient || !ethers.isAddress(recipient) || transferring}
+                      disabled={
+                        transferring ||
+                        (transferMethod === "wallet" && (!recipient || !ethers.isAddress(recipient))) ||
+                        (transferMethod === "email" && (!recipientEmail || !isValidEmail(recipientEmail)))
+                      }
                     >
                       {transferring ? (
                         <>
@@ -434,7 +654,14 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                     <div className="space-y-4 py-4">
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                         <div className="text-sm text-muted-foreground mb-1">Recipient:</div>
-                        <div className="font-mono text-sm break-all">{recipient}</div>
+                        <div className={transferMethod === "email" ? "text-sm break-all" : "font-mono text-sm break-all"}>
+                          {transferMethod === "email" ? recipientEmail : recipient}
+                        </div>
+                        {transferMethod === "email" && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Transfer will be processed via email
+                          </div>
+                        )}
                       </div>
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                         <div className="text-sm text-muted-foreground mb-2">Plots to transfer:</div>

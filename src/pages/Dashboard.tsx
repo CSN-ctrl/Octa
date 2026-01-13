@@ -59,13 +59,18 @@ import {
   Crown,
   FileText,
   Download,
+  Upload,
   Users,
   Copy,
   ExternalLink,
   Link2,
   UserPlus,
+  Search,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PlotDocumentUpload } from "@/components/plots/PlotDocumentUpload";
+import { PlotTransferHistory } from "@/components/plots/PlotTransferHistory";
 import { useCelestialForge } from "@/hooks/useCelestialForge";
 import { ethers } from "ethers";
 import {
@@ -94,7 +99,7 @@ export default function Dashboard() {
   const [totalPlots, setTotalPlots] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"asset-management" | "transfers" | "market-primary" | "market-speculative" | "hnwi-purchases">("asset-management");
-  const [activeTab, setActiveTab] = useState("land");
+  const [activeTab, setActiveTab] = useState("assets");
   const [governmentPlots, setGovernmentPlots] = useState<any[]>([]);
   const [governmentResources, setGovernmentResources] = useState<any[]>([]);
   const [loadingMarket, setLoadingMarket] = useState(false);
@@ -109,6 +114,12 @@ export default function Dashboard() {
   const [speculativeContracts, setSpeculativeContracts] = useState<any[]>([]);
   const [loadingSpeculative, setLoadingSpeculative] = useState(false);
   const [selectedContract, setSelectedContract] = useState<any>(null);
+  // Transfer state
+  const [transferRecipient, setTransferRecipient] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transferMemo, setTransferMemo] = useState("");
+  const [transferring, setTransferring] = useState(false);
+  const [recentRecipients, setRecentRecipients] = useState<string[]>([]);
   const [contractAmount, setContractAmount] = useState("");
   const [showContractDialog, setShowContractDialog] = useState(false);
 
@@ -135,6 +146,7 @@ export default function Dashboard() {
   const [submittingApplication, setSubmittingApplication] = useState(false);
   const [plotDocuments, setPlotDocuments] = useState<Record<number, any[]>>({});
   const [loadingDocuments, setLoadingDocuments] = useState<Record<number, boolean>>({});
+  const [showDocumentUpload, setShowDocumentUpload] = useState<number | null>(null);
   
   // Celestial Forge hook for purchasing
   const {
@@ -231,23 +243,228 @@ export default function Dashboard() {
         const portfolioData = await supabaseService.getPortfolios(address);
         setPortfolios(portfolioData || []);
 
-        // Fetch transactions
-        const txData = await supabaseService.getTransactions({
-          walletAddress: address,
-          limit: 20,
+        // Get authenticated user email for ledger operations
+        const { data: { session } } = await supabase.auth.getSession();
+        const authUserEmail = session?.user?.email?.toLowerCase() || userEmail?.toLowerCase() || null;
+        
+        // Fetch transactions with ledger verification - use auth user email
+        let txData: any[] = [];
+        try {
+          if (authUserEmail) {
+            txData = await supabaseService.getTransactionsWithLedger(
+              authUserEmail,
+              50
+            );
+          } else if (address) {
+            txData = await supabaseService.getTransactions({
+              walletAddress: address.toLowerCase(),
+              limit: 50,
         });
+          }
         setTransactions(txData || []);
+        } catch (err) {
+          console.error("Failed to fetch transactions:", err);
+          setTransactions([]); // Set empty array on error
+        }
 
-        // Fetch balance - try wallet address first, then email if user has no wallet
+        // Fetch balance - use auth user email for ledger operations
+        // Reconcile with ledger first to ensure accuracy
         try {
           let balanceData = null;
-          if (address) {
-            balanceData = await supabaseService.getUserBalance(address);
+          if (authUserEmail) {
+            // Reconcile balance with ledger before fetching (using auth user email)
+            try {
+              await supabaseService.reconcileBalance(authUserEmail);
+            } catch (reconcileError) {
+              console.debug("Balance reconciliation failed:", reconcileError);
+            }
+            balanceData = await supabaseService.getUserBalance(authUserEmail);
+            
+            // Auto-correct balance if plot purchases haven't been deducted
+            if (balanceData && plots && plots.length > 0) {
+              const plotCost = plots.length * 100; // 100 xBGL per plot
+              const currentBalance = balanceData.xbgl_balance || 0;
+              
+              // Calculate total spent on plots from transactions
+              const plotPurchaseTransactions = txData.filter((tx: any) => 
+                (tx.type === 'plot_purchase' || tx.transaction_type === 'plot_purchase') &&
+                tx.status === 'completed' &&
+                (tx.from_address?.toLowerCase() === authUserEmail.toLowerCase() || 
+                 tx.from_address?.toLowerCase() === address?.toLowerCase())
+              );
+              const totalSpentOnPlots = plotPurchaseTransactions.reduce((sum: number, tx: any) => {
+                return sum + (Number(tx.amount) || 0);
+              }, 0);
+              
+              // If balance hasn't been deducted for plot purchases, correct it
+              if (totalSpentOnPlots > 0 && currentBalance >= totalSpentOnPlots) {
+                const expectedBalance = currentBalance - totalSpentOnPlots;
+                // Only update if there's a significant difference
+                if (Math.abs(balanceData.xbgl_balance - expectedBalance) > 0.01) {
+                  try {
+                    const { updateUserBalance } = await import("@/lib/supabase-service");
+                    await updateUserBalance(authUserEmail, {
+                      xbgl_balance: expectedBalance
+                    });
+                    balanceData.xbgl_balance = expectedBalance;
+                    console.log(`✓ Auto-corrected balance: ${currentBalance} - ${totalSpentOnPlots} = ${expectedBalance} xBGL`);
+                  } catch (updateError) {
+                    console.debug("Failed to auto-correct balance:", updateError);
+                  }
+                }
+              }
+            }
+          } else if (address) {
+            // Fallback to wallet address if no email
+            balanceData = await supabaseService.getUserBalance(address.toLowerCase());
           }
-          // If no balance found and user has email, try email as identifier
-          if (!balanceData && userEmail) {
-            balanceData = await supabaseService.getUserBalance(userEmail);
+          
+          // Calculate total initial deposit (current balance + amount spent on plots)
+          const plotCost = plots?.length ? plots.length * 100 : 0; // 100 xBGL per plot
+          const currentBalance = balanceData?.xbgl_balance || 0;
+          const totalInitialDeposit = currentBalance + plotCost; // Total received from treasury
+          
+          // Create initial treasury transfer transaction if balance exists but no transfer from treasury found
+          if (balanceData && totalInitialDeposit > 0) {
+            const treasuryTransferTransactions = txData.filter((tx: any) => {
+              const txMetadata = tx.metadata as any;
+              return (
+                (tx.type === 'deposit' || tx.transaction_type === 'deposit' || 
+                 tx.type === 'transfer' || tx.transaction_type === 'transfer' || 
+                 tx.type === 'mint') &&
+                tx.token_type === 'xBGL' &&
+                (tx.from_address === '0x0000000000000000000000000000000000000001' ||
+                 txMetadata?.source === 'treasury' ||
+                 txMetadata?.direction === 'from_treasury')
+              );
+            });
+            
+            // If user has balance but no treasury transfer transaction, create one
+            if (treasuryTransferTransactions.length === 0) {
+              try {
+                const { createTransaction } = supabaseService;
+                const userIdentifier = authUserEmail || address?.toLowerCase() || '';
+                await createTransaction({
+                  from_address: "0x0000000000000000000000000000000000000001", // Treasury address
+                  to_address: userIdentifier,
+                  amount: totalInitialDeposit,
+                  token_type: "xBGL",
+                  transaction_type: "transfer",
+                  status: "completed",
+                  tx_hash: `treasury_transfer_${userIdentifier}_${Date.now()}`,
+                  type: "transfer",
+                  metadata: { 
+                    source: "treasury",
+                    initial_balance: true,
+                    total_deposited: totalInitialDeposit,
+                    direction: "from_treasury",
+                    user_email: authUserEmail
+                  },
+                });
+                console.log(`✓ Created initial deposit transaction for ${totalInitialDeposit} xBGL (${currentBalance} current + ${plotCost} spent on plots)`);
+                
+                // Refresh transactions
+                const refreshedTx = await supabaseService.getTransactions({
+                  walletAddress: userIdentifier,
+                  limit: 50,
+                });
+                setTransactions(refreshedTx || []);
+                txData = refreshedTx || []; // Update local variable
+              } catch (depositErr: any) {
+                if (depositErr?.code !== '23505') {
+                  console.warn("Failed to create deposit transaction:", depositErr);
+                }
+              }
+            }
           }
+          
+          // Verify and correct balance based on owned plots
+          if (balanceData && plots && plots.length > 0) {
+            // Check for plot purchase transactions
+            const plotTransactions = txData.filter((tx: any) => 
+              (tx.type === 'plot_purchase' || tx.transaction_type === 'plot_purchase') &&
+              plots.some((p: any) => !tx.plot_id || p.id === tx.plot_id)
+            );
+            
+            // If user has plots but no transactions, create missing transactions and deduct balance
+            if (plotTransactions.length === 0 && currentBalance >= plotCost) {
+              const correctedBalance = Math.max(0, currentBalance - plotCost);
+              console.warn(`Balance correction: ${currentBalance} -> ${correctedBalance} (${plots.length} plots, no transactions found)`);
+              
+              // Create missing transaction records for owned plots
+              try {
+                const { createTransaction } = supabaseService;
+                const userIdentifier = authUserEmail || address?.toLowerCase() || '';
+                for (const plot of plots) {
+                  try {
+                    await createTransaction({
+                      from_address: userIdentifier,
+                      to_address: "0x0000000000000000000000000000000000000001",
+                      amount: 100,
+                      token_type: "xBGL",
+                      transaction_type: "plot_purchase",
+                      status: "completed",
+                      tx_hash: `plot_${plot.id}_${Date.now()}`,
+                      type: "plot_purchase",
+                      plot_id: plot.id,
+                      metadata: { 
+                        plot_id: plot.id, 
+                        purchase_type: "land",
+                        retroactive: true,
+                        user_email: authUserEmail
+                      },
+                    });
+                    console.log(`✓ Created retroactive transaction for plot #${plot.id}`);
+                  } catch (txErr: any) {
+                    // If transaction already exists, that's okay
+                    if (txErr?.code !== '23505') {
+                      console.warn(`Failed to create transaction for plot #${plot.id}:`, txErr);
+                    }
+                  }
+                }
+                
+                // Refresh transactions after creating them
+                const refreshedTx = await supabaseService.getTransactions({
+                  walletAddress: userIdentifier,
+                  limit: 50,
+                });
+                setTransactions(refreshedTx || []);
+              } catch (txError) {
+                console.error("Failed to create retroactive transactions:", txError);
+              }
+              
+              // Deduct balance (using auth user email)
+              try {
+                const { updateUserBalance, upsertUserBalance } = supabaseService;
+                const userIdentifier = authUserEmail || address?.toLowerCase() || '';
+                try {
+                  await updateUserBalance(userIdentifier, {
+                    xbgl_balance: correctedBalance
+                  });
+                  balanceData.xbgl_balance = correctedBalance;
+                  console.log(`✓ Corrected balance to ${correctedBalance} xBGL`);
+                } catch (updateErr: any) {
+                  // If update fails (row doesn't exist), try upsert
+                  if (updateErr?.code === 'PGRST116' || updateErr?.message?.includes('No rows')) {
+                    await upsertUserBalance({
+                      wallet_address: userIdentifier,
+                      xbgl_balance: correctedBalance,
+                      avax_balance: balanceData.avax_balance || 0,
+                      chaos_balance: balanceData.chaos_balance || 0,
+                      sc_balance: balanceData.sc_balance || 0,
+                    });
+                    balanceData.xbgl_balance = correctedBalance;
+                    console.log(`✓ Created/updated balance: ${correctedBalance} xBGL`);
+                  } else {
+                    throw updateErr;
+                  }
+                }
+              } catch (correctionError) {
+                console.error("Failed to correct balance:", correctionError);
+              }
+            }
+          }
+          
           setBalance(balanceData);
         } catch (err) {
           console.debug("Balance fetch failed:", err);
@@ -275,29 +492,188 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, [address]);
+
+    // Set up real-time subscriptions for balance and transactions
+    if (!address && !userEmail) return;
+
+    // Helper function to auto-refresh transactions
+    const refreshTransactions = async (id: string) => {
+      try {
+        if (id.includes('@')) {
+          // Email identifier - use ledger-aware function
+          const updatedTx = await supabaseService.getTransactionsWithLedger(id, 50);
+          setTransactions(updatedTx || []);
+        } else {
+          // Wallet address
+          const updatedTx = await supabaseService.getTransactions({
+            walletAddress: id,
+            limit: 50,
+          });
+          setTransactions(updatedTx || []);
+        }
+      } catch (err) {
+        console.debug("Failed to refresh transactions:", err);
+      }
+    };
+
+    // Get authenticated user email for subscriptions
+    const getSubscriptionIdentifier = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.user?.email?.toLowerCase() || userEmail?.toLowerCase() || address?.toLowerCase() || '';
+    };
+
+    getSubscriptionIdentifier().then(async (identifier) => {
+      if (!identifier) return;
+
+      // Subscribe to balance changes (using email or address)
+      const balanceChannel = supabase
+        .channel(`balance-${identifier}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_balances',
+            filter: `wallet_address=eq.${identifier}`,
+          },
+          async () => {
+            // Auto-refresh balance when it changes in database
+            try {
+              const updatedBalance = await supabaseService.getUserBalance(identifier);
+              if (updatedBalance) {
+                setBalance(updatedBalance);
+                console.debug("Balance auto-refreshed:", updatedBalance.xbgl_balance);
+              }
+            } catch (err) {
+              console.debug("Failed to refresh balance from subscription:", err);
+            }
+          }
+        )
+        .subscribe();
+
+      // Subscribe to transaction changes (both from and to addresses for auto-refresh)
+      const transactionChannel = supabase
+        .channel(`transactions-${identifier}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'transactions',
+            filter: `from_address=eq.${identifier}`,
+          },
+          async () => {
+            // Auto-refresh transactions when new one is added
+            await refreshTransactions(identifier);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'transactions',
+            filter: `to_address=eq.${identifier}`,
+          },
+          async () => {
+            // Auto-refresh transactions when new one is added (incoming)
+            await refreshTransactions(identifier);
+          }
+        )
+        .subscribe();
+
+      // Store channels for cleanup
+      (window as any).__balanceChannel = balanceChannel;
+      (window as any).__transactionChannel = transactionChannel;
+    });
+
+    // Set up periodic balance and transaction refresh (every 5 seconds) as backup
+    const refreshInterval = setInterval(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const authUserEmail = session?.user?.email?.toLowerCase() || userEmail?.toLowerCase() || null;
+        const identifier = authUserEmail || address?.toLowerCase();
+        
+        if (identifier) {
+          // Reconcile balance first to ensure accuracy
+          if (authUserEmail) {
+            try {
+              await supabaseService.reconcileBalance(authUserEmail);
+            } catch (reconcileError) {
+              console.debug("Periodic reconciliation failed:", reconcileError);
+            }
+          }
+          
+          // Auto-fetch balance from Supabase
+          const updatedBalance = await supabaseService.getUserBalance(identifier);
+          if (updatedBalance) {
+            setBalance(updatedBalance);
+            console.debug("Balance auto-fetched from Supabase:", updatedBalance.xbgl_balance);
+          }
+          
+          // Auto-refresh transactions
+          if (identifier.includes('@')) {
+            const updatedTx = await supabaseService.getTransactionsWithLedger(identifier, 50);
+            setTransactions(updatedTx || []);
+          } else {
+            const updatedTx = await supabaseService.getTransactions({
+              walletAddress: identifier,
+              limit: 50,
+            });
+            setTransactions(updatedTx || []);
+          }
+        }
+      } catch (err) {
+        console.debug("Periodic refresh failed:", err);
+      }
+    }, 5000); // Refresh every 5 seconds
+
+    return () => {
+      if ((window as any).__balanceChannel) {
+        supabase.removeChannel((window as any).__balanceChannel);
+      }
+      if ((window as any).__transactionChannel) {
+        supabase.removeChannel((window as any).__transactionChannel);
+      }
+      clearInterval(refreshInterval);
+    };
+  }, [address, userEmail]);
 
   // Listen for plots-purchased event and URL refresh param
   useEffect(() => {
     const handlePlotsPurchased = async (e: CustomEvent) => {
-      if (address && (e.detail.wallet === address || e.detail.email === userEmail)) {
+      // Get authenticated user email
+      const { data: { session } } = await supabase.auth.getSession();
+      const authUserEmail = session?.user?.email?.toLowerCase() || userEmail?.toLowerCase() || null;
+      const eventWallet = e.detail.wallet?.toLowerCase();
+      const eventEmail = e.detail.email?.toLowerCase();
+      
+      // Check if this event is for the current user (by email or wallet)
+      const isCurrentUser = authUserEmail && (eventWallet === authUserEmail || eventEmail === authUserEmail) ||
+                           (address && eventWallet === address.toLowerCase());
+      
+      if (isCurrentUser) {
         // Refresh data when plots are purchased
-        if (!address) return;
         setLoading(true);
         try {
-          // Fetch balance - try wallet address first, then email if user has no wallet
+          // Fetch balance using auth user email
           let balanceData = null;
-          if (address) {
-            balanceData = await supabaseService.getUserBalance(address).catch((err: any) => {
+          if (authUserEmail) {
+            // Reconcile balance with ledger first
+            try {
+              await supabaseService.reconcileBalance(authUserEmail);
+            } catch (reconcileError) {
+              console.debug("Balance reconciliation failed:", reconcileError);
+            }
+            balanceData = await supabaseService.getUserBalance(authUserEmail).catch((err: any) => {
               if (err?.status === 406 || err?.code === "PGRST301") {
                 return null;
               }
               throw err;
             });
-          }
-          // If no balance found and user has email, try email as identifier
-          if (!balanceData && userEmail) {
-            balanceData = await supabaseService.getUserBalance(userEmail).catch(() => null);
+          } else if (address) {
+            // Fallback to wallet address
+            balanceData = await supabaseService.getUserBalance(address.toLowerCase()).catch(() => null);
           }
 
           const [plots, portfolioData, txData] = await Promise.all([
@@ -306,14 +682,129 @@ export default function Dashboard() {
               ownerEmail: userEmail || undefined
             }),
             supabaseService.getPortfolios(address),
-            supabaseService.getTransactions({ walletAddress: address, limit: 20 }),
+            authUserEmail ? supabaseService.getTransactionsWithLedger(
+              authUserEmail,
+              50
+            ).catch((err) => {
+              console.error("Failed to fetch transactions:", err);
+              return []; // Return empty array on error
+            }) : supabaseService.getTransactions({ 
+              walletAddress: address?.toLowerCase(),
+              limit: 50
+            }).catch((err) => {
+              console.error("Failed to fetch transactions:", err);
+              return []; // Return empty array on error
+            }),
           ]);
 
           setOwnedPlots(plots || []);
           setTotalPlots(plots?.length || 0);
           setPortfolios(portfolioData || []);
           setTransactions(txData || []);
+          
+          // Auto-correct balance based on plot purchases before setting state
+          if (balanceData && authUserEmail && plots && plots.length > 0) {
+            // Calculate total spent on plots (100 xBGL per plot)
+            const plotCost = plots.length * 100;
+            const currentBalance = balanceData.xbgl_balance || 0;
+            
+            // Calculate total spent from transactions if available
+            let totalSpentOnPlots = 0;
+            if (txData.length > 0) {
+              const plotPurchaseTransactions = txData.filter((tx: any) => 
+                (tx.type === 'plot_purchase' || tx.transaction_type === 'plot_purchase') &&
+                tx.status === 'completed' &&
+                (tx.from_address?.toLowerCase() === authUserEmail.toLowerCase() || 
+                 tx.from_address?.toLowerCase() === address?.toLowerCase())
+              );
+              totalSpentOnPlots = plotPurchaseTransactions.reduce((sum: number, tx: any) => {
+                return sum + (Number(tx.amount) || 0);
+              }, 0);
+            }
+            
+            // Use plot cost if transaction data is not available or incomplete
+            if (totalSpentOnPlots === 0) {
+              totalSpentOnPlots = plotCost;
+            }
+            
+            // If we have plot purchases but balance hasn't been deducted, correct it
+            if (totalSpentOnPlots > 0 && currentBalance >= totalSpentOnPlots) {
+              const expectedBalance = Math.max(0, currentBalance - totalSpentOnPlots);
+              // Always update if balance needs to be deducted (even if difference is small)
+              if (currentBalance !== expectedBalance) {
+                try {
+                  const { updateUserBalance } = await import("@/lib/supabase-service");
+                  await updateUserBalance(authUserEmail, {
+                    xbgl_balance: expectedBalance
+                  });
+                  balanceData.xbgl_balance = expectedBalance;
+                  console.log(`✓ Auto-deducted balance: ${currentBalance} - ${totalSpentOnPlots} = ${expectedBalance} xBGL`);
+                } catch (updateError: any) {
+                  // If update fails (e.g., row doesn't exist), try upsert
+                  if (updateError?.code === 'PGRST116' || updateError?.message?.includes('No rows')) {
+                    try {
+                      const { upsertUserBalance } = await import("@/lib/supabase-service");
+                      await upsertUserBalance({
+                        wallet_address: authUserEmail,
+                        xbgl_balance: expectedBalance,
+                        avax_balance: balanceData.avax_balance || 0,
+                        chaos_balance: balanceData.chaos_balance || 0,
+                        sc_balance: balanceData.sc_balance || 0,
+                      });
+                      balanceData.xbgl_balance = expectedBalance;
+                      console.log(`✓ Created/updated balance with deducted amount: ${expectedBalance} xBGL`);
+                    } catch (upsertError) {
+                      console.debug("Failed to upsert balance:", upsertError);
+                    }
+                  } else {
+                    console.debug("Failed to auto-correct balance:", updateError);
+                  }
+                }
+              }
+            }
+          }
+          
           setBalance(balanceData);
+          
+          // Force refresh balance and transactions after a short delay to ensure updates are visible
+          setTimeout(async () => {
+            try {
+              // Auto-fetch balance from Supabase
+              if (authUserEmail) {
+                // Reconcile first to ensure accuracy
+                try {
+                  await supabaseService.reconcileBalance(authUserEmail);
+                } catch (reconcileError) {
+                  console.debug("Balance reconciliation failed:", reconcileError);
+                }
+                
+                const refreshedBalance = await supabaseService.getUserBalance(authUserEmail);
+                if (refreshedBalance) {
+                  setBalance(refreshedBalance);
+                  console.log("Balance auto-fetched from Supabase:", refreshedBalance.xbgl_balance);
+                }
+              } else if (address) {
+                const refreshedBalance = await supabaseService.getUserBalance(address.toLowerCase());
+                if (refreshedBalance) {
+                  setBalance(refreshedBalance);
+                }
+              }
+              
+              // Refresh transactions
+              if (authUserEmail) {
+                const refreshedTx = await supabaseService.getTransactionsWithLedger(authUserEmail, 50);
+                setTransactions(refreshedTx || []);
+              } else if (address) {
+                const refreshedTx = await supabaseService.getTransactions({
+                  walletAddress: address.toLowerCase(),
+                  limit: 50,
+                });
+                setTransactions(refreshedTx || []);
+              }
+            } catch (err) {
+              console.debug("Failed to refresh balance/transactions:", err);
+            }
+          }, 1500);
 
           const plotsValue = (plots?.length || 0) * 100;
           const portfolioValue = (portfolioData || []).reduce(
@@ -347,22 +838,34 @@ export default function Dashboard() {
 
   // Manual refresh function
   const handleRefresh = async () => {
-    if (!address) return;
+    if (!address && !userEmail) return;
     setLoading(true);
     try {
-      // Fetch balance - try wallet address first, then email if user has no wallet
+      // Get authenticated user email for ledger operations
+      const { data: { session } } = await supabase.auth.getSession();
+      const authUserEmail = session?.user?.email?.toLowerCase() || userEmail?.toLowerCase() || null;
+      
+      // Reconcile balance with ledger first (using auth user email)
+      if (authUserEmail) {
+        try {
+          await supabaseService.reconcileBalance(authUserEmail);
+        } catch (reconcileError) {
+          console.debug("Balance reconciliation failed:", reconcileError);
+        }
+      }
+      
+      // Fetch balance - use auth user email for ledger operations
       let balanceData = null;
-      if (address) {
-        balanceData = await supabaseService.getUserBalance(address).catch((err: any) => {
+      if (authUserEmail) {
+        balanceData = await supabaseService.getUserBalance(authUserEmail).catch((err: any) => {
           if (err?.status === 406 || err?.code === "PGRST301") {
             return null;
           }
           throw err;
         });
-      }
-      // If no balance found and user has email, try email as identifier
-      if (!balanceData && userEmail) {
-        balanceData = await supabaseService.getUserBalance(userEmail).catch(() => null);
+      } else if (address) {
+        // Fallback to wallet address if no email
+        balanceData = await supabaseService.getUserBalance(address.toLowerCase()).catch(() => null);
       }
 
       const [plots, portfolioData, txData] = await Promise.all([
@@ -371,7 +874,13 @@ export default function Dashboard() {
           ownerEmail: userEmail || undefined
         }),
         supabaseService.getPortfolios(address),
-        supabaseService.getTransactions({ walletAddress: address, limit: 20 }),
+        authUserEmail ? supabaseService.getTransactionsWithLedger(
+          authUserEmail,
+          50
+        ).catch((err) => {
+          console.error("Failed to fetch transactions:", err);
+          return []; // Return empty array on error
+        }) : Promise.resolve([]),
       ]);
 
       setOwnedPlots(plots || []);
@@ -482,6 +991,108 @@ export default function Dashboard() {
       setPortfolios(portfolioData || []);
     } catch (error: any) {
       toast.error(error.message || "Failed to create portfolio");
+    }
+  };
+
+  // Load recent recipients
+  useEffect(() => {
+    const loadRecentRecipients = () => {
+      const identifier = userEmail || address?.toLowerCase();
+      if (identifier) {
+        const stored = localStorage.getItem(`recent_recipients_${identifier}`);
+        if (stored) {
+          try {
+            setRecentRecipients(JSON.parse(stored));
+          } catch (e) {
+            console.debug("Failed to load recent recipients:", e);
+          }
+        }
+      }
+    };
+    loadRecentRecipients();
+  }, [userEmail, address]);
+
+  // Transfer handler function
+  const handleTransfer = async () => {
+    if (!address && !userEmail) {
+      toast.error("Please connect your wallet or sign in");
+      return;
+    }
+
+    // Validate recipient
+    if (!transferRecipient.trim()) {
+      toast.error("Please enter a recipient address or email");
+      return;
+    }
+
+    // Validate amount
+    const amount = parseFloat(transferAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    // Check balance
+    const currentBalance = balance?.xbgl_balance || 0;
+    if (amount > currentBalance) {
+      toast.error(`Insufficient balance. You have ${currentBalance.toFixed(2)} xBGL`);
+      return;
+    }
+
+    setTransferring(true);
+
+    try {
+      const { transferTokens, getAuthUserEmail } = await import("@/lib/supabase-service");
+      const authUserEmail = await getAuthUserEmail();
+      const fromAddress = authUserEmail || address?.toLowerCase() || "";
+      
+      if (!fromAddress) {
+        throw new Error("No sender address available");
+      }
+
+      // Normalize recipient (could be email or wallet address)
+      const toAddress = transferRecipient.trim().toLowerCase();
+
+      // Execute transfer
+      const transferResult = await transferTokens(
+        fromAddress,
+        toAddress,
+        amount,
+        "xBGL",
+        undefined,
+        {
+          memo: transferMemo || undefined,
+          timestamp: new Date().toISOString(),
+        }
+      );
+
+      if (!transferResult.success) {
+        throw new Error(transferResult.error || "Transfer failed");
+      }
+
+      // Add to recent recipients
+      if (!recentRecipients.includes(toAddress)) {
+        const updatedRecipients = [toAddress, ...recentRecipients].slice(0, 5);
+        setRecentRecipients(updatedRecipients);
+        localStorage.setItem(`recent_recipients_${fromAddress}`, JSON.stringify(updatedRecipients));
+      }
+
+      toast.success(`Transfer completed! ${amount} xBGL sent to ${toAddress.slice(0, 10)}...`);
+
+      // Clear form
+      setTransferAmount("");
+      setTransferMemo("");
+
+      // Refresh balance and transactions
+      if (address || userEmail) {
+        await handleRefresh();
+      }
+
+    } catch (error: any) {
+      console.error("Transfer error:", error);
+      toast.error(error.message || "Transfer failed. Please try again.");
+    } finally {
+      setTransferring(false);
     }
   };
 
@@ -636,6 +1247,251 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error("Failed to generate certificate:", error);
       toast.error(error.message || "Failed to generate certificate");
+    }
+  };
+
+  // Export PDF certificate with owner information from account
+  const handleExportPDF = async (plot: any) => {
+    try {
+      toast.info("Generating PDF certificate...");
+      
+      // Fetch owner information from account
+      let ownerName = "";
+      let ownerEmail = "";
+      let purchaseDate = plot.created_at || new Date().toISOString();
+      let purchasePrice = 100;
+      let transactionHash = "";
+
+      // Try to get owner information from multiple sources
+      try {
+        // 1. Get from authenticated user session
+        const { getAuthUserEmail } = await import("@/lib/supabase-service");
+        const authEmail = await getAuthUserEmail();
+        if (authEmail) {
+          ownerEmail = authEmail;
+        }
+
+        // 2. Get from ownership registry
+        const ownership = await supabaseService.getOwnershipByWallet(address || "").catch(() => null);
+        if (ownership?.email) {
+          ownerEmail = ownership.email;
+        }
+
+        // 3. Get from digital identity (if available)
+        try {
+          const digitalIdentity = await supabaseService.getDigitalIdentity(address || "");
+          if (digitalIdentity && digitalIdentity.name) {
+            ownerName = digitalIdentity.name;
+          }
+        } catch (e) {
+          // Digital ID not found, continue
+        }
+
+        // 4. Get from transactions to find purchase details
+        try {
+          const recipientAddress = address?.toLowerCase() || userEmail?.toLowerCase() || "";
+          if (recipientAddress) {
+            const { data: purchaseTxData, error: txError } = await supabase
+              .from("transactions")
+              .select("*")
+              .ilike("to_address", recipientAddress)
+              .order("created_at", { ascending: false })
+              .limit(20);
+
+            if (!txError && purchaseTxData && Array.isArray(purchaseTxData)) {
+              // Find transaction related to this plot
+              const plotTx = purchaseTxData.find((tx: any) => {
+                const metadata = tx.metadata as any;
+                return (
+                  (tx.transaction_type === "plot_purchase" || tx.type === "plot_purchase") &&
+                  (metadata?.plot_id === plot.id || 
+                   (Array.isArray(metadata?.plot_ids) && metadata.plot_ids.includes(plot.id)))
+                );
+              });
+
+              if (plotTx && typeof plotTx === 'object') {
+                purchaseDate = (plotTx as any).created_at || purchaseDate;
+                purchasePrice = Number((plotTx as any).amount) || purchasePrice;
+                transactionHash = (plotTx as any).tx_hash || "";
+              }
+            }
+          }
+        } catch (e) {
+          // Transaction not found, use defaults
+          console.debug("Failed to fetch transaction:", e);
+        }
+
+        // Fallback: Use wallet address if no name found
+        if (!ownerName) {
+          ownerName = address 
+            ? `${address.slice(0, 8)}...${address.slice(-6)}` 
+            : userEmail || "Plot Owner";
+        }
+
+        // Fallback: Use user email if available
+        if (!ownerEmail) {
+          ownerEmail = userEmail || "";
+        }
+
+      } catch (error) {
+        console.debug("Failed to fetch owner information:", error);
+        // Use fallbacks
+        ownerName = address 
+          ? `${address.slice(0, 8)}...${address.slice(-6)}` 
+          : userEmail || "Plot Owner";
+        ownerEmail = userEmail || "";
+      }
+
+      // Generate PDF using the template
+      const templatePath = "/documents/LandOwnershipTitleCertificate.pdf";
+      const templateResponse = await fetch(templatePath);
+      
+      if (!templateResponse.ok) {
+        throw new Error("Failed to load PDF template");
+      }
+      
+      const templateBytes = await templateResponse.arrayBuffer();
+      
+      // Import pdf-lib
+      const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.load(templateBytes);
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      
+      // Embed fonts
+      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      
+      const textColor = rgb(0, 0, 0);
+      const primaryColor = rgb(0.4, 0.3, 0.9);
+      
+      // Layer information on top of the template
+      // Adjust coordinates based on your template layout
+      firstPage.drawText(`Plot #${plot.id}`, {
+        x: 100,
+        y: 700,
+        size: 16,
+        font: helveticaBoldFont,
+        color: primaryColor,
+      });
+      
+      firstPage.drawText(ownerName, {
+        x: 100,
+        y: 650,
+        size: 14,
+        font: helveticaBoldFont,
+        color: textColor,
+      });
+      
+      if (ownerEmail) {
+        firstPage.drawText(ownerEmail, {
+          x: 100,
+          y: 620,
+          size: 12,
+          font: helveticaFont,
+          color: textColor,
+        });
+      }
+      
+      firstPage.drawText(`Coordinates: (${plot.coord_x || 0}, ${plot.coord_y || 0})`, {
+        x: 100,
+        y: 580,
+        size: 12,
+        font: helveticaFont,
+        color: textColor,
+      });
+      
+      if (plot.zone_type) {
+        firstPage.drawText(`Zone: ${plot.zone_type}`, {
+          x: 100,
+          y: 550,
+          size: 12,
+          font: helveticaFont,
+          color: textColor,
+        });
+      }
+      
+      firstPage.drawText(`Purchase Price: ${purchasePrice} xBGL`, {
+        x: 100,
+        y: 520,
+        size: 12,
+        font: helveticaFont,
+        color: textColor,
+      });
+      
+      firstPage.drawText(`Purchase Date: ${new Date(purchaseDate).toLocaleDateString()}`, {
+        x: 100,
+        y: 490,
+        size: 12,
+        font: helveticaFont,
+        color: textColor,
+      });
+      
+      if (transactionHash) {
+        firstPage.drawText(`Transaction: ${transactionHash.slice(0, 20)}...`, {
+          x: 100,
+          y: 460,
+          size: 10,
+          font: helveticaFont,
+          color: textColor,
+        });
+      }
+      
+      // Save and download
+      const pdfBytes = await pdfDoc.save();
+      const filename = `Plot_${plot.id}_Title_Certificate_${Date.now()}.pdf`;
+      
+      // Convert Uint8Array to ArrayBuffer for Blob (create a new ArrayBuffer)
+      const arrayBuffer = new ArrayBuffer(pdfBytes.length);
+      const view = new Uint8Array(arrayBuffer);
+      view.set(pdfBytes);
+      
+      // Download the PDF
+      const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      // Optionally upload to Supabase Storage
+      try {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("plot-certificates")
+          .upload(`${plot.id}/${filename}`, new Uint8Array(arrayBuffer), {
+            contentType: "application/pdf",
+            upsert: true,
+          });
+        
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from("plot-certificates")
+            .getPublicUrl(`${plot.id}/${filename}`);
+          
+          // Save document record
+          await supabase.from("plot_documents").insert({
+            plot_id: plot.id,
+            owner_wallet: address || userEmail || "",
+            document_type: "title_certificate",
+            document_url: urlData.publicUrl,
+            filename: filename,
+            created_at: new Date().toISOString(),
+          } as any);
+          
+          await loadPlotDocuments(plot.id);
+        }
+      } catch (uploadError) {
+        console.debug("Failed to upload certificate:", uploadError);
+        // Continue even if upload fails
+      }
+      
+      toast.success("PDF certificate exported successfully!");
+    } catch (error: any) {
+      console.error("Failed to export PDF:", error);
+      toast.error(error.message || "Failed to export PDF certificate");
     }
   };
 
@@ -1270,21 +2126,15 @@ export default function Dashboard() {
       <div className="container mx-auto p-6 space-y-6">
       {/* Sidebar and Content Layout */}
       <div className="flex gap-6 relative">
-        {/* Overlay */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar Navigation */}
-        <div
+        {/* Sidebar Navigation - Side Panel with auto-scaling */}
+        <aside
           className={`
-            fixed top-20 left-0 h-[calc(100vh-5rem)] z-50
-            w-72 shrink-0
-            transform transition-transform duration-300 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            shrink-0
+            transform transition-all duration-300 ease-in-out
+            ${isSidebarOpen ? 'translate-x-0 opacity-100 w-72' : '-translate-x-full opacity-0 w-0'}
+            ${isSidebarOpen ? '' : 'pointer-events-none'}
+            h-[calc(100vh-5rem)]
+            overflow-hidden
           `}
         >
           <Card className="h-full glass-enhanced border-primary/20 shadow-glow-card overflow-hidden">
@@ -1297,7 +2147,6 @@ export default function Dashboard() {
                 <button
                   onClick={() => {
                     setActiveSection("asset-management");
-                    setIsSidebarOpen(false);
                   }}
                   className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                     activeSection === "asset-management"
@@ -1311,7 +2160,6 @@ export default function Dashboard() {
                 <button
                   onClick={() => {
                     setActiveSection("transfers");
-                    setIsSidebarOpen(false);
                   }}
                   className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                     activeSection === "transfers"
@@ -1327,7 +2175,6 @@ export default function Dashboard() {
                   <button
                     onClick={() => {
                       setActiveSection("market-primary");
-                      setIsSidebarOpen(false);
                     }}
                     className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       activeSection === "market-primary"
@@ -1341,7 +2188,6 @@ export default function Dashboard() {
                   <button
                     onClick={() => {
                       setActiveSection("market-speculative");
-                      setIsSidebarOpen(false);
                     }}
                     className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       activeSection === "market-speculative"
@@ -1358,7 +2204,6 @@ export default function Dashboard() {
                   <button
                     onClick={() => {
                       setActiveSection("hnwi-purchases");
-                      setIsSidebarOpen(false);
                       loadHNWIAssets();
                     }}
                     className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
@@ -1374,10 +2219,16 @@ export default function Dashboard() {
               </nav>
             </CardContent>
           </Card>
-        </div>
+        </aside>
 
-        {/* Main Content Area */}
-        <div className="flex-1 min-w-0">
+        {/* Main Content Area - Auto-scales when sidebar opens/closes */}
+        <main 
+          className={`
+            flex-1 min-w-0
+            transition-all duration-300 ease-in-out
+            ${isSidebarOpen ? 'w-[calc(100%-18rem)]' : 'w-full'}
+          `}
+        >
           {/* Asset Management Section */}
           {activeSection === "asset-management" && (
             <div className="space-y-6">
@@ -1461,7 +2312,61 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold select-none">
-              {balance?.xbgl_balance?.toFixed(2) || "0.00"} xBGL
+              {(() => {
+                // Calculate balance with automatic deduction for plot purchases
+                const currentBalance = balance?.xbgl_balance || 0;
+                
+                // Calculate total spent on plots (100 xBGL per plot)
+                const plotCost = ownedPlots.length * 100;
+                
+                // Calculate total spent from transactions if available
+                let totalSpentOnPlots = 0;
+                if (transactions.length > 0) {
+                  const plotPurchaseTransactions = transactions.filter((tx: any) => 
+                    (tx.type === 'plot_purchase' || tx.transaction_type === 'plot_purchase') &&
+                    tx.status === 'completed' &&
+                    (tx.from_address?.toLowerCase() === userEmail?.toLowerCase() || 
+                     tx.from_address?.toLowerCase() === address?.toLowerCase())
+                  );
+                  totalSpentOnPlots = plotPurchaseTransactions.reduce((sum: number, tx: any) => {
+                    return sum + (Number(tx.amount) || 0);
+                  }, 0);
+                }
+                
+                // Use plot cost if transaction data is not available or incomplete
+                if (totalSpentOnPlots === 0 && ownedPlots.length > 0) {
+                  totalSpentOnPlots = plotCost;
+                }
+                
+                // Deduct plot purchases from balance
+                const freeFunds = Math.max(0, currentBalance - totalSpentOnPlots);
+                
+                // Auto-update balance in Supabase if it hasn't been deducted
+                if (ownedPlots.length > 0 && currentBalance >= totalSpentOnPlots && currentBalance !== freeFunds) {
+                  // Trigger balance update asynchronously (don't block render)
+                  setTimeout(async () => {
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      const authUserEmail = session?.user?.email?.toLowerCase() || userEmail?.toLowerCase();
+                      if (authUserEmail) {
+                        const { updateUserBalance } = await import("@/lib/supabase-service");
+                        await updateUserBalance(authUserEmail, {
+                          xbgl_balance: freeFunds
+                        });
+                        // Refresh balance after update
+                        const updatedBalance = await supabaseService.getUserBalance(authUserEmail);
+                        if (updatedBalance) {
+                          setBalance(updatedBalance);
+                        }
+                      }
+                    } catch (error) {
+                      console.debug("Failed to auto-deduct balance:", error);
+                    }
+                  }, 100);
+                }
+                
+                return freeFunds.toFixed(2);
+              })()} xBGL
             </div>
             <p className="text-xs text-muted-foreground mt-1 select-none">Available balance</p>
           </CardContent>
@@ -1471,33 +2376,30 @@ export default function Dashboard() {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="land">
-            <MapPin className="h-4 w-4 mr-2" />
-            My Land
-          </TabsTrigger>
-          <TabsTrigger value="portfolio">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Portfolios
-          </TabsTrigger>
           <TabsTrigger value="assets">
             <Package className="h-4 w-4 mr-2" />
             All Assets
           </TabsTrigger>
-          <TabsTrigger value="transactions">
-            <History className="h-4 w-4 mr-2" />
-            Transactions
+          <TabsTrigger value="portfolios">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Portfolios
           </TabsTrigger>
         </TabsList>
 
         {/* Land Management Tab */}
-        <TabsContent value="land" className="space-y-4">
+        {/* Combined Assets Tab - Land, Portfolios, and Transactions */}
+        <TabsContent value="assets" className="space-y-6">
+          {/* Land Holdings Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Land Holdings</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Land Holdings
+                  </CardTitle>
                   <CardDescription>
-                    Manage your plot ownership, sell, or transfer plots
+                    {ownedPlots.length} plot{ownedPlots.length !== 1 ? 's' : ''} owned • Total value: {(ownedPlots.length * 100).toLocaleString()} xBGL
                   </CardDescription>
                 </div>
                 <Button variant="outline" onClick={() => navigate("/plot-purchase")}>
@@ -1523,117 +2425,295 @@ export default function Dashboard() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {ownedPlots.map((plot) => (
-                    <Card key={plot.id} className="border-border/50 hover:border-primary/30 transition-colors">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">Plot #{plot.id}</CardTitle>
-                            <CardDescription className="flex items-center gap-1 mt-1">
-                              <MapPin className="h-3 w-3" />
-                              ({plot.coord_x}, {plot.coord_y})
-                            </CardDescription>
+                    <Card key={plot.id} className="border-border/50 hover:border-primary/30 transition-colors overflow-hidden relative min-h-[320px]">
+                      {/* Plot Preview Image as Background */}
+                      <div className="absolute inset-0 z-0">
+                        <img
+                          src="/plot-preview.png"
+                          alt={`Plot #${plot.id} preview`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback if image doesn't load
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/80 to-background/60" />
+                      </div>
+                      
+                      {/* Content Overlay */}
+                      <div className="relative z-10 flex flex-col h-full">
+                        <CardHeader className="pb-3 pt-4 px-4 flex-shrink-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-lg drop-shadow-sm">Plot #{plot.id}</CardTitle>
+                              <CardDescription className="flex items-center gap-1 mt-1 text-xs drop-shadow-sm">
+                                <MapPin className="h-3 w-3" />
+                                ({plot.coord_x}, {plot.coord_y})
+                              </CardDescription>
+                            </div>
+                            <Badge variant="outline" className="bg-background/90 backdrop-blur-sm text-xs ml-2 drop-shadow-sm">
+                              {plot.booking_status === 'purchased' ? 'Owned' : plot.booking_status || 'Available'}
+                            </Badge>
                           </div>
-                          <Badge variant="outline">
-                            {plot.booking_status === 'purchased' ? 'Owned' : plot.booking_status || 'Available'}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {plot.zone_type && (
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Zone: </span>
-                            <span className="font-medium">{plot.zone_type}</span>
-                          </div>
-                        )}
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Value: </span>
-                          <span className="font-medium">100 xBGL</span>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => handleManagePlot(plot.id)}
-                            >
-                              <Settings className="h-3 w-3 mr-1" />
-                              Manage
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/plot-sell?plotId=${plot.id}`)}
-                            >
-                              <Send className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleGenerateCertificate(plot)}
-                              title="Generate Certificate"
-                            >
-                              <FileText className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          {/* Documents section */}
-                          <div className="pt-2 border-t border-border/50">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full text-xs"
-                              onClick={() => {
-                                loadPlotDocuments(plot.id);
-                              }}
-                            >
-                              {loadingDocuments[plot.id] ? (
-                                <>
-                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                  Loading...
-                                </>
-                              ) : (
-                                <>
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  View Documents ({plotDocuments[plot.id]?.length || 0})
-                                </>
-                              )}
-                            </Button>
-                            {plotDocuments[plot.id] && plotDocuments[plot.id].length > 0 && (
-                              <div className="mt-2 space-y-1">
-                                {plotDocuments[plot.id].map((doc: any) => (
-                                  <a
-                                    key={doc.id}
-                                    href={doc.document_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-2 text-xs text-primary hover:underline p-1 rounded"
-                                  >
-                                    <Download className="h-3 w-3" />
-                                    {doc.filename || "Certificate"}
-                                  </a>
-                                ))}
+                        </CardHeader>
+                        <CardContent className="space-y-3 px-4 pb-4 flex-1 flex flex-col justify-between">
+                          <div className="space-y-2">
+                            {plot.zone_type && (
+                              <div className="text-sm drop-shadow-sm">
+                                <span className="text-muted-foreground">Zone: </span>
+                                <span className="font-medium">{plot.zone_type}</span>
                               </div>
                             )}
+                            <div className="text-sm drop-shadow-sm">
+                              <span className="text-muted-foreground">Value: </span>
+                              <span className="font-medium">100 xBGL</span>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
+                          <div className="space-y-2 pt-2">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 bg-background/90 backdrop-blur-sm hover:bg-background"
+                                onClick={() => handleManagePlot(plot.id)}
+                              >
+                                <Settings className="h-3 w-3 mr-1" />
+                                Manage
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-background/90 backdrop-blur-sm hover:bg-background"
+                                onClick={() => navigate(`/plot-sell?plotId=${plot.id}`)}
+                              >
+                                <Send className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-background/90 backdrop-blur-sm hover:bg-background"
+                                onClick={() => handleGenerateCertificate(plot)}
+                                title="Generate Certificate"
+                              >
+                                <FileText className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            {/* Documents section */}
+                            <div className="pt-2 border-t border-border/50">
+                              <div className="flex gap-1 mb-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="flex-1 text-xs bg-background/80 backdrop-blur-sm hover:bg-background/90"
+                                  onClick={() => {
+                                    loadPlotDocuments(plot.id);
+                                  }}
+                                >
+                                  {loadingDocuments[plot.id] ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      Loading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      View ({plotDocuments[plot.id]?.length || 0})
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-xs bg-background/80 backdrop-blur-sm hover:bg-background/90"
+                                  onClick={() => handleExportPDF(plot)}
+                                  title="Export PDF Certificate"
+                                >
+                                  <Download className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              {plotDocuments[plot.id] && plotDocuments[plot.id].length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {plotDocuments[plot.id].map((doc: any) => (
+                                    <a
+                                      key={doc.id}
+                                      href={doc.document_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 text-xs text-primary hover:underline p-1 rounded bg-background/80 backdrop-blur-sm"
+                                    >
+                                      <Download className="h-3 w-3" />
+                                      {doc.filename || "Certificate"}
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </div>
                     </Card>
                   ))}
+                </div>
+              )}
+
+              {/* Document Upload Dialog */}
+              {showDocumentUpload !== null && (
+                <Dialog open={showDocumentUpload !== null} onOpenChange={(open) => !open && setShowDocumentUpload(null)}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Generate Title Certificate</DialogTitle>
+                      <DialogDescription>
+                        Generate a title certificate for Plot #{showDocumentUpload} using the official template
+                      </DialogDescription>
+                    </DialogHeader>
+                    {(() => {
+                      const plot = ownedPlots.find((p: any) => p.id === showDocumentUpload);
+                      return plot ? (
+                        <PlotDocumentUpload
+                          plotId={showDocumentUpload}
+                          plotData={{
+                            coord_x: plot.coord_x || 0,
+                            coord_y: plot.coord_y || 0,
+                            zone_type: plot.zone_type,
+                            owner_wallet: address || userEmail || "",
+                          }}
+                          onUploadComplete={() => {
+                            setShowDocumentUpload(null);
+                            loadPlotDocuments(showDocumentUpload);
+                            toast.success("Document uploaded successfully!");
+                          }}
+                        />
+                      ) : null;
+                    })()}
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Transfer History Section */}
+          {ownedPlots.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Plot Transfer History</CardTitle>
+                <CardDescription>
+                  View recent plot transfers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PlotTransferHistory limit={10} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Transaction History Section */}
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Transaction History
+                </CardTitle>
+                <CardDescription>
+                  {transactions.length} recent transaction{transactions.length !== 1 ? 's' : ''} • Auto-refreshing
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {transactions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No transactions yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {transactions.map((tx) => {
+                    const txType = tx.type || tx.transaction_type || 'transaction';
+                    const metadata = tx.metadata as any;
+                    const fromAddress = (tx.from_address || '').toLowerCase();
+                    const treasuryAddress = '0x0000000000000000000000000000000000000001';
+                    const isFromTreasury = fromAddress === treasuryAddress ||
+                                          fromAddress === treasuryAddress.toLowerCase() ||
+                                          metadata?.source === 'treasury' ||
+                                          metadata?.direction === 'from_treasury';
+                    
+                    // Plot purchases are outgoing (money spent)
+                    // Transfers from treasury to user are incoming
+                    const isOutgoing = txType === 'plot_purchase' || 
+                                      txType === 'purchase' || 
+                                      (txType === 'transfer' && !isFromTreasury);
+                    const isIncoming = (txType === 'deposit' && isFromTreasury) ||
+                                     txType === 'mint' || 
+                                     (txType === 'transfer' && isFromTreasury);
+                    
+                    // Determine display type - prioritize treasury detection
+                    let displayType = 'Transaction';
+                    if (txType === 'plot_purchase') {
+                      displayType = 'Plot Purchase';
+                    } else if (txType === 'purchase') {
+                      displayType = 'Purchase';
+                    } else if (isFromTreasury) {
+                      displayType = 'Treasury Transfer';
+                    } else if (txType === 'transfer') {
+                      displayType = 'Transfer';
+                    } else if (txType === 'deposit') {
+                      displayType = 'Deposit';
+                    } else {
+                      displayType = txType || 'Transaction';
+                    }
+                    
+                    return (
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          {isIncoming ? (
+                            <ArrowDownRight className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <ArrowUpRight className="h-4 w-4 text-red-500" />
+                          )}
+                          <div>
+                            <div className="font-medium">{displayType}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {tx.plot_id ? `Plot #${tx.plot_id} • ` : ''}
+                              {tx.tx_hash ? `${tx.tx_hash.slice(0, 10)}...${tx.tx_hash.slice(-8)}` : 'No hash'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-semibold ${isIncoming ? 'text-green-500' : 'text-red-500'}`}>
+                            {tx.amount ? `${isOutgoing ? '-' : isIncoming ? '+' : ''}${Number(tx.amount).toFixed(2)} ${tx.token_type || 'xBGL'}` : '-'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {tx.created_at
+                              ? new Date(tx.created_at).toLocaleDateString()
+                              : ''}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
+
+        {/* Affiliate Tab */}
         {/* Portfolios Tab */}
-        <TabsContent value="portfolio" className="space-y-4">
+        <TabsContent value="portfolios" className="space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Investment Portfolios</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Investment Portfolios
+                  </CardTitle>
                   <CardDescription>
-                    Create and manage your investment portfolios
+                    {portfolios.length} active portfolio{portfolios.length !== 1 ? 's' : ''} • Total value: {portfolios.reduce((sum, p) => sum + Number(p.current_value || 0), 0).toLocaleString()} xBGL
                   </CardDescription>
                 </div>
                 <Dialog open={showPortfolioDialog} onOpenChange={setShowPortfolioDialog}>
@@ -1777,373 +2857,8 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
-        {/* Affiliate Tab */}
-        <TabsContent value="affiliate" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Affiliate Program
-              </CardTitle>
-              <CardDescription>
-                Earn 15% commission on every plot purchase made through your referral link
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingAffiliate ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : !affiliateStatus ? (
-                // No application - show application form
-                <div className="space-y-6">
-                  <div className="p-6 rounded-lg bg-primary/5 border border-primary/20">
-                    <h3 className="text-lg font-semibold mb-2">Become an Affiliate</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Join our affiliate program and earn competitive commissions on every plot purchase made through your unique referral link.
-                    </p>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="application-reason">Why do you want to become an affiliate? (Optional)</Label>
-                        <Textarea
-                          id="application-reason"
-                          placeholder="Tell us about your plans to promote Chaos Star Universe..."
-                          value={applicationReason}
-                          onChange={(e) => setApplicationReason(e.target.value)}
-                          className="mt-2"
-                          rows={4}
-                        />
-                      </div>
-                      <Button
-                        onClick={handleSubmitApplication}
-                        disabled={submittingApplication}
-                        className="w-full"
-                      >
-                        {submittingApplication ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Submitting...
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Apply for Affiliate Program
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : affiliateStatus.status === 'pending' ? (
-                // Pending application
-                <div className="space-y-6">
-                  <div className="p-6 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
-                      <h3 className="text-lg font-semibold">Application Pending</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Your affiliate application is under review. We'll notify you once it's been processed.
-                    </p>
-                    {affiliateStatus.application_date && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Applied on: {new Date(affiliateStatus.application_date).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : affiliateStatus.status === 'rejected' ? (
-                // Rejected application
-                <div className="space-y-6">
-                  <div className="p-6 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <X className="h-5 w-5 text-destructive" />
-                      <h3 className="text-lg font-semibold">Application Rejected</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {affiliateStatus.rejection_reason || "Your affiliate application was not approved at this time."}
-                    </p>
-                    {affiliateStatus.reviewed_at && (
-                      <p className="text-xs text-muted-foreground mb-4">
-                        Reviewed on: {new Date(affiliateStatus.reviewed_at).toLocaleDateString()}
-                      </p>
-                    )}
-                    <Button
-                      onClick={handleSubmitApplication}
-                      disabled={submittingApplication}
-                      variant="outline"
-                    >
-                      {submittingApplication ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Submitting...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Re-apply
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ) : affiliateStatus.status === 'approved' ? (
-                // Approved - show affiliate dashboard
-                <div className="space-y-6">
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card className="glass border-primary/20">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{affiliateStats?.total_referrals || 0}</div>
-                        <p className="text-xs text-muted-foreground">People referred</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="glass border-primary/20">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
-                        <Coins className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">
-                          {(affiliateStats?.total_commission || 0).toFixed(2)} xBGL
-                        </div>
-                        <p className="text-xs text-muted-foreground">All time earnings</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="glass border-primary/20">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                        <Loader2 className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">
-                          {(affiliateStats?.pending_commission || 0).toFixed(2)} xBGL
-                        </div>
-                        <p className="text-xs text-muted-foreground">Awaiting payment</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="glass border-primary/20">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Paid</CardTitle>
-                        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">
-                          {(affiliateStats?.paid_commission || 0).toFixed(2)} xBGL
-                        </div>
-                        <p className="text-xs text-muted-foreground">Received</p>
-                      </CardContent>
-                    </Card>
-                  </div>
 
-                  {/* Affiliate Code Section */}
-                  <Card className="glass border-primary/20">
-                    <CardHeader>
-                      <CardTitle>Your Affiliate Code</CardTitle>
-                      <CardDescription>Share this link to earn commissions</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 p-3 rounded-lg bg-background border border-border font-mono text-sm">
-                          {affiliateStatus.affiliate_code}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            navigator.clipboard.writeText(affiliateStatus.affiliate_code || '');
-                            toast.success("Affiliate code copied!");
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 p-3 rounded-lg bg-background border border-border font-mono text-sm break-all">
-                          {window.location.origin}?ref={affiliateStatus.affiliate_code}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            const link = `${window.location.origin}?ref=${affiliateStatus.affiliate_code}`;
-                            navigator.clipboard.writeText(link);
-                            toast.success("Referral link copied!");
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Share this link with others. When they purchase plots using your link, you'll earn 15% commission!
-                      </p>
-                    </CardContent>
-                  </Card>
 
-                  {/* Referrals Table */}
-                  <Card className="glass border-primary/20">
-                    <CardHeader>
-                      <CardTitle>Referral History</CardTitle>
-                      <CardDescription>View all your referrals and commissions</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {affiliateReferrals.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground">
-                          <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>No referrals yet</p>
-                          <p className="text-xs mt-2">Share your link to start earning!</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {affiliateReferrals.map((referral) => (
-                            <div
-                              key={referral.id}
-                              className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-accent/50 transition-colors"
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Wallet className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-mono text-sm">
-                                    {referral.referred_wallet.slice(0, 6)}...{referral.referred_wallet.slice(-4)}
-                                  </span>
-                                  <Badge variant={referral.status === 'paid' ? 'default' : referral.status === 'pending' ? 'secondary' : 'destructive'}>
-                                    {referral.status}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Purchase: {referral.purchase_amount.toFixed(2)} xBGL • 
-                                  Commission: {referral.commission_amount.toFixed(2)} xBGL
-                                </div>
-                                {referral.created_at && (
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    {new Date(referral.created_at).toLocaleDateString()}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* All Assets Tab */}
-        <TabsContent value="assets" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Assets Overview</CardTitle>
-              <CardDescription>
-                Complete view of all your holdings and investments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Landmark className="h-5 w-5 text-primary" />
-                      <span className="font-semibold">Land Assets</span>
-                    </div>
-                    <Badge>{totalPlots} plots</Badge>
-                  </div>
-                  <div className="text-2xl font-bold mt-2">
-                    {(totalPlots * 100).toLocaleString()} xBGL
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {totalPlots} plots × 100 xBGL each
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-primary" />
-                      <span className="font-semibold">Portfolio Assets</span>
-                    </div>
-                    <Badge>{portfolios.length} portfolios</Badge>
-                  </div>
-                  <div className="text-2xl font-bold mt-2">
-                    {portfolios
-                      .reduce((sum, p) => sum + Number(p.current_value || 0), 0)
-                      .toLocaleString()} xBGL
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Combined portfolio value
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-lg">Total Net Worth</span>
-                    <span className="text-2xl font-bold">{totalValue.toLocaleString()} xBGL</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Transactions Tab */}
-        <TabsContent value="transactions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
-              <CardDescription>
-                View all your recent transactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {transactions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No transactions yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {transactions.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        {tx.type === 'purchase' || tx.type === 'deposit' ? (
-                          <ArrowDownRight className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <ArrowUpRight className="h-4 w-4 text-red-500" />
-                        )}
-                        <div>
-                          <div className="font-medium">{tx.type || 'Transaction'}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {tx.tx_hash?.slice(0, 10)}...{tx.tx_hash?.slice(-8)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          {tx.amount ? `${Number(tx.amount).toFixed(2)} ${tx.token_type || 'xBGL'}` : '-'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {tx.created_at
-                            ? new Date(tx.created_at).toLocaleDateString()
-                            : ''}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
             </div>
           )}
@@ -2159,15 +2874,187 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="select-none">Transfer Funds</CardTitle>
-                  <CardDescription className="select-none">Send xBGL to another wallet address</CardDescription>
+              <Card className="overflow-hidden border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-2xl font-bold mb-1">Send xBGL</CardTitle>
+                      <CardDescription className="text-base">
+                        Available: <span className="font-semibold text-primary">{(balance?.xbgl_balance || 0).toFixed(2)} xBGL</span>
+                      </CardDescription>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Send className="h-6 w-6 text-primary" />
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground select-none">
-                    <Send className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Transfer functionality coming soon</p>
+                <CardContent className="p-6 space-y-6">
+                  {/* Amount Input */}
+                  <div className="space-y-3">
+                    <Label htmlFor="amount" className="text-sm font-medium text-muted-foreground">
+                      Amount
+                    </Label>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">
+                        xBGL
+                      </div>
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={transferAmount}
+                        onChange={(e) => setTransferAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="h-16 text-3xl font-bold pl-24 pr-4 border-2 focus:border-primary"
+                        disabled={transferring}
+                      />
+                    </div>
+                    {/* Quick Amount Buttons */}
+                    <div className="flex gap-2 flex-wrap">
+                      {[10, 50, 100, 500].map((quickAmount) => (
+                        <Button
+                          key={quickAmount}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const maxAmount = balance?.xbgl_balance || 0;
+                            setTransferAmount(Math.min(quickAmount, maxAmount).toString());
+                          }}
+                          className="flex-1 min-w-[80px]"
+                          disabled={transferring || quickAmount > (balance?.xbgl_balance || 0)}
+                        >
+                          {quickAmount}
+                        </Button>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setTransferAmount((balance?.xbgl_balance || 0).toString());
+                        }}
+                        className="flex-1 min-w-[80px]"
+                        disabled={transferring || (balance?.xbgl_balance || 0) <= 0}
+                      >
+                        Max
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Recipient Input */}
+                  <div className="space-y-3">
+                    <Label htmlFor="recipient" className="text-sm font-medium text-muted-foreground">
+                      To
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        id="recipient"
+                        type="text"
+                        value={transferRecipient}
+                        onChange={(e) => setTransferRecipient(e.target.value)}
+                        placeholder="Wallet address or email"
+                        className="h-14 pl-12 pr-4 text-lg border-2 focus:border-primary"
+                        disabled={transferring}
+                      />
+                    </div>
+                    {/* Recent Recipients */}
+                    {recentRecipients.length > 0 && (
+                      <div className="flex gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground self-center">Recent:</span>
+                        {recentRecipients.map((recipient, idx) => (
+                          <Button
+                            key={idx}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTransferRecipient(recipient)}
+                            className="text-xs h-8"
+                            disabled={transferring}
+                          >
+                            {recipient.length > 20 ? `${recipient.slice(0, 10)}...${recipient.slice(-8)}` : recipient}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Memo/Note */}
+                  <div className="space-y-3">
+                    <Label htmlFor="memo" className="text-sm font-medium text-muted-foreground">
+                      Note (optional)
+                    </Label>
+                    <Input
+                      id="memo"
+                      type="text"
+                      value={transferMemo}
+                      onChange={(e) => setTransferMemo(e.target.value)}
+                      placeholder="What's this for?"
+                      className="h-12 border-2 focus:border-primary"
+                      disabled={transferring}
+                      maxLength={100}
+                    />
+                  </div>
+
+                  {/* Transfer Summary */}
+                  {transferAmount && parseFloat(transferAmount) > 0 && (
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-2 border border-border">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Amount</span>
+                        <span className="font-semibold">{parseFloat(transferAmount).toFixed(2)} xBGL</span>
+                      </div>
+                      {transferRecipient && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">To</span>
+                          <span className="font-mono text-xs">
+                            {transferRecipient.length > 30 
+                              ? `${transferRecipient.slice(0, 15)}...${transferRecipient.slice(-12)}`
+                              : transferRecipient}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
+                        <span className="text-muted-foreground">Balance after</span>
+                        <span className="font-semibold text-primary">
+                          {((balance?.xbgl_balance || 0) - parseFloat(transferAmount || "0")).toFixed(2)} xBGL
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Send Button */}
+                  <Button
+                    onClick={handleTransfer}
+                    disabled={
+                      transferring ||
+                      !transferAmount ||
+                      !transferRecipient ||
+                      parseFloat(transferAmount || "0") <= 0 ||
+                      parseFloat(transferAmount || "0") > (balance?.xbgl_balance || 0)
+                    }
+                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+                    size="lg"
+                  >
+                    {transferring ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Send <ArrowRight className="h-5 w-5 ml-2" />
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Info Message */}
+                  <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Transfers are processed instantly. You can send to wallet addresses or email addresses.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -3357,7 +4244,7 @@ export default function Dashboard() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
+        </main>
       </div>
       </div>
     </div>
