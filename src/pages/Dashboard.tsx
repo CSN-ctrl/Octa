@@ -60,6 +60,7 @@ import {
   FileText,
   Download,
   Upload,
+  PieChart,
   Users,
   Copy,
   ExternalLink,
@@ -71,6 +72,7 @@ import {
 import { toast } from "sonner";
 import { PlotDocumentUpload } from "@/components/plots/PlotDocumentUpload";
 import { PlotTransferHistory } from "@/components/plots/PlotTransferHistory";
+import { PlotFractionalOwnership } from "@/components/plots/PlotFractionalOwnership";
 import { useCelestialForge } from "@/hooks/useCelestialForge";
 import { ethers } from "ethers";
 import {
@@ -83,6 +85,42 @@ import {
   type AffiliateStats,
   type AffiliateReferral,
 } from "@/lib/affiliate-service";
+
+// Type definitions for better type safety
+type DashboardSection = 'asset-management' | 'transfers' | 'market-primary' | 'market-speculative' | 'hnwi-purchases';
+
+interface TransactionData {
+  id?: string;
+  type?: string;
+  transaction_type?: string;
+  status?: string;
+  from_address?: string;
+  to_address?: string;
+  amount?: string | number;
+  token_type?: string;
+  plot_id?: number;
+  plot_ids?: number[];
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface PlotData {
+  id: number;
+  coord_x?: number;
+  coord_y?: number;
+  owner_wallet?: string | null;
+  zone_type?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+interface UserBalanceData {
+  wallet_address?: string;
+  xbgl_balance?: number;
+  avax_balance?: number;
+  chaos_balance?: number;
+  [key: string]: unknown;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -147,6 +185,7 @@ export default function Dashboard() {
   const [plotDocuments, setPlotDocuments] = useState<Record<number, any[]>>({});
   const [loadingDocuments, setLoadingDocuments] = useState<Record<number, boolean>>({});
   const [showDocumentUpload, setShowDocumentUpload] = useState<number | null>(null);
+  const [showFractionalOwnership, setShowFractionalOwnership] = useState<number | null>(null);
   
   // Celestial Forge hook for purchasing
   const {
@@ -188,7 +227,7 @@ export default function Dashboard() {
     const refresh = searchParams.get('refresh');
     
     if (section && ['asset-management', 'transfers', 'market-primary', 'market-speculative', 'hnwi-purchases'].includes(section)) {
-      setActiveSection(section as any);
+      setActiveSection(section as DashboardSection);
     }
     
     if (tab && ['land', 'portfolio', 'assets'].includes(tab)) {
@@ -286,13 +325,13 @@ export default function Dashboard() {
               const currentBalance = balanceData.xbgl_balance || 0;
               
               // Calculate total spent on plots from transactions
-              const plotPurchaseTransactions = txData.filter((tx: any) => 
+              const plotPurchaseTransactions = txData.filter((tx: TransactionData) => 
                 (tx.type === 'plot_purchase' || tx.transaction_type === 'plot_purchase') &&
                 tx.status === 'completed' &&
                 (tx.from_address?.toLowerCase() === authUserEmail.toLowerCase() || 
                  tx.from_address?.toLowerCase() === address?.toLowerCase())
               );
-              const totalSpentOnPlots = plotPurchaseTransactions.reduce((sum: number, tx: any) => {
+              const totalSpentOnPlots = plotPurchaseTransactions.reduce((sum: number, tx: TransactionData) => {
                 return sum + (Number(tx.amount) || 0);
               }, 0);
               
@@ -326,8 +365,8 @@ export default function Dashboard() {
           
           // Create initial treasury transfer transaction if balance exists but no transfer from treasury found
           if (balanceData && totalInitialDeposit > 0) {
-            const treasuryTransferTransactions = txData.filter((tx: any) => {
-              const txMetadata = tx.metadata as any;
+            const treasuryTransferTransactions = txData.filter((tx: TransactionData) => {
+              const txMetadata = tx.metadata as Record<string, unknown>;
               return (
                 (tx.type === 'deposit' || tx.transaction_type === 'deposit' || 
                  tx.type === 'transfer' || tx.transaction_type === 'transfer' || 
@@ -370,10 +409,11 @@ export default function Dashboard() {
                 });
                 setTransactions(refreshedTx || []);
                 txData = refreshedTx || []; // Update local variable
-              } catch (depositErr: any) {
-                if (depositErr?.code !== '23505') {
-                  console.warn("Failed to create deposit transaction:", depositErr);
-                }
+                } catch (depositErr: unknown) {
+                  const err = depositErr as { code?: string; message?: string };
+                  if (err?.code !== '23505') {
+                    console.warn("Failed to create deposit transaction:", depositErr);
+                  }
               }
             }
           }
@@ -381,9 +421,9 @@ export default function Dashboard() {
           // Verify and correct balance based on owned plots
           if (balanceData && plots && plots.length > 0) {
             // Check for plot purchase transactions
-            const plotTransactions = txData.filter((tx: any) => 
+            const plotTransactions = txData.filter((tx: TransactionData) => 
               (tx.type === 'plot_purchase' || tx.transaction_type === 'plot_purchase') &&
-              plots.some((p: any) => !tx.plot_id || p.id === tx.plot_id)
+              plots.some((p: PlotData) => !tx.plot_id || p.id === tx.plot_id)
             );
             
             // If user has plots but no transactions, create missing transactions and deduct balance
@@ -415,9 +455,10 @@ export default function Dashboard() {
                       },
                     });
                     console.log(`✓ Created retroactive transaction for plot #${plot.id}`);
-                  } catch (txErr: any) {
+                  } catch (txErr: unknown) {
                     // If transaction already exists, that's okay
-                    if (txErr?.code !== '23505') {
+                    const err = txErr as { code?: string; message?: string };
+                    if (err?.code !== '23505') {
                       console.warn(`Failed to create transaction for plot #${plot.id}:`, txErr);
                     }
                   }
@@ -443,9 +484,10 @@ export default function Dashboard() {
                   });
                   balanceData.xbgl_balance = correctedBalance;
                   console.log(`✓ Corrected balance to ${correctedBalance} xBGL`);
-                } catch (updateErr: any) {
+                } catch (updateErr: unknown) {
                   // If update fails (row doesn't exist), try upsert
-                  if (updateErr?.code === 'PGRST116' || updateErr?.message?.includes('No rows')) {
+                  const err = updateErr as { code?: string; message?: string };
+                  if (err?.code === 'PGRST116' || err?.message?.includes('No rows')) {
                     await upsertUserBalance({
                       wallet_address: userIdentifier,
                       xbgl_balance: correctedBalance,
@@ -583,8 +625,8 @@ export default function Dashboard() {
         .subscribe();
 
       // Store channels for cleanup
-      (window as any).__balanceChannel = balanceChannel;
-      (window as any).__transactionChannel = transactionChannel;
+      (window as Window & { __balanceChannel?: ReturnType<typeof supabase.channel>; __transactionChannel?: ReturnType<typeof supabase.channel> }).__balanceChannel = balanceChannel;
+      (window as Window & { __balanceChannel?: ReturnType<typeof supabase.channel>; __transactionChannel?: ReturnType<typeof supabase.channel> }).__transactionChannel = transactionChannel;
     });
 
     // Set up periodic balance and transaction refresh (every 5 seconds) as backup
@@ -1179,6 +1221,7 @@ export default function Dashboard() {
     
     setLoadingDocuments(prev => ({ ...prev, [plotId]: true }));
     try {
+      // @ts-expect-error - Supabase type definitions are too strict
       const { data, error } = await supabase
         .from("plot_documents")
         .select("*")
@@ -1342,100 +1385,345 @@ export default function Dashboard() {
         ownerEmail = userEmail || "";
       }
 
-      // Generate PDF using the template
-      const templatePath = "/documents/LandOwnershipTitleCertificate.pdf";
-      const templateResponse = await fetch(templatePath);
-      
-      if (!templateResponse.ok) {
-        throw new Error("Failed to load PDF template");
-      }
-      
-      const templateBytes = await templateResponse.arrayBuffer();
-      
       // Import pdf-lib
       const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-      const pdfDoc = await PDFDocument.load(templateBytes);
-      const pages = pdfDoc.getPages();
-      const firstPage = pages[0];
+      
+      // Create a new PDF document from scratch (matching Canva minimalist black letterhead design)
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([612, 792]); // US Letter size (8.5 x 11 inches)
       
       // Embed fonts
       const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const helveticaObliqueFont = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
       
-      const textColor = rgb(0, 0, 0);
-      const primaryColor = rgb(0.4, 0.3, 0.9);
+      // Color scheme: Black elegant minimalist
+      const blackColor = rgb(0, 0, 0);
+      const darkGrayColor = rgb(0.2, 0.2, 0.2);
+      const lightGrayColor = rgb(0.5, 0.5, 0.5);
+      const whiteColor = rgb(1, 1, 1);
       
-      // Layer information on top of the template
-      // Adjust coordinates based on your template layout
-      firstPage.drawText(`Plot #${plot.id}`, {
-        x: 100,
-        y: 700,
-        size: 16,
-        font: helveticaBoldFont,
-        color: primaryColor,
+      const pageWidth = page.getWidth();
+      const pageHeight = page.getHeight();
+      const margin = 72; // 1 inch margin
+      const contentWidth = pageWidth - (margin * 2);
+      
+      // ===== LETTERHEAD DESIGN =====
+      // Top border line (elegant thin line)
+      page.drawLine({
+        start: { x: margin, y: pageHeight - margin },
+        end: { x: pageWidth - margin, y: pageHeight - margin },
+        thickness: 1,
+        color: blackColor,
       });
       
-      firstPage.drawText(ownerName, {
-        x: 100,
-        y: 650,
-        size: 14,
+      // Company/Platform name (top left)
+      page.drawText("CHAOSSTAR NETWORK", {
+        x: margin,
+        y: pageHeight - margin - 25,
+        size: 18,
         font: helveticaBoldFont,
-        color: textColor,
+        color: blackColor,
       });
       
+      // Subtitle
+      page.drawText("Land Ownership Certificate", {
+        x: margin,
+        y: pageHeight - margin - 45,
+        size: 10,
+        font: helveticaObliqueFont,
+        color: lightGrayColor,
+      });
+      
+      // Date (top right)
+      const currentDate = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      const dateWidth = helveticaFont.widthOfTextAtSize(currentDate, 10);
+      page.drawText(currentDate, {
+        x: pageWidth - margin - dateWidth,
+        y: pageHeight - margin - 25,
+        size: 10,
+        font: helveticaFont,
+        color: darkGrayColor,
+      });
+      
+      // ===== MAIN CONTENT =====
+      let currentY = pageHeight - margin - 120;
+      
+      // Title: Certificate of Ownership
+      page.drawText("CERTIFICATE OF OWNERSHIP", {
+        x: margin,
+        y: currentY,
+        size: 24,
+        font: helveticaBoldFont,
+        color: blackColor,
+      });
+      
+      currentY -= 50;
+      
+      // Decorative line under title
+      page.drawLine({
+        start: { x: margin, y: currentY },
+        end: { x: margin + 200, y: currentY },
+        thickness: 2,
+        color: blackColor,
+      });
+      
+      currentY -= 40;
+      
+      // Plot Information Section
+      const sectionSpacing = 25;
+      const labelSize = 9;
+      const valueSize = 11;
+      
+      // Plot ID
+      page.drawText("Plot Identification Number:", {
+        x: margin,
+        y: currentY,
+        size: labelSize,
+        font: helveticaFont,
+        color: lightGrayColor,
+      });
+      page.drawText(`#${plot.id}`, {
+        x: margin + 180,
+        y: currentY,
+        size: valueSize,
+        font: helveticaBoldFont,
+        color: blackColor,
+      });
+      
+      currentY -= sectionSpacing;
+      
+      // Owner Name
+      page.drawText("Owner Name:", {
+        x: margin,
+        y: currentY,
+        size: labelSize,
+        font: helveticaFont,
+        color: lightGrayColor,
+      });
+      page.drawText(ownerName, {
+        x: margin + 100,
+        y: currentY,
+        size: valueSize,
+        font: helveticaBoldFont,
+        color: blackColor,
+      });
+      
+      currentY -= sectionSpacing;
+      
+      // Owner Email
       if (ownerEmail) {
-        firstPage.drawText(ownerEmail, {
-          x: 100,
-          y: 620,
-          size: 12,
+        page.drawText("Email Address:", {
+          x: margin,
+          y: currentY,
+          size: labelSize,
           font: helveticaFont,
-          color: textColor,
+          color: lightGrayColor,
         });
+        page.drawText(ownerEmail, {
+          x: margin + 100,
+          y: currentY,
+          size: valueSize,
+          font: helveticaFont,
+          color: blackColor,
+        });
+        currentY -= sectionSpacing;
       }
       
-      firstPage.drawText(`Coordinates: (${plot.coord_x || 0}, ${plot.coord_y || 0})`, {
-        x: 100,
-        y: 580,
+      // Wallet Address (if available)
+      if (address) {
+        page.drawText("Wallet Address:", {
+          x: margin,
+          y: currentY,
+          size: labelSize,
+          font: helveticaFont,
+          color: lightGrayColor,
+        });
+        page.drawText(address, {
+          x: margin + 100,
+          y: currentY,
+          size: 9,
+          font: helveticaFont,
+          color: darkGrayColor,
+        });
+        currentY -= sectionSpacing;
+      }
+      
+      currentY -= 20;
+      
+      // Property Details Section
+      page.drawText("PROPERTY DETAILS", {
+        x: margin,
+        y: currentY,
         size: 12,
-        font: helveticaFont,
-        color: textColor,
+        font: helveticaBoldFont,
+        color: blackColor,
       });
       
+      currentY -= 30;
+      
+      // Coordinates
+      page.drawText("Coordinates:", {
+        x: margin,
+        y: currentY,
+        size: labelSize,
+        font: helveticaFont,
+        color: lightGrayColor,
+      });
+      page.drawText(`(${plot.coord_x || 0}, ${plot.coord_y || 0})`, {
+        x: margin + 100,
+        y: currentY,
+        size: valueSize,
+        font: helveticaFont,
+        color: blackColor,
+      });
+      
+      currentY -= sectionSpacing;
+      
+      // Zone Type
       if (plot.zone_type) {
-        firstPage.drawText(`Zone: ${plot.zone_type}`, {
-          x: 100,
-          y: 550,
-          size: 12,
+        page.drawText("Zone Type:", {
+          x: margin,
+          y: currentY,
+          size: labelSize,
           font: helveticaFont,
-          color: textColor,
+          color: lightGrayColor,
         });
+        page.drawText(plot.zone_type, {
+          x: margin + 100,
+          y: currentY,
+          size: valueSize,
+          font: helveticaFont,
+          color: blackColor,
+        });
+        currentY -= sectionSpacing;
       }
       
-      firstPage.drawText(`Purchase Price: ${purchasePrice} xBGL`, {
-        x: 100,
-        y: 520,
+      currentY -= 20;
+      
+      // Purchase Information Section
+      page.drawText("PURCHASE INFORMATION", {
+        x: margin,
+        y: currentY,
         size: 12,
-        font: helveticaFont,
-        color: textColor,
+        font: helveticaBoldFont,
+        color: blackColor,
       });
       
-      firstPage.drawText(`Purchase Date: ${new Date(purchaseDate).toLocaleDateString()}`, {
-        x: 100,
-        y: 490,
-        size: 12,
+      currentY -= 30;
+      
+      // Purchase Price
+      page.drawText("Purchase Price:", {
+        x: margin,
+        y: currentY,
+        size: labelSize,
         font: helveticaFont,
-        color: textColor,
+        color: lightGrayColor,
+      });
+      page.drawText(`${purchasePrice} xBGL`, {
+        x: margin + 100,
+        y: currentY,
+        size: valueSize,
+        font: helveticaBoldFont,
+        color: blackColor,
       });
       
+      currentY -= sectionSpacing;
+      
+      // Purchase Date
+      const formattedDate = new Date(purchaseDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      page.drawText("Purchase Date:", {
+        x: margin,
+        y: currentY,
+        size: labelSize,
+        font: helveticaFont,
+        color: lightGrayColor,
+      });
+      page.drawText(formattedDate, {
+        x: margin + 100,
+        y: currentY,
+        size: valueSize,
+        font: helveticaFont,
+        color: blackColor,
+      });
+      
+      currentY -= sectionSpacing;
+      
+      // Transaction Hash
       if (transactionHash) {
-        firstPage.drawText(`Transaction: ${transactionHash.slice(0, 20)}...`, {
-          x: 100,
-          y: 460,
-          size: 10,
+        page.drawText("Transaction Hash:", {
+          x: margin,
+          y: currentY,
+          size: labelSize,
           font: helveticaFont,
-          color: textColor,
+          color: lightGrayColor,
         });
+        const txDisplay = transactionHash.length > 40 
+          ? `${transactionHash.slice(0, 20)}...${transactionHash.slice(-20)}`
+          : transactionHash;
+        page.drawText(txDisplay, {
+          x: margin + 100,
+          y: currentY,
+          size: 8,
+          font: helveticaFont,
+          color: darkGrayColor,
+        });
+        currentY -= sectionSpacing;
       }
+      
+      currentY -= 40;
+      
+      // Bottom border line
+      page.drawLine({
+        start: { x: margin, y: currentY },
+        end: { x: pageWidth - margin, y: currentY },
+        thickness: 1,
+        color: blackColor,
+      });
+      
+      currentY -= 30;
+      
+      // Footer text
+      const footerText = "This certificate serves as proof of ownership on the ChaosStar Network blockchain.";
+      page.drawText(footerText, {
+        x: margin,
+        y: currentY,
+        size: 8,
+        font: helveticaFont,
+        color: lightGrayColor,
+        maxWidth: contentWidth,
+      });
+      
+      currentY -= 20;
+      
+      // Certificate ID
+      const certificateId = `CERT-${plot.id}-${Date.now().toString().slice(-8)}`;
+      page.drawText(`Certificate ID: ${certificateId}`, {
+        x: margin,
+        y: currentY,
+        size: 8,
+        font: helveticaObliqueFont,
+        color: lightGrayColor,
+      });
+      
+      // Bottom right: Platform info
+      const platformInfo = "www.chaosstar.network";
+      const platformWidth = helveticaFont.widthOfTextAtSize(platformInfo, 8);
+      page.drawText(platformInfo, {
+        x: pageWidth - margin - platformWidth,
+        y: 50,
+        size: 8,
+        font: helveticaFont,
+        color: lightGrayColor,
+      });
       
       // Save and download
       const pdfBytes = await pdfDoc.save();
@@ -1546,15 +1834,15 @@ export default function Dashboard() {
       let plotData: any;
       if (!existingPlot) {
         // Create plot if it doesn't exist
+        // @ts-expect-error - Supabase type definitions are too strict
         const { data: newPlot, error: createError } = await supabase
           .from("plots")
           .insert({
-            id: plotId,
             coord_x: 0,
             coord_y: 0,
             owner_wallet: address.toLowerCase(),
             zone_type: "Residential",
-          })
+          } as any)
           .select()
           .single();
 
@@ -1569,9 +1857,10 @@ export default function Dashboard() {
         }
 
         // Update plot ownership
+        // @ts-expect-error - Supabase type definitions are too strict
         const { error: updateError } = await supabase
           .from("plots")
-          .update({ owner_wallet: address.toLowerCase() })
+          .update({ owner_wallet: address.toLowerCase() } as any)
           .eq("id", plotId)
           .select()
           .single();
@@ -1582,6 +1871,7 @@ export default function Dashboard() {
 
       // Deduct balance
       const newBalance = (balanceData.xbgl_balance || 0) - plotPrice;
+      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -1589,7 +1879,7 @@ export default function Dashboard() {
           xbgl_balance: newBalance,
           avax_balance: balanceData.avax_balance || 0,
           chaos_balance: balanceData.chaos_balance || 0,
-        });
+        } as any);
 
       const txHash = `plot_${Date.now()}_${plotId}`;
 
@@ -1680,15 +1970,17 @@ export default function Dashboard() {
       }
 
       // Update plot ownership
+      // @ts-expect-error - Supabase type definitions are too strict
       const { error: updateError } = await supabase
         .from("plots")
-        .update({ owner_wallet: address.toLowerCase() })
+        .update({ owner_wallet: address.toLowerCase() } as any)
         .eq("id", plot.id);
 
       if (updateError) throw updateError;
 
       // Deduct balance
       const newBalance = (balanceData.xbgl_balance || 0) - plotPrice;
+      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -1696,7 +1988,7 @@ export default function Dashboard() {
           xbgl_balance: newBalance,
           avax_balance: balanceData.avax_balance || 0,
           chaos_balance: balanceData.chaos_balance || 0,
-        });
+        } as any);
 
       // Create transaction record
       await supabaseService.createTransaction({
@@ -1785,6 +2077,7 @@ export default function Dashboard() {
     if (!address) return;
     try {
       // Load all active listings
+      // @ts-expect-error - Supabase type definitions are too strict
       const { data: allListings, error } = await supabase
         .from("marketplace_listings")
         .select("*")
@@ -1819,6 +2112,11 @@ export default function Dashboard() {
     }
 
     try {
+      // Calculate commission (8.9% of listing price)
+      const COMMISSION_RATE = 0.089;
+      const commission = price * COMMISSION_RATE;
+      const priceAfterCommission = price - commission;
+
       await supabaseService.createMarketplaceListing({
         asset_id: selectedPlotForListing.id.toString(),
         asset_type: listingProperty ? "property" : "plot",
@@ -1832,8 +2130,28 @@ export default function Dashboard() {
           coord_x: selectedPlotForListing.coord_x,
           coord_y: selectedPlotForListing.coord_y,
           zone_type: selectedPlotForListing.zone_type,
+          commission: commission,
+          commission_rate: COMMISSION_RATE,
+          price_after_commission: priceAfterCommission,
         },
       });
+
+      // Create commission transaction for listing
+      // @ts-expect-error - Supabase type definitions are too strict
+      await supabase.from("transactions").insert({
+        from_address: address.toLowerCase(),
+        to_address: "treasury_commission",
+        amount: commission,
+        token_type: "xBGL",
+        transaction_type: "listing_commission",
+        status: "completed",
+        metadata: {
+          listing_id: selectedPlotForListing.id,
+          commission_type: "marketplace_listing",
+          commission_rate: COMMISSION_RATE,
+        },
+        created_at: new Date().toISOString(),
+      } as any);
 
       toast.success("Plot listed for sale successfully!");
       setShowListPlotDialog(false);
@@ -1875,9 +2193,10 @@ export default function Dashboard() {
 
       // Transfer ownership if it's a plot
       if (listing.asset_type === "plot" || listing.asset_type === "property") {
+        // @ts-expect-error - Supabase type definitions are too strict
         const { error: updateError } = await supabase
           .from("plots")
-          .update({ owner_wallet: address.toLowerCase() })
+          .update({ owner_wallet: address.toLowerCase() } as any)
           .eq("id", parseInt(listing.asset_id));
 
         if (updateError) throw updateError;
@@ -1885,6 +2204,7 @@ export default function Dashboard() {
 
       // Update buyer balance
       const newBuyerBalance = (balanceData.xbgl_balance || 0) - listing.price;
+      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -1892,10 +2212,16 @@ export default function Dashboard() {
           xbgl_balance: newBuyerBalance,
           avax_balance: balanceData.avax_balance || 0,
           chaos_balance: balanceData.chaos_balance || 0,
-        });
+        } as any);
 
-      // Update seller balance
-      const newSellerBalance = (sellerBalance?.xbgl_balance || 0) + listing.price;
+      // Calculate commission (8.9% of sale price)
+      const COMMISSION_RATE = 0.089;
+      const commission = listing.price * COMMISSION_RATE;
+      const sellerReceives = listing.price - commission;
+
+      // Update seller balance (after commission)
+      const newSellerBalance = (sellerBalance?.xbgl_balance || 0) + sellerReceives;
+      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -1903,16 +2229,35 @@ export default function Dashboard() {
           xbgl_balance: newSellerBalance,
           avax_balance: sellerBalance?.avax_balance || 0,
           chaos_balance: sellerBalance?.chaos_balance || 0,
-        });
+        } as any);
+
+      // Create commission transaction for sale
+      // @ts-expect-error - Supabase type definitions are too strict
+      await supabase.from("transactions").insert({
+        from_address: listing.seller_wallet.toLowerCase(),
+        to_address: "treasury_commission",
+        amount: commission,
+        token_type: "xBGL",
+        transaction_type: "sale_commission",
+        status: "completed",
+        metadata: {
+          listing_id: listing.id,
+          sale_price: listing.price,
+          commission_type: "marketplace_sale",
+          commission_rate: COMMISSION_RATE,
+        },
+        created_at: new Date().toISOString(),
+      } as any);
 
       // Update listing status
+      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("marketplace_listings")
         .update({
           status: "sold",
           buyer_wallet: address.toLowerCase(),
           sold_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", listing.id);
 
       // Create transaction records
@@ -1944,9 +2289,10 @@ export default function Dashboard() {
     if (!confirm("Are you sure you want to cancel this listing?")) return;
 
     try {
+      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("marketplace_listings")
-        .update({ status: "cancelled" })
+        .update({ status: "cancelled" } as any)
         .eq("id", listingId);
 
       toast.success("Listing cancelled");
@@ -2443,84 +2789,84 @@ export default function Dashboard() {
                       {/* Content Overlay */}
                       <div className="relative z-10 flex flex-col h-full">
                         <CardHeader className="pb-3 pt-4 px-4 flex-shrink-0">
-                          <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
                               <CardTitle className="text-lg drop-shadow-sm">Plot #{plot.id}</CardTitle>
                               <CardDescription className="flex items-center gap-1 mt-1 text-xs drop-shadow-sm">
-                                <MapPin className="h-3 w-3" />
-                                ({plot.coord_x}, {plot.coord_y})
-                              </CardDescription>
-                            </div>
-                            <Badge variant="outline" className="bg-background/90 backdrop-blur-sm text-xs ml-2 drop-shadow-sm">
-                              {plot.booking_status === 'purchased' ? 'Owned' : plot.booking_status || 'Available'}
-                            </Badge>
+                              <MapPin className="h-3 w-3" />
+                              ({plot.coord_x}, {plot.coord_y})
+                            </CardDescription>
                           </div>
-                        </CardHeader>
+                            <Badge variant="outline" className="bg-background/90 backdrop-blur-sm text-xs ml-2 drop-shadow-sm">
+                            {plot.booking_status === 'purchased' ? 'Owned' : plot.booking_status || 'Available'}
+                          </Badge>
+                        </div>
+                      </CardHeader>
                         <CardContent className="space-y-3 px-4 pb-4 flex-1 flex flex-col justify-between">
                           <div className="space-y-2">
-                            {plot.zone_type && (
+                        {plot.zone_type && (
                               <div className="text-sm drop-shadow-sm">
-                                <span className="text-muted-foreground">Zone: </span>
-                                <span className="font-medium">{plot.zone_type}</span>
-                              </div>
-                            )}
+                            <span className="text-muted-foreground">Zone: </span>
+                            <span className="font-medium">{plot.zone_type}</span>
+                          </div>
+                        )}
                             <div className="text-sm drop-shadow-sm">
-                              <span className="text-muted-foreground">Value: </span>
-                              <span className="font-medium">100 xBGL</span>
-                            </div>
+                          <span className="text-muted-foreground">Value: </span>
+                          <span className="font-medium">100 xBGL</span>
+                        </div>
                           </div>
                           <div className="space-y-2 pt-2">
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
                                 className="flex-1 bg-background/90 backdrop-blur-sm hover:bg-background"
-                                onClick={() => handleManagePlot(plot.id)}
-                              >
-                                <Settings className="h-3 w-3 mr-1" />
-                                Manage
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              onClick={() => handleManagePlot(plot.id)}
+                            >
+                              <Settings className="h-3 w-3 mr-1" />
+                              Manage
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                                 className="bg-background/90 backdrop-blur-sm hover:bg-background"
-                                onClick={() => navigate(`/plot-sell?plotId=${plot.id}`)}
-                              >
-                                <Send className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              onClick={() => navigate(`/plot-sell?plotId=${plot.id}`)}
+                            >
+                              <Send className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                                 className="bg-background/90 backdrop-blur-sm hover:bg-background"
-                                onClick={() => handleGenerateCertificate(plot)}
-                                title="Generate Certificate"
-                              >
-                                <FileText className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            {/* Documents section */}
-                            <div className="pt-2 border-t border-border/50">
+                              onClick={() => handleGenerateCertificate(plot)}
+                              title="Generate Certificate"
+                            >
+                              <FileText className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {/* Documents section */}
+                          <div className="pt-2 border-t border-border/50">
                               <div className="flex gap-1 mb-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                            <Button
+                              variant="ghost"
+                              size="sm"
                                   className="flex-1 text-xs bg-background/80 backdrop-blur-sm hover:bg-background/90"
-                                  onClick={() => {
-                                    loadPlotDocuments(plot.id);
-                                  }}
-                                >
-                                  {loadingDocuments[plot.id] ? (
-                                    <>
-                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                      Loading...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FileText className="h-3 w-3 mr-1" />
+                              onClick={() => {
+                                loadPlotDocuments(plot.id);
+                              }}
+                            >
+                              {loadingDocuments[plot.id] ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                  Loading...
+                                </>
+                              ) : (
+                                <>
+                                  <FileText className="h-3 w-3 mr-1" />
                                       View ({plotDocuments[plot.id]?.length || 0})
-                                    </>
-                                  )}
-                                </Button>
+                                </>
+                              )}
+                            </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -2531,29 +2877,54 @@ export default function Dashboard() {
                                   <Download className="h-3 w-3" />
                                 </Button>
                               </div>
-                              {plotDocuments[plot.id] && plotDocuments[plot.id].length > 0 && (
-                                <div className="mt-2 space-y-1">
-                                  {plotDocuments[plot.id].map((doc: any) => (
-                                    <a
-                                      key={doc.id}
-                                      href={doc.document_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
+                            {plotDocuments[plot.id] && plotDocuments[plot.id].length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {plotDocuments[plot.id].map((doc: any) => (
+                                  <a
+                                    key={doc.id}
+                                    href={doc.document_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                       className="flex items-center gap-2 text-xs text-primary hover:underline p-1 rounded bg-background/80 backdrop-blur-sm"
-                                    >
-                                      <Download className="h-3 w-3" />
-                                      {doc.filename || "Certificate"}
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    {doc.filename || "Certificate"}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </CardContent>
+                        </div>
+                      </CardContent>
                       </div>
                     </Card>
                   ))}
                 </div>
+              )}
+
+              {/* Fractional Ownership Dialog */}
+              {showFractionalOwnership !== null && (
+                <Dialog open={showFractionalOwnership !== null} onOpenChange={(open) => !open && setShowFractionalOwnership(null)}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Fractional Ownership - Plot #{showFractionalOwnership}</DialogTitle>
+                      <DialogDescription>
+                        Manage fractional ownership shares for this plot
+                      </DialogDescription>
+                    </DialogHeader>
+                    {(() => {
+                      const plot = ownedPlots.find((p: any) => p.id === showFractionalOwnership);
+                      return plot ? (
+                        <PlotFractionalOwnership
+                          plotId={showFractionalOwnership}
+                          onUpdate={() => {
+                            // Refresh plot data if needed
+                          }}
+                        />
+                      ) : null;
+                    })()}
+                  </DialogContent>
+                </Dialog>
               )}
 
               {/* Document Upload Dialog */}
@@ -2860,20 +3231,20 @@ export default function Dashboard() {
 
 
       </Tabs>
-            </div>
+                </div>
           )}
 
           {/* Transfers Section */}
           {activeSection === "transfers" && (
-            <div className="space-y-6">
+                <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold tracking-tight select-none">Transfers</h1>
                   <p className="text-muted-foreground mt-1 select-none">
                     Send and receive xBGL tokens
                   </p>
+                  </div>
                 </div>
-              </div>
               <Card className="overflow-hidden border-2 border-primary/20 shadow-lg">
                 <CardHeader className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent pb-4">
                   <div className="flex items-center justify-between">
@@ -2885,9 +3256,9 @@ export default function Dashboard() {
                     </div>
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                       <Send className="h-6 w-6 text-primary" />
-                    </div>
                   </div>
-                </CardHeader>
+                </div>
+                      </CardHeader>
                 <CardContent className="p-6 space-y-6">
                   {/* Amount Input */}
                   <div className="space-y-3">
@@ -2897,7 +3268,7 @@ export default function Dashboard() {
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">
                         xBGL
-                      </div>
+                        </div>
                       <Input
                         id="amount"
                         type="number"
@@ -2909,7 +3280,7 @@ export default function Dashboard() {
                         className="h-16 text-3xl font-bold pl-24 pr-4 border-2 focus:border-primary"
                         disabled={transferring}
                       />
-                    </div>
+                        </div>
                     {/* Quick Amount Buttons */}
                     <div className="flex gap-2 flex-wrap">
                       {[10, 50, 100, 500].map((quickAmount) => (
@@ -2928,19 +3299,19 @@ export default function Dashboard() {
                           {quickAmount}
                         </Button>
                       ))}
-                      <Button
+                        <Button
                         type="button"
-                        variant="outline"
+                          variant="outline"
                         size="sm"
-                        onClick={() => {
+                          onClick={() => {
                           setTransferAmount((balance?.xbgl_balance || 0).toString());
-                        }}
+                          }}
                         className="flex-1 min-w-[80px]"
                         disabled={transferring || (balance?.xbgl_balance || 0) <= 0}
-                      >
+                        >
                         Max
-                      </Button>
-                    </div>
+                        </Button>
+                      </div>
                   </div>
 
                   {/* Recipient Input */}
@@ -2959,7 +3330,7 @@ export default function Dashboard() {
                         className="h-14 pl-12 pr-4 text-lg border-2 focus:border-primary"
                         disabled={transferring}
                       />
-                    </div>
+                        </div>
                     {/* Recent Recipients */}
                     {recentRecipients.length > 0 && (
                       <div className="flex gap-2 flex-wrap">
@@ -2976,10 +3347,10 @@ export default function Dashboard() {
                           >
                             {recipient.length > 20 ? `${recipient.slice(0, 10)}...${recipient.slice(-8)}` : recipient}
                           </Button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          ))}
+                        </div>
+                      )}
+                </div>
 
                   {/* Memo/Note */}
                   <div className="space-y-3">
@@ -2996,7 +3367,7 @@ export default function Dashboard() {
                       disabled={transferring}
                       maxLength={100}
                     />
-                  </div>
+                </div>
 
                   {/* Transfer Summary */}
                   {transferAmount && parseFloat(transferAmount) > 0 && (
@@ -3004,7 +3375,7 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Amount</span>
                         <span className="font-semibold">{parseFloat(transferAmount).toFixed(2)} xBGL</span>
-                      </div>
+                    </div>
                       {transferRecipient && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">To</span>
@@ -3013,15 +3384,15 @@ export default function Dashboard() {
                               ? `${transferRecipient.slice(0, 15)}...${transferRecipient.slice(-12)}`
                               : transferRecipient}
                           </span>
-                        </div>
+                  </div>
                       )}
                       <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
                         <span className="text-muted-foreground">Balance after</span>
                         <span className="font-semibold text-primary">
                           {((balance?.xbgl_balance || 0) - parseFloat(transferAmount || "0")).toFixed(2)} xBGL
                         </span>
-                      </div>
-                    </div>
+                  </div>
+                  </div>
                   )}
 
                   {/* Send Button */}
@@ -3042,11 +3413,11 @@ export default function Dashboard() {
                         <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                         Processing...
                       </>
-                    ) : (
+                        ) : (
                       <>
                         Send <ArrowRight className="h-5 w-5 ml-2" />
                       </>
-                    )}
+                        )}
                   </Button>
 
                   {/* Info Message */}
@@ -3126,8 +3497,21 @@ export default function Dashboard() {
                         <TabsContent value="all" className="mt-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto">
                             {governmentPlots.map((plot: any) => (
-                              <Card key={plot.id} className={`border-border/50 hover:border-primary/30 transition-colors ${plot.owner_wallet ? 'opacity-75' : ''}`}>
-                                <CardHeader className="pb-3">
+                              <Card key={plot.id} className={`border-border/50 hover:border-primary/30 transition-colors overflow-hidden relative min-h-[280px] ${plot.owner_wallet ? 'opacity-75' : ''}`}>
+                                {/* Plot Preview Image as Background */}
+                                <div className="absolute inset-0 z-0">
+                                  <img
+                                    src="/plot-preview.png"
+                                    alt={`Plot #${plot.id} preview`}
+                                    className="w-full h-full object-cover opacity-30"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/80 to-background/60" />
+                                </div>
+                                
+                                <CardHeader className="pb-3 relative z-10">
                                   <div className="flex items-start justify-between">
                                     <div>
                                       <CardTitle className="text-lg select-none">Plot #{plot.id}</CardTitle>
@@ -3143,7 +3527,7 @@ export default function Dashboard() {
                                     )}
                                   </div>
                                 </CardHeader>
-                                <CardContent className="space-y-3">
+                                <CardContent className="space-y-3 relative z-10">
                                   {plot.zone_type && (
                                     <div className="text-sm select-none">
                                       <span className="text-muted-foreground">Zone: </span>
@@ -3194,8 +3578,21 @@ export default function Dashboard() {
                             {governmentPlots
                               .filter((p: any) => !p.owner_wallet || p.owner_wallet === null)
                               .map((plot: any) => (
-                                <Card key={plot.id} className="border-border/50 hover:border-primary/30 transition-colors">
-                                  <CardHeader className="pb-3">
+                                <Card key={plot.id} className="border-border/50 hover:border-primary/30 transition-colors overflow-hidden relative min-h-[280px]">
+                                  {/* Plot Preview Image as Background */}
+                                  <div className="absolute inset-0 z-0">
+                                    <img
+                                      src="/plot-preview.png"
+                                      alt={`Plot #${plot.id} preview`}
+                                      className="w-full h-full object-cover opacity-30"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/80 to-background/60" />
+                                  </div>
+                                  
+                                  <CardHeader className="pb-3 relative z-10">
                                     <div className="flex items-start justify-between">
                                       <div>
                                         <CardTitle className="text-lg select-none">Plot #{plot.id}</CardTitle>
@@ -3243,8 +3640,21 @@ export default function Dashboard() {
                             {governmentPlots
                               .filter((p: any) => p.owner_wallet && p.owner_wallet !== null)
                               .map((plot: any) => (
-                                <Card key={plot.id} className="border-border/50 hover:border-primary/30 transition-colors opacity-75">
-                                  <CardHeader className="pb-3">
+                                <Card key={plot.id} className="border-border/50 hover:border-primary/30 transition-colors opacity-75 overflow-hidden relative min-h-[280px]">
+                                  {/* Plot Preview Image as Background */}
+                                  <div className="absolute inset-0 z-0">
+                                    <img
+                                      src="/plot-preview.png"
+                                      alt={`Plot #${plot.id} preview`}
+                                      className="w-full h-full object-cover opacity-30"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/80 to-background/60" />
+                                  </div>
+                                  
+                                  <CardHeader className="pb-3 relative z-10">
                                     <div className="flex items-start justify-between">
                                       <div>
                                         <CardTitle className="text-lg select-none">Plot #{plot.id}</CardTitle>
@@ -3256,7 +3666,7 @@ export default function Dashboard() {
                                       <Badge variant="secondary" className="select-none">Owned</Badge>
                                     </div>
                                   </CardHeader>
-                                  <CardContent className="space-y-3">
+                                  <CardContent className="space-y-3 relative z-10">
                                     {plot.zone_type && (
                                       <div className="text-sm select-none">
                                         <span className="text-muted-foreground">Zone: </span>

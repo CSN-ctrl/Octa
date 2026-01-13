@@ -31,6 +31,7 @@ import { useLandPlots } from "@/hooks/useLandPlots";
 import { toast } from "sonner";
 import { ethers } from "ethers";
 import { getLandContract, hasLandContract } from "@/lib/contracts";
+import * as supabaseService from "@/lib/supabase-service";
 
 interface PlotSellProps {
   onTransferComplete?: () => void;
@@ -51,20 +52,37 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
   const [selectedPlots, setSelectedPlots] = useState<Set<number>>(new Set());
   const [recipient, setRecipient] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [transferMethod, setTransferMethod] = useState<"wallet" | "email">("wallet");
+  const [transferMethod, setTransferMethod] = useState<"wallet" | "email">("email");
   const [loading, setLoading] = useState(false);
   const [plotMetadata, setPlotMetadata] = useState<Map<number, PlotMetadata>>(new Map());
   const [showDialog, setShowDialog] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Load owned plots when address changes
+  // Get user email on mount
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const email = await supabaseService.getAuthUserEmail();
+        setUserEmail(email);
+      } catch (error) {
+        console.debug("Failed to get user email:", error);
+      }
+    };
+    fetchUserEmail();
+  }, []);
+
+  // Load owned plots when address or email changes
   useEffect(() => {
     if (address && isConnected) {
       loadOwnedPlots();
+    } else if (userEmail) {
+      // Load plots by email if wallet is not connected
+      loadOwnedPlotsByEmail();
     } else {
       setOwnedPlots([]);
       setSelectedPlots(new Set());
     }
-  }, [address, isConnected, landContractPlots]);
+  }, [address, isConnected, landContractPlots, userEmail]);
 
   // Listen for plot purchase events to refresh the list
   useEffect(() => {
@@ -83,6 +101,45 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
       window.removeEventListener('plots-purchased', handlePlotsPurchased as EventListener);
     };
   }, [address]);
+
+  // Load plots by email (for users without wallet connection)
+  const loadOwnedPlotsByEmail = async () => {
+    if (!userEmail) return;
+    
+    setLoading(true);
+    try {
+      // Get plots from Supabase by email
+      const plots = await supabaseService.getPlots({ ownerEmail: userEmail });
+      
+      if (plots && plots.length > 0) {
+        const plotIds = plots.map(plot => plot.id);
+        setOwnedPlots(plotIds);
+        
+        // Load basic metadata for plots
+        const metadataMap = new Map<number, PlotMetadata>();
+        for (const plot of plots) {
+          metadataMap.set(plot.id, {
+            x: plot.coord_x || 0,
+            y: plot.coord_y || 0,
+            level: 1,
+            issued: true,
+            price: 100n * BigInt(10 ** 18), // 100 xBGL
+            planetId: "0x0",
+          });
+        }
+        setPlotMetadata(metadataMap);
+      } else {
+        setOwnedPlots([]);
+        setPlotMetadata(new Map());
+      }
+    } catch (error: any) {
+      console.error("Failed to load plots by email:", error);
+      toast.error("Failed to load your plots");
+      setOwnedPlots([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadOwnedPlots = async () => {
     if (!address) return;
@@ -202,12 +259,24 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
+  // Commission calculation (8.9%)
+  const COMMISSION_RATE = 0.089;
+  const calculateCommission = (amount: number): number => {
+    return amount * COMMISSION_RATE;
+  };
+
   // Email-based transfer handler
   const handleEmailTransfer = async (plotIds: number[], email: string) => {
     try {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { getAuthUserEmail, reconcileBalance } = await import("@/lib/supabase-service");
-      const authUserEmail = await getAuthUserEmail();
+      const { reconcileBalance } = await import("@/lib/supabase-service");
+      
+      // Use userEmail from state, or try to get it from auth
+      let authUserEmail = userEmail;
+      if (!authUserEmail) {
+        const { getAuthUserEmail } = await import("@/lib/supabase-service");
+        authUserEmail = await getAuthUserEmail();
+      }
       
       if (!authUserEmail) {
         throw new Error("Please sign in to transfer plots");
@@ -222,6 +291,10 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
 
       const newOwnerIdentifier = recipientOwnership?.wallet_address || email.toLowerCase();
 
+      // Calculate commission (8.9% of plot value, assuming 100 xBGL per plot)
+      const plotValue = plotIds.length * 100;
+      const commission = calculateCommission(plotValue);
+      
       // Update plot ownership in database
       for (const plotId of plotIds) {
         await supabase
@@ -229,7 +302,7 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
           .update({ owner_wallet: newOwnerIdentifier })
           .eq("id", plotId);
 
-        // Create transfer transaction record
+        // Create transfer transaction record with commission
         await supabase.from("transactions").insert({
           from_address: authUserEmail.toLowerCase(),
           to_address: email.toLowerCase(),
@@ -242,10 +315,28 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
             plot_ids: plotIds,
             transfer_method: "email",
             recipient_email: email,
+            commission: commission,
+            commission_rate: COMMISSION_RATE,
           },
           created_at: new Date().toISOString(),
         });
       }
+
+      // Create commission transaction
+      await supabase.from("transactions").insert({
+        from_address: authUserEmail.toLowerCase(),
+        to_address: "treasury_commission", // Treasury receives commission
+        amount: commission,
+        token_type: "xBGL",
+        transaction_type: "transfer_commission",
+        status: "completed",
+        metadata: {
+          plot_ids: plotIds,
+          commission_type: "transfer",
+          commission_rate: COMMISSION_RATE,
+        },
+        created_at: new Date().toISOString(),
+      });
 
       // Reconcile balances for both parties
       try {
@@ -271,8 +362,12 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
       toast.success(`Successfully transferred ${plotIds.length} plot(s) to ${email}`);
       
       // Refresh plots
-      await refreshLandPlots();
-      await loadOwnedPlots();
+      if (isConnected && address) {
+        await refreshLandPlots();
+        await loadOwnedPlots();
+      } else if (userEmail) {
+        await loadOwnedPlotsByEmail();
+      }
       
       // Clear form
       setSelectedPlots(new Set());
@@ -299,7 +394,17 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
     let recipientAddress = recipient;
     let recipientEmailAddress = recipientEmail;
 
-    // Determine transfer method
+    // If wallet is not connected, use email transfer
+    if (!isConnected) {
+      if (!recipientEmail || !isValidEmail(recipientEmail)) {
+        toast.error("Please enter a valid recipient email");
+        return;
+      }
+      await handleEmailTransfer(plotIds, recipientEmail);
+      return;
+    }
+
+    // Determine transfer method for connected wallet
     if (transferMethod === "email") {
       if (!recipientEmail || !isValidEmail(recipientEmail)) {
         toast.error("Please enter a valid recipient email");
@@ -445,7 +550,8 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
     }
   };
 
-  if (!isConnected || !address) {
+  // Show email transfer option even without wallet connection
+  if (!isConnected && !userEmail) {
     return (
       <Card className="glass-enhanced border-primary/20">
         <CardHeader>
@@ -454,7 +560,7 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
             Sell/Transfer Plots
           </CardTitle>
           <CardDescription>
-            Connect your wallet to view and transfer your plots
+            Please sign in to view and transfer your plots via email
           </CardDescription>
         </CardHeader>
       </Card>
@@ -471,7 +577,9 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
               Sell/Transfer Plots
             </CardTitle>
             <CardDescription>
-              Transfer your plots to another address
+              {isConnected 
+                ? "Transfer your plots to another address or email"
+                : "Transfer your plots via email address"}
             </CardDescription>
           </div>
           <Badge variant="outline" className="text-base px-3 py-1">
@@ -503,7 +611,13 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadOwnedPlots}
+            onClick={() => {
+              if (isConnected && address) {
+                loadOwnedPlots();
+              } else if (userEmail) {
+                loadOwnedPlotsByEmail();
+              }
+            }}
             disabled={loading}
           >
             {loading ? (
@@ -517,7 +631,7 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
           </Button>
         </div>
 
-        {/* Plots Grid */}
+        {/* Plots List */}
         {loading && ownedPlots.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin" />
@@ -531,7 +645,7 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
               {ownedPlots.map((plotId) => {
                 const metadata = plotMetadata.get(plotId);
                 const isSelected = selectedPlots.has(plotId);
@@ -541,29 +655,57 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                     key={plotId}
                     onClick={() => togglePlotSelection(plotId)}
                     className={`
-                      glass-enhanced p-3 rounded-lg border cursor-pointer transition-all
+                      glass-enhanced p-4 rounded-lg border cursor-pointer transition-all
+                      flex items-center justify-between
+                      overflow-hidden relative min-h-[100px]
                       ${isSelected 
-                        ? "border-primary bg-primary/10 scale-105" 
+                        ? "border-primary bg-primary/10" 
                         : "border-primary/20 hover:border-primary/40"
                       }
                     `}
                   >
-                    <div className="flex flex-col items-center gap-2">
+                    {/* Plot Preview Image as Background */}
+                    <div className="absolute inset-0 z-0">
+                      <img
+                        src="/plot-preview.png"
+                        alt={`Plot #${plotId} preview`}
+                        className="w-full h-full object-cover opacity-30"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/50" />
+                    </div>
+                    
+                    <div className="flex items-center gap-4 flex-1 relative z-10">
                       <div className="relative">
                         <div className={`p-2 rounded-full ${isSelected ? "bg-primary/20" : "bg-primary/10"}`}>
-                          <MapPin className="h-4 w-4 text-primary" />
+                          <MapPin className="h-5 w-5 text-primary" />
                         </div>
                         {isSelected && (
-                          <CheckCircle2 className="h-4 w-4 text-primary absolute -top-1 -right-1 bg-background rounded-full" />
+                          <CheckCircle2 className="h-5 w-5 text-primary absolute -top-1 -right-1 bg-background rounded-full" />
                         )}
                       </div>
-                      <span className="font-bold text-sm">#{plotId}</span>
-                      {metadata && (
-                        <div className="text-xs text-muted-foreground text-center">
-                          <div>({metadata.x}, {metadata.y})</div>
-                          <div>Lv.{metadata.level}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-base">Plot #{plotId}</span>
+                          {metadata && (
+                            <Badge variant="outline" className="text-xs">
+                              ({metadata.x}, {metadata.y})
+                            </Badge>
+                          )}
                         </div>
-                      )}
+                        {metadata && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Level {metadata.level} • Value: 100 xBGL
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={isSelected ? "default" : "outline"}>
+                        {isSelected ? "Selected" : "Select"}
+                      </Badge>
                     </div>
                   </div>
                 );
@@ -573,31 +715,33 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
             {/* Transfer Section */}
             {selectedPlots.size > 0 && (
               <div className="border-t border-primary/20 pt-4 space-y-4">
-                <div className="space-y-2">
-                  <Label>Transfer Method</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={transferMethod === "wallet" ? "default" : "outline"}
-                      onClick={() => setTransferMethod("wallet")}
-                      size="sm"
-                      className="flex-1"
-                    >
-                      <Wallet className="h-4 w-4 mr-2" />
-                      Wallet Address
-                    </Button>
-                    <Button
-                      variant={transferMethod === "email" ? "default" : "outline"}
-                      onClick={() => setTransferMethod("email")}
-                      size="sm"
-                      className="flex-1"
-                    >
-                      <Mail className="h-4 w-4 mr-2" />
-                      Email Address
-                    </Button>
+                {isConnected && (
+                  <div className="space-y-2">
+                    <Label>Transfer Method</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={transferMethod === "wallet" ? "default" : "outline"}
+                        onClick={() => setTransferMethod("wallet")}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Wallet className="h-4 w-4 mr-2" />
+                        Wallet Address
+                      </Button>
+                      <Button
+                        variant={transferMethod === "email" ? "default" : "outline"}
+                        onClick={() => setTransferMethod("email")}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Mail className="h-4 w-4 mr-2" />
+                        Email Address
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {transferMethod === "email" ? (
+                {!isConnected || transferMethod === "email" ? (
                   <div className="space-y-2">
                     <Label htmlFor="recipientEmail">Recipient Email</Label>
                     <Input
@@ -627,8 +771,9 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                       className="w-full"
                       disabled={
                         transferring ||
-                        (transferMethod === "wallet" && (!recipient || !ethers.isAddress(recipient))) ||
-                        (transferMethod === "email" && (!recipientEmail || !isValidEmail(recipientEmail)))
+                        (!isConnected && (!recipientEmail || !isValidEmail(recipientEmail))) ||
+                        (isConnected && transferMethod === "wallet" && (!recipient || !ethers.isAddress(recipient))) ||
+                        (isConnected && transferMethod === "email" && (!recipientEmail || !isValidEmail(recipientEmail)))
                       }
                     >
                       {transferring ? (
@@ -654,10 +799,10 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                     <div className="space-y-4 py-4">
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                         <div className="text-sm text-muted-foreground mb-1">Recipient:</div>
-                        <div className={transferMethod === "email" ? "text-sm break-all" : "font-mono text-sm break-all"}>
-                          {transferMethod === "email" ? recipientEmail : recipient}
+                        <div className={(!isConnected || transferMethod === "email") ? "text-sm break-all" : "font-mono text-sm break-all"}>
+                          {(!isConnected || transferMethod === "email") ? recipientEmail : recipient}
                         </div>
-                        {transferMethod === "email" && (
+                        {(!isConnected || transferMethod === "email") && (
                           <div className="text-xs text-muted-foreground mt-1">
                             Transfer will be processed via email
                           </div>
@@ -671,6 +816,15 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                               #{plotId}
                             </Badge>
                           ))}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                        <div className="text-sm font-medium text-orange-600 mb-2">Transfer Commission</div>
+                        <div className="text-xs text-muted-foreground">
+                          A commission of 8.9% will be charged for this transfer.
+                          <div className="mt-1 font-medium">
+                            Commission: {calculateCommission(selectedPlots.size * 100).toFixed(2)} xBGL
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-yellow-500 bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/20">

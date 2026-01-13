@@ -287,12 +287,17 @@ export default function PlotPurchase() {
         return;
       }
 
-      // Check balance from Supabase - try wallet address first, then email
+      // Get authenticated user email for balance check
+      const { supabase: supabaseClient } = await import("@/integrations/supabase/client");
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const authUserEmail = session?.user?.email?.toLowerCase() || buyerEmail?.toLowerCase() || null;
+      
+      // Check balance from Supabase - prioritize auth user email
       let balance = null;
       
-      // Try wallet address first
-      if (purchaseAddress) {
-        balance = await getUserBalance(purchaseAddress).catch((err: any) => {
+      // Try authenticated user email first (primary identifier for ledger)
+      if (authUserEmail) {
+        balance = await getUserBalance(authUserEmail).catch((err: any) => {
           if (err?.status === 406 || err?.code === "PGRST301") {
             console.debug("Cannot access user_balances (RLS policy)");
             return null;
@@ -301,9 +306,9 @@ export default function PlotPurchase() {
         });
       }
       
-      // If no balance found and user has email, try email as identifier
-      if (!balance && buyerEmail) {
-        balance = await getUserBalance(buyerEmail).catch(() => null);
+      // Fallback to wallet address if no email
+      if (!balance && purchaseAddress) {
+        balance = await getUserBalance(purchaseAddress.toLowerCase()).catch(() => null);
       }
       
       if (!balance || (balance.xbgl_balance || 0) < totalCost) {
@@ -370,11 +375,18 @@ export default function PlotPurchase() {
             console.log(`✓ Updated plot #${plotId} ownership`);
           }
           
+          // Get authenticated user email for purchase
+          const { supabase: supabaseClient } = await import("@/integrations/supabase/client");
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          const authUserEmail = session?.user?.email?.toLowerCase() || buyerEmail?.toLowerCase() || null;
+          const purchaseIdentifier = authUserEmail || purchaseAddress.toLowerCase();
+          
           // Now purchase the plot using RPC function
+          // Use authenticated user email as primary identifier
           const result = await purchasePlot(
             plotId,
-            purchaseAddress,
-            buyerEmail,
+            purchaseIdentifier, // Use auth user email instead of wallet address
+            buyerEmail || authUserEmail || '',
             PLOT_PRICE_xBGL,
             "xBGL"
           );
@@ -383,14 +395,106 @@ export default function PlotPurchase() {
             throw new Error(result.error || "Purchase failed");
           }
           
-          purchaseResults.push({ plotId, txHash: result.txHash || `plot_${plotId}_${Date.now()}` });
-          console.log(`✓ Purchased plot #${plotId} - TX: ${result.txHash || 'N/A'}`);
+          const txHash = result.txHash || `plot_${plotId}_${Date.now()}`;
+          purchaseResults.push({ plotId, txHash });
+          console.log(`✓ Purchased plot #${plotId} - TX: ${txHash}`);
+          
+          // Manually create transaction record in Supabase if RPC didn't create it
+          // Use authenticated user email for transaction
+          try {
+            const { createTransaction } = await import("@/lib/supabase-service");
+            const { supabase } = await import("@/integrations/supabase/client");
+            const { data: { session } } = await supabase.auth.getSession();
+            const authUserEmail = session?.user?.email?.toLowerCase() || buyerEmail?.toLowerCase() || purchaseAddress.toLowerCase();
+            
+            await createTransaction({
+              from_address: authUserEmail,
+              to_address: "0x0000000000000000000000000000000000000001", // Treasury address
+              amount: PLOT_PRICE_xBGL,
+              token_type: "xBGL",
+              transaction_type: "plot_purchase",
+              status: "completed",
+              tx_hash: txHash,
+              type: "plot_purchase",
+              plot_id: plotId,
+              metadata: { 
+                plot_id: plotId, 
+                purchase_type: "land",
+                buyer_email: buyerEmail,
+                user_email: authUserEmail
+              },
+            });
+            console.log(`✓ Created transaction record for plot #${plotId}`);
+          } catch (txError: any) {
+            // If transaction already exists, that's okay
+            if (txError?.code !== '23505') { // Not a duplicate key error
+              console.warn(`Failed to create transaction record for plot #${plotId}:`, txError);
+            }
+          }
         } catch (error: any) {
           console.error(`Failed to purchase plot #${plotId}:`, error);
           toast.error(`Failed to purchase plot #${plotId}: ${error.message}`);
           setPurchasing(false);
           return;
         }
+      }
+      
+      // Get authenticated user email for balance operations
+      const { supabase: supabaseClientForBalance } = await import("@/integrations/supabase/client");
+      const { data: { session: balanceSession } } = await supabaseClientForBalance.auth.getSession();
+      const balanceAuthUserEmail = balanceSession?.user?.email?.toLowerCase() || buyerEmail?.toLowerCase() || null;
+      const userIdentifier = balanceAuthUserEmail || purchaseAddress.toLowerCase();
+      
+      // ALWAYS deduct balance after purchase - ensure it's updated
+      try {
+        const { getUserBalance, updateUserBalance, upsertUserBalance } = await import("@/lib/supabase-service");
+        const currentBalanceData = await getUserBalance(userIdentifier).catch(() => null);
+        const currentBalance = currentBalanceData?.xbgl_balance || balance?.xbgl_balance || 0;
+        const newBalance = Math.max(0, currentBalance - totalCost);
+        
+        console.log(`Deducting balance: ${currentBalance} - ${totalCost} = ${newBalance}`);
+        
+        try {
+          // Always update balance to ensure it's deducted
+          await updateUserBalance(userIdentifier, {
+            xbgl_balance: newBalance
+          });
+          console.log(`✓ Updated balance to ${newBalance} xBGL`);
+        } catch (updateError: any) {
+          // If update fails (e.g., row doesn't exist), try upsert
+          if (updateError?.code === 'PGRST116' || updateError?.message?.includes('No rows')) {
+            await upsertUserBalance({
+              wallet_address: userIdentifier,
+              xbgl_balance: newBalance,
+              avax_balance: currentBalanceData?.avax_balance || 0,
+              chaos_balance: currentBalanceData?.chaos_balance || 0,
+              sc_balance: currentBalanceData?.sc_balance || 0,
+            });
+            console.log(`✓ Created/updated balance record with ${newBalance} xBGL`);
+          } else {
+            throw updateError;
+          }
+        }
+      } catch (balanceError) {
+        console.error("Failed to update balance after purchase:", balanceError);
+        // Don't fail the purchase if balance update fails, but log it
+      }
+      
+      // Reconcile balance with ledger after purchase (using auth user email)
+      try {
+        const { reconcileBalance } = await import("@/lib/supabase-service");
+        const { supabase: supabaseClientForReconcile } = await import("@/integrations/supabase/client");
+        const { data: { session: reconcileSession } } = await supabaseClientForReconcile.auth.getSession();
+        const finalAuthUserEmail = reconcileSession?.user?.email?.toLowerCase() || buyerEmail?.toLowerCase();
+        
+        if (finalAuthUserEmail) {
+          await reconcileBalance(finalAuthUserEmail);
+        } else {
+          // Fallback to purchase address if no email
+          await reconcileBalance(purchaseAddress.toLowerCase());
+        }
+      } catch (reconcileError) {
+        console.debug("Ledger reconciliation failed:", reconcileError);
       }
       
       toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL!`);
@@ -468,12 +572,17 @@ export default function PlotPurchase() {
       // Clear selection
       setSelectedPlotIds(new Set());
       
-      // Dispatch event for dashboard to listen to
+      // Get authenticated user email for event dispatch
+      const { supabase: supabaseClientForEvent } = await import("@/integrations/supabase/client");
+      const { data: { session: eventSession } } = await supabaseClientForEvent.auth.getSession();
+      const finalAuthUserEmail = eventSession?.user?.email?.toLowerCase() || buyerEmail?.toLowerCase() || purchaseAddress.toLowerCase();
+      
+      // Dispatch event for dashboard to listen to (using auth user email)
       window.dispatchEvent(new CustomEvent('plots-purchased', { 
         detail: { 
-          wallet: purchaseAddress,
+          wallet: finalAuthUserEmail, // Use auth user email as identifier
           plotIds: plotIdsArray,
-          email: buyerEmail,
+          email: buyerEmail || finalAuthUserEmail,
           totalCost: totalCost
         }
       }));

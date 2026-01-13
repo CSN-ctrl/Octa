@@ -2303,8 +2303,28 @@ export default function UnifiedUniverse() {
                   <MapPin className="w-5 h-5 text-primary" />
                   Plots
                 </div>
-                <p className="text-3xl font-bold">Unlimited</p>
-                <p className="text-sm text-muted-foreground">Plots (10k participants)</p>
+                {isConnected && address ? (
+                  <>
+                    <p className="text-3xl font-bold text-primary">
+                      {loadingPlots ? (
+                        <span className="text-muted-foreground">Loading...</span>
+                      ) : (
+                        // Use the best available source: ownedPlotIds (from fetchOwnedPlots) > userPlots > backendPlots
+                        (ownedPlotIds.length || userPlots.length || backendPlots.length || 0).toLocaleString()
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {ownedPlotIds.length || userPlots.length || backendPlots.length 
+                        ? `Plots owned` 
+                        : `No plots owned yet`}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold">0</p>
+                    <p className="text-sm text-muted-foreground">Total plots owned</p>
+                  </>
+                )}
               </Card>
               <Card className="glass p-6 border-primary/20">
                 <div className="flex items-center gap-2 text-xl font-bold mb-2">

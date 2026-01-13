@@ -163,9 +163,11 @@ export async function purchasePlot(
   currency: string = "xBGL"
 ): Promise<PurchasePlotResult> {
   try {
+    // Normalize wallet address to ensure consistency
+    const normalizedWallet = buyerWallet.toLowerCase();
     const { data, error } = await (supabase.rpc as any)("purchase_plot", {
       p_plot_id: plotId,
-      p_buyer_wallet: buyerWallet,
+      p_buyer_wallet: normalizedWallet,
       p_buyer_email: buyerEmail,
       p_price: price,
       p_currency: currency,
@@ -446,13 +448,15 @@ export async function getTransactions(filters?: {
   let query = supabase.from("transactions").select("*");
 
   if (filters?.walletAddress) {
-    query = query.or(`from_address.eq.${filters.walletAddress},to_address.eq.${filters.walletAddress}`);
+    const normalizedAddress = filters.walletAddress.toLowerCase();
+    // Use .or() with .eq() for case-sensitive matching (addresses are normalized)
+    query = query.or(`from_address.eq.${normalizedAddress},to_address.eq.${normalizedAddress}`);
   } else {
     if (filters?.fromAddress) {
-      query = query.eq("from_address", filters.fromAddress);
+      query = query.eq("from_address", filters.fromAddress.toLowerCase());
     }
     if (filters?.toAddress) {
-      query = query.eq("to_address", filters.toAddress);
+      query = query.eq("to_address", filters.toAddress.toLowerCase());
     }
   }
   if (filters?.type) {
@@ -1431,6 +1435,133 @@ export async function approveTokenSpending(
     success: true,
     approval_id: result.id,
   };
+}
+
+/**
+ * Get authenticated user email from session
+ */
+export async function getAuthUserEmail(): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.email?.toLowerCase() || null;
+  } catch (error) {
+    console.error("Failed to get auth user email:", error);
+    return null;
+  }
+}
+
+/**
+ * Get balance from ledger (sum of all transactions) using auth user email
+ * Returns 0 if function doesn't exist (graceful failure)
+ */
+export async function getLedgerBalance(
+  userEmail: string,
+  tokenType: "xBGL" | "CHAOS" | "AVAX" | "SC" = "xBGL"
+): Promise<number> {
+  try {
+    const { data, error } = await (supabase.rpc as any)("get_ledger_balance", {
+      p_user_email: userEmail.toLowerCase(),
+      p_token_type: tokenType,
+    });
+
+    if (error) {
+      // If function doesn't exist, return 0 (graceful failure)
+      if (error.message?.includes('could not find the function') || 
+          error.message?.includes('schema cache') ||
+          error.code === '42883') {
+        console.debug("get_ledger_balance function not found - SQL functions may not be created yet");
+        return 0;
+      }
+      throw error;
+    }
+    return Number(data || 0);
+  } catch (error: any) {
+    // Graceful failure if function doesn't exist
+    if (error?.message?.includes('could not find the function') || 
+        error?.message?.includes('schema cache') ||
+        error?.code === '42883') {
+      console.debug("get_ledger_balance function not found - SQL functions may not be created yet");
+      return 0;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Reconcile balance with ledger and auto-correct if needed using auth user email
+ * Returns null if function doesn't exist (graceful failure)
+ */
+export async function reconcileBalance(
+  userEmail: string
+): Promise<{
+  user_email: string;
+  ledger_balance: number;
+  current_balance: number;
+  difference: number;
+  reconciled: boolean;
+  auto_corrected?: boolean;
+} | null> {
+  try {
+    const { data, error } = await (supabase.rpc as any)("reconcile_balance", {
+      p_user_email: userEmail.toLowerCase(),
+    });
+
+    if (error) {
+      // If function doesn't exist, return null (graceful failure)
+      if (error.message?.includes('could not find the function') || 
+          error.message?.includes('schema cache') ||
+          error.code === '42883') {
+        console.debug("reconcile_balance function not found - SQL functions may not be created yet");
+        return null;
+      }
+      throw error;
+    }
+    return data;
+  } catch (error: any) {
+    // Graceful failure if function doesn't exist
+    if (error?.message?.includes('could not find the function') || 
+        error?.message?.includes('schema cache') ||
+        error?.code === '42883') {
+      console.debug("reconcile_balance function not found - SQL functions may not be created yet");
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get all transactions for a user with ledger verification using auth user email
+ */
+export async function getTransactionsWithLedger(
+  userEmail: string,
+  limit: number = 50
+): Promise<Transaction[]> {
+  const [transactions, ledgerBalance, currentBalance] = await Promise.all([
+    getTransactions({ walletAddress: userEmail, limit }),
+    getLedgerBalance(userEmail).catch(() => null),
+    getUserBalance(userEmail).catch(() => null),
+  ]);
+
+  // Log reconciliation status (only if ledger functions exist)
+  if (ledgerBalance !== null && ledgerBalance !== 0 && currentBalance) {
+    const difference = ledgerBalance - (currentBalance.xbgl_balance || 0);
+    if (Math.abs(difference) > 0.01) {
+      console.warn(`Balance mismatch detected for ${userEmail}:`, {
+        ledger: ledgerBalance,
+        current: currentBalance.xbgl_balance,
+        difference,
+      });
+      
+      // Auto-reconcile (will return null if function doesn't exist)
+      const reconcileResult = await reconcileBalance(userEmail).catch(() => null);
+      if (!reconcileResult) {
+        // Function doesn't exist, skip reconciliation
+        console.debug("Skipping reconciliation - function not available");
+      }
+    }
+  }
+
+  return transactions;
 }
 
 /**

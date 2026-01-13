@@ -849,6 +849,25 @@ export default function AdminDashboard() {
                     return u;
                   }));
 
+                  // Reconcile balances with ledger (using user emails)
+                  try {
+                    // Use email if available, otherwise fallback to wallet address
+                    const fromUserEmail = selectedUser.email?.toLowerCase() || selectedUser.wallet_address?.toLowerCase();
+                    const toUserEmail = transferTo.includes('@') ? transferTo.toLowerCase() : null;
+                    
+                    if (fromUserEmail) {
+                      await supabaseService.reconcileBalance(fromUserEmail);
+                    }
+                    if (toUserEmail) {
+                      await supabaseService.reconcileBalance(toUserEmail);
+                    } else if (transferTo && !transferTo.includes('@')) {
+                      // Fallback to wallet address if not an email
+                      await supabaseService.reconcileBalance(transferTo.toLowerCase());
+                    }
+                  } catch (reconcileError) {
+                    console.debug("Ledger reconciliation failed:", reconcileError);
+                  }
+
                   // Refresh transactions if on transactions tab
                   if (activeTab === "transactions") {
                     loadTransactions();
@@ -2228,6 +2247,23 @@ export default function AdminDashboard() {
                         Configure
                       </Button>
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            // Treasury uses wallet address, but we can still reconcile it
+                            const result = await supabaseService.reconcileBalance(TREASURY_WALLET.toLowerCase());
+                            toast.success(`Treasury reconciled. Difference: ${result.difference.toFixed(2)} xBGL`);
+                            await loadTreasuryBalance();
+                          } catch (error: any) {
+                            toast.error("Reconciliation failed: " + error.message);
+                          }
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reconcile Ledger
+                      </Button>
+                      <Button
                         variant="cosmic"
                         onClick={() => setShowTreasuryTransferDialog(true)}
                         className="shadow-glow-accent"
@@ -3016,6 +3052,14 @@ export default function AdminDashboard() {
                     }
                     return u;
                   }));
+
+                  // Reconcile balances with ledger
+                  try {
+                    await supabaseService.reconcileBalance(TREASURY_WALLET.toLowerCase());
+                    await supabaseService.reconcileBalance(recipientWalletAddress);
+                  } catch (reconcileError) {
+                    console.debug("Ledger reconciliation failed:", reconcileError);
+                  }
 
                   // Auto-sync: Reload users to get fresh balance data from Supabase
                   await loadUsers();

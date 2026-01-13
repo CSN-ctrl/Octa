@@ -143,8 +143,21 @@ export default function FinancialHub() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ownedPlots.map((plot) => (
-                <Card key={plot.id} className="border-primary/10">
-                  <CardContent className="p-4">
+                <Card key={plot.id} className="border-primary/10 overflow-hidden relative min-h-[200px]">
+                  {/* Plot Preview Image as Background */}
+                  <div className="absolute inset-0 z-0">
+                    <img
+                      src="/plot-preview.png"
+                      alt={`Plot #${plot.id} preview`}
+                      className="w-full h-full object-cover opacity-30"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/80 to-background/60" />
+                  </div>
+                  
+                  <CardContent className="p-4 relative z-10">
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <div className="font-semibold">Plot #{plot.id}</div>

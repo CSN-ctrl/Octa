@@ -88,8 +88,23 @@ export function AssetList({ assets, title = "Holdings" }: AssetListProps) {
                     const documents = asset.metadata?.documents;
 
                     return (
-                        <div key={assetId} className="rounded-lg bg-card/40 border border-transparent hover:border-primary/20 transition-colors">
-                            <div className="flex items-center justify-between p-4 hover:bg-card/60 transition-colors cursor-pointer" onClick={() => toggleExpand(assetId)}>
+                        <div key={assetId} className={`rounded-lg bg-card/40 border border-transparent hover:border-primary/20 transition-colors overflow-hidden relative ${isPlot ? 'min-h-[120px]' : ''}`}>
+                            {/* Plot Preview Image as Background (only for plots) */}
+                            {isPlot && (
+                                <div className="absolute inset-0 z-0">
+                                    <img
+                                        src="/plot-preview.png"
+                                        alt={`Plot #${asset.identifier} preview`}
+                                        className="w-full h-full object-cover opacity-20"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/80 to-background/70" />
+                                </div>
+                            )}
+                            
+                            <div className={`flex items-center justify-between p-4 hover:bg-card/60 transition-colors cursor-pointer ${isPlot ? 'relative z-10' : ''}`} onClick={() => toggleExpand(assetId)}>
                                 <div className="flex items-center gap-4 flex-1">
                                     <div className={`p-2 rounded-full bg-background/50 ${colorClass}`}>
                                         <Icon className="h-5 w-5" />

@@ -28,6 +28,9 @@ import PurchaseConfirmation from "./pages/PurchaseConfirmation";
 import Lore from "./pages/Lore";
 import HowItWorks from "./pages/HowItWorks";
 import EmailVerified from "./pages/EmailVerified";
+import AuthCallback from "./pages/AuthCallback";
+import OAuthConsent from "./pages/OAuthConsent";
+import OAuthTestClient from "./pages/OAuthTestClient";
 import { loadContractAddresses } from "@/lib/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -80,6 +83,9 @@ const App = () => {
                     <Route path="/lore" element={<Lore />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
                     <Route path="/email-verified" element={<EmailVerified />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/oauth/consent" element={<OAuthConsent />} />
+                    <Route path="/oauth-test-client" element={<OAuthTestClient />} />
                     <Route path="/plots" element={<Navigate to="/dashboard" replace />} />
                     
                     {/* Protected routes */}
