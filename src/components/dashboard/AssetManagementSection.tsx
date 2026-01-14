@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -41,7 +42,6 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import { toast } from "sonner";
 import { PlotDocumentUpload } from "@/components/plots/PlotDocumentUpload";
 import { PlotFractionalOwnership } from "@/components/plots/PlotFractionalOwnership";
 import { TransactionHistory } from "@/components/TransactionHistory";
@@ -113,6 +113,9 @@ export function AssetManagementSection({
   });
   const [showFractionalOwnership, setShowFractionalOwnership] = useState<number | null>(null);
   const [showDocumentUpload, setShowDocumentUpload] = useState<number | null>(null);
+  const [showAffiliateDialog, setShowAffiliateDialog] = useState(false);
+  const [applicationReason, setApplicationReason] = useState("");
+  const [submittingApplication, setSubmittingApplication] = useState(false);
 
   // Use external tab state if provided, otherwise use internal state
   const activeTab = externalActiveTab ?? internalActiveTab;
@@ -175,9 +178,9 @@ export function AssetManagementSection({
         </div>
         <div className="flex gap-2">
           <Button 
-            variant={activeTab === "affiliate" ? "default" : "outline"} 
+            variant="outline"
             onClick={() => {
-              setActiveTab("affiliate");
+              setShowAffiliateDialog(true);
               onLoadAffiliateData();
             }}
           >
@@ -655,6 +658,107 @@ export function AssetManagementSection({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Affiliate Application Dialog */}
+      <Dialog open={showAffiliateDialog} onOpenChange={setShowAffiliateDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Become an Affiliate
+            </DialogTitle>
+            <DialogDescription>
+              Join our affiliate program and help grow the ChaosStar Network
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {/* Information Section */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-2">What is the Affiliate Program?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Our affiliate program is designed for individuals and organizations who want to 
+                  help expand the ChaosStar Network. As an affiliate, you'll receive tailored 
+                  compensation for bringing new users to our platform.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold mb-2">Benefits</h3>
+                <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+                  <li>Tailored compensation structure based on your contribution</li>
+                  <li>Track your referrals and their activity</li>
+                  <li>Support the growth of the ChaosStar ecosystem</li>
+                  <li>Exclusive access to affiliate resources and tools</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2">How It Works</h3>
+                <p className="text-sm text-muted-foreground">
+                  Once approved, you'll receive a unique affiliate code to share with others. 
+                  When someone uses your code to join or make purchases, you'll be credited 
+                  according to our tailored compensation structure.
+                </p>
+              </div>
+            </div>
+
+            {/* Application Form */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="application-reason">
+                  Why do you want to become an affiliate? (Optional)
+                </Label>
+                <Textarea
+                  id="application-reason"
+                  value={applicationReason}
+                  onChange={(e) => setApplicationReason(e.target.value)}
+                  placeholder="Tell us about your interest in promoting ChaosStar Network..."
+                  rows={4}
+                />
+              </div>
+              <Button
+                className="w-full"
+                disabled={submittingApplication}
+                onClick={async () => {
+                  if (!address) {
+                    toast.error("Please connect your wallet");
+                    return;
+                  }
+                  setSubmittingApplication(true);
+                  try {
+                    const { applyForAffiliate } = await import("@/lib/affiliate-service");
+                    const result = await applyForAffiliate(address, applicationReason || undefined);
+                    
+                    if (result.success) {
+                      toast.success("Application submitted successfully! We'll review it soon.");
+                      setApplicationReason("");
+                      setShowAffiliateDialog(false);
+                      onLoadAffiliateData();
+                    } else {
+                      toast.error(result.error || "Failed to submit application");
+                    }
+                  } catch (error: any) {
+                    logger.error("Failed to submit application:", error);
+                    toast.error("Failed to submit application");
+                  } finally {
+                    setSubmittingApplication(false);
+                  }
+                }}
+              >
+                {submittingApplication ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Application"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -433,7 +433,7 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
                         
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Amount:</span>
-                          <span className={`text-lg font-bold ${isIncoming ? "text-green-400" : "text-orange-400"}`}>
+                          <span className={`text-lg font-bold ${isIncoming ? "text-green-400" : "text-red-400"}`}>
                             {isIncoming ? "+" : "-"}{formatValue(tx.value, tx.token_type)} {tx.token_type || "xBGL"}
                           </span>
                         </div>

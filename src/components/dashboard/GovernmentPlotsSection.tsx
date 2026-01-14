@@ -1,16 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Grid3x3,
   MapPin,
   ShoppingBag,
   Loader2,
   CheckCircle2,
+  Info,
+  Mail,
+  Wallet,
 } from "lucide-react";
 import { LazyImage } from "@/components/ui/LazyImage";
+import * as supabaseService from "@/lib/supabase-service";
 
 interface GovernmentPlotsSectionProps {
   governmentPlots: any[];
@@ -37,9 +47,9 @@ export function GovernmentPlotsSection({
           <div className="flex items-center gap-2">
             <Grid3x3 className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle className="select-none">All Land Plots</CardTitle>
+              <CardTitle className="select-none">Land Registry</CardTitle>
               <CardDescription className="select-none mt-1">
-                All plots from the city grid - {governmentPlots.length} total plots
+                Official registry of all land plots - {governmentPlots.length} total plots
               </CardDescription>
             </div>
           </div>
@@ -64,56 +74,23 @@ export function GovernmentPlotsSection({
             <p>No plots found in the grid</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="all">All Plots ({governmentPlots.length})</TabsTrigger>
-                <TabsTrigger value="available">Available ({availablePlots.length})</TabsTrigger>
-                <TabsTrigger value="owned">Owned ({ownedPlots.length})</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="all" className="mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto">
-                  {governmentPlots.map((plot: any) => (
-                    <PlotCard
-                      key={plot.id}
-                      plot={plot}
-                      address={address}
-                      purchasingItem={purchasingItem}
-                      onPurchasePlot={onPurchasePlot}
-                    />
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="available" className="mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto">
-                  {availablePlots.map((plot: any) => (
-                    <PlotCard
-                      key={plot.id}
-                      plot={plot}
-                      address={address}
-                      purchasingItem={purchasingItem}
-                      onPurchasePlot={onPurchasePlot}
-                    />
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="owned" className="mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto">
-                  {ownedPlots.map((plot: any) => (
-                    <PlotCard
-                      key={plot.id}
-                      plot={plot}
-                      address={address}
-                      purchasingItem={purchasingItem}
-                      onPurchasePlot={onPurchasePlot}
-                    />
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
+          <div className="space-y-2 max-h-[600px] overflow-y-auto">
+            {ownedPlots.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground select-none">
+                <Grid3x3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No owned plots found</p>
+              </div>
+            ) : (
+              ownedPlots.map((plot: any) => (
+                <PlotListItem
+                  key={plot.id}
+                  plot={plot}
+                  address={address}
+                  purchasingItem={purchasingItem}
+                  onPurchasePlot={onPurchasePlot}
+                />
+              ))
+            )}
           </div>
         )}
       </CardContent>
@@ -121,7 +98,7 @@ export function GovernmentPlotsSection({
   );
 }
 
-function PlotCard({
+function PlotListItem({
   plot,
   address,
   purchasingItem,
@@ -134,74 +111,188 @@ function PlotCard({
 }) {
   const isOwned = plot.owner_wallet && plot.owner_wallet !== null;
   const isPurchasing = purchasingItem === `plot-${plot.id}`;
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
+  const [loadingEmail, setLoadingEmail] = useState(false);
+
+  useEffect(() => {
+    if (isOwned && plot.owner_wallet && showInfoDialog) {
+      // Fetch owner email when dialog opens
+      setLoadingEmail(true);
+      supabaseService.getOwnershipByWallet(plot.owner_wallet)
+        .then((ownership) => {
+          setOwnerEmail(ownership?.email || null);
+        })
+        .catch(() => {
+          setOwnerEmail(null);
+        })
+        .finally(() => {
+          setLoadingEmail(false);
+        });
+    }
+  }, [isOwned, plot.owner_wallet, showInfoDialog]);
+
+  // Also fetch email for display in list (lazy load)
+  const [listOwnerEmail, setListOwnerEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (isOwned && plot.owner_wallet && !listOwnerEmail) {
+      supabaseService.getOwnershipByWallet(plot.owner_wallet)
+        .then((ownership) => {
+          setListOwnerEmail(ownership?.email || null);
+        })
+        .catch(() => {
+          // Silently fail for list display
+        });
+    }
+  }, [isOwned, plot.owner_wallet, listOwnerEmail]);
 
   return (
-    <Card className={`border-border/50 hover:border-primary/30 transition-colors overflow-hidden relative min-h-[280px] ${isOwned ? 'opacity-75' : ''}`}>
-      <div className="absolute inset-0 z-0">
-        <LazyImage
-          src="/plot-preview.png"
-          alt={`Plot #${plot.id} preview`}
-          className="w-full h-full object-cover opacity-30"
-          fallback="/placeholder.svg"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/80 to-background/60" />
-      </div>
-      
-      <CardHeader className="pb-3 relative z-10">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg select-none">Plot #{plot.id}</CardTitle>
-            <CardDescription className="flex items-center gap-1 mt-1 select-none">
-              <MapPin className="h-3 w-3" />
-              ({plot.coord_x}, {plot.coord_y})
-            </CardDescription>
+    <>
+      <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg hover:border-primary/30 transition-colors bg-card">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
+            <LazyImage
+              src="/plot-preview.png"
+              alt={`Plot #${plot.id} preview`}
+              className="w-full h-full object-cover"
+              fallback="/placeholder.svg"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
           </div>
-          {isOwned ? (
-            <Badge variant="secondary" className="select-none">Owned</Badge>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-sm font-medium select-none">Plot #{plot.id}</h3>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1 select-none">
+                <MapPin className="h-3 w-3" />
+                ({plot.coord_x}, {plot.coord_y})
+              </div>
+              {plot.zone_type && (
+                <span className="select-none">Zone: {plot.zone_type}</span>
+              )}
+              <span className="select-none">Price: {plot.price_xbgl || 100} xBGL</span>
+              {isOwned && (
+                <span className="text-xs select-none flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  {listOwnerEmail || plot.owner_wallet}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex-shrink-0 ml-4">
+          {!isOwned ? (
+            <Button
+              size="sm"
+              onClick={() => onPurchasePlot(plot)}
+              disabled={isPurchasing}
+            >
+              {isPurchasing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Purchasing...
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="h-4 w-4 mr-2" /> Purchase
+                </>
+              )}
+            </Button>
           ) : (
-            <Badge variant="default" className="select-none">Available</Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowInfoDialog(true)}
+            >
+              <Info className="h-4 w-4" />
+            </Button>
           )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3 relative z-10">
-        {plot.zone_type && (
-          <div className="text-sm select-none">
-            <span className="text-muted-foreground">Zone: </span>
-            <span className="font-medium">{plot.zone_type}</span>
+      </div>
+
+      {/* Plot Information Dialog */}
+      <Dialog open={showInfoDialog} onOpenChange={setShowInfoDialog}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden [&>button]:!hidden">
+          {/* Background Image */}
+          <div className="absolute inset-0 z-0">
+            <LazyImage
+              src="/plot-preview.png"
+              alt={`Plot #${plot.id} preview`}
+              className="w-full h-full object-cover"
+              fallback="/placeholder.svg"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
           </div>
-        )}
-        {isOwned && (
-          <div className="text-xs text-muted-foreground select-none">
-            Owner: {plot.owner_wallet.slice(0, 8)}...{plot.owner_wallet.slice(-6)}
-          </div>
-        )}
-        <div className="text-sm select-none">
-          <span className="text-muted-foreground">Price: </span>
-          <span className="font-medium">{plot.price_xbgl || 100} xBGL</span>
-        </div>
-        {!isOwned ? (
-          <Button
-            className="w-full"
-            onClick={() => onPurchasePlot(plot)}
-            disabled={isPurchasing}
-          >
-            {isPurchasing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Purchasing...
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="h-4 w-4 mr-2" /> Purchase Plot
-              </>
+
+          {/* Content Overlay */}
+          <div className="relative z-10 p-6 space-y-4">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Grid3x3 className="h-5 w-5" />
+                Plot #{plot.id} - Land Information
+              </DialogTitle>
+              <DialogDescription>
+                Complete details about this land plot
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Plot Details */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground">Plot ID</label>
+                <p className="font-semibold">#{plot.id}</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Coordinates</label>
+                <p className="font-semibold flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  ({plot.coord_x}, {plot.coord_y})
+                </p>
+              </div>
+              {plot.zone_type && (
+                <div>
+                  <label className="text-xs text-muted-foreground">Zone Type</label>
+                  <p className="font-semibold">{plot.zone_type}</p>
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-muted-foreground">Price</label>
+                <p className="font-semibold">{plot.price_xbgl || 100} xBGL</p>
+              </div>
+            </div>
+
+            {/* Owner Information */}
+            {isOwned && (
+              <div className="border-t border-border/50 pt-4 space-y-3">
+                <h4 className="font-semibold text-sm">Owner Information</h4>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Wallet className="h-3 w-3" />
+                      Wallet Address
+                    </label>
+                    <p className="font-mono text-sm break-all">{plot.owner_wallet}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      Email Address
+                    </label>
+                    {loadingEmail ? (
+                      <p className="text-sm text-muted-foreground">Loading...</p>
+                    ) : ownerEmail ? (
+                      <p className="font-medium text-sm">{ownerEmail}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No email registered</p>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
-          </Button>
-        ) : (
-          <Button variant="outline" className="w-full" disabled>
-            <CheckCircle2 className="h-4 w-4 mr-2" /> Already Owned
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

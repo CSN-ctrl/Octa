@@ -1,12 +1,18 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   RefreshCw,
+  Grid3x3,
+  Package,
+  TrendingUp,
+  ShoppingBag,
 } from "lucide-react";
 import { GovernmentPlotsSection } from "./GovernmentPlotsSection";
 import { GovernmentResourcesSection } from "./GovernmentResourcesSection";
 import { MyListingsSection } from "./MyListingsSection";
 import { MarketplaceListingsSection } from "./MarketplaceListingsSection";
+import { PrimaryMarketStats } from "./PrimaryMarketStats";
 
 interface MarketplaceSectionProps {
   address: string | null;
@@ -61,38 +67,72 @@ export function MarketplaceSection({
         </Button>
       </div>
 
-      {/* Government Plots */}
-      <GovernmentPlotsSection
+      {/* Market Statistics */}
+      <PrimaryMarketStats
         governmentPlots={governmentPlots}
-        loadingMarket={loadingMarket}
-        address={address}
-        purchasingItem={purchasingItem}
-        onPurchasePlot={onPurchaseGovernmentPlot}
-      />
-
-      {/* Government Resources */}
-      <GovernmentResourcesSection
         governmentResources={governmentResources}
-        loadingMarket={loadingMarket}
-        purchasingItem={purchasingItem}
-        onPurchaseResource={onPurchaseResource}
-      />
-
-      {/* My Listings */}
-      <MyListingsSection
-        myListings={myListings}
-        ownedPlots={ownedPlots}
-        onListPlotForSale={onListPlotForSale}
-        onCancelListing={onCancelListing}
-      />
-
-      {/* Marketplace Listings */}
-      <MarketplaceListingsSection
         marketListings={marketListings}
+        myListings={myListings}
         address={address}
-        purchasingItem={purchasingItem}
-        onPurchaseFromMarketplace={onPurchaseFromMarketplace}
       />
+
+      <Tabs defaultValue="land-registry" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="land-registry" className="flex items-center gap-2">
+            <Grid3x3 className="h-4 w-4" />
+            Land Registry
+          </TabsTrigger>
+          <TabsTrigger value="resources" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Resources
+          </TabsTrigger>
+          <TabsTrigger value="my-listings" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            My Listings
+          </TabsTrigger>
+          <TabsTrigger value="marketplace" className="flex items-center gap-2">
+            <ShoppingBag className="h-4 w-4" />
+            Marketplace
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="land-registry" className="mt-6">
+          <GovernmentPlotsSection
+            governmentPlots={governmentPlots}
+            loadingMarket={loadingMarket}
+            address={address}
+            purchasingItem={purchasingItem}
+            onPurchasePlot={onPurchaseGovernmentPlot}
+          />
+        </TabsContent>
+
+        <TabsContent value="resources" className="mt-6">
+          <GovernmentResourcesSection
+            governmentResources={governmentResources}
+            loadingMarket={loadingMarket}
+            purchasingItem={purchasingItem}
+            onPurchaseResource={onPurchaseResource}
+          />
+        </TabsContent>
+
+        <TabsContent value="my-listings" className="mt-6">
+          <MyListingsSection
+            myListings={myListings}
+            ownedPlots={ownedPlots}
+            onListPlotForSale={onListPlotForSale}
+            onCancelListing={onCancelListing}
+          />
+        </TabsContent>
+
+        <TabsContent value="marketplace" className="mt-6">
+          <MarketplaceListingsSection
+            marketListings={marketListings}
+            address={address}
+            purchasingItem={purchasingItem}
+            onPurchaseFromMarketplace={onPurchaseFromMarketplace}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
