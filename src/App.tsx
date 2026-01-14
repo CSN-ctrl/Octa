@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,31 +9,34 @@ import { SimProvider } from "@/contexts/SimContext";
 import { SubnetProvider } from "@/contexts/SubnetContext";
 import { Navigation } from "./components/Navigation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-// Core pages only
-import UnifiedUniverse from "./pages/UnifiedUniverse";
-import PlotPurchase from "./pages/PlotPurchase";
-import PlotSell from "./pages/PlotSell";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import Business from "./pages/Business";
-import ILOLanding from "./pages/ILOLanding";
-import NotFound from "./pages/NotFound";
-import FinancialHub from "./pages/FinancialHub";
-import NanofiberResearch from "./pages/NanofiberResearch";
-import DigitalID from "./pages/DigitalID";
-import QuickActions from "./pages/QuickActions";
-import PurchaseConfirmation from "./pages/PurchaseConfirmation";
-import Lore from "./pages/Lore";
-import HowItWorks from "./pages/HowItWorks";
-import EmailVerified from "./pages/EmailVerified";
-import AuthCallback from "./pages/AuthCallback";
-import OAuthConsent from "./pages/OAuthConsent";
-import OAuthTestClient from "./pages/OAuthTestClient";
+import { LoadingSpinner } from "./components/LoadingSpinner";
 import { loadContractAddresses } from "@/lib/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+
+// Lazy load all pages for code splitting
+const UnifiedUniverse = lazy(() => import("./pages/UnifiedUniverse"));
+const PlotPurchase = lazy(() => import("./pages/PlotPurchase"));
+const PlotSell = lazy(() => import("./pages/PlotSell"));
+const Login = lazy(() => import("./pages/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const Business = lazy(() => import("./pages/Business"));
+const ILOLanding = lazy(() => import("./pages/ILOLanding"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const FinancialHub = lazy(() => import("./pages/FinancialHub"));
+const NanofiberResearch = lazy(() => import("./pages/NanofiberResearch"));
+const DigitalID = lazy(() => import("./pages/DigitalID"));
+const QuickActions = lazy(() => import("./pages/QuickActions"));
+const PurchaseConfirmation = lazy(() => import("./pages/PurchaseConfirmation"));
+const Lore = lazy(() => import("./pages/Lore"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const EmailVerified = lazy(() => import("./pages/EmailVerified"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const OAuthTestClient = lazy(() => import("./pages/OAuthTestClient"));
 
 const queryClient = new QueryClient();
 
@@ -42,9 +45,9 @@ const App = () => {
   useEffect(() => {
     loadContractAddresses().then((loaded) => {
       if (loaded) {
-        console.log("✓ App: Contract addresses ready");
+        // Contract addresses loaded successfully
       } else {
-        console.debug("Contract addresses not loaded, some features may not work");
+        // Contract addresses not loaded, some features may not work
       }
     });
   }, []);
@@ -67,53 +70,63 @@ const App = () => {
               <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
                 <Navigation />
                 <div className="flex-1 w-full">
-                  <Routes>
-                    {/* Public routes */}
-                    <Route path="/signup" element={<Login />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/universe" element={<UnifiedUniverse />} />
-                    <Route path="/business" element={<Business />} />
-                    <Route path="/ilo" element={<ILOLanding />} />
-                    <Route path="/ilo-landing" element={<ILOLanding />} />
-                    <Route path="/financial-hub" element={<FinancialHub />} />
-                    <Route path="/nanofiber-research" element={<NanofiberResearch />} />
-                    <Route path="/digital-id" element={<DigitalID />} />
-                    <Route path="/quick-actions" element={<QuickActions />} />
-                    <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
-                    <Route path="/lore" element={<Lore />} />
-                    <Route path="/how-it-works" element={<HowItWorks />} />
-                    <Route path="/email-verified" element={<EmailVerified />} />
-                    <Route path="/auth/callback" element={<AuthCallback />} />
-                    <Route path="/oauth/consent" element={<OAuthConsent />} />
-                    <Route path="/oauth-test-client" element={<OAuthTestClient />} />
-                    <Route path="/plots" element={<Navigate to="/dashboard" replace />} />
-                    
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <Routes>
+                      {/* Public routes */}
+                      <Route path="/signup" element={<Login />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/universe" element={<UnifiedUniverse />} />
+                      <Route path="/business" element={<Business />} />
+                      <Route path="/ilo" element={<ILOLanding />} />
+                      <Route path="/ilo-landing" element={<ILOLanding />} />
+                      <Route path="/financial-hub" element={<FinancialHub />} />
+                      <Route path="/nanofiber-research" element={<NanofiberResearch />} />
+                      <Route path="/digital-id" element={<DigitalID />} />
+                      <Route path="/quick-actions" element={<QuickActions />} />
+                      <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
+                      <Route path="/lore" element={<Lore />} />
+                      <Route path="/how-it-works" element={<HowItWorks />} />
+                      <Route path="/email-verified" element={<EmailVerified />} />
+                      <Route path="/auth/callback" element={<AuthCallback />} />
+                      <Route path="/oauth/consent" element={<OAuthConsent />} />
+                      <Route path="/oauth-test-client" element={<OAuthTestClient />} />
+                      <Route path="/plots" element={<Navigate to="/dashboard" replace />} />
+                      
                     {/* Protected routes */}
                     <Route path="/dashboard" element={
                       <ProtectedRoute>
-                        <Dashboard />
+                        <RouteErrorBoundary routeName="Dashboard">
+                          <Dashboard />
+                        </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
                     <Route path="/plot-purchase" element={
                       <ProtectedRoute>
-                        <PlotPurchase />
+                        <RouteErrorBoundary routeName="Plot Purchase">
+                          <PlotPurchase />
+                        </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
                     <Route path="/plot-sell" element={
                       <ProtectedRoute>
-                        <PlotSell />
+                        <RouteErrorBoundary routeName="Plot Sell">
+                          <PlotSell />
+                        </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
                     <Route path="/admin-dashboard" element={
                       <ProtectedRoute>
-                        <AdminDashboard />
+                        <RouteErrorBoundary routeName="Admin Dashboard">
+                          <AdminDashboard />
+                        </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
-                    
-                    {/* Default route - redirect based on auth */}
-                    <Route path="/" element={<HomeRedirect />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
+                      
+                      {/* Default route - redirect based on auth */}
+                      <Route path="/" element={<HomeRedirect />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
                 </div>
               </div>
             </BrowserRouter>

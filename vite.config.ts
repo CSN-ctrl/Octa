@@ -65,5 +65,36 @@ export default defineConfig(({ mode }) => ({
     // Generate source maps for production debugging (hidden = separate .map files, not embedded)
     sourcemap: mode === "production" ? "hidden" : true,
     minify: mode === "production" ? "esbuild" : false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // UI libraries
+          'ui-vendor': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-accordion',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-tooltip',
+          ],
+          // Supabase
+          'supabase': ['@supabase/supabase-js'],
+          // Blockchain
+          'ethers': ['ethers'],
+          // 3D graphics
+          'three': ['three'],
+          // Charts
+          'charts': ['chart.js', 'react-chartjs-2', 'recharts'],
+          // Forms
+          'forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          // Utils
+          'utils': ['date-fns', 'clsx', 'tailwind-merge', 'lucide-react'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
 }));

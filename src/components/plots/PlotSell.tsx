@@ -435,9 +435,9 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
       }
     } else {
       // Wallet-based transfer
-      if (!recipient || !ethers.isAddress(recipient)) {
-        toast.error("Please enter a valid recipient address");
-        return;
+    if (!recipient || !ethers.isAddress(recipient)) {
+      toast.error("Please enter a valid recipient address");
+      return;
       }
     }
 
@@ -689,7 +689,7 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-base">Plot #{plotId}</span>
-                          {metadata && (
+                      {metadata && (
                             <Badge variant="outline" className="text-xs">
                               ({metadata.x}, {metadata.y})
                             </Badge>
@@ -698,8 +698,8 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                         {metadata && (
                           <div className="text-xs text-muted-foreground mt-1">
                             Level {metadata.level} • Value: 100 xBGL
-                          </div>
-                        )}
+                        </div>
+                      )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -753,16 +753,16 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
                     />
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="recipient">Recipient Wallet Address</Label>
-                    <Input
+                  <Input
                       id="recipient"
-                      placeholder="0x..."
-                      value={recipient}
-                      onChange={(e) => setRecipient(e.target.value)}
-                      className="font-mono"
-                    />
-                  </div>
+                    placeholder="0x..."
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    className="font-mono"
+                  />
+                </div>
                 )}
 
                 <Dialog open={showDialog} onOpenChange={setShowDialog}>

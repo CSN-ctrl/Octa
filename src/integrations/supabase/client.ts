@@ -8,20 +8,23 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Check if WebSocket is available for realtime
+const isWebSocketAvailable = typeof WebSocket !== 'undefined';
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
   },
-  realtime: {
-    // Only use WebSocket if available
-    transport: typeof WebSocket !== 'undefined' ? 'websocket' : undefined,
-    params: {
-      eventsPerSecond: 10
+  // Only configure realtime if WebSocket is available
+  ...(isWebSocketAvailable ? {
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      },
     },
-    heartbeatIntervalMs: 30000,
-  },
+  } : {}),
   global: {
     headers: {
       'x-client-info': 'chaosstar-web'
