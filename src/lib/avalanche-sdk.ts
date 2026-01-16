@@ -41,24 +41,10 @@ const isMainnet = chainId === '43114';
  * Note: The client is built on viem, so it has viem's public client methods
  */
 export function createClient() {
-  // Use ChaosStar EVM RPC as primary (blockchain ID from sidecar.json)
-  const rpcUrl = import.meta.env.VITE_CHAOSSTAR_RPC || 
-    import.meta.env.VITE_AVALANCHE_RPC || 
-    (isMainnet 
-      ? 'http://127.0.0.1:24362/ext/bc/ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy/rpc'
-      : 'https://api.avax-test.network/ext/bc/C/rpc'
-    );
-
-  const client = createAvalancheClient({
-    chain: isMainnet ? avalanche : avalancheFuji,
-    transport: {
-      type: 'http',
-      url: rpcUrl,
-    },
-  });
-  
-  // The client extends viem's public client, so it has getBalance method
-  return client;
+  // RPC connections disabled - using Supabase as backend only
+  // If RPC is needed, use: http://151.237.142.106
+  // For now, always return null to disable RPC connections
+  return null as any;
 }
 
 /**

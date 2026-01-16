@@ -39,40 +39,10 @@ export function ChaosStarStatus() {
     );
   }
 
+  // Hide component when not connected - no error notifications needed
+  // App uses Supabase only, so connection status is not critical
   if (!isConnected) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className="inline-flex">
-            <Badge variant="destructive" className="gap-1 cursor-pointer hover:bg-destructive/80">
-              <XCircle className="h-3 w-3" />
-              <span className="hidden sm:inline">Offline</span>
-            </Badge>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-destructive" />
-              <h4 className="font-semibold">Backend Disconnected</h4>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {error || "Cannot connect to ChaosStar backend. Some features may not work."}
-            </p>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>Start the backend with:</p>
-              <code className="block bg-muted px-2 py-1 rounded text-xs">
-                chaosstar octavia start
-              </code>
-            </div>
-            <Button size="sm" onClick={reconnect} className="w-full gap-2">
-              <RefreshCw className="h-3 w-3" />
-              Retry Connection
-            </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
+    return null;
   }
 
   // Connected

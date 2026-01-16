@@ -6,12 +6,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { SimProvider } from "@/contexts/SimContext";
-import { SubnetProvider } from "@/contexts/SubnetContext";
 import { Navigation } from "./components/Navigation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoadingSpinner } from "./components/LoadingSpinner";
+import { DefaultStructuredData } from "./components/StructuredData";
 import { loadContractAddresses } from "@/lib/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -38,7 +38,22 @@ const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const OAuthTestClient = lazy(() => import("./pages/OAuthTestClient"));
 
-const queryClient = new QueryClient();
+// Configure React Query with optimized defaults
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes - data is fresh for 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes - cache time (formerly cacheTime)
+      retry: 1, // Only retry once on failure
+      refetchOnWindowFocus: false, // Don't refetch on window focus to reduce unnecessary requests
+      refetchOnMount: true, // Refetch when component mounts
+      refetchOnReconnect: true, // Refetch when network reconnects
+    },
+    mutations: {
+      retry: 0, // Don't retry mutations
+    },
+  },
+});
 
 const App = () => {
   // Load contract addresses on app startup
@@ -56,9 +71,8 @@ const App = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SimProvider>
-          <SubnetProvider>
-            <WalletProvider>
-              <TooltipProvider>
+          <WalletProvider>
+            <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter
@@ -67,9 +81,11 @@ const App = () => {
                 v7_relativeSplatPath: true,
               }}
             >
+              <DefaultStructuredData />
+              {/* SkipNavigation component removed */}
               <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
                 <Navigation />
-                <div className="flex-1 w-full">
+                <main id="main-content" className="flex-1 w-full" tabIndex={-1}>
                   <Suspense fallback={<LoadingSpinner />}>
                     <Routes>
                       {/* Public routes */}
@@ -127,12 +143,11 @@ const App = () => {
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>
-                </div>
+                </main>
               </div>
             </BrowserRouter>
           </TooltipProvider>
         </WalletProvider>
-        </SubnetProvider>
         </SimProvider>
       </QueryClientProvider>
     </ErrorBoundary>

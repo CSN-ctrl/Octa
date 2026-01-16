@@ -1,6 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import * as accountApi from "@/lib/api";
-import { toast } from "sonner";
+import { createContext, useContext, ReactNode } from "react";
 
 interface SubnetInfo {
   name: string;
@@ -22,123 +20,33 @@ interface SubnetContextType {
 
 const SubnetContext = createContext<SubnetContextType | undefined>(undefined);
 
+/**
+ * SubnetProvider - No-op implementation
+ * Subnet connections have been removed. This provider exists for backward compatibility only.
+ * All network operations are now handled through Supabase.
+ */
 export function SubnetProvider({ children }: { children: ReactNode }) {
-  const [currentSubnet, setCurrentSubnet] = useState<SubnetInfo | null>(null);
-  const [availableSubnets, setAvailableSubnets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [subnetStatus, setSubnetStatus] = useState<"connected" | "disconnected" | "unknown">("unknown");
-
-  const loadSubnets = async () => {
-    setLoading(true);
-    try {
-      const result = await accountApi.listAvalancheSubnets();
-      setAvailableSubnets(result.subnets || []);
-      
-      // Auto-select first subnet or ChaosStarNetwork if available
-      const subnets = result.subnets || [];
-      const preferredSubnet = subnets.find((s: any) => 
-        s.name === "ChaosStarNetwork" || s.name.toLowerCase().includes("chaos")
-      ) || subnets[0];
-      
-      if (preferredSubnet && !currentSubnet) {
-        await selectSubnet(preferredSubnet.name);
-      }
-    } catch (error: any) {
-      // Suppress expected connection errors when backend is not available
-      const isConnectionError = error.name === 'AbortError' || 
-                               error.name === 'TypeError' ||
-                               error.message?.includes('Failed to fetch') ||
-                               error.message?.includes('ERR_CONNECTION_REFUSED') ||
-                               error.message?.includes('Backend not available');
-      
-      if (!isConnectionError) {
-        console.error("Failed to load subnets:", error);
-      } else {
-        console.debug("Backend not available for subnet loading");
-      }
-      setAvailableSubnets([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectSubnet = async (subnetName: string) => {
-    try {
-      setLoading(true);
-      const details = await accountApi.describeAvalancheSubnet(subnetName);
-      
-      if (details.success && details.parsed) {
-        const subnetInfo: SubnetInfo = {
-          name: subnetName,
-          rpc_url: details.parsed.rpc_urls?.localhost || details.parsed.wallet_connection?.network_rpc_url,
-          blockchain_id: details.parsed.avalanche_blockchain_id,
-          subnet_id: details.parsed.avalanche_subnet_id,
-          status: "connected",
-        };
-        
-        setCurrentSubnet(subnetInfo);
-        setSubnetStatus("connected");
-        
-        // Store in localStorage for persistence
-        localStorage.setItem("selected_subnet", JSON.stringify(subnetInfo));
-        
-        toast.success(`Connected to ${subnetName}`);
-      } else {
-        setSubnetStatus("disconnected");
-        toast.error(`Failed to connect to ${subnetName}`);
-      }
-    } catch (error: any) {
-      console.error("Failed to select subnet:", error);
-      setSubnetStatus("disconnected");
-      toast.error(`Error connecting to subnet: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const refreshSubnetInfo = async () => {
-    if (!currentSubnet) return;
-    await selectSubnet(currentSubnet.name);
-  };
-
-  // Load subnets on mount
-  useEffect(() => {
-    loadSubnets();
-    
-    // Try to restore from localStorage
-    try {
-      const stored = localStorage.getItem("selected_subnet");
-      if (stored) {
-        const subnetInfo = JSON.parse(stored);
-        setCurrentSubnet(subnetInfo);
-        setSubnetStatus(subnetInfo.status || "unknown");
-      }
-    } catch (error) {
-      console.error("Failed to restore subnet from storage:", error);
-    }
-  }, []);
-
-  return (
-    <SubnetContext.Provider
-      value={{
-        currentSubnet,
-        availableSubnets,
-        loading,
-        loadSubnets,
-        selectSubnet,
-        subnetStatus,
-        refreshSubnetInfo,
-      }}
-    >
-      {children}
-    </SubnetContext.Provider>
-  );
+  // Return children directly without any subnet logic
+  return <>{children}</>;
 }
 
+/**
+ * useSubnet - No-op hook
+ * Returns empty/default values. Subnet connections have been removed.
+ */
 export function useSubnet() {
   const context = useContext(SubnetContext);
   if (context === undefined) {
-    throw new Error("useSubnet must be used within a SubnetProvider");
+    // Return a no-op implementation instead of throwing
+    return {
+      currentSubnet: null,
+      availableSubnets: [],
+      loading: false,
+      loadSubnets: async () => {},
+      selectSubnet: async () => {},
+      subnetStatus: "unknown" as const,
+      refreshSubnetInfo: async () => {},
+    };
   }
   return context;
 }

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Wallet, Mail, Lock, Eye, EyeOff, ArrowLeft, LogIn, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { logger } from "@/lib/logger";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ export default function Login() {
             });
             
             if (updateError) {
-              console.warn("Failed to update wallet address:", updateError);
+              logger.warn("Failed to update wallet address:", updateError);
               // Don't block login if update fails
             }
           }
@@ -100,7 +101,7 @@ export default function Login() {
         navigate("/dashboard");
       }
     } catch (err: any) {
-      console.error("Login error:", err);
+      logger.error("Login error:", err);
       setError(err.message || "Invalid email or password. Please try again.");
       toast.error(err.message || "Login failed");
     } finally {
@@ -162,24 +163,26 @@ export default function Login() {
         });
 
         if (updateError) {
-          console.error("Failed to update user metadata:", updateError);
+          logger.error("Failed to update user metadata:", updateError);
         }
 
         // Also create/update digital identity if needed
         try {
-          const { error: identityError } = await supabase
-            .from("digital_identities")
-            .upsert({
-              wallet_address: address.toLowerCase(),
-              name: email.split("@")[0],
-              identity_type: "user",
-            });
+          if (address) {
+            const { error: identityError } = await supabase
+              .from("digital_identities")
+              .upsert({
+                wallet_address: address.toLowerCase(),
+                name: email.split("@")[0] || "user",
+                identity_type: "user",
+              });
 
-          if (identityError) {
-            console.debug("Failed to create digital identity:", identityError);
+            if (identityError) {
+              logger.debug("Failed to create digital identity:", identityError);
+            }
           }
         } catch (err) {
-          console.debug("Digital identity creation skipped:", err);
+          logger.debug("Digital identity creation skipped:", err);
         }
       }
 
@@ -192,7 +195,7 @@ export default function Login() {
         setConfirmPassword("");
       }, 2000);
     } catch (err: any) {
-      console.error("Sign up error:", err);
+      logger.error("Sign up error:", err);
       setError(err.message || "Failed to create account. Please try again.");
       toast.error(err.message || "Failed to create account");
     } finally {

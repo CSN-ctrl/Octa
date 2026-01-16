@@ -14,14 +14,19 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting - Gradually enabling strict mode */
-    "strict": false,
+    /* Linting - Strict mode enabled */
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
     "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
 
     "baseUrl": ".",
     "paths": {

@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initSentry } from "./lib/sentry";
+
+// Initialize Sentry error tracking
+const sentry = initSentry();
 // IndexedDB removed - using Supabase only
 
 // Suppress SES lockdown console messages (informational messages from WalletConnect's security system)
@@ -134,14 +138,12 @@ window.addEventListener('error', (event) => {
     stack: event.error?.stack,
   });
   
-  // Log to error tracking service if available
-  if (typeof window !== 'undefined' && (window as any).Sentry) {
-    (window as any).Sentry.captureException(event.error || new Error(event.message), {
-      tags: {
-        type: 'uncaught_error',
-      },
-    });
-  }
+  // Log to error tracking service
+  sentry.captureException(event.error || new Error(event.message), {
+    tags: {
+      type: 'uncaught_error',
+    },
+  });
 });
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -150,17 +152,15 @@ window.addEventListener('unhandledrejection', (event) => {
     promise: event.promise,
   });
   
-  // Log to error tracking service if available
-  if (typeof window !== 'undefined' && (window as any).Sentry) {
-    (window as any).Sentry.captureException(
-      event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
-      {
-        tags: {
-          type: 'unhandled_promise_rejection',
-        },
-      }
-    );
-  }
+  // Log to error tracking service
+  sentry.captureException(
+    event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
+    {
+      tags: {
+        type: 'unhandled_promise_rejection',
+      },
+    }
+  );
   
   // Prevent default browser behavior (console error)
   // event.preventDefault();

@@ -37,14 +37,21 @@ export async function loadChaosStarConnection(): Promise<ChaosStarConnection | n
 
 /**
  * Get ChaosStar RPC endpoint from connection config or use default
+ * Note: RPC connections are disabled - using Supabase as backend
+ * If RPC is needed, use http://151.237.142.106
  */
-export async function getChaosStarRpc(): Promise<string> {
+export async function getChaosStarRpc(): Promise<string | null> {
   const config = await loadChaosStarConnection();
   if (config?.chaosstar_network?.rpc_endpoint) {
-    return config.chaosstar_network.rpc_endpoint;
+    // Only use if it's not localhost
+    const rpcUrl = config.chaosstar_network.rpc_endpoint;
+    if (!rpcUrl.includes('localhost') && !rpcUrl.includes('127.0.0.1')) {
+      return rpcUrl;
+    }
   }
-  // Default fallback
-  return 'http://127.0.0.1:41773/ext/bc/wtHFpLKd93iiPmBBsCdeTEPz6Quj9MoCL8NpuxoFXHtvTVeT1/rpc';
+  // No localhost fallback - return null to indicate RPC not available
+  // Use Supabase or http://151.237.142.106 instead
+  return null;
 }
 
 /**

@@ -25,7 +25,8 @@ export async function fetchPlots(address: string): Promise<BackendPlot[]> {
       }
     }));
   } catch (error: any) {
-    console.debug("Failed to fetch plots from Supabase:", error.message);
+    const { logger } = await import("@/lib/logger");
+    logger.debug("Failed to fetch plots from Supabase:", error.message);
     return [];
   }
 }
@@ -43,7 +44,8 @@ export async function savePlot(wallet: string, tokenId: number | string, metadat
       metadata_cid: metadata.metadata_cid || null,
     });
   } catch (error: any) {
-    console.debug("Failed to save plot to Supabase:", error.message);
+    const { logger } = await import("@/lib/logger");
+    logger.debug("Failed to save plot to Supabase:", error.message);
   }
 }
 
@@ -66,7 +68,8 @@ export async function fetchPendingPurchases(): Promise<PendingPurchase[]> {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.debug("Failed to fetch pending purchases:", error.message);
+      const { logger } = await import("@/lib/logger");
+      logger.debug("Failed to fetch pending purchases:", error.message);
       return [];
     }
 
@@ -78,7 +81,8 @@ export async function fetchPendingPurchases(): Promise<PendingPurchase[]> {
       timestamp: new Date(purchase.created_at).getTime(),
     }));
   } catch (error: any) {
-    console.debug("Failed to fetch pending purchases:", error.message);
+    const { logger } = await import("@/lib/logger");
+    logger.debug("Failed to fetch pending purchases:", error.message);
     return [];
   }
 }
@@ -88,7 +92,8 @@ export async function activatePlot(plotId: number, recipient?: string): Promise<
   try {
     // This function is deprecated - use purchasePlot from supabase-service instead
     // Keeping for backward compatibility
-    console.warn("activatePlot is deprecated, use purchasePlot from supabase-service");
+    const { logger } = await import("@/lib/logger");
+    logger.warn("activatePlot is deprecated, use purchasePlot from supabase-service");
     return { txHash: "", status: 0 };
   } catch (error: any) {
     throw new Error(`Activation failed: ${error.message}`);
@@ -231,7 +236,52 @@ export async function registerPlotToPortfolio(plotId: number, wallet: string, pr
     
     return { success: true, plotId, wallet };
   } catch (error: any) {
-    console.debug("Failed to register plot to portfolio:", error.message);
+    const { logger } = await import("@/lib/logger");
+    logger.debug("Failed to register plot to portfolio:", error.message);
     return null;
   }
+}
+
+// Avalanche Subnet API functions (stubs for backward compatibility)
+export interface AvalancheSubnet {
+  name: string;
+  subnet_id?: string;
+  blockchain_id?: string;
+  rpc_url?: string;
+}
+
+export interface AvalancheSubnetsResponse {
+  subnets: AvalancheSubnet[];
+}
+
+export async function listAvalancheSubnets(): Promise<AvalancheSubnetsResponse> {
+  // Stub function - returns empty list since we're using Supabase
+  // This maintains backward compatibility with SubnetContext
+  return {
+    subnets: [
+      {
+        name: "ChaosStarNetwork",
+        blockchain_id: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
+        rpc_url: "http://127.0.0.1:24362/ext/bc/ChaosStar/rpc",
+      },
+    ],
+  };
+}
+
+export interface AvalancheSubnetDetails {
+  name: string;
+  subnet_id?: string;
+  blockchain_id?: string;
+  rpc_url?: string;
+  chain_id?: number;
+}
+
+export async function describeAvalancheSubnet(subnetName: string): Promise<AvalancheSubnetDetails> {
+  // Stub function - returns default ChaosStar network info
+  return {
+    name: subnetName,
+    blockchain_id: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
+    rpc_url: "http://127.0.0.1:24362/ext/bc/ChaosStar/rpc",
+    chain_id: 8088,
+  };
 }

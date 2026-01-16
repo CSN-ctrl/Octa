@@ -64,15 +64,9 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
       throw new Error("No accounts found. Please unlock your wallet and try again.");
     }
 
-    // Note: Network switching is optional - wallet connection works for signing regardless of network
-    // Using Supabase for data, so network doesn't matter for signing operations
-    try {
-      await addChaosStarNetwork(provider);
-    } catch (networkError: any) {
-      // If network switch fails, that's OK - we can still sign transactions
-      // User can manually switch networks later if needed
-      console.debug("Network switch optional - wallet can still sign:", networkError.message);
-    }
+    // Network switching disabled - using Supabase only, not ChaosStar network
+    // Wallet connection works for signing regardless of network
+    // No need to switch networks since we're using Supabase as backend
 
     // Use the wallet's provider for signing only (no RPC needed - using Supabase)
     const web3Provider = new ethers.BrowserProvider(provider);
@@ -128,38 +122,12 @@ export async function connectWithPrivateKey(privateKey: string) {
   return { signer: wallet, address, provider: null };
 }
 
-// Add ChaosStar Network to wallet (no RPC needed - just for wallet display)
+// Network switching disabled - using Supabase only, not ChaosStar network
+// This function is kept for backward compatibility but does nothing
 export async function addChaosStarNetwork(provider?: any): Promise<boolean> {
-  const walletProvider = provider || (window as any).ethereum;
-  if (!walletProvider) {
-    throw new Error("No wallet found. Please install a wallet extension.");
-  }
-  
-  // Get the actual provider if it's wrapped
-  let actualProvider = walletProvider;
-  if (Array.isArray(walletProvider.providers)) {
-    actualProvider = walletProvider.providers[0] || walletProvider;
-  }
-
-  try {
-    // Try to switch to the network first
-    await actualProvider.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: CHAOSSTAR_NETWORK.chainIdHex }],
-    });
-    return true;
-  } catch (switchError: any) {
-    // If network doesn't exist, we can't add it without an RPC URL
-    // Just return false - wallet connection will still work for signing
-    if (switchError.code === 4902) {
-      console.debug("ChaosStar network not configured in wallet - this is OK, using Supabase only");
-      return false;
-    } else if (switchError.code === 4001) {
-      // User rejected the switch
-      throw new Error("Network switch was rejected. Please approve the request in your wallet.");
-    }
-    throw switchError;
-  }
+  // Network switching disabled - using Supabase as backend only
+  // Wallet can stay on any network, signing will work regardless
+  return false;
 }
 
 // Get current chain ID from wallet
@@ -179,10 +147,12 @@ export async function getCurrentChainId(provider?: any): Promise<number | null> 
 export { detectWallets, getWalletProvider, getBestWallet, isWalletInstalled } from "./wallet-detection";
 export type { WalletInfo } from "./wallet-detection";
 
-// Check if connected to ChaosStar network
+// Check if connected to ChaosStar network - DISABLED
+// Always returns false since we're using Supabase only
 export async function isConnectedToChaosStar(): Promise<boolean> {
-  const chainId = await getCurrentChainId();
-  return chainId === CHAOSSTAR_NETWORK.chainId;
+  // ChaosStar network connections have been removed
+  // All operations now use Supabase
+  return false;
 }
 
 // RPC functions removed - using Supabase only

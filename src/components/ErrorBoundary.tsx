@@ -1,4 +1,7 @@
 import React, { Component, ReactNode } from "react";
+import { initSentry } from "@/lib/sentry";
+
+const sentry = initSentry();
 
 interface Props {
   children: ReactNode;
@@ -34,16 +37,14 @@ export class ErrorBoundary extends Component<Props, State> {
     
     console.error("Error details:", JSON.stringify(errorDetails, null, 2));
     
-    // Try to send to error tracking service if available
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, {
-        contexts: {
-          react: {
-            componentStack: errorInfo.componentStack,
-          },
+    // Send to error tracking service
+    sentry.captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
         },
-      });
-    }
+      },
+    });
   }
 
   render() {

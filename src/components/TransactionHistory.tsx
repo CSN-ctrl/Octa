@@ -163,36 +163,78 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
     const identifier = userEmail?.toLowerCase() || address?.toLowerCase() || "";
     if (!identifier) return;
 
-    const channel = supabase
-      .channel(`transactions-${identifier}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'transactions',
-          filter: `from_address=eq.${identifier}`,
-        },
-        () => {
-          loadTransactions();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'transactions',
-          filter: `to_address=eq.${identifier}`,
-        },
-        () => {
-          loadTransactions();
-        }
-      )
-      .subscribe();
+    // Check if WebSocket is available
+    if (typeof WebSocket === 'undefined') {
+      logger.debug("WebSocket not available, skipping realtime subscription");
+      return;
+    }
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    try {
+      channel = supabase
+        .channel(`transactions-${identifier}`, {
+          config: {
+            broadcast: { self: false },
+          },
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'transactions',
+            filter: `from_address=eq.${identifier}`,
+          },
+          () => {
+            logger.debug("Transaction change detected (from)");
+            loadTransactions();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'transactions',
+            filter: `to_address=eq.${identifier}`,
+          },
+          () => {
+            logger.debug("Transaction change detected (to)");
+            loadTransactions();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            logger.debug("Transaction subscription active");
+          } else if (status === 'CHANNEL_ERROR') {
+            logger.debug("Transaction subscription error - will use polling only");
+          } else if (status === 'TIMED_OUT') {
+            logger.debug("Transaction subscription timed out - will use polling only");
+          } else if (status === 'CLOSED') {
+            logger.debug("Transaction subscription closed");
+          }
+        });
+
+      // Handle subscription errors gracefully
+      if (channel) {
+        channel.on('error', (error) => {
+          logger.debug("Realtime channel error:", error);
+        });
+      }
+    } catch (error: any) {
+      // If subscription fails, log and continue with polling
+      logger.debug("Failed to setup transaction subscription:", error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch (error) {
+          logger.debug("Error removing channel:", error);
+        }
+      }
     };
   }, [address, userEmail, limit]);
 

@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import { GalaxyVisualization } from "@/components/GalaxyVisualization";
 import { Card as UICard } from "@/components/ui/card";
 import { fetchPlots, type BackendPlot } from "@/lib/api";
@@ -26,6 +27,7 @@ import * as supabaseService from "@/lib/supabase-service";
 import { OctagonalGrid } from "@/components/OctagonalGrid";
 import { NetworkTopology } from "@/components/NetworkTopology";
 import { useNavigate } from "react-router-dom";
+import { LazyImage } from "@/components/ui/LazyImage";
 
 // Real planet data is now fetched from blockchain contracts via useRealPlanetStats hook
 
@@ -80,7 +82,7 @@ export default function UnifiedUniverse() {
         }
       } catch (error: any) {
         // Silently handle errors - Supabase might not be available
-        console.debug("Could not fetch planets from Supabase:", error);
+        logger.debug("Could not fetch planets from Supabase:", error);
       }
     }
     fetchPlanets();
@@ -99,7 +101,7 @@ export default function UnifiedUniverse() {
         );
         setPopulationCount(uniqueOwners.size);
       } catch (error: any) {
-        console.debug("Could not fetch population from Supabase:", error);
+        logger.debug("Could not fetch population from Supabase:", error);
         setPopulationCount(0);
       }
     }
@@ -119,7 +121,7 @@ export default function UnifiedUniverse() {
           plotsRemaining: status.plotsRemaining,
         });
       } catch (error: any) {
-        console.debug("Could not fetch ILO status:", error);
+        logger.debug("Could not fetch ILO status:", error);
         setIloStatus({
           isOpen: true,
           currentParticipants: 0,
@@ -149,7 +151,7 @@ export default function UnifiedUniverse() {
           setTotalUsers(data.total_users);
         }
       } catch (error) {
-        console.debug("Could not fetch total users count:", error);
+        logger.debug("Could not fetch total users count:", error);
       }
     };
     
@@ -248,12 +250,12 @@ export default function UnifiedUniverse() {
       const { getRegistryPlotsByOwner } = await import("@/lib/api");
       const plotIds = await getRegistryPlotsByOwner(address);
       if (plotIds && plotIds.length > 0) {
-        console.log(`✅ Fetched ${plotIds.length} plots from Registry API for ${address}`);
+        logger.debug(`✅ Fetched ${plotIds.length} plots from Registry API for ${address}`);
         setOwnedPlotIds(plotIds);
         return;
       }
     } catch (error: any) {
-      console.debug("Registry API failed, trying other sources:", error.message);
+      logger.debug("Registry API failed, trying other sources:", error.message);
     }
 
     // Priority 2: Try useLandPlots hook data (already loaded)
@@ -2123,7 +2125,7 @@ export default function UnifiedUniverse() {
     <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
       <div className="relative h-[500px] overflow-hidden mb-16">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-40" />
+          <LazyImage src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-40" loading="eager" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background"></div>
         </div>
         <div className="relative container mx-auto px-4 h-full flex items-center justify-center text-center">

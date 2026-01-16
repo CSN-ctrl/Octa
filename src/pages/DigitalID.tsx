@@ -25,6 +25,7 @@ import {
   Trash2
 } from "lucide-react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAccountManagement } from "@/contexts/AccountManagementContext";
 import { useDigitalID } from "@/hooks/useDigitalID";
@@ -43,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LazyImage } from "@/components/ui/LazyImage";
 
 const DigitalID = () => {
   const navigate = useNavigate();
@@ -179,8 +181,8 @@ const DigitalID = () => {
       const firstNameToUse = idType === 'personal' ? firstName : (idType === 'corporate' ? representativeName : contactPerson);
       const lastNameToUse = idType === 'personal' ? lastName : (idType === 'corporate' ? representativeTitle : "");
       
-      const txHash = await registerDigitalID(firstNameToUse, lastNameToUse, emailToUse, avatarUrl);
-      toast.success(`${idType === 'personal' ? 'Personal' : idType === 'corporate' ? 'Corporate' : 'Organization'} Digital ID registered! TX: ${txHash.slice(0, 10)}...`);
+      await registerDigitalID(firstNameToUse, lastNameToUse, emailToUse, avatarUrl);
+      toast.success(`${idType === 'personal' ? 'Personal' : idType === 'corporate' ? 'Corporate' : 'Organization'} Digital ID registered successfully!`);
       
       // Refresh Digital ID status
       await checkDigitalID();
@@ -227,7 +229,7 @@ const DigitalID = () => {
         toast.info("Redirecting...");
       }
     } catch (error: any) {
-      console.error("Registration error:", error);
+      logger.error("Registration error:", error);
       toast.error(error.message || "Failed to register Digital ID");
     } finally {
       setRegistering(false);
@@ -247,7 +249,7 @@ const DigitalID = () => {
       
       toast.success("New wallet created on Chaos Star Network!");
     } catch (error: any) {
-      console.error("Error creating wallet:", error);
+      logger.error("Error creating wallet:", error);
       toast.error("Failed to create new wallet");
     }
   };
@@ -267,8 +269,8 @@ const DigitalID = () => {
       // RPC provider removed - using Supabase only
       // Provider not needed for signing - wallet signer is used instead
 
-      // Create wallet from private key
-      const wallet = new ethers.Wallet(newWalletPrivateKey, provider);
+      // Create wallet from private key (no provider needed for key generation)
+      const wallet = new ethers.Wallet(newWalletPrivateKey);
       
       // Try to connect via MetaMask by requesting account switch
       const { ethereum } = window as any;
@@ -283,11 +285,13 @@ const DigitalID = () => {
       }
 
       // Check Digital ID for new wallet
-      await checkDigitalID(newWalletAddress);
+      if (newWalletAddress) {
+        await checkDigitalID(newWalletAddress);
+      }
       
       toast.success("Wallet created successfully!");
     } catch (error: any) {
-      console.error("Error switching wallet:", error);
+      logger.error("Error switching wallet:", error);
       toast.error(error.message || "Failed to switch wallet");
     } finally {
       setSwitchingWallet(false);
@@ -305,7 +309,7 @@ const DigitalID = () => {
         await checkDigitalID(address);
       }
     } catch (error: any) {
-      console.error("Error switching wallet:", error);
+      logger.error("Error switching wallet:", error);
       toast.error(error.message || "Failed to switch wallet");
     } finally {
       setSwitchingWallet(false);
@@ -833,11 +837,6 @@ const DigitalID = () => {
   return (
     <div className="min-h-screen pt-20">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
-        {currentSubnet && (
-          <div className="mb-6">
-            <SubnetSelector />
-          </div>
-        )}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-5xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
@@ -1036,7 +1035,7 @@ const DigitalID = () => {
             <div className="flex flex-col items-center text-center">
               <div className="w-24 h-24 rounded-full bg-gradient-cosmic mb-4 flex items-center justify-center overflow-hidden">
                 {digitalID?.avatarURI ? (
-                  <img src={digitalID.avatarURI} alt="avatar" className="w-24 h-24 object-cover" />
+                  <LazyImage src={digitalID.avatarURI} alt="avatar" className="w-24 h-24 object-cover rounded-full" />
                 ) : (
                   <User className="h-12 w-12 text-primary-foreground" />
                 )}

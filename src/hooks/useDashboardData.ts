@@ -119,62 +119,108 @@ export function useDashboardData(address: string | null, walletAddress: string |
       
       if (!identifier) return;
 
-      // Balance subscription
-      const balanceChannel = supabase
-        .channel(`balance-${identifier}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'user_balances',
-            filter: `wallet_address=eq.${identifier}`,
-          },
-          async () => {
-            try {
-              const updatedBalance = await supabaseService.getUserBalance(identifier);
-              if (updatedBalance) {
-                setData(prev => ({ ...prev, balance: updatedBalance }));
-              }
-            } catch (err) {
-              logger.debug("Failed to refresh balance from subscription:", err);
-            }
-          }
-        )
-        .subscribe();
+      // Check if WebSocket is available
+      if (typeof WebSocket === 'undefined') {
+        logger.debug("WebSocket not available, skipping realtime subscriptions");
+        return;
+      }
 
-      // Transaction subscription
-      const transactionChannel = supabase
-        .channel(`transactions-${identifier}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'transactions',
-            filter: `from_address=eq.${identifier}`,
-          },
-          async () => {
-            await fetchData();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'transactions',
-            filter: `to_address=eq.${identifier}`,
-          },
-          async () => {
-            await fetchData();
-          }
-        )
-        .subscribe();
+      let balanceChannel: ReturnType<typeof supabase.channel> | null = null;
+      let transactionChannel: ReturnType<typeof supabase.channel> | null = null;
+
+      try {
+        // Balance subscription
+        balanceChannel = supabase
+          .channel(`balance-${identifier}`, {
+            config: {
+              broadcast: { self: false },
+            },
+          })
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'user_balances',
+              filter: `wallet_address=eq.${identifier}`,
+            },
+            async () => {
+              try {
+                const updatedBalance = await supabaseService.getUserBalance(identifier);
+                if (updatedBalance) {
+                  setData(prev => ({ ...prev, balance: updatedBalance }));
+                }
+              } catch (err) {
+                logger.debug("Failed to refresh balance from subscription:", err);
+              }
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              logger.debug("Balance subscription active");
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              logger.debug("Balance subscription error - will use polling only");
+            }
+          });
+
+        // Transaction subscription
+        transactionChannel = supabase
+          .channel(`transactions-${identifier}`, {
+            config: {
+              broadcast: { self: false },
+            },
+          })
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'transactions',
+              filter: `from_address=eq.${identifier}`,
+            },
+            async () => {
+              await fetchData();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'transactions',
+              filter: `to_address=eq.${identifier}`,
+            },
+            async () => {
+              await fetchData();
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              logger.debug("Transaction subscription active");
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              logger.debug("Transaction subscription error - will use polling only");
+            }
+          });
+      } catch (error: any) {
+        // If subscription fails, log and continue with polling
+        logger.debug("Failed to setup subscriptions:", error);
+      }
 
       return () => {
-        supabase.removeChannel(balanceChannel);
-        supabase.removeChannel(transactionChannel);
+        if (balanceChannel) {
+          try {
+            supabase.removeChannel(balanceChannel);
+          } catch (error) {
+            logger.debug("Error removing balance channel:", error);
+          }
+        }
+        if (transactionChannel) {
+          try {
+            supabase.removeChannel(transactionChannel);
+          } catch (error) {
+            logger.debug("Error removing transaction channel:", error);
+          }
+        }
       };
     };
 

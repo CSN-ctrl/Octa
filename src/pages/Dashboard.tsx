@@ -600,7 +600,7 @@ export default function Dashboard() {
         const balanceSubscription = balanceChannel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             logger.debug("Balance subscription active");
-          } else if (status === 'CHANNEL_ERROR') {
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             logger.debug("Balance subscription error - falling back to polling");
           }
         });
@@ -642,7 +642,7 @@ export default function Dashboard() {
         const transactionSubscription = transactionChannel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             logger.debug("Transaction subscription active");
-          } else if (status === 'CHANNEL_ERROR') {
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             logger.debug("Transaction subscription error - falling back to polling");
           }
         });

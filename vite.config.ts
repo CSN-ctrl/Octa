@@ -36,8 +36,9 @@ export default defineConfig(({ mode }) => ({
     // Don't set allowedHosts in development - plugin will handle it
     headers: {
       // Allow all sources in development mode for tunneling services and browser extensions
+      // Includes Supabase WebSocket connections
       "Content-Security-Policy": mode === "development"
-        ? "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; connect-src * ws: wss:; script-src * 'unsafe-inline' 'unsafe-eval' blob:; style-src * 'unsafe-inline'; font-src * data:; frame-src *;"
+        ? "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; connect-src * ws: wss: https://*.supabase.co wss://*.supabase.co; script-src * 'unsafe-inline' 'unsafe-eval' blob:; style-src * 'unsafe-inline'; font-src * data:; frame-src *;"
         : undefined,
     },
   },

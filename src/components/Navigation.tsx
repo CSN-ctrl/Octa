@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useWallet } from "@/contexts/WalletContext";
 import { useDigitalID } from "@/hooks/useDigitalID";
 import { useSim } from "@/contexts/SimContext";
-import { SubnetSelector } from "./SubnetSelector";
 import { ChaosStarStatus } from "./ChaosStarStatus";
 import { useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
@@ -180,7 +179,11 @@ export const Navigation = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-primary/30">
+    <nav 
+      className="fixed top-0 left-0 right-0 z-50 glass border-b border-primary/30"
+      role="navigation"
+      aria-label="Main navigation"
+    >
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -478,11 +481,13 @@ export const Navigation = () => {
                       <DialogHeader>
                         <DialogTitle>Network Settings</DialogTitle>
                         <DialogDescription>
-                          Configure your subnet connection and network preferences
+                          Network settings are managed through Supabase
                         </DialogDescription>
                       </DialogHeader>
                       <div className="mt-4">
-                        <SubnetSelector />
+                        <p className="text-sm text-muted-foreground">
+                          All network operations are handled through Supabase. No additional network configuration is required.
+                        </p>
                       </div>
                     </DialogContent>
                   </Dialog>

@@ -18,15 +18,13 @@ interface EnvVars {
   VITE_NATIVE_TOKEN?: string;
 }
 
-// Defaults for ChaosStar backend
-// Network: ChaosStar-local-node-local-network
-// Node: http://127.0.0.1:24362 [NodeID-MYY8LGJszhXRusAWnUuNTFeHCo1pZDoJP]
-// Blockchain ID: 4q1KP4TH6tiJSwX3xrx9Qx7qsSa9HpqyyC7fWMt2kcJBmWXUZ
-// Chain ID: 8088 (0x1F98)
+// Defaults - Using Supabase as backend (no direct blockchain RPC needed)
+// If you need to use a backend API, use http://151.237.142.106
 const defaults: Partial<EnvVars> = {
-  VITE_API_URL: 'http://localhost:5001', // Updated to match backend port
-  VITE_CHAOSSTAR_RPC: 'http://127.0.0.1:24362/ext/bc/ChaosStar/rpc',
-  VITE_STARGATE_RPC: 'http://localhost:8545',
+  VITE_API_URL: 'http://151.237.142.106:5001', // Use provided server or Supabase
+  // RPC endpoints disabled - using Supabase instead
+  VITE_CHAOSSTAR_RPC: undefined, // Not used - Supabase acts as network
+  VITE_STARGATE_RPC: undefined, // Not used - Supabase acts as network
   VITE_CHAIN_ID: '8088',
   VITE_BLOCKCHAIN_ID: 'ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy',
   VITE_NETWORK_NAME: 'ChaosStar Network',

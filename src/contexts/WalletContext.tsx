@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, type WalletInfo } from "@/lib/wallet";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { logger } from "@/lib/logger";
 
 interface WalletContextType {
   address: string | null;
@@ -99,7 +100,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch (error: any) {
-      console.error("Failed to connect wallet:", error);
+      logger.error("Failed to connect wallet:", error);
       
       // Provide helpful error messages
       let errorMessage = error.message || "Failed to connect wallet";
@@ -132,7 +133,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       await refreshBalance(newAddress);
       toast.success("Wallet connected with private key!");
     } catch (error: any) {
-      console.error("Failed to connect with private key:", error);
+      logger.error("Failed to connect with private key:", error);
       toast.error(error.message || "Failed to connect with private key");
     }
   };
@@ -176,7 +177,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       // Only log non-406 errors
       if (error?.status !== 406 && error?.code !== "PGRST301") {
-        console.debug("Failed to fetch balance from Supabase:", error);
+        logger.debug("Failed to fetch balance from Supabase:", error);
       }
       setBalance("0");
     }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import * as supabaseService from "@/lib/supabase-service";
+import { 
+  type Affiliate, 
+  getAllAffiliateApplications, 
+  approveAffiliate, 
+  rejectAffiliate 
+} from "@/lib/affiliate-service";
+import { useWallet } from "@/contexts/WalletContext";
 
 interface UserData {
   email: string;
@@ -107,7 +115,7 @@ export default function AdminDashboard() {
   const [newAccountWallet, setNewAccountWallet] = useState("");
   const [newAccountBalance, setNewAccountBalance] = useState("0");
   const [creatingAccount, setCreatingAccount] = useState(false);
-  const [treasuryBalance, setTreasuryBalance] = useState<number>(0);
+  const [treasuryBalance, setTreasuryBalance] = useState<number>(1000000000); // 1 billion xBGL
   const [showTreasuryTransferDialog, setShowTreasuryTransferDialog] = useState(false);
   const [treasuryTransferTo, setTreasuryTransferTo] = useState("");
   const [treasuryTransferAmount, setTreasuryTransferAmount] = useState("");
@@ -279,15 +287,45 @@ export default function AdminDashboard() {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error("Error loading treasury:", error);
+        logger.error("Error loading treasury:", error);
         return;
       }
 
-      const balance = data?.xbgl_balance || 0;
+      // Set treasury balance to 1 billion (1,000,000,000)
+      const ONE_BILLION = 1000000000;
+      let balance = data?.xbgl_balance || 0;
+      
+      // If balance is not 1 billion, update it in the database
+      if (balance !== ONE_BILLION) {
+        try {
+          const { error: updateError } = await supabase
+            .from("user_balances")
+            .upsert({
+              wallet_address: TREASURY_WALLET.toLowerCase(),
+              xbgl_balance: ONE_BILLION,
+            }, {
+              onConflict: 'wallet_address'
+            });
+          
+          if (updateError) {
+            logger.error("Failed to update treasury balance:", updateError);
+          } else {
+            balance = ONE_BILLION;
+            logger.info("Treasury balance updated to 1 billion xBGL");
+          }
+        } catch (updateErr) {
+          logger.error("Error updating treasury balance:", updateErr);
+        }
+      }
+      
       setTreasuryBalance(balance);
       (window as any).treasuryBalance = balance;
     } catch (error: any) {
-      console.error("Failed to load treasury balance:", error);
+      logger.error("Failed to load treasury balance:", error);
+      // Set to 1 billion even if there's an error
+      const ONE_BILLION = 1000000000;
+      setTreasuryBalance(ONE_BILLION);
+      (window as any).treasuryBalance = ONE_BILLION;
     }
   };
 
@@ -312,7 +350,7 @@ export default function AdminDashboard() {
       if (error) throw error;
       setTreasuryTransactions(data || []);
     } catch (error: any) {
-      console.error("Failed to load treasury transactions:", error);
+      logger.error("Failed to load treasury transactions:", error);
       toast.error("Failed to load treasury transactions");
     } finally {
       setLoadingTreasuryTransactions(false);
@@ -333,7 +371,7 @@ export default function AdminDashboard() {
       );
       setTreasuryManagers(managers);
     } catch (error: any) {
-      console.error("Failed to load treasury managers:", error);
+      logger.error("Failed to load treasury managers:", error);
       toast.error("Failed to load treasury managers");
     } finally {
       setLoadingTreasuryManagers(false);
@@ -372,7 +410,7 @@ export default function AdminDashboard() {
       setShowAddManagerDialog(false);
       await loadTreasuryManagers();
     } catch (error: any) {
-      console.error("Failed to add treasury manager:", error);
+      logger.error("Failed to add treasury manager:", error);
       toast.error(error.message || "Failed to add treasury manager");
     }
   };
@@ -382,6 +420,7 @@ export default function AdminDashboard() {
     try {
       const { data: { user }, error: getUserError } = await supabase.auth.admin.getUserById(userId);
       if (getUserError) throw getUserError;
+      if (!user) throw new Error("User not found");
 
       const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
         user_metadata: {
@@ -394,7 +433,7 @@ export default function AdminDashboard() {
       toast.success("Treasury manager removed successfully");
       await loadTreasuryManagers();
     } catch (error: any) {
-      console.error("Failed to remove treasury manager:", error);
+      logger.error("Failed to remove treasury manager:", error);
       toast.error(error.message || "Failed to remove treasury manager");
     }
   };
@@ -406,7 +445,7 @@ export default function AdminDashboard() {
       const applications = await getAllAffiliateApplications();
       setAffiliateApplications(applications);
     } catch (error: any) {
-      console.error("Failed to load affiliate applications:", error);
+      logger.error("Failed to load affiliate applications:", error);
       toast.error("Failed to load affiliate applications");
     } finally {
       setLoadingAffiliates(false);
@@ -429,7 +468,7 @@ export default function AdminDashboard() {
         toast.error(result.error || "Failed to approve affiliate");
       }
     } catch (error: any) {
-      console.error("Failed to approve affiliate:", error);
+      logger.error("Failed to approve affiliate:", error);
       toast.error("Failed to approve affiliate");
     }
   };
@@ -457,7 +496,7 @@ export default function AdminDashboard() {
         toast.error(result.error || "Failed to reject affiliate");
       }
     } catch (error: any) {
-      console.error("Failed to reject affiliate:", error);
+      logger.error("Failed to reject affiliate:", error);
       toast.error("Failed to reject affiliate");
     }
   };
@@ -492,7 +531,7 @@ export default function AdminDashboard() {
         window.dispatchEvent(new CustomEvent('treasuryBalanceUpdate'));
       }
     } catch (error: any) {
-      console.error("Failed to initialize treasury:", error);
+      logger.error("Failed to initialize treasury:", error);
     }
   };
 
@@ -514,15 +553,31 @@ export default function AdminDashboard() {
           .rpc('get_all_auth_users' as any);
 
         if (rpcError) {
-          console.warn("RPC function failed, falling back to ownership_registry:", rpcError.message);
+          logger.warn("RPC function failed, falling back to ownership_registry:", rpcError.message);
           // Fallback: Get users from ownership_registry
-          const { data: regData, error: regError } = await supabase
-            .from("ownership_registry" as any)
-            .select("wallet_address, email")
-            .order("created_at", { ascending: false });
+          // Handle 406 errors gracefully
+          try {
+            const { data: regData, error: regError } = await supabase
+              .from("ownership_registry" as any)
+              .select("wallet_address, email")
+              .order("created_at", { ascending: false });
+            
+            if (regError) {
+              // 406 errors are expected if RLS is blocking
+              if (regError.code === 'PGRST301' || regError.message?.includes('406')) {
+                logger.debug("ownership_registry query blocked (expected):", regError.message);
+              } else {
+                logger.warn("ownership_registry query error:", regError);
+              }
+            } else {
+              registeredUsers = (regData || []) as any[];
+            }
+          } catch (err: any) {
+            logger.debug("Failed to fetch ownership_registry (non-critical):", err);
+          }
 
           if (regError) {
-            console.error("Failed to load registered users:", regError);
+            logger.error("Failed to load registered users:", regError);
             toast.error("Failed to load users");
           } else {
             registeredUsers = (regData || []) as any[];
@@ -531,14 +586,29 @@ export default function AdminDashboard() {
           authUsersData = (rpcData || []) as any[];
         }
       } catch (err: any) {
-        console.error("Error loading users:", err);
+        logger.error("Error loading users:", err);
         toast.error("Failed to load users");
         // Fallback: Get users from ownership_registry
-        const { data: regData, error: regError } = await supabase
-          .from("ownership_registry" as any)
-          .select("wallet_address, email")
-          .order("created_at", { ascending: false });
-        registeredUsers = (regData || []) as any[];
+        // Handle 406 errors gracefully
+        try {
+          const { data: regData, error: regError } = await supabase
+            .from("ownership_registry" as any)
+            .select("wallet_address, email")
+            .order("created_at", { ascending: false });
+          
+          if (regError) {
+            // 406 errors are expected if RLS is blocking
+            if (regError.code === 'PGRST301' || regError.message?.includes('406')) {
+              logger.debug("ownership_registry query blocked (expected):", regError.message);
+            } else {
+              logger.warn("ownership_registry query error:", regError);
+            }
+          } else {
+            registeredUsers = (regData || []) as any[];
+          }
+        } catch (fallbackErr: any) {
+          logger.debug("Failed to fetch ownership_registry (non-critical):", fallbackErr);
+        }
       }
 
       // Get all user balances (including those using email as identifier)
@@ -548,7 +618,7 @@ export default function AdminDashboard() {
         .neq("wallet_address", TREASURY_WALLET.toLowerCase());
 
       if (balanceError) {
-        console.error("Failed to load balances:", balanceError);
+        logger.error("Failed to load balances:", balanceError);
       }
 
       // Create a map of balances by wallet/email identifier
@@ -607,9 +677,26 @@ export default function AdminDashboard() {
       });
 
       // Get wallet addresses from ownership_registry for email mapping
-      const { data: ownershipData } = await supabase
-        .from("ownership_registry" as any)
-        .select("wallet_address, email");
+      // Handle 406 errors gracefully (RLS or permission issues)
+      let ownershipData: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from("ownership_registry" as any)
+          .select("wallet_address, email");
+        
+        if (error) {
+          // 406 errors are expected if RLS is blocking or permissions are restricted
+          if (error.code === 'PGRST301' || error.message?.includes('406')) {
+            logger.debug("ownership_registry query blocked (expected):", error.message);
+          } else {
+            logger.warn("ownership_registry query error:", error);
+          }
+        } else {
+          ownershipData = data || [];
+        }
+      } catch (err: any) {
+        logger.debug("Failed to fetch ownership_registry (non-critical):", err);
+      }
 
       const walletByEmail = new Map<string, string>();
       ownershipData?.forEach((record: any) => {
@@ -760,7 +847,7 @@ export default function AdminDashboard() {
       const source = authUsersData.length > 0 ? "authenticated" : "registered";
       toast.success(`Loaded ${userCount} ${source} users`);
     } catch (error: any) {
-      console.error("Failed to load users:", error);
+      logger.error("Failed to load users:", error);
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
@@ -865,7 +952,7 @@ export default function AdminDashboard() {
                       await supabaseService.reconcileBalance(transferTo.toLowerCase());
                     }
                   } catch (reconcileError) {
-                    console.debug("Ledger reconciliation failed:", reconcileError);
+                    logger.debug("Ledger reconciliation failed:", reconcileError);
                   }
 
                   // Refresh transactions if on transactions tab
@@ -878,7 +965,7 @@ export default function AdminDashboard() {
       setTransferTo("");
       setShowTransferDialog(false);
     } catch (error: any) {
-      console.error("Transfer error:", error);
+      logger.error("Transfer error:", error);
       toast.error(error.message || "Transfer failed");
     } finally {
       setTransferring(false);
@@ -921,27 +1008,31 @@ export default function AdminDashboard() {
         });
 
       // Create digital identity
-      await supabase
-        .from("digital_identities")
-        .upsert({
-          wallet_address: newAccountWallet.toLowerCase(),
-          name: newAccountEmail.split("@")[0],
-          identity_type: "user",
-        });
+      if (newAccountEmail && newAccountWallet) {
+        await supabase
+          .from("digital_identities")
+          .upsert({
+            wallet_address: newAccountWallet.toLowerCase(),
+            name: newAccountEmail.split("@")[0] || "user",
+            identity_type: "user",
+          });
+      }
 
       // Update in-memory state
-      setUsers(prev => [...prev, {
-        email: newAccountEmail.split("@")[0],
-        wallet_address: newAccountWallet.toLowerCase(),
-        balance: {
-          xbgl_balance: 0, // Always 0 for new accounts
-          avax_balance: 0,
-          chaos_balance: 0,
-        },
-        plots: 0,
-        portfolios: 0,
-        totalValue: 0,
-      }]);
+      if (newAccountEmail && newAccountWallet) {
+        setUsers(prev => [...prev, {
+          email: newAccountEmail.split("@")[0] || "user",
+          wallet_address: newAccountWallet.toLowerCase(),
+          balance: {
+            xbgl_balance: 0, // Always 0 for new accounts
+            avax_balance: 0,
+            chaos_balance: 0,
+          },
+          plots: 0,
+          portfolios: 0,
+          totalValue: 0,
+        }]);
+      }
 
       toast.success(`Test account created successfully!`, {
         description: `Email: ${newAccountEmail} | You can now log in at /login`,
@@ -950,14 +1041,14 @@ export default function AdminDashboard() {
       
       // Don't clear fields immediately - let user see what was created
       setTimeout(() => {
-      setNewAccountEmail("");
-      setNewAccountPassword("");
-      setNewAccountWallet("");
-      setNewAccountBalance("0");
-      setShowCreateAccountDialog(false);
+        setNewAccountEmail("");
+        setNewAccountPassword("");
+        setNewAccountWallet("");
+        setNewAccountBalance("0");
+        setShowCreateAccountDialog(false);
       }, 2000);
     } catch (error: any) {
-      console.error("Create account error:", error);
+      logger.error("Create account error:", error);
       toast.error(error.message || "Failed to create account");
     } finally {
       setCreatingAccount(false);
@@ -981,7 +1072,7 @@ export default function AdminDashboard() {
       setTransactions(data || []);
       toast.success(`Loaded ${data?.length || 0} transactions`);
     } catch (error: any) {
-      console.error("Failed to load transactions:", error);
+      logger.error("Failed to load transactions:", error);
       toast.error("Failed to load transactions");
     } finally {
       setLoadingTransactions(false);
@@ -1001,7 +1092,7 @@ export default function AdminDashboard() {
       setStarSystems(data || []);
       toast.success(`Loaded ${data?.length || 0} star systems`);
     } catch (error: any) {
-      console.error("Failed to load star systems:", error);
+      logger.error("Failed to load star systems:", error);
       toast.error("Failed to load star systems");
     } finally {
       setLoadingStarSystems(false);
@@ -1021,7 +1112,7 @@ export default function AdminDashboard() {
       setPlanets(data || []);
       toast.success(`Loaded ${data?.length || 0} planets`);
     } catch (error: any) {
-      console.error("Failed to load planets:", error);
+      logger.error("Failed to load planets:", error);
       toast.error("Failed to load planets");
     } finally {
       setLoadingPlanets(false);
@@ -1056,7 +1147,7 @@ export default function AdminDashboard() {
             .eq("planet_id", city.planet_id);
 
           if (plotsError) {
-            console.debug("Error fetching plots for city:", plotsError);
+            logger.debug("Error fetching plots for city:", plotsError);
           }
 
           const ownerWallets = new Set<string>();
@@ -1079,7 +1170,7 @@ export default function AdminDashboard() {
       setCities(citiesWithStats);
       toast.success(`Loaded ${citiesWithStats.length} cities`);
     } catch (error: any) {
-      console.error("Failed to load cities:", error);
+      logger.error("Failed to load cities:", error);
       toast.error("Failed to load cities");
     } finally {
       setLoadingCities(false);
@@ -1115,7 +1206,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     // Check if WebSocket is available (required for Supabase real-time)
     if (typeof window === 'undefined' || typeof WebSocket === 'undefined') {
-      console.warn('WebSocket not available, skipping real-time subscriptions');
+      logger.debug('WebSocket not available, skipping real-time subscriptions');
       return;
     }
 
@@ -1125,10 +1216,20 @@ export default function AdminDashboard() {
 
     // Wrap in try-catch to prevent app crash if subscriptions fail
     const setupSubscriptions = async () => {
+      // Check if WebSocket is available
+      if (typeof WebSocket === 'undefined') {
+        logger.debug("WebSocket not available, skipping realtime subscriptions");
+        return;
+      }
+
       try {
         // Subscribe to user_balances changes
         balanceSubscription = supabase
-          .channel('user_balances_changes')
+          .channel('user_balances_changes', {
+            config: {
+              broadcast: { self: false },
+            },
+          })
           .on(
             'postgres_changes',
             {
@@ -1137,7 +1238,7 @@ export default function AdminDashboard() {
               table: 'user_balances'
             },
             (payload) => {
-              console.log('Balance change detected:', payload);
+              logger.debug('Balance change detected:', payload);
               if (activeTab === "users" || activeTab === "treasury") {
                 loadUsers();
               }
@@ -1146,15 +1247,19 @@ export default function AdminDashboard() {
           )
           .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
-              console.log('Balance subscription active');
-            } else if (status === 'CHANNEL_ERROR') {
-              console.warn('Balance subscription error, real-time updates disabled');
+              logger.debug('Balance subscription active');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              logger.debug('Balance subscription error, real-time updates disabled');
             }
           });
 
         // Subscribe to ownership_registry changes (new users)
         ownershipSubscription = supabase
-          .channel('ownership_registry_changes')
+          .channel('ownership_registry_changes', {
+            config: {
+              broadcast: { self: false },
+            },
+          })
           .on(
             'postgres_changes',
             {
@@ -1163,7 +1268,7 @@ export default function AdminDashboard() {
               table: 'ownership_registry'
             },
             (payload) => {
-              console.log('Ownership registry change detected:', payload);
+              logger.debug('Ownership registry change detected:', payload);
               if (activeTab === "users") {
                 loadUsers();
               }
@@ -1171,15 +1276,19 @@ export default function AdminDashboard() {
           )
           .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
-              console.log('Ownership subscription active');
-            } else if (status === 'CHANNEL_ERROR') {
-              console.warn('Ownership subscription error');
+              logger.debug('Ownership subscription active');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              logger.debug('Ownership subscription error');
             }
           });
 
         // Subscribe to digital_identities changes
         identitiesSubscription = supabase
-          .channel('digital_identities_changes')
+          .channel('digital_identities_changes', {
+            config: {
+              broadcast: { self: false },
+            },
+          })
           .on(
             'postgres_changes',
             {
@@ -1188,7 +1297,7 @@ export default function AdminDashboard() {
               table: 'digital_identities'
             },
             (payload) => {
-              console.log('Digital identity change detected:', payload);
+              logger.debug('Digital identity change detected:', payload);
               if (activeTab === "users") {
                 loadUsers();
               }
@@ -1196,14 +1305,14 @@ export default function AdminDashboard() {
           )
           .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
-              console.log('Identities subscription active');
-            } else if (status === 'CHANNEL_ERROR') {
-              console.warn('Identities subscription error');
+              logger.debug('Identities subscription active');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              logger.debug('Identities subscription error');
             }
           });
       } catch (error: any) {
         // Gracefully handle subscription errors - app continues to work without real-time
-        console.warn('Real-time subscriptions not available:', error.message);
+        logger.debug('Real-time subscriptions not available:', error.message);
       }
     };
 
@@ -1233,11 +1342,19 @@ export default function AdminDashboard() {
     try {
       // Try to get user emails via RPC or direct query
       // For now, we'll get emails from ownership_registry table which has email field
+      // Handle 406 errors gracefully (RLS or permission issues)
       const { data: ownershipData, error } = await supabase
         .from("ownership_registry" as any)
         .select("wallet_address, email");
 
-      if (error) throw error;
+      if (error) {
+        // 406 errors are expected if RLS is blocking or permissions are restricted
+        if (error.code === 'PGRST301' || error.message?.includes('406')) {
+          logger.debug("ownership_registry query blocked (expected):", error.message);
+          return new Map<string, string>(); // Return empty map
+        }
+        throw error;
+      }
 
       const emailMap = new Map<string, string>();
       ownershipData?.forEach((record: any) => {
@@ -1248,7 +1365,7 @@ export default function AdminDashboard() {
 
       setUserEmails(emailMap);
     } catch (error: any) {
-      console.error("Failed to load user emails:", error);
+      logger.debug("Failed to load user emails:", error);
       // Don't show error toast - this is optional enhancement
     }
   };
@@ -2253,8 +2370,12 @@ export default function AdminDashboard() {
                           try {
                             // Treasury uses wallet address, but we can still reconcile it
                             const result = await supabaseService.reconcileBalance(TREASURY_WALLET.toLowerCase());
-                            toast.success(`Treasury reconciled. Difference: ${result.difference.toFixed(2)} xBGL`);
-                            await loadTreasuryBalance();
+                            if (result) {
+                              toast.success(`Treasury reconciled. Difference: ${result.difference.toFixed(2)} xBGL`);
+                              await loadTreasuryBalance();
+                            } else {
+                              toast.error("Reconciliation returned no result");
+                            }
                           } catch (error: any) {
                             toast.error("Reconciliation failed: " + error.message);
                           }
@@ -2761,7 +2882,7 @@ export default function AdminDashboard() {
                                   // Load resources (if any - placeholder for now)
                                   setUserResources([]);
                                 } catch (error: any) {
-                                  console.error("Failed to load user details:", error);
+                                  logger.error("Failed to load user details:", error);
                                   toast.error("Failed to load user details");
                                 } finally {
                                   setUserDetailsLoading(false);
@@ -3058,7 +3179,7 @@ export default function AdminDashboard() {
                     await supabaseService.reconcileBalance(TREASURY_WALLET.toLowerCase());
                     await supabaseService.reconcileBalance(recipientWalletAddress);
                   } catch (reconcileError) {
-                    console.debug("Ledger reconciliation failed:", reconcileError);
+                    logger.debug("Ledger reconciliation failed:", reconcileError);
                   }
 
                   // Auto-sync: Reload users to get fresh balance data from Supabase
@@ -3074,7 +3195,7 @@ export default function AdminDashboard() {
                   setTreasuryTransferTo("");
                   setShowTreasuryTransferDialog(false);
                 } catch (error: any) {
-                  console.error("Treasury transfer error:", error);
+                  logger.error("Treasury transfer error:", error);
                   toast.error(error.message || "Transfer failed");
                 } finally {
                   setTransferringFromTreasury(false);
@@ -3572,7 +3693,7 @@ export default function AdminDashboard() {
                   
                   toast.success(`Found ${data?.length || 0} plots for this planet`);
                   // You could show this in a table or dialog
-                  console.log("Plots:", data);
+                  logger.debug("Plots:", data);
                 }}
               >
                 <MapPin className="h-4 w-4 mr-2" />

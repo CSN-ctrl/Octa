@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSim } from "@/contexts/SimContext";
-import { SubnetSelector } from "./SubnetSelector";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -192,11 +191,13 @@ export function SettingsButton() {
           <DialogHeader>
             <DialogTitle>Network Settings</DialogTitle>
             <DialogDescription>
-              Configure your subnet connection and network preferences
+              Network settings are managed through Supabase
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
-            <SubnetSelector />
+            <p className="text-sm text-muted-foreground">
+              All network operations are handled through Supabase. No additional network configuration is required.
+            </p>
           </div>
         </DialogContent>
       </Dialog>
