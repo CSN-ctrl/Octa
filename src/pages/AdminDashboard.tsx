@@ -749,9 +749,9 @@ export default function AdminDashboard() {
 
           // Ensure balance is never null
           const userBalance = {
-            xbgl_balance: isNaN(xbglBalance) ? 0 : xbglBalance,
-            avax_balance: isNaN(avaxBalance) ? 0 : avaxBalance,
-            chaos_balance: isNaN(chaosBalance) ? 0 : chaosBalance,
+            xbgl_balance: isNaN(xbglBalance) ? 0 : Math.max(0, xbglBalance), // Ensure non-negative
+            avax_balance: isNaN(avaxBalance) ? 0 : Math.max(0, avaxBalance),
+            chaos_balance: isNaN(chaosBalance) ? 0 : Math.max(0, chaosBalance),
           };
 
           return {
@@ -761,7 +761,7 @@ export default function AdminDashboard() {
             balance: userBalance,
             plots: Number(user.plots_count || 0),
             portfolios: Number(user.portfolios_count || 0),
-            totalValue: portfolioValue + plotsValue + xbglBalance,
+            totalValue: portfolioValue + plotsValue + userBalance.xbgl_balance, // Use sanitized balance
           };
         });
       } else {
@@ -773,11 +773,11 @@ export default function AdminDashboard() {
           const portfolios = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
           const plotsValue = plots * 100;
 
-          // Ensure balance is never null
+          // Ensure balance is never null and never negative
           const userBalance = balance ? {
-            xbgl_balance: Number(balance.xbgl_balance || 0),
-            avax_balance: Number(balance.avax_balance || 0),
-            chaos_balance: Number(balance.chaos_balance || 0),
+            xbgl_balance: Math.max(0, Number(balance.xbgl_balance || 0)),
+            avax_balance: Math.max(0, Number(balance.avax_balance || 0)),
+            chaos_balance: Math.max(0, Number(balance.chaos_balance || 0)),
           } : {
             xbgl_balance: 0,
             avax_balance: 0,
@@ -791,7 +791,7 @@ export default function AdminDashboard() {
             balance: userBalance,
             plots,
             portfolios: portfolios.count,
-            totalValue: portfolios.value + plotsValue + (balance?.xbgl_balance || 0),
+            totalValue: portfolios.value + plotsValue + userBalance.xbgl_balance, // Use sanitized balance
           };
         });
       }
@@ -804,11 +804,11 @@ export default function AdminDashboard() {
           const portfolios = portfoliosByOwner.get(wallet) || { count: 0, value: 0 };
           const plotsValue = plots * 100;
 
-          // Ensure balance is never null
+          // Ensure balance is never null and never negative
           const userBalance = {
-            xbgl_balance: Number(balance.xbgl_balance || 0),
-            avax_balance: Number(balance.avax_balance || 0),
-            chaos_balance: Number(balance.chaos_balance || 0),
+            xbgl_balance: Math.max(0, Number(balance.xbgl_balance || 0)),
+            avax_balance: Math.max(0, Number(balance.avax_balance || 0)),
+            chaos_balance: Math.max(0, Number(balance.chaos_balance || 0)),
           };
 
           return {
@@ -851,6 +851,83 @@ export default function AdminDashboard() {
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fix user balance function (for correcting incorrect balances)
+  const fixUserBalance = async (email: string, newBalance: number) => {
+    try {
+      // First, find the wallet address for this email
+      // Check ownership_registry first
+      const { data: ownershipData } = await supabase
+        .from("ownership_registry")
+        .select("wallet_address")
+        .eq("email", email.toLowerCase())
+        .limit(1)
+        .single();
+
+      let walletAddress: string | null = null;
+
+      if (ownershipData?.wallet_address) {
+        walletAddress = ownershipData.wallet_address.toLowerCase();
+      } else {
+        // Try to find from auth.users via RPC function or direct query
+        // Check if there's a way to get wallet from email
+        // For now, try using email as wallet_address identifier
+        walletAddress = email.toLowerCase();
+      }
+
+      if (!walletAddress) {
+        toast.error(`Could not find wallet address for ${email}`);
+        return;
+      }
+
+      // Get or create balance record
+      let balanceRecord: any = null;
+      const { data: existingBalance } = await supabase
+        .from("user_balances")
+        .select("*")
+        .eq("wallet_address", walletAddress)
+        .single();
+
+      balanceRecord = existingBalance;
+
+      // If balance doesn't exist, create it
+      if (!balanceRecord) {
+        const { data: newBalanceRecord } = await supabase
+          .from("user_balances")
+          .insert({
+            wallet_address: walletAddress,
+            xbgl_balance: newBalance,
+            avax_balance: 0,
+            chaos_balance: 0,
+          })
+          .select()
+          .single();
+        balanceRecord = newBalanceRecord;
+      } else {
+        // Update existing balance
+        const { data: updatedBalance } = await supabase
+          .from("user_balances")
+          .update({
+            xbgl_balance: Math.max(0, newBalance), // Ensure non-negative
+            last_synced: new Date().toISOString(),
+          })
+          .eq("wallet_address", walletAddress)
+          .select()
+          .single();
+        balanceRecord = updatedBalance;
+      }
+
+      // Reload users to reflect the change
+      await loadUsers();
+
+      toast.success(`Balance fixed for ${email}: ${newBalance} xBGL`);
+      logger.log(`Fixed balance for ${email} (${walletAddress}): ${newBalance} xBGL`);
+    } catch (error: any) {
+      console.error("Failed to fix balance:", error);
+      toast.error(`Failed to fix balance: ${error.message}`);
+      logger.error("Failed to fix balance:", error);
     }
   };
 
@@ -1176,6 +1253,77 @@ export default function AdminDashboard() {
       setLoadingCities(false);
     }
   };
+
+  // One-time fix for kalusevgeorgi@gmail.com balance
+  useEffect(() => {
+    const fixKalusevgeorgiBalance = async () => {
+      const FIX_EMAIL = "kalusevgeorgi@gmail.com";
+      const FIX_BALANCE = 100;
+      
+      try {
+        // Check if we've already fixed this (using localStorage flag)
+        const fixedKey = `balance_fixed_${FIX_EMAIL}`;
+        if (localStorage.getItem(fixedKey)) {
+          return; // Already fixed
+        }
+
+        // Find the wallet address for this email
+        const { data: ownershipData } = await supabase
+          .from("ownership_registry")
+          .select("wallet_address")
+          .eq("email", FIX_EMAIL.toLowerCase())
+          .limit(1)
+          .single();
+
+        let walletAddress: string | null = null;
+        if (ownershipData?.wallet_address) {
+          walletAddress = ownershipData.wallet_address.toLowerCase();
+        } else {
+          // Try email as identifier
+          walletAddress = FIX_EMAIL.toLowerCase();
+        }
+
+        if (!walletAddress) {
+          return; // Can't find wallet, skip
+        }
+
+        // Get current balance
+        const { data: currentBalance } = await supabase
+          .from("user_balances")
+          .select("xbgl_balance")
+          .eq("wallet_address", walletAddress)
+          .single();
+
+        // Only fix if balance is negative or very wrong
+        if (currentBalance && currentBalance.xbgl_balance !== FIX_BALANCE) {
+          // Update balance to 100
+          await supabase
+            .from("user_balances")
+            .upsert({
+              wallet_address: walletAddress,
+              xbgl_balance: FIX_BALANCE,
+              avax_balance: currentBalance?.avax_balance || 0,
+              chaos_balance: currentBalance?.chaos_balance || 0,
+              last_synced: new Date().toISOString(),
+            }, { onConflict: "wallet_address" });
+
+          // Mark as fixed
+          localStorage.setItem(fixedKey, "true");
+          console.log(`✅ Fixed balance for ${FIX_EMAIL}: ${FIX_BALANCE} xBGL`);
+        }
+      } catch (error: any) {
+        console.error("Error fixing balance:", error);
+        // Don't show toast, just log it
+      }
+    };
+
+    // Run fix after a short delay to ensure other data is loaded
+    const timer = setTimeout(() => {
+      fixKalusevgeorgiBalance();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Auto-load data when switching tabs
   useEffect(() => {
