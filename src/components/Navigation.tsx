@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket } from "lucide-react";
+import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket, Coins } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -334,7 +334,17 @@ export const Navigation = () => {
               );
             })}
 
-            <div className="ml-4 flex items-center gap-2">
+            {/* Deposit Button - Right Side */}
+            <Button
+              onClick={() => navigate("/invest")}
+              className="ml-4 gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-lg hover:shadow-green-500/30 transition-all duration-300 hover:scale-105"
+              size="sm"
+            >
+              <Coins className="h-4 w-4" />
+              <span className="hidden sm:inline">Deposit</span>
+            </Button>
+
+            <div className="ml-2 flex items-center gap-2">
               {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

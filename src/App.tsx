@@ -40,6 +40,8 @@ const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const OAuthTestClient = lazy(() => import("./pages/OAuthTestClient"));
 const Deposit = lazy(() => import("./pages/Deposit"));
 const Pioneers = lazy(() => import("./pages/Pioneers"));
+const Invest = lazy(() => import("./pages/Invest"));
+const ApplyExpert = lazy(() => import("./pages/ApplyExpert"));
 
 // Configure React Query with optimized defaults
 const queryClient = new QueryClient({
@@ -123,6 +125,16 @@ function AppContent() {
                       <Route path="/ilo" element={
                         <RouteErrorBoundary routeName="Pioneers">
                           <Pioneers />
+                        </RouteErrorBoundary>
+                      } />
+                      <Route path="/invest" element={
+                        <RouteErrorBoundary routeName="Invest">
+                          <Invest />
+                        </RouteErrorBoundary>
+                      } />
+                      <Route path="/apply-expert" element={
+                        <RouteErrorBoundary routeName="Apply Expert">
+                          <ApplyExpert />
                         </RouteErrorBoundary>
                       } />
                       <Route path="/financial-hub" element={<FinancialHub />} />
