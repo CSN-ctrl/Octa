@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { SimProvider } from "@/contexts/SimContext";
 import { Navigation } from "./components/Navigation";
@@ -12,6 +12,7 @@ import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoadingSpinner } from "./components/LoadingSpinner";
 import { DefaultStructuredData } from "./components/StructuredData";
+import Footer from "./components/Footer";
 import { loadContractAddresses } from "@/lib/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -24,7 +25,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Business = lazy(() => import("./pages/Business"));
-const ILOLanding = lazy(() => import("./pages/ILOLanding"));
+import Index from "./pages/Index";
 const NotFound = lazy(() => import("./pages/NotFound"));
 const FinancialHub = lazy(() => import("./pages/FinancialHub"));
 const NanofiberResearch = lazy(() => import("./pages/NanofiberResearch"));
@@ -37,6 +38,8 @@ const EmailVerified = lazy(() => import("./pages/EmailVerified"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const OAuthTestClient = lazy(() => import("./pages/OAuthTestClient"));
+const Deposit = lazy(() => import("./pages/Deposit"));
+const Pioneers = lazy(() => import("./pages/Pioneers"));
 
 // Configure React Query with optimized defaults
 const queryClient = new QueryClient({
@@ -83,18 +86,45 @@ const App = () => {
             >
               <DefaultStructuredData />
               {/* SkipNavigation component removed */}
-              <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
-                <Navigation />
-                <main id="main-content" className="flex-1 w-full" tabIndex={-1}>
+              <AppContent />
+            </BrowserRouter>
+          </TooltipProvider>
+        </WalletProvider>
+        </SimProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
+
+// Component to conditionally show Navigation (hidden on landing page)
+// Must be inside BrowserRouter to use useLocation
+function AppContent() {
+  const location = useLocation();
+  
+  return (
+    <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
+      {/* Show navigation on all pages */}
+      <Navigation />
+      <main id="main-content" className="flex-1 w-full" tabIndex={-1}>
                   <Suspense fallback={<LoadingSpinner />}>
                     <Routes>
+                      {/* Landing page - Unified Universe */}
+                      <Route path="/" element={
+                        <RouteErrorBoundary routeName="Unified Universe">
+                          <UnifiedUniverse />
+                        </RouteErrorBoundary>
+                      } />
+                      
                       {/* Public routes */}
                       <Route path="/signup" element={<Login />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/universe" element={<UnifiedUniverse />} />
                       <Route path="/business" element={<Business />} />
-                      <Route path="/ilo" element={<ILOLanding />} />
-                      <Route path="/ilo-landing" element={<ILOLanding />} />
+                      <Route path="/ilo" element={
+                        <RouteErrorBoundary routeName="Pioneers">
+                          <Pioneers />
+                        </RouteErrorBoundary>
+                      } />
                       <Route path="/financial-hub" element={<FinancialHub />} />
                       <Route path="/nanofiber-research" element={<NanofiberResearch />} />
                       <Route path="/digital-id" element={<DigitalID />} />
@@ -137,46 +167,22 @@ const App = () => {
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
+                    <Route path="/deposit" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Deposit">
+                          <Deposit />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
                       
-                      {/* Default route - redirect based on auth */}
-                      <Route path="/" element={<HomeRedirect />} />
+                      {/* Catch-all route - must be last */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>
                 </main>
+                <Footer />
               </div>
-            </BrowserRouter>
-          </TooltipProvider>
-        </WalletProvider>
-        </SimProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
   );
-};
-
-// Component to redirect based on authentication
-function HomeRedirect() {
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      setLoading(false);
-    };
-    checkAuth();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/universe" replace />;
 }
 
 export default App;

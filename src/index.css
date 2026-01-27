@@ -106,6 +106,95 @@ All colors MUST be HSL.
     border: 1px solid hsl(260 65% 45% / 0.3);
   }
 
+  /* Pioneers design system additions */
+  .glass-card {
+    @apply rounded-xl;
+    background: hsl(270 40% 8% / 0.6);
+    border: 1px solid hsl(260 65% 45% / 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px hsl(0 0% 0% / 0.4), 0 0 40px hsl(260 65% 45% / 0.2);
+  }
+
+  .glass-card:hover {
+    border-color: hsl(260 65% 45% / 0.5);
+  }
+
+  .text-gradient-cosmic {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(260 65% 45%), hsl(270 70% 50%));
+  }
+
+  .bg-gradient-cosmic {
+    background-image: linear-gradient(135deg, hsl(260 65% 45%), hsl(270 70% 50%));
+  }
+
+  .btn-primary-glow {
+    @apply bg-primary text-primary-foreground font-semibold px-8 py-4 rounded-lg transition-all duration-300;
+    box-shadow: 0 0 20px hsl(260 65% 45% / 0.5);
+  }
+
+  .btn-primary-glow:hover {
+    @apply scale-105;
+    box-shadow: 0 0 40px hsl(260 65% 45% / 0.7);
+  }
+
+  .btn-secondary-glow {
+    @apply font-semibold px-8 py-4 rounded-lg transition-all duration-300;
+    background: transparent;
+    border: 2px solid hsl(270 70% 50%);
+    color: hsl(270 70% 50%);
+  }
+
+  .btn-secondary-glow:hover {
+    background: hsl(270 70% 50% / 0.1);
+    box-shadow: 0 0 30px hsl(270 70% 50% / 0.6);
+  }
+
+  .stat-value {
+    @apply text-4xl md:text-5xl font-bold;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight;
+  }
+
+  .badge-primary {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(260 65% 45% / 0.1);
+    color: hsl(260 65% 55%);
+    border: 1px solid hsl(260 65% 45% / 0.2);
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(45 100% 51% / 0.15);
+    color: hsl(45 100% 55%);
+    border: 1px solid hsl(45 100% 51% / 0.3);
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(142 76% 45% / 0.15);
+    color: hsl(142 76% 55%);
+    border: 1px solid hsl(142 76% 45% / 0.3);
+  }
+
+  .bg-hero-glow {
+    background: radial-gradient(ellipse at top, hsl(260 65% 45% / 0.15), transparent 70%);
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  .text-gold {
+    color: hsl(45 100% 51%);
+  }
+
+  .text-success {
+    color: hsl(142 76% 45%);
+  }
+
   /* Animated gradient border */
   @keyframes border-glow {
     0%, 100% {
@@ -419,6 +508,20 @@ All colors MUST be HSL.
     overflow: visible;
     clip: auto;
     white-space: normal;
+  }
+
+  /* Pulse glow animation */
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsl(260 65% 45% / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px hsl(260 65% 45% / 0.7);
+    }
   }
 }
 

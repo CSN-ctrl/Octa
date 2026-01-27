@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, Gift, BookOpen, HelpCircle } from "lucide-react";
+import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -259,8 +259,8 @@ export const Navigation = () => {
                 className="gap-2 relative overflow-hidden border border-primary/50 hover:border-primary hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-primary/50"
                 onClick={() => navigate("/ilo")}
               >
-                <Gift className="h-4 w-4" />
-                <span className="hidden sm:inline font-bold">ILO</span>
+                <Rocket className="h-4 w-4" />
+                <span className="font-bold">ILO</span>
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000"></span>
               </Button>
             </div>
