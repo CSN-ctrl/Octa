@@ -41,21 +41,24 @@ export function useILOStats() {
       const { data: rpcData, error: rpcError } = await supabase
         .rpc("get_ilo_stats");
       
-      if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
-        const row = rpcData[0];
-        setStats({
-          totalSpots: row.total_spots || 10000,
-          spotsTaken: row.spots_taken || 0,
-          spotsRemaining: row.spots_remaining || 10000,
-          totalRaisedUSDC: Number(row.total_raised_usdc) || 0,
-          totalRaisedEUR: Number(row.total_raised_eur) || 0,
-          participantsCount: row.participants_count || 0,
-          progressPercentage: Number(row.progress_percentage) || 0,
-          isActive: row.is_active ?? true,
-          campaignStartDate: null,
-          campaignEndDate: null,
-        });
-        return;
+      if (!rpcError && rpcData) {
+        // Handle both array and single object responses
+        const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+        if (row) {
+          setStats({
+            totalSpots: row.total_spots || 10000,
+            spotsTaken: row.spots_taken || 0,
+            spotsRemaining: row.spots_remaining || (row.total_spots || 10000) - (row.spots_taken || 0),
+            totalRaisedUSDC: Number(row.total_raised_usdc) || 0,
+            totalRaisedEUR: Number(row.total_raised_eur) || 0,
+            participantsCount: row.participants_count || 0,
+            progressPercentage: Number(row.progress_percentage) || 0,
+            isActive: row.is_active ?? true,
+            campaignStartDate: null,
+            campaignEndDate: null,
+          });
+          return;
+        }
       }
 
       // Fallback to direct table access

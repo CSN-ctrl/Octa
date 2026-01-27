@@ -190,7 +190,7 @@ const Invest = () => {
                   onClick={() => navigate("/apply-expert")}
                   className="w-full bg-gradient-cosmic hover:opacity-90 text-white h-12 text-lg font-semibold shadow-lg hover:shadow-primary/30 transition-all mt-auto"
                 >
-                  Apply Now
+                  Talk to Expert
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </CardContent>
