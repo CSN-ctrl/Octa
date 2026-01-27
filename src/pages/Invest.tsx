@@ -24,11 +24,11 @@ const Invest = () => {
   const navigate = useNavigate();
 
   const assetTypes = [
-    { icon: "🏠", name: "Land Plots", price: "€250" },
-    { icon: "🏭", name: "Houses/Factories", price: "€150-500" },
-    { icon: "🌆", name: "Cities", price: "€5,000" },
-    { icon: "🪐", name: "Planets", price: "€50,000" },
-    { icon: "⭐", name: "Star Systems", price: "€500,000" },
+    { icon: "🏠", name: "Land Plots" },
+    { icon: "🏭", name: "Houses/Factories" },
+    { icon: "🌆", name: "Cities" },
+    { icon: "🪐", name: "Planets" },
+    { icon: "⭐", name: "Star Systems" },
   ];
 
   const fundFeatures = [
@@ -100,9 +100,6 @@ const Invest = () => {
             >
               <span className="text-xl">{asset.icon}</span>
               <span className="text-sm font-medium">{asset.name}</span>
-              <Badge variant="outline" className="text-xs">
-                {asset.price}
-              </Badge>
             </motion.div>
           ))}
         </motion.div>

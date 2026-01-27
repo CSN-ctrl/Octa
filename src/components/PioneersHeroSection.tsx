@@ -163,9 +163,6 @@ const PioneersHeroSection = () => {
           >
             Join Genesis Phase
           </button>
-          <p className="text-sm text-muted-foreground">
-            Starting at <span className="text-foreground font-medium">100 EUR</span> (~196 xBGL) per plot
-          </p>
         </motion.div>
       </motion.div>
 
