@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Zap, Users, Sparkles, Loader2 } from 'lucide-react';
+import { Zap, Users, Sparkles, Loader2 } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import heroBackground from '@/assets/hero-background.jpg';
 import { useILOStats } from '@/hooks/useILOStats';
@@ -165,23 +165,6 @@ const PioneersHeroSection = () => {
           </button>
         </motion.div>
       </motion.div>
-
-      {/* Scroll Indicator */}
-      <motion.a
-        href="#how-it-works"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-      >
-        <span className="text-sm">Explore</span>
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ repeat: Infinity, duration: 1.5 }}
-        >
-          <ChevronDown className="w-6 h-6" />
-        </motion.div>
-      </motion.a>
     </section>
   );
 };

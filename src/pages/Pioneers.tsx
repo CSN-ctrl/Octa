@@ -1,7 +1,6 @@
 import PioneersHeroSection from '@/components/PioneersHeroSection';
 import PioneersHowItWorksSection from '@/components/PioneersHowItWorksSection';
 import PrizesSection from '@/components/PrizesSection';
-import StatsSection from '@/components/StatsSection';
 import SocialTasksSection from '@/components/SocialTasksSection';
 import CTASection from '@/components/CTASection';
 
@@ -13,7 +12,6 @@ const Pioneers = () => {
         <PioneersHeroSection />
         <PioneersHowItWorksSection />
         <PrizesSection />
-        <StatsSection />
         <SocialTasksSection />
         <CTASection />
       </div>

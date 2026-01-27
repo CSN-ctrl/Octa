@@ -3,12 +3,12 @@ import { Twitter, MessageCircle, Instagram, Check, ExternalLink } from 'lucide-r
 
 const socials = [
   {
-    platform: 'Twitter',
+    platform: 'X',
     handle: '@ChaosStarHQ',
     icon: Twitter,
-    gradient: 'from-[#1DA1F2] to-[#0d8bd9]',
+    gradient: 'from-[#000000] to-[#1a1a1a]',
     tasks: ['Follow our account', '3 comments (3+ hrs apart)', 'Share our content'],
-    url: 'https://twitter.com/ChaosStarHQ',
+    url: 'https://x.com/ChaosStarHQ',
   },
   {
     platform: 'TikTok',

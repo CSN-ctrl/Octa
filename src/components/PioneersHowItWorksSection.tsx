@@ -13,7 +13,7 @@ const steps = [
   {
     icon: MapPin,
     title: 'Purchase Plot',
-    description: 'Get your plot for 100 EUR (~196 xBGL)',
+    description: 'Get your plot for 110 USDC (~196 xBGL)',
     step: 2,
     gradient: 'from-purple-500 to-pink-500',
     glow: 'purple-500',

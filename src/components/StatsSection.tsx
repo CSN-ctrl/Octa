@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Users, Bitcoin, Building2, Target, DollarSign } from 'lucide-react';
+import { Users, Bitcoin, Building2, Target, MapPin } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { useILOStats } from '@/hooks/useILOStats';
 
@@ -8,6 +8,9 @@ const StatsSection = () => {
   
   // Calculate BTC eligible (example: 1 BTC entry per €1000 raised)
   const btcEligible = Math.floor(iloStats.totalRaisedEUR / 1000);
+  
+  // Calculate total land bought (each plot costs 110 USDC)
+  const totalLandBought = Math.floor(iloStats.totalRaisedUSDC / 110);
   
   const stats = [
     {
@@ -18,12 +21,11 @@ const StatsSection = () => {
       bgGlow: 'violet-500/20',
     },
     {
-      icon: DollarSign,
-      value: Math.floor(iloStats.totalRaisedUSDC),
-      label: 'USDC Raised',
+      icon: MapPin,
+      value: totalLandBought,
+      label: 'Total Land Bought',
       gradient: 'from-emerald-400 to-green-600',
       bgGlow: 'emerald-500/20',
-      prefix: '$',
     },
     {
       icon: Bitcoin,
@@ -71,7 +73,6 @@ const StatsSection = () => {
                   
                   {/* Value */}
                   <div className={`text-3xl md:text-4xl font-bold mb-2 text-center bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
-                    {(stat as any).prefix && <span>{(stat as any).prefix}</span>}
                     <AnimatedCounter target={stat.value} duration={2} />
                   </div>
                   
