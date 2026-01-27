@@ -1,11 +1,14 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import AnimatedCounter from '@/components/AnimatedCounter';
+import { useILOStats } from '@/hooks/useILOStats';
 
 const CTASection = () => {
   const navigate = useNavigate();
-  const joined = 3847;
-  const spotsLeft = 10000 - joined;
+  const { stats } = useILOStats();
+  
+  const joined = stats.spotsTaken;
+  const spotsLeft = stats.spotsRemaining;
 
   return (
     <section className="relative py-24 px-4 bg-muted/30">

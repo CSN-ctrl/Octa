@@ -1,39 +1,46 @@
 import { motion } from 'framer-motion';
-import { Users, Bitcoin, Building2, Target } from 'lucide-react';
+import { Users, Bitcoin, Building2, Target, DollarSign } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
-
-const stats = [
-  {
-    icon: Users,
-    value: 3847,
-    label: 'Pioneers',
-    gradient: 'from-violet-500 to-purple-600',
-    bgGlow: 'violet-500/20',
-  },
-  {
-    icon: Bitcoin,
-    value: 2156,
-    label: 'BTC Eligible',
-    gradient: 'from-amber-400 to-orange-500',
-    bgGlow: 'amber-500/20',
-  },
-  {
-    icon: Building2,
-    value: 3847,
-    label: 'Structures',
-    gradient: 'from-emerald-400 to-green-600',
-    bgGlow: 'emerald-500/20',
-  },
-  {
-    icon: Target,
-    value: 6153,
-    label: 'Spots Left',
-    gradient: 'from-blue-400 to-cyan-500',
-    bgGlow: 'blue-500/20',
-  },
-];
+import { useILOStats } from '@/hooks/useILOStats';
 
 const StatsSection = () => {
+  const { stats: iloStats } = useILOStats();
+  
+  // Calculate BTC eligible (example: 1 BTC entry per €1000 raised)
+  const btcEligible = Math.floor(iloStats.totalRaisedEUR / 1000);
+  
+  const stats = [
+    {
+      icon: Users,
+      value: iloStats.spotsTaken,
+      label: 'Pioneers',
+      gradient: 'from-violet-500 to-purple-600',
+      bgGlow: 'violet-500/20',
+    },
+    {
+      icon: DollarSign,
+      value: Math.floor(iloStats.totalRaisedUSDC),
+      label: 'USDC Raised',
+      gradient: 'from-emerald-400 to-green-600',
+      bgGlow: 'emerald-500/20',
+      prefix: '$',
+    },
+    {
+      icon: Bitcoin,
+      value: btcEligible,
+      label: 'BTC Entries',
+      gradient: 'from-amber-400 to-orange-500',
+      bgGlow: 'amber-500/20',
+    },
+    {
+      icon: Target,
+      value: iloStats.spotsRemaining,
+      label: 'Spots Left',
+      gradient: 'from-blue-400 to-cyan-500',
+      bgGlow: 'blue-500/20',
+    },
+  ];
+
   return (
     <section className="relative py-20 px-4">
       {/* Background */}
@@ -64,6 +71,7 @@ const StatsSection = () => {
                   
                   {/* Value */}
                   <div className={`text-3xl md:text-4xl font-bold mb-2 text-center bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
+                    {(stat as any).prefix && <span>{(stat as any).prefix}</span>}
                     <AnimatedCounter target={stat.value} duration={2} />
                   </div>
                   

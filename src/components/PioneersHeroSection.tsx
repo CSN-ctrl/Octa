@@ -1,15 +1,18 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Zap, Users, Sparkles } from 'lucide-react';
+import { ChevronDown, Zap, Users, Sparkles, Loader2 } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import heroBackground from '@/assets/hero-background.jpg';
+import { useILOStats } from '@/hooks/useILOStats';
 
 const PioneersHeroSection = () => {
   const navigate = useNavigate();
-  const totalSpots = 10000;
-  const joined = 3847;
-  const spotsLeft = totalSpots - joined;
-  const progress = (joined / totalSpots) * 100;
+  const { stats, loading } = useILOStats();
+  
+  const totalSpots = stats.totalSpots;
+  const joined = stats.spotsTaken;
+  const spotsLeft = stats.spotsRemaining;
+  const progress = stats.progressPercentage;
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-24 pb-20 overflow-hidden">
@@ -42,7 +45,7 @@ const PioneersHeroSection = () => {
           className="badge-primary mb-8 inline-flex items-center gap-2"
         >
           <Zap className="w-3 h-3" />
-          Genesis Phase • Limited to 10,000 Pioneers
+          Genesis Phase • Limited to {totalSpots.toLocaleString()} Pioneers
         </motion.div>
 
         {/* Title */}
