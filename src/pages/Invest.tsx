@@ -147,7 +147,7 @@ const Invest = () => {
                 </Badge>
               </div>
 
-              <CardContent className="p-8 relative z-10">
+              <CardContent className="p-8 relative z-10 h-full flex flex-col">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="p-4 rounded-2xl bg-gradient-cosmic">
                     <Users className="w-8 h-8 text-white" />
@@ -162,7 +162,7 @@ const Invest = () => {
                   Work with a dedicated consultant who manages your investments professionally. Let experts grow your portfolio.
                 </p>
 
-                <div className="space-y-3 mb-8">
+                <div className="space-y-3 mb-8 flex-grow">
                   <div className="flex items-start gap-3">
                     <UserCheck className="w-5 h-5 text-primary mt-0.5" />
                     <div>
@@ -188,7 +188,7 @@ const Invest = () => {
 
                 <Button
                   onClick={() => navigate("/apply-expert")}
-                  className="w-full bg-gradient-cosmic hover:opacity-90 text-white h-12 text-lg font-semibold shadow-lg hover:shadow-primary/30 transition-all"
+                  className="w-full bg-gradient-cosmic hover:opacity-90 text-white h-12 text-lg font-semibold shadow-lg hover:shadow-primary/30 transition-all mt-auto"
                 >
                   Apply Now
                   <ArrowRight className="w-5 h-5 ml-2" />
@@ -207,7 +207,7 @@ const Invest = () => {
               {/* Glow Effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-              <CardContent className="p-8 relative z-10">
+              <CardContent className="p-8 relative z-10 h-full flex flex-col">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="p-4 rounded-2xl bg-gradient-to-br from-accent to-accent/80">
                     <Wallet className="w-8 h-8 text-white" />
@@ -222,7 +222,7 @@ const Invest = () => {
                   Take full control of your investments. Deposit USDC directly and manage your own asset purchases.
                 </p>
 
-                <div className="space-y-3 mb-8">
+                <div className="space-y-3 mb-8 flex-grow">
                   <div className="flex items-start gap-3">
                     <Coins className="w-5 h-5 text-accent mt-0.5" />
                     <div>
@@ -249,7 +249,7 @@ const Invest = () => {
                 <Button
                   onClick={() => navigate("/deposit")}
                   variant="outline"
-                  className="w-full h-12 text-lg font-semibold border-2 hover:bg-accent/10 hover:border-accent transition-all"
+                  className="w-full h-12 text-lg font-semibold border-2 hover:bg-accent/10 hover:border-accent transition-all mt-auto"
                 >
                   Deposit USDC
                   <ArrowRight className="w-5 h-5 ml-2" />
