@@ -189,22 +189,6 @@ const Invest = () => {
                   </div>
                 </div>
 
-                {/* Commission Info */}
-                <div className="p-4 bg-background/50 rounded-xl border border-border/50 mb-6">
-                  <p className="text-xs text-muted-foreground mb-2">Consultant Commission</p>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className="text-2xl font-bold text-primary">25%</span>
-                      <span className="text-xs text-muted-foreground ml-1">first 10 assets</span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <span className="text-2xl font-bold text-primary">40%</span>
-                      <span className="text-xs text-muted-foreground ml-1">11+ assets</span>
-                    </div>
-                  </div>
-                </div>
-
                 <Button
                   onClick={() => navigate("/apply-expert")}
                   className="w-full bg-gradient-cosmic hover:opacity-90 text-white h-12 text-lg font-semibold shadow-lg hover:shadow-primary/30 transition-all"
@@ -263,17 +247,6 @@ const Invest = () => {
                       <p className="text-xs text-muted-foreground">Automatic conversion at best rates</p>
                     </div>
                   </div>
-                </div>
-
-                {/* Conversion Info */}
-                <div className="p-4 bg-background/50 rounded-xl border border-border/50 mb-6">
-                  <p className="text-xs text-muted-foreground mb-2">Conversion Rate</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold">1 USDC</span>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-2xl font-bold text-accent">~1.78 xBGL</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Rate: 1 EUR = 1.955833 xBGL</p>
                 </div>
 
                 <Button
