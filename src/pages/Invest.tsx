@@ -174,7 +174,7 @@ const Invest = () => {
                     <TrendingUp className="w-5 h-5 text-primary mt-0.5" />
                     <div>
                       <p className="font-medium text-sm">Professional Asset Management</p>
-                      <p className="text-xs text-muted-foreground">5-10% revenue share on managed assets</p>
+                      <p className="text-xs text-muted-foreground">Revenue share on managed assets</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
