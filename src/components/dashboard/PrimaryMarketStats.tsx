@@ -12,6 +12,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 interface PrimaryMarketStatsProps {
   governmentPlots: any[];
@@ -35,7 +36,8 @@ export function PrimaryMarketStats({
     const ownedPlots = governmentPlots.filter((p: any) => p.owner_wallet && p.owner_wallet !== null);
     const soldPercentage = totalPlots > 0 ? Math.round((ownedPlots.length / totalPlots) * 100) : 0;
     
-    const availablePlotPrices = availablePlots.map((p: any) => parseFloat(p.price_xbgl || 100));
+    const defaultPrice = getPlotPriceInXBGL();
+    const availablePlotPrices = availablePlots.map((p: any) => parseFloat(p.price_xbgl || defaultPrice));
     const totalAvailablePlotValue = availablePlotPrices.reduce((sum, price) => sum + price, 0);
     const avgPlotPrice = availablePlotPrices.length > 0 
       ? totalAvailablePlotValue / availablePlotPrices.length 

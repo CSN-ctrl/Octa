@@ -6,7 +6,7 @@ import { Copy, CheckCircle2, ExternalLink, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { NETWORKS, NetworkConfig } from "@/lib/networks";
 import { getHotWalletAddress } from "@/lib/hot-wallet";
-import QRCode from "qrcode";
+import { generateEnhancedQRCode, getNetworkLogoUrl } from "@/lib/qr-code-utils";
 
 interface MultiNetworkUSDCPaymentProps {
   amount?: number;
@@ -27,6 +27,50 @@ export function MultiNetworkUSDCPayment({
     loadHotWallets();
   }, []);
 
+  // Regenerate QR codes when amount changes (to include amount in payment URI)
+  useEffect(() => {
+    if (Object.keys(hotWallets).length > 0) {
+      regenerateQRCodes();
+    }
+  }, [amount]);
+
+  const regenerateQRCodes = async () => {
+    const qrPromises = NETWORKS.map(async (network) => {
+      const address = hotWallets[network.id];
+      if (address) {
+        try {
+          const logoUrl = getNetworkLogoUrl(network.id);
+          const qrDataUrl = await generateEnhancedQRCode(network, address, {
+            width: 200,
+            margin: 2,
+            errorCorrectionLevel: 'H', // High error correction for better scanning
+            includeAmount: amount > 0, // Include amount if specified
+            amount: amount > 0 ? amount : undefined,
+            logoUrl: logoUrl || undefined
+          });
+
+          if (qrDataUrl) {
+            return { networkId: network.id, qr: qrDataUrl };
+          }
+          return null;
+        } catch (error) {
+          console.error(`Failed to generate QR for ${network.id}:`, error);
+          return null;
+        }
+      }
+      return null;
+    });
+
+    const qrResults = await Promise.all(qrPromises);
+    const qrMap: Record<string, string> = {};
+    qrResults.forEach((result) => {
+      if (result) {
+        qrMap[result.networkId] = result.qr;
+      }
+    });
+    setQrCodes(qrMap);
+  };
+
   const loadHotWallets = async () => {
     setLoading(true);
     try {
@@ -34,16 +78,25 @@ export function MultiNetworkUSDCPayment({
       const wallets = await getAllHotWallets();
       setHotWallets(wallets);
 
-      // Generate QR codes for all networks
+      // Generate enhanced QR codes for all networks with logos and optional amount
       const qrPromises = NETWORKS.map(async (network) => {
         const address = wallets[network.id];
         if (address) {
           try {
-            const qrDataUrl = await QRCode.toDataURL(address, {
+            const logoUrl = getNetworkLogoUrl(network.id);
+            const qrDataUrl = await generateEnhancedQRCode(network, address, {
               width: 200,
-              margin: 2
+              margin: 2,
+              errorCorrectionLevel: 'H', // High error correction for better scanning
+              includeAmount: amount > 0, // Include amount if specified
+              amount: amount > 0 ? amount : undefined,
+              logoUrl: logoUrl || undefined
             });
-            return { networkId: network.id, qr: qrDataUrl };
+
+            if (qrDataUrl) {
+              return { networkId: network.id, qr: qrDataUrl };
+            }
+            return null;
           } catch (error) {
             console.error(`Failed to generate QR for ${network.id}:`, error);
             return null;

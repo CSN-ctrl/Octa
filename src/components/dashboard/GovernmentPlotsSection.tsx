@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { LazyImage } from "@/components/ui/LazyImage";
 import * as supabaseService from "@/lib/supabase-service";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 interface GovernmentPlotsSectionProps {
   governmentPlots: any[];
@@ -171,7 +172,7 @@ function PlotListItem({
               {plot.zone_type && (
                 <span className="select-none">Zone: {plot.zone_type}</span>
               )}
-              <span className="select-none">Price: {plot.price_xbgl || 100} xBGL</span>
+              <span className="select-none">Price: {plot.price_xbgl || getPlotPriceInXBGL()} xBGL</span>
               {isOwned && (
                 <span className="text-xs select-none flex items-center gap-1">
                   <Mail className="h-3 w-3" />
@@ -257,7 +258,7 @@ function PlotListItem({
               )}
               <div>
                 <label className="text-xs text-muted-foreground">Price</label>
-                <p className="font-semibold">{plot.price_xbgl || 100} xBGL</p>
+                <p className="font-semibold">{plot.price_xbgl || getPlotPriceInXBGL()} xBGL</p>
               </div>
             </div>
 

@@ -18,20 +18,26 @@ export function useLandPlots() {
   const [totalPlots, setTotalPlots] = useState<bigint>(0n); // No limit on total plots - Phase 1 limited to 10,000 participants
   const [priceInNative, setPriceInNative] = useState<bigint>(0n);
 
-  // Price calculation: 100 xBGL for Phase 1 (first 10k participants), 400 xBGL after
+  // Price calculation: 100 EUR equivalent in xBGL for Phase 1 (first 10k participants), 400 EUR equivalent after
   // Note: Price is based on participant count, not plot count
   const getPriceInXBGL = useCallback((plotId: number, participantCount: number): number => {
-    // Phase 1: First 10,000 participants pay 100 xBGL per plot
+    const { getPlotPriceInXBGL } = require("@/lib/exchange-rates");
+    const phase1Price = getPlotPriceInXBGL(); // 100 EUR = 195.5833 xBGL
+    
+    // Phase 1: First 10,000 participants pay 100 EUR equivalent per plot
     if (participantCount < 10000) {
-      return 100;
+      return phase1Price;
     }
-    // After 10k participants, price is 400 xBGL
-    return 400;
+    // After 10k participants, price is 400 EUR equivalent (4x Phase 1)
+    return phase1Price * 4;
   }, []);
 
   // Get current price based on participant count (not plot count)
-  // Defaults to Phase 1 price (100 xBGL) if participant count unavailable
+  // Defaults to Phase 1 price (100 EUR equivalent) if participant count unavailable
   const getCurrentPriceInXBGL = useCallback(async (): Promise<number> => {
+    const { getPlotPriceInXBGL } = await import("@/lib/exchange-rates");
+    const phase1Price = getPlotPriceInXBGL(); // 100 EUR = 195.5833 xBGL
+    
     try {
       // Try to get participant count from ILO service
       const { getILOStatus } = await import("@/lib/ilo-service");
@@ -39,12 +45,12 @@ export function useLandPlots() {
       const participantCount = iloStatus.currentPhase?.current_participants || 0;
       
       if (participantCount < 10000) {
-        return 100; // Phase 1: First 10k participants
+        return phase1Price; // Phase 1: First 10k participants
       }
-      return 400; // After 10k participants
+      return phase1Price * 4; // After 10k participants (400 EUR equivalent)
     } catch {
       // Default to Phase 1 price if check fails
-      return 100;
+      return phase1Price;
     }
   }, []);
   const [salesActive, setSalesActive] = useState(false);
@@ -388,14 +394,16 @@ export function useLandPlots() {
       }
 
       const contract = getLandContract(signer);
-      // Plot price is fixed at 100 xBGL
-      const PLOT_PRICE_xBGL = ethers.parseEther("100");
+      // Plot price is fixed at 100 EUR equivalent in xBGL
+      const { getPlotPriceInXBGL } = await import("@/lib/exchange-rates");
+      const plotPriceXBGL = getPlotPriceInXBGL(); // 100 EUR = 195.5833 xBGL
+      const PLOT_PRICE_xBGL = ethers.parseEther(plotPriceXBGL.toString());
 
-      // Buy plot with native xBGL (100 xBGL per plot)
+      // Buy plot with native xBGL (100 EUR equivalent per plot)
       // The contract's buyPlotWithAVAX function accepts native coin (xBGL on Chaos Star Network)
       const tx = await contract.buyPlotWithAVAX(plotId, { value: PLOT_PRICE_xBGL });
       const receipt = await tx.wait();
-      toast.success(`Payment received (100 xBGL) for plot ${plotId}. Pending activation.`);
+      toast.success(`Payment received (${plotPriceXBGL.toFixed(2)} xBGL) for plot ${plotId}. Pending activation.`);
       // Wait a bit for the transaction to be fully processed, then refresh
       setTimeout(async () => {
         await fetchLandData();
@@ -422,13 +430,15 @@ export function useLandPlots() {
     setLoading(true);
     try {
       const contract = getLandContract(signer);
-      // Plot price is fixed at 100 xBGL per plot
-      const PLOT_PRICE_xBGL = ethers.parseEther("100");
+      // Plot price is fixed at 100 EUR equivalent in xBGL per plot
+      const { getPlotPriceInXBGL } = await import("@/lib/exchange-rates");
+      const plotPriceXBGL = getPlotPriceInXBGL(); // 100 EUR = 195.5833 xBGL
+      const PLOT_PRICE_xBGL = ethers.parseEther(plotPriceXBGL.toString());
       const totalPrice = PLOT_PRICE_xBGL * BigInt(plotIds.length);
       const tx = await contract.buyPlotsBatch(plotIds, { value: totalPrice });
       const receipt = await tx.wait();
 
-      toast.success(`${plotIds.length} plots purchased successfully for ${plotIds.length * 100} xBGL!`);
+      toast.success(`${plotIds.length} plots purchased successfully for ${(plotIds.length * plotPriceXBGL).toFixed(2)} xBGL!`);
       // Wait a bit for the transaction to be fully processed, then refresh
       setTimeout(async () => {
         await fetchLandData();

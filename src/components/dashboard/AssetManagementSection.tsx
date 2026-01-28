@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import {
   DollarSign,
   Grid3x3,
@@ -280,7 +281,7 @@ export function AssetManagementSection({
                     Land Holdings
                   </CardTitle>
                   <CardDescription>
-                    {ownedPlots.length} plot{ownedPlots.length !== 1 ? 's' : ''} owned • Total value: {(ownedPlots.length * 100).toLocaleString()} xBGL
+                    {ownedPlots.length} plot{ownedPlots.length !== 1 ? 's' : ''} owned • Total value: {(ownedPlots.length * getPlotPriceInXBGL()).toLocaleString()} xBGL
                   </CardDescription>
                 </div>
                 <Button variant="outline" onClick={() => navigate("/plot-purchase")}>
@@ -344,7 +345,7 @@ export function AssetManagementSection({
                             )}
                             <div className="text-sm drop-shadow-sm">
                               <span className="text-muted-foreground">Value: </span>
-                              <span className="font-medium">100 xBGL</span>
+                              <span className="font-medium">{getPlotPriceInXBGL().toFixed(2)} xBGL</span>
                             </div>
                           </div>
                           <div className="space-y-2 pt-2">

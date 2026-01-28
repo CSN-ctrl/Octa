@@ -105,3 +105,12 @@ export async function updateExchangeRate(
     return false;
   }
 }
+
+/**
+ * Get plot price in xBGL (fixed at 100 EUR equivalent)
+ * 100 EUR * 1.955833 = 195.5833 xBGL
+ */
+export function getPlotPriceInXBGL(): number {
+  const PLOT_PRICE_EUR = 100;
+  return PLOT_PRICE_EUR * EUR_TO_XBGL_RATE; // 195.5833 xBGL
+}

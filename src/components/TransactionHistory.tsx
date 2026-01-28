@@ -34,7 +34,7 @@ interface Transaction {
   value: string;
   timestamp: number;
   status: "success" | "pending" | "failed" | "completed";
-  type: "transfer" | "contract" | "plot_transfer" | "plot_purchase" | "government_purchase" | "listing_commission" | "other";
+  type: "transfer" | "contract" | "plot_transfer" | "plot_purchase" | "government_purchase" | "listing_commission" | "deposit" | "other";
   token_type?: string;
   plot_ids?: number[];
   transfer_method?: "wallet" | "email";
@@ -98,6 +98,7 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
         const isPlotPurchase = tx.transaction_type === "plot_purchase" || tx.type === "plot_purchase";
         const isGovernmentPurchase = tx.transaction_type === "government_purchase";
         const isCommission = tx.transaction_type === "listing_commission";
+        const isDeposit = tx.transaction_type === "deposit" || tx.type === "deposit";
         
         const plotIds = Array.isArray(metadata.plot_ids) 
           ? metadata.plot_ids 
@@ -135,6 +136,7 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
                 isPlotPurchase ? "plot_purchase" :
                 isGovernmentPurchase ? "government_purchase" :
                 isCommission ? "listing_commission" :
+                isDeposit ? "deposit" :
                 (tx.type || "transfer") as Transaction["type"],
           token_type: tx.token_type || undefined,
           plot_ids: plotIds.length > 0 ? plotIds : undefined,
@@ -284,6 +286,9 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
     if (tx.type === "plot_purchase") {
       return <Grid3x3 className="h-4 w-4 text-green-400" />;
     }
+    if (tx.type === "deposit") {
+      return <ArrowDownLeft className="h-4 w-4 text-green-400" />;
+    }
     return tx.to.toLowerCase() === (address?.toLowerCase() || userEmail?.toLowerCase() || "") ? (
       <ArrowDownLeft className="h-4 w-4 text-green-400" />
     ) : (
@@ -383,14 +388,19 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
                   // - Plot purchases: always outgoing (user pays)
                   // - Government purchases: always outgoing (user pays)
                   // - Commissions: always outgoing (user pays)
+                  // - Deposits: always incoming (user receives)
                   const isPlotPurchase = tx.type === "plot_purchase";
                   const isGovernmentPurchase = tx.type === "government_purchase";
                   const isCommission = tx.type === "listing_commission";
+                  const isDeposit = tx.type === "deposit";
                   
                   let isIncoming = false;
                   if (isPlotPurchase || isGovernmentPurchase || isCommission) {
                     // These are always outgoing (user is paying)
                     isIncoming = false;
+                  } else if (isDeposit) {
+                    // Deposits are always incoming (user receives)
+                    isIncoming = true;
                   } else if (userIdentifier) {
                     // For transfers, check if user is recipient or sender
                     const userIsRecipient = toAddress === userIdentifier;
@@ -428,6 +438,7 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
                              tx.type === "plot_purchase" ? "Plot Purchase" :
                              tx.type === "government_purchase" ? "Government Purchase" :
                              tx.type === "listing_commission" ? "Commission" :
+                             tx.type === "deposit" ? "Deposit" :
                              tx.type}
                           </Badge>
                           {isPlotTransfer && tx.transfer_method && (

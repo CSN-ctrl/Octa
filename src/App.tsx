@@ -72,6 +72,27 @@ const App = () => {
     });
   }, []);
 
+  // Global scroll-to-top for all button clicks
+  useEffect(() => {
+    const handleButtonClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if the clicked element is a button or inside a button
+      const button = target.closest('button');
+      if (button) {
+        // Scroll to top smoothly
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('click', handleButtonClick, true);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('click', handleButtonClick, true);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

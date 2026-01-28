@@ -8,6 +8,7 @@ import { ArrowLeft, Briefcase, Home, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { usePlotRegistry } from "@/hooks/usePlotRegistry";
 import { useDigitalID } from "@/hooks/useDigitalID";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 const PlanetDetail = () => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ const PlanetDetail = () => {
 
   const totalPlots = 100000;
   const availablePlots = 10000;
-  const plotPrice = 100; // xBGL
+  const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
 
   const handlePurchase = async () => {
     // Check Digital ID before redirecting to purchase

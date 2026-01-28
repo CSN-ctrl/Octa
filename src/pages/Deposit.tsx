@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { NETWORKS, NetworkConfig } from "@/lib/networks";
 import { getAllHotWallets } from "@/lib/hot-wallet";
-import QRCode from "qrcode";
+import { generateEnhancedQRCode, getNetworkLogoUrl } from "@/lib/qr-code-utils";
 
 export default function Deposit() {
   const navigate = useNavigate();
@@ -71,22 +71,34 @@ export default function Deposit() {
       
       setHotWallets(wallets);
 
-      // Generate QR codes for all networks
+      // Generate enhanced QR codes for all networks with logos
       const qrPromises = NETWORKS.map(async (network) => {
         const address = wallets[network.id];
         if (address) {
           try {
-            const qrDataUrl = await QRCode.toDataURL(address, {
+            const logoUrl = getNetworkLogoUrl(network.id);
+            const qrDataUrl = await generateEnhancedQRCode(network, address, {
               width: 280,
-              margin: 2,
+              margin: 3,
+              errorCorrectionLevel: 'H', // High error correction for better scanning
               color: {
                 dark: "#000000",
                 light: "#ffffff",
               },
+              includeAmount: false,
+              logoUrl: logoUrl || undefined
             });
-            return { networkId: network.id, qr: qrDataUrl };
+
+            if (qrDataUrl) {
+              return { networkId: network.id, qr: qrDataUrl };
+            }
+            return null;
           } catch (error) {
             console.error(`Failed to generate QR for ${network.id}:`, error);
+            toast.error(
+              `QR code unavailable for ${network.name}. You can still copy the address.`,
+              { duration: 3000 }
+            );
             return null;
           }
         }
@@ -198,24 +210,25 @@ export default function Deposit() {
       <div className="container mx-auto px-4 py-8 max-w-5xl relative z-10">
         {/* Header */}
         <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="gap-2 mb-6 hover:bg-accent/5 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
-              <Coins className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Deposit USDC</h1>
-              <p className="text-muted-foreground">
-                Send USDC to receive xBGL instantly in your account
-              </p>
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="gap-2 hover:bg-accent/5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <div className="flex items-center gap-4 flex-1">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+                <Coins className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Deposit USDC</h1>
+                <p className="text-muted-foreground">
+                  Send USDC to receive xBGL instantly in your account
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -249,33 +262,143 @@ export default function Deposit() {
                 <Card className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
                   <CardContent className="p-8">
                     <div className="flex flex-col items-center">
-                      {/* Network Badge */}
-                      <div className="flex items-center gap-2 mb-6">
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
-                          style={{ backgroundColor: network.color }}
-                        >
-                          {network.icon.slice(0, 2)}
+                      {/* Network Badge with Stats */}
+                      <div className="w-full flex items-start justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
+                            style={{ backgroundColor: network.color }}
+                          >
+                            {network.icon.slice(0, 2)}
+                          </div>
+                          <span className="font-semibold text-lg">{network.name} Network</span>
+                          <Badge variant="outline" className="text-xs">
+                            Chain ID: {network.chainId}
+                          </Badge>
                         </div>
-                        <span className="font-semibold text-lg">{network.name} Network</span>
-                        <Badge variant="outline" className="text-xs">
-                          Chain ID: {network.chainId}
-                        </Badge>
+
+                        {/* Network Stats - Modern Professional Badges */}
+                        <div className="flex flex-wrap gap-2 items-start justify-end">
+                          {/* Confirmation Time */}
+                          <Badge 
+                            variant="outline" 
+                            className="px-3 py-1.5 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 transition-all shadow-sm"
+                          >
+                            <Clock className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                            <span className="text-xs font-semibold text-foreground">{getConfirmationTime(network.id)}</span>
+                          </Badge>
+
+                          {/* Network Fee */}
+                          <Badge 
+                            variant="outline" 
+                            className="px-3 py-1.5 bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20 hover:from-accent/15 hover:to-accent/10 hover:border-accent/30 transition-all shadow-sm"
+                          >
+                            <Coins className="h-3.5 w-3.5 mr-1.5 text-accent" />
+                            <span className="text-xs font-semibold text-foreground">{getNetworkFee(network.id)}</span>
+                          </Badge>
+
+                          {/* Block Explorer */}
+                          <a
+                            href={network.explorer}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-gradient-to-r from-secondary/10 to-secondary/5 border-secondary/20 hover:from-secondary/15 hover:to-secondary/10 hover:border-primary/30 transition-all shadow-sm cursor-pointer text-xs font-semibold text-foreground hover:text-primary"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 text-secondary group-hover:text-primary transition-colors" />
+                            <span>Explorer</span>
+                          </a>
+                        </div>
                       </div>
 
-                      {/* QR Code */}
-                      <div className="p-4 bg-white rounded-2xl shadow-lg mb-6">
-                        {qrCodes[network.id] ? (
-                          <img
-                            src={qrCodes[network.id]}
-                            alt={`${network.name} deposit QR code`}
-                            className="w-56 h-56"
-                          />
-                        ) : (
-                          <div className="w-56 h-56 flex items-center justify-center bg-muted rounded-xl">
-                            <QrCode className="h-12 w-12 text-muted-foreground" />
+                      {/* Warning - Yellow Card - Moved to Top */}
+                      <div className="w-full mb-6">
+                        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+                          <div className="flex gap-3">
+                            <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-yellow-600 dark:text-yellow-400 mb-2">
+                                Important
+                              </p>
+                              <ul className="text-sm text-muted-foreground space-y-1.5">
+                                <li className="flex items-start gap-2">
+                                  <span className="text-yellow-500 mt-0.5">•</span>
+                                  <span>Only send <strong className="text-foreground">USDC</strong> to this address</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <span className="text-yellow-500 mt-0.5">•</span>
+                                  <span>Make sure you're on the <strong className="text-foreground">{network.name}</strong> network</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <span className="text-yellow-500 mt-0.5">•</span>
+                                  <span>Sending other tokens may result in permanent loss</span>
+                                </li>
+                              </ul>
+                            </div>
                           </div>
-                        )}
+                        </div>
+                      </div>
+
+                      {/* QR Code and Instructions Side by Side */}
+                      <div className="w-full grid md:grid-cols-2 gap-6 mb-6">
+                        {/* Instructions - Left Side */}
+                        <div className="flex flex-col justify-center">
+                          <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                            <Info className="h-5 w-5 text-primary" />
+                            How to Deposit
+                          </h3>
+                          <ol className="space-y-4">
+                            <li className="flex gap-3">
+                              <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                                1
+                              </span>
+                              <div>
+                                <p className="font-medium text-sm">Copy the deposit address</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Click the copy button above or scan the QR code
+                                </p>
+                              </div>
+                            </li>
+                            <li className="flex gap-3">
+                              <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                                2
+                              </span>
+                              <div>
+                                <p className="font-medium text-sm">Send USDC from your wallet</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Make sure you're on the {network.name} network
+                                </p>
+                              </div>
+                            </li>
+                            <li className="flex gap-3">
+                              <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                                3
+                              </span>
+                              <div>
+                                <p className="font-medium text-sm">Receive xBGL automatically</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Your xBGL balance will update after confirmation
+                                </p>
+                              </div>
+                            </li>
+                          </ol>
+                        </div>
+
+                        {/* QR Code - Right Side */}
+                        <div className="flex items-center justify-center">
+                          <div className="p-4 bg-white rounded-2xl shadow-lg">
+                            {qrCodes[network.id] ? (
+                              <img
+                                src={qrCodes[network.id]}
+                                alt={`${network.name} deposit QR code`}
+                                className="w-56 h-56"
+                              />
+                            ) : (
+                              <div className="w-56 h-56 flex items-center justify-center bg-muted rounded-xl">
+                                <QrCode className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Address */}
@@ -311,112 +434,8 @@ export default function Deposit() {
                   </CardContent>
                 </Card>
 
-                {/* Right: Instructions & Info */}
+                {/* Right: Empty for now, can be used for additional content */}
                 <div className="space-y-6">
-                  {/* Instructions */}
-                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-                    <CardContent className="p-6">
-                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                        <Info className="h-5 w-5 text-primary" />
-                        How to Deposit
-                      </h3>
-                      <ol className="space-y-4">
-                        <li className="flex gap-3">
-                          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
-                            1
-                          </span>
-                          <div>
-                            <p className="font-medium">Copy the deposit address</p>
-                            <p className="text-sm text-muted-foreground">
-                              Click the copy button above or scan the QR code
-                            </p>
-                          </div>
-                        </li>
-                        <li className="flex gap-3">
-                          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
-                            2
-                          </span>
-                          <div>
-                            <p className="font-medium">Send USDC from your wallet</p>
-                            <p className="text-sm text-muted-foreground">
-                              Make sure you're on the {network.name} network
-                            </p>
-                          </div>
-                        </li>
-                        <li className="flex gap-3">
-                          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
-                            3
-                          </span>
-                          <div>
-                            <p className="font-medium">Receive xBGL automatically</p>
-                            <p className="text-sm text-muted-foreground">
-                              Your xBGL balance will update after confirmation
-                            </p>
-                          </div>
-                        </li>
-                      </ol>
-                    </CardContent>
-                  </Card>
-
-                  {/* Network Info */}
-                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-                    <CardContent className="p-6">
-                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-primary" />
-                        Network Details
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center py-2 border-b border-border/30">
-                          <span className="text-muted-foreground flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            Confirmation Time
-                          </span>
-                          <span className="font-medium">{getConfirmationTime(network.id)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-border/30">
-                          <span className="text-muted-foreground flex items-center gap-2">
-                            <Coins className="h-4 w-4" />
-                            Network Fee
-                          </span>
-                          <span className="font-medium">{getNetworkFee(network.id)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-muted-foreground flex items-center gap-2">
-                            <ExternalLink className="h-4 w-4" />
-                            Block Explorer
-                          </span>
-                          <a
-                            href={network.explorer}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-primary hover:underline flex items-center gap-1"
-                          >
-                            View
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Warning */}
-                  <Card className="border-yellow-500/30 bg-yellow-500/5">
-                    <CardContent className="p-4">
-                      <div className="flex gap-3">
-                        <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-yellow-600 dark:text-yellow-400 mb-1">
-                            Important
-                          </p>
-                          <ul className="text-sm text-muted-foreground space-y-1">
-                            <li>• Only send <strong>USDC</strong> to this address</li>
-                            <li>• Make sure you're on the <strong>{network.name}</strong> network</li>
-                            <li>• Sending other tokens may result in permanent loss</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </div>
             </TabsContent>

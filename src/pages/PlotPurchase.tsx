@@ -21,13 +21,15 @@ import {
   Zap,
   TrendingUp,
   Grid3x3,
-  Send
+  Send,
+  Shield
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { getAndStoreAffiliateCode, recordAffiliateReferral } from "@/lib/affiliate-service";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import {
   Dialog,
   DialogContent,
@@ -54,8 +56,8 @@ export default function PlotPurchase() {
   const [searchParams] = useSearchParams();
   const { address, isConnected, signer } = useWallet();
   
-  // Plot price is fixed at 100 xBGL
-  const PLOT_PRICE_xBGL = 100;
+  // Plot price is fixed at 100 EUR equivalent in xBGL
+  const PLOT_PRICE_xBGL = getPlotPriceInXBGL(); // 100 EUR = 195.5833 xBGL
   
   // Loading state for general operations
   const [loading, setLoading] = useState(false);
@@ -225,9 +227,10 @@ export default function PlotPurchase() {
     
     setPurchasing(true);
     try {
-      // Validate email (required for purchase)
-      if (!buyerEmail || !buyerEmail.includes("@")) {
-        toast.error("Please enter a valid email address");
+      // Use email from session if buyerEmail is not set
+      const emailToUse = buyerEmail || userEmail || "";
+      if (!emailToUse || !emailToUse.includes("@")) {
+        toast.error("Email address is required. Please sign in with an email address.");
         setPurchasing(false);
         return;
       }
@@ -236,12 +239,9 @@ export default function PlotPurchase() {
       let purchaseAddress: string = "";
       if (address) {
         purchaseAddress = address.toLowerCase();
-      } else if (userEmail) {
-        // Use email as identifier for users without wallets
-        purchaseAddress = userEmail.toLowerCase();
       } else {
-        // Fallback to buyerEmail
-        purchaseAddress = buyerEmail.toLowerCase();
+        // Use email as identifier for users without wallets
+        purchaseAddress = emailToUse.toLowerCase();
       }
       
       // Import all required functions at once
@@ -278,7 +278,7 @@ export default function PlotPurchase() {
       const participantResult = await registerILOParticipant(
         purchaseAddress,
         plotIdsArray[0], // First plot ID for registration
-        buyerEmail
+        emailToUse
       );
 
       if (!participantResult.success && participantResult.iloClosed) {
@@ -319,7 +319,7 @@ export default function PlotPurchase() {
 
       // Register ownership (wallet + email)
       try {
-        await registerOwnership(purchaseAddress, buyerEmail);
+        await registerOwnership(purchaseAddress, emailToUse);
       } catch (error: any) {
         console.debug("Failed to register ownership:", error.message);
         // Continue with purchase even if registration fails
@@ -336,7 +336,7 @@ export default function PlotPurchase() {
           if (plot && plot.owner_wallet) {
             // Plot exists and is owned - check if it's owned by this user
             const isOwnedByUser = plot.owner_wallet.toLowerCase() === purchaseAddress.toLowerCase() ||
-                                  (plot.owner_wallet && buyerEmail && plot.owner_wallet.toLowerCase() === buyerEmail.toLowerCase());
+                                  (plot.owner_wallet && emailToUse && plot.owner_wallet.toLowerCase() === emailToUse.toLowerCase());
             
             if (isOwnedByUser) {
               toast.warning(`Plot #${plotId} is already owned by you`);
@@ -386,7 +386,7 @@ export default function PlotPurchase() {
           const result = await purchasePlot(
             plotId,
             purchaseIdentifier, // Use auth user email instead of wallet address
-            buyerEmail || authUserEmail || '',
+            emailToUse || authUserEmail || '',
             PLOT_PRICE_xBGL,
             "xBGL"
           );
@@ -420,7 +420,7 @@ export default function PlotPurchase() {
               metadata: { 
                 plot_id: plotId, 
                 purchase_type: "land",
-                buyer_email: buyerEmail,
+                buyer_email: emailToUse,
                 user_email: authUserEmail
               },
             });
@@ -505,7 +505,7 @@ export default function PlotPurchase() {
           const referralResult = await recordAffiliateReferral(
             affiliateCode,
             purchaseAddress,
-            buyerEmail,
+            emailToUse,
             totalCost,
             plotIdsArray
           );
@@ -540,7 +540,7 @@ export default function PlotPurchase() {
               plotId: plotId,
               ownerName: purchaseAddress.slice(0, 8) + "..." + purchaseAddress.slice(-6),
               ownerWallet: purchaseAddress,
-              ownerEmail: buyerEmail,
+              ownerEmail: emailToUse,
               coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
               zoneType: plot.zone_type || "Residential",
               purchasePrice: PLOT_PRICE_xBGL,
@@ -553,7 +553,7 @@ export default function PlotPurchase() {
               plotId: plotId,
               ownerName: purchaseAddress.slice(0, 8) + "..." + purchaseAddress.slice(-6),
               ownerWallet: purchaseAddress,
-              ownerEmail: buyerEmail,
+              ownerEmail: emailToUse,
               purchasePrice: PLOT_PRICE_xBGL,
               purchaseDate: new Date().toISOString(),
               coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
@@ -582,7 +582,7 @@ export default function PlotPurchase() {
         detail: { 
           wallet: finalAuthUserEmail, // Use auth user email as identifier
           plotIds: plotIdsArray,
-          email: buyerEmail || finalAuthUserEmail,
+          email: emailToUse || finalAuthUserEmail,
           totalCost: totalCost
         }
       }));
@@ -619,246 +619,321 @@ export default function PlotPurchase() {
   const hasEnoughBalance = parseFloat(purchaseBalance) >= parseFloat(totalPrice);
 
   return (
-    <div className="min-h-screen pt-20 bg-background">
-      <div className="container mx-auto px-4 py-6 max-w-7xl space-y-4">
-        {/* Header - Sleek and Minimal */}
-        <div className="flex items-center justify-between mb-6">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate(-1)} 
-            className="gap-2 -ml-2 hover:bg-accent/50 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <div className="text-center">
-            <h1 className="text-3xl font-bold tracking-tight">Plot Purchase</h1>
-            <p className="text-sm text-muted-foreground mt-1">{selectedPlotIds.size} plot{selectedPlotIds.size !== 1 ? 's' : ''} selected</p>
-          </div>
-          <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
-            <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                className="gap-2 -mr-2 hover:bg-accent/50 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Plot</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="border-border/50">
-              <DialogHeader>
-                <DialogTitle>Add Plot</DialogTitle>
-                <DialogDescription className="text-xs">
-                  Enter a plot ID (any positive integer). Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Input
-                    type="number"
-                    placeholder="Plot ID"
-                    value={customPlotId}
-                    onChange={(e) => setCustomPlotId(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleAddCustomPlot();
-                      }
-                    }}
-                    min={1}
-                    className="bg-background/50 border-border/50"
-                  />
-                </div>
-                {initialPlotId && (
-                  <div className="p-3 rounded-lg bg-accent/50 border border-border/50">
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <span className="font-medium">Plot #{initialPlotId} from grid</span>
-                      {!selectedPlotIds.has(parseInt(initialPlotId)) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => addPlot(parseInt(initialPlotId))}
-                          className="ml-auto h-7 text-xs"
-                        >
-                          Add
-                        </Button>
-                      )}
-                    </div>
+    <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Professional Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate(-1)} 
+              className="gap-2 hover:bg-accent/5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold tracking-tight mb-2">Plot Purchase</h1>
+              <p className="text-muted-foreground">
+                Select and purchase land plots in the ChaosStar universe
+              </p>
+            </div>
+            <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 shadow-md shrink-0">
+                  <Plus className="h-4 w-4" />
+                  Add Plot
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-border/50 bg-card/95 backdrop-blur-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">Add Plot to Purchase</DialogTitle>
+                  <DialogDescription>
+                    Enter a plot ID (any positive integer). Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="plot-id-input">Plot ID</Label>
+                    <Input
+                      id="plot-id-input"
+                      type="number"
+                      placeholder="Enter plot ID"
+                      value={customPlotId}
+                      onChange={(e) => setCustomPlotId(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddCustomPlot();
+                        }
+                      }}
+                      min={1}
+                      className="bg-background/50 border-border/50"
+                    />
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAddPlotDialog(false)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleAddCustomPlot}
-                    disabled={!customPlotId || isNaN(parseInt(customPlotId))}
-                    className="flex-1"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add
-                  </Button>
+                  {initialPlotId && (
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <span className="font-medium">Plot #{initialPlotId} from grid</span>
+                        </div>
+                        {!selectedPlotIds.has(parseInt(initialPlotId)) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addPlot(parseInt(initialPlotId))}
+                            className="h-8 text-xs"
+                          >
+                            Add
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAddPlotDialog(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddCustomPlot}
+                      disabled={!customPlotId || isNaN(parseInt(customPlotId))}
+                      className="flex-1"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Plot
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
-        {/* Main Layout - Two Column */}
-        <div className="grid lg:grid-cols-3 gap-4">
-          {/* Left: Purchase Summary & Actions - Compact */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Quick Summary Card */}
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-              <CardContent className="p-4 space-y-4">
-                {/* Total Price - Prominent */}
-                <div className="text-center pb-3 border-b border-border/50">
-                  <p className="text-xs text-muted-foreground mb-1">Total Amount</p>
-                  <p className="text-3xl font-bold tracking-tight">{totalPrice} <span className="text-lg text-muted-foreground">xBGL</span></p>
-                  <p className="text-xs text-muted-foreground mt-1">{selectedPlotIds.size} plot{selectedPlotIds.size !== 1 ? 's' : ''} × {PLOT_PRICE_xBGL} xBGL</p>
+        {/* Main Content - Two Column Layout */}
+        <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-xl overflow-hidden">
+          <CardContent className="p-0">
+            {/* Header */}
+            <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+                  <Grid3x3 className="h-6 w-6 text-primary" />
                 </div>
-
-                {/* Email Input - Required */}
-                <div className="space-y-2">
-                  <Label htmlFor="buyer-email" className="text-xs text-muted-foreground">Email Address</Label>
-                  <Input
-                    id="buyer-email"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={buyerEmail}
-                    onChange={(e) => setBuyerEmail(e.target.value)}
-                    className="h-9 bg-background/50 border-border/50"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">Your email will be used to identify your account and send purchase confirmations</p>
-                </div>
-
-                {/* Purchase Button - Sleek */}
-                <Button
-                  variant="default"
-                  className="w-full h-11 font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all shadow-lg hover:shadow-xl"
-                  onClick={handlePurchase}
-                  disabled={purchasing || loading || selectedPlotIds.size === 0 || !hasEnoughBalance || !buyerEmail || !buyerEmail.includes("@")}
-                >
-                  {purchasing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      Purchase {selectedPlotIds.size} Plot{selectedPlotIds.size !== 1 ? 's' : ''}
-                    </>
-                  )}
-                </Button>
-
-                {/* Balance - Subtle */}
-                <div className="pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Balance</span>
-                    <span className="font-medium">{parseFloat(purchaseBalance).toFixed(4)} xBGL</span>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold mb-1">Plot Purchase</h2>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      {selectedPlotIds.size} plot{selectedPlotIds.size !== 1 ? 's' : ''} selected
+                    </span>
                   </div>
-                  {!hasEnoughBalance && parseFloat(totalPrice) > 0 && (
-                    <div className="mt-2 p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-1.5">
-                      <AlertCircle className="h-3 w-3" />
-                      Insufficient balance
-                    </div>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                {selectedPlotIds.size > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedPlotIds(new Set());
+                      toast.info("All plots cleared");
+                    }}
+                    className="h-9 text-sm text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    Clear All
+                  </Button>
+                )}
+              </div>
+            </div>
 
-          {/* Right: Selected Plots - Sleek Grid */}
-          <div className="lg:col-span-2">
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold">Selected Plots</CardTitle>
-                  {selectedPlotIds.size > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedPlotIds(new Set());
-                        toast.info("All plots cleared");
-                      }}
-                      className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="p-4">
-                {selectedPlotIds.size === 0 ? (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <div className="relative inline-block mb-4">
-                      <MapPin className="h-16 w-16 mx-auto opacity-20" />
+            {/* Two Column Layout */}
+            <div className="grid lg:grid-cols-12 gap-6 p-6">
+              {/* Left Column: Purchase Summary */}
+              <div className="lg:col-span-4">
+                <div className="lg:sticky lg:top-24 space-y-6">
+                  {/* Order Summary Card */}
+                  <div className="p-6 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/50 shadow-md">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                        <ShoppingCart className="h-5 w-5 text-primary" />
+                        Order Summary
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Review your selection before purchase
+                      </p>
                     </div>
-                    <p className="text-sm font-medium mb-1">No plots selected</p>
-                    <p className="text-xs">Add plots to get started</p>
-                    {initialPlotId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-4 h-8 text-xs"
-                        onClick={() => addPlot(parseInt(initialPlotId))}
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        Add Plot #{initialPlotId}
-                      </Button>
-                    )}
+
+                    {/* Item Breakdown */}
+                    <div className="space-y-3 pb-4 border-b border-border/50">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Plots Selected</span>
+                        <span className="font-medium">{selectedPlotIds.size}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Price per Plot</span>
+                        <span className="font-medium">{PLOT_PRICE_xBGL.toFixed(2)} xBGL</span>
+                      </div>
+                    </div>
+
+                    {/* Total Price - Prominent */}
+                    <div className="py-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-base font-semibold">Total Amount</span>
+                        <div className="text-right">
+                          <span className="text-3xl font-bold tracking-tight">{totalPrice}</span>
+                          <span className="text-lg text-muted-foreground ml-1">xBGL</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Balance Display */}
+                    <div className="p-4 rounded-lg bg-muted/50 border border-border/50 space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Wallet className="h-4 w-4" />
+                          <span>Available Balance</span>
+                        </div>
+                        <span className="font-semibold">{parseFloat(purchaseBalance).toFixed(4)} xBGL</span>
+                      </div>
+                      
+                      {!hasEnoughBalance && parseFloat(totalPrice) > 0 && (
+                        <div className="p-3 rounded-lg bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20 flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-destructive mb-1">Insufficient Balance</p>
+                            <p className="text-xs text-muted-foreground">
+                              You need {(parseFloat(totalPrice) - parseFloat(purchaseBalance)).toFixed(2)} more xBGL
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {hasEnoughBalance && parseFloat(totalPrice) > 0 && (
+                        <div className="p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20 flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                            Sufficient balance available
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Purchase Button - Primary CTA */}
+                    <Button
+                      variant="default"
+                      className="w-full h-12 mt-6 font-semibold text-base bg-gradient-to-r from-primary via-primary/95 to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary/95 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handlePurchase}
+                      disabled={purchasing || loading || selectedPlotIds.size === 0 || !hasEnoughBalance || (!buyerEmail && !userEmail)}
+                    >
+                      {purchasing ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Processing Purchase...
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-5 w-5 mr-2" />
+                          Purchase {selectedPlotIds.size} Plot{selectedPlotIds.size !== 1 ? 's' : ''}
+                        </>
+                      )}
+                    </Button>
+
+                    {/* Security Badge */}
+                    <div className="pt-4 mt-4 border-t border-border/50">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Shield className="h-3.5 w-3.5" />
+                        <span>Secure transaction • Instant confirmation</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Selected Plots Grid */}
+              <div className="lg:col-span-8">
+                {selectedPlotIds.size === 0 ? (
+                  <div className="text-center py-24">
+                    <div className="relative inline-block mb-8">
+                      <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+                      <div className="relative p-10 rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20">
+                        <MapPin className="h-32 w-32 mx-auto text-primary/40" />
+                      </div>
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 text-foreground">Start Building Your Portfolio</h3>
+                    <p className="text-base text-muted-foreground mb-8 max-w-lg mx-auto leading-relaxed">
+                      Add plots to your selection to begin your purchase. Each plot represents a unique piece of land in the ChaosStar universe.
+                    </p>
+                    <div className="flex items-center justify-center gap-4">
+                      {initialPlotId && (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="gap-2 h-12 px-6"
+                          onClick={() => addPlot(parseInt(initialPlotId))}
+                        >
+                          <Plus className="h-5 w-5" />
+                          Add Plot #{initialPlotId}
+                        </Button>
+                      )}
+                      <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
+                        <DialogTrigger asChild>
+                          <Button size="lg" className="gap-2 h-12 px-6 bg-gradient-to-r from-primary to-primary/90">
+                            <Plus className="h-5 w-5" />
+                            Browse Plots
+                          </Button>
+                        </DialogTrigger>
+                      </Dialog>
+                    </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-[700px] overflow-y-auto custom-scrollbar pr-2">
                     {sortedPlotIds.map((plotId) => (
                       <div
                         key={plotId}
-                        className="group relative p-3 rounded-lg border border-border/50 overflow-hidden hover:border-primary/30 transition-all cursor-pointer aspect-square"
+                        className="group relative aspect-square rounded-xl border-2 border-border/50 overflow-hidden hover:border-primary/50 transition-all cursor-pointer bg-gradient-to-br from-card to-card/50 shadow-md hover:shadow-xl hover:scale-[1.02]"
                         style={{
-                          lineHeight: '30px',
                           backgroundImage: 'url(/plot-preview.png)',
                           backgroundSize: 'cover',
                           backgroundPosition: 'center',
                           backgroundRepeat: 'no-repeat',
                         }}
                       >
-                        {/* Overlay for text readability - square shape */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-square bg-background/30 group-hover:bg-background/20 transition-colors" style={{ lineHeight: '30px' }}></div>
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/50 to-transparent group-hover:from-background/90 transition-colors" />
                         
                         {/* Content */}
-                        <div className="relative flex flex-col items-center gap-1.5 z-10">
-                          <span className="font-semibold text-sm drop-shadow-sm">#{plotId}</span>
+                        <div className="relative h-full flex flex-col items-center justify-end p-3 z-10">
+                          <Badge className="bg-gradient-to-r from-primary/95 to-primary/85 text-primary-foreground font-bold shadow-lg px-3 py-1.5 text-sm">
+                            #{plotId}
+                          </Badge>
                         </div>
                         
-                        {/* Remove button */}
+                        {/* Remove Button */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20 hover:text-destructive absolute top-1 right-1 z-20"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/20 hover:text-destructive absolute top-2 right-2 z-20 rounded-full bg-background/90 backdrop-blur-sm shadow-md"
                           onClick={(e) => {
                             e.stopPropagation();
                             removePlot(plotId);
                           }}
-                          title="Remove"
+                          title="Remove plot"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </Button>
+
+                        {/* Hover Effect */}
+                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                       </div>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

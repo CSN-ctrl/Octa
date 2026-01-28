@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/contexts/WalletContext";
 import * as supabaseService from "@/lib/supabase-service";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -147,7 +148,8 @@ export default function Dashboard() {
   // Memoized calculated values
   const totalPlots = useMemo(() => ownedPlots.length, [ownedPlots.length]);
   const totalValue = useMemo(() => {
-    const plotsValue = ownedPlots.length * 100; // 100 xBGL per plot
+    const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
+    const plotsValue = ownedPlots.length * plotPrice;
     const portfolioValue = portfolios.reduce(
       (sum, p) => sum + Number(p.current_value || 0),
       0
@@ -326,7 +328,8 @@ export default function Dashboard() {
             
             // Auto-correct balance if plot purchases haven't been deducted
             if (balanceData && plots && plots.length > 0) {
-              const plotCost = plots.length * 100; // 100 xBGL per plot
+              const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
+              const plotCost = plots.length * plotPrice;
               const currentBalance = balanceData.xbgl_balance || 0;
               
               // Calculate total spent on plots from transactions
@@ -364,7 +367,8 @@ export default function Dashboard() {
           }
           
           // Calculate total initial deposit (current balance + amount spent on plots)
-          const plotCost = plots?.length ? plots.length * 100 : 0; // 100 xBGL per plot
+          const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
+          const plotCost = plots?.length ? plots.length * plotPrice : 0;
           const currentBalance = balanceData?.xbgl_balance || 0;
           const totalInitialDeposit = currentBalance + plotCost; // Total received from treasury
           
@@ -782,7 +786,8 @@ export default function Dashboard() {
           // Auto-correct balance based on plot purchases before setting state
           if (balanceData && authUserEmail && plots && plots.length > 0) {
             // Calculate total spent on plots (100 xBGL per plot)
-            const plotCost = plots.length * 100;
+            const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
+            const plotCost = plots.length * plotPrice;
             const currentBalance = balanceData.xbgl_balance || 0;
             
             // Calculate total spent from transactions if available
@@ -883,7 +888,8 @@ export default function Dashboard() {
             }
           }, 1500);
 
-          const plotsValue = (plots?.length || 0) * 100;
+          const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
+          const plotsValue = (plots?.length || 0) * plotPrice;
           const portfolioValue = (portfolioData || []).reduce(
             (sum, p) => sum + Number(p.current_value || 0),
             0
@@ -1803,7 +1809,7 @@ export default function Dashboard() {
     try {
       // Check balance
       const balanceData = await supabaseService.getUserBalance(address).catch(() => null);
-      const plotPrice = 100; // Standard plot price
+      const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
       
       if (!balanceData || (balanceData.xbgl_balance || 0) < plotPrice) {
         toast.error(`Insufficient balance. You need ${plotPrice} xBGL`);
@@ -1948,7 +1954,7 @@ export default function Dashboard() {
     try {
       // Check balance
       const balanceData = await supabaseService.getUserBalance(address).catch(() => null);
-      const plotPrice = 100; // Standard plot price
+      const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
       
       if (!balanceData || (balanceData.xbgl_balance || 0) < plotPrice) {
         toast.error(`Insufficient balance. You need ${plotPrice} xBGL`);

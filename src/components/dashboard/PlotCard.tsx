@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, FileText, PieChart } from "lucide-react";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 interface PlotCardProps {
   plot: {
@@ -64,7 +65,7 @@ export const PlotCard = memo(function PlotCard({
               <MapPin className="h-3 w-3" />
               Zone: {plot.zone_type || "Unknown"}
             </div>
-            <div className="mt-1">Value: 100 xBGL</div>
+            <div className="mt-1">Value: {getPlotPriceInXBGL().toFixed(2)} xBGL</div>
           </div>
         </div>
 
