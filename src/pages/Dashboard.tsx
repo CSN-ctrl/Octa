@@ -68,6 +68,11 @@ import {
   UserPlus,
   Search,
   ArrowRight,
+  BookOpen,
+  HelpCircle,
+  Briefcase,
+  Rocket,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PlotDocumentUpload } from "@/components/plots/PlotDocumentUpload";
@@ -2385,114 +2390,178 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
-      <div className="container mx-auto p-6 space-y-6">
-      {/* Sidebar and Content Layout */}
-      <div className="flex gap-6 relative">
-        {/* Sidebar Navigation - Side Panel with auto-scaling */}
-        <aside
-          className={`
-            shrink-0
-            transform transition-all duration-300 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0 opacity-100 w-72' : '-translate-x-full opacity-0 w-0'}
-            ${isSidebarOpen ? '' : 'pointer-events-none'}
-            h-[calc(100vh-5rem)]
-            overflow-hidden
-          `}
-        >
-          <Card className="h-full glass-enhanced border-primary/20 shadow-glow-card overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-            <CardHeader className="relative z-10 pb-3 border-b border-primary/10">
-              <CardTitle className="text-lg font-semibold gradient-text">Navigation</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 relative z-10">
-              <nav className="space-y-1 p-4">
-                <button
-                  onClick={() => {
-                    setActiveSection("asset-management");
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeSection === "asset-management"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <BarChart3 className={`h-4 w-4 transition-transform ${activeSection === "asset-management" ? "scale-110" : ""}`} />
-                  <span>Asset Management</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("transfers");
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeSection === "transfers"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <Send className={`h-4 w-4 transition-transform ${activeSection === "transfers" ? "scale-110" : ""}`} />
-                  <span>Transfers</span>
-                </button>
-                <div className="pt-2 pb-1">
-                  <div className="text-xs font-semibold text-muted-foreground px-4 mb-2">Market</div>
+      <div className="flex h-[calc(100vh-5rem)]">
+        {/* Sidebar Navigation - Full Height, Toggleable */}
+        <aside className={`fixed left-0 top-20 bottom-0 w-72 shrink-0 overflow-hidden border-r border-primary/30 bg-background/95 backdrop-blur-xl transform transition-transform duration-300 ease-in-out z-40 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          {/* Background gradient overlay - matching app style */}
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-background/90 pointer-events-none" />
+          
+          {/* Content */}
+          <div className="relative z-10 overflow-y-auto h-full pt-4">
+            <nav className="space-y-2 px-4">
+              {/* Dashboard Section - Moved to top */}
+              <div className="mb-2 pb-2 border-b border-primary/10">
+                <div className="flex items-center gap-2 px-2 mb-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Dashboard
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveSection("asset-management");
+                    }}
+                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
+                      activeSection === "asset-management"
+                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
+                        : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
+                    }`}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "asset-management" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <BarChart3 className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "asset-management" ? "scale-110" : "group-hover:scale-110"}`} />
+                    <span className="relative z-10">Asset Management</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveSection("transfers");
+                    }}
+                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
+                      activeSection === "transfers"
+                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
+                        : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
+                    }`}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "transfers" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <Send className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "transfers" ? "scale-110" : "group-hover:scale-110"}`} />
+                    <span className="relative z-10">Transfers</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Explore Section */}
+              <div className="mb-2 pb-2 border-b border-primary/10">
+                <div className="flex items-center gap-2 px-2 mb-2">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Explore
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => navigate("/ilo")}
+                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 bg-gradient-cosmic/20 hover:bg-gradient-cosmic hover:text-primary-foreground hover:scale-[1.02] text-primary relative overflow-hidden border border-primary/30 hover:border-primary/60 shadow-lg hover:shadow-primary/20"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    <Rocket className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-12" />
+                    <span className="relative z-10 font-semibold">ILO</span>
+                  </button>
+                  <button
+                    onClick={() => navigate("/lore")}
+                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-[1.02] text-muted-foreground relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <BookOpen className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110" />
+                    <span className="relative z-10">Lore</span>
+                  </button>
+                  <button
+                    onClick={() => navigate("/how-it-works")}
+                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-[1.02] text-muted-foreground relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <HelpCircle className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110" />
+                    <span className="relative z-10">How It Works</span>
+                  </button>
+                  <button
+                    onClick={() => navigate("/business")}
+                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-[1.02] text-muted-foreground relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Briefcase className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110" />
+                    <span className="relative z-10">Business</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Market Section */}
+              <div className="mb-2 pb-2 border-b border-primary/10">
+                <div className="flex items-center gap-2 px-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Market
+                  </span>
+                </div>
+                <div className="space-y-1">
                   <button
                     onClick={() => {
                       setActiveSection("market-primary");
                     }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
                       activeSection === "market-primary"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
+                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
                         : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
                     }`}
                   >
-                    <TrendingUp className={`h-4 w-4 transition-transform ${activeSection === "market-primary" ? "scale-110" : ""}`} />
-                    <span>Primary</span>
+                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "market-primary" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <Sparkles className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "market-primary" ? "scale-110 rotate-12" : "group-hover:scale-110 group-hover:rotate-12"}`} />
+                    <span className="relative z-10">Primary</span>
                   </button>
                   <button
                     onClick={() => {
                       setActiveSection("market-speculative");
                     }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
                       activeSection === "market-speculative"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
+                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
                         : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
                     }`}
                   >
-                    <TrendingDown className={`h-4 w-4 transition-transform ${activeSection === "market-speculative" ? "scale-110" : ""}`} />
-                    <span>Speculative</span>
+                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "market-speculative" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <Zap className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "market-speculative" ? "scale-110 rotate-12" : "group-hover:scale-110 group-hover:rotate-12"}`} />
+                    <span className="relative z-10">Speculative</span>
                   </button>
                 </div>
-                <div className="pt-2 pb-1 border-t border-primary/10 mt-2">
-                  <div className="text-xs font-semibold text-muted-foreground px-4 mb-2">Premium</div>
+              </div>
+
+              {/* Premium Section */}
+              <div>
+                <div className="flex items-center gap-2 px-2 mb-2">
+                  <Crown className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Celestial Assets
+                  </span>
+                </div>
+                <div className="space-y-1">
                   <button
                     onClick={() => {
                       setActiveSection("hnwi-purchases");
                       loadHNWIAssets();
                     }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
                       activeSection === "hnwi-purchases"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
+                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
                         : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
                     }`}
                     aria-label="Premium Assets section"
                     aria-pressed={activeSection === "hnwi-purchases"}
                   >
-                    <Crown className={`h-4 w-4 transition-transform ${activeSection === "hnwi-purchases" ? "scale-110" : ""}`} aria-hidden="true" />
-                    <span>Premium Assets</span>
+                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "hnwi-purchases" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <Crown className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "hnwi-purchases" ? "scale-110" : "group-hover:scale-110"}`} aria-hidden="true" />
+                    <span className="relative z-10">Premium Assets</span>
                   </button>
                 </div>
-              </nav>
-            </CardContent>
-          </Card>
+              </div>
+            </nav>
+          </div>
         </aside>
 
-        {/* Main Content Area - Auto-scales when sidebar opens/closes */}
-        <main 
-          className={`
-            flex-1 min-w-0
-            transition-all duration-300 ease-in-out
-            ${isSidebarOpen ? 'w-[calc(100%-18rem)]' : 'w-full'}
-          `}
-        >
+        {/* Main Content Area */}
+        <main className={`flex-1 min-w-0 overflow-y-auto transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-72' : 'ml-0'
+        }`}>
+          <div className="container mx-auto p-6 space-y-6">
           {/* Asset Management Section */}
           {activeSection === "asset-management" && (
             <AssetManagementSection
@@ -2697,68 +2766,10 @@ export default function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {loadingSpeculative ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : speculativeContracts.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground select-none">
-                      <TrendingDown className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No futures contracts available</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {speculativeContracts.map((contract) => (
-                        <Card key={contract.id} className="border-border/50 hover:border-primary/30 transition-colors">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <CardTitle className="text-lg select-none">{contract.name}</CardTitle>
-                                <CardDescription className="select-none mt-1">
-                                  {contract.description}
-                                </CardDescription>
-                              </div>
-                              <Badge variant={contract.risk_level === "high" ? "destructive" : "secondary"} className="select-none">
-                                {contract.risk_level}
-                              </Badge>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>
-                                <span className="text-muted-foreground select-none">Current Price:</span>
-                                <div className="font-semibold text-primary select-none">{contract.current_price} xBGL</div>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground select-none">Leverage:</span>
-                                <div className="font-semibold select-none">{contract.leverage}x</div>
-                              </div>
-                            </div>
-                            <div className="text-sm">
-                              <span className="text-muted-foreground select-none">24h Change: </span>
-                              <span className={`font-semibold ${contract.change_24h >= 0 ? 'text-green-500' : 'text-red-500'} select-none`}>
-                                {contract.change_24h >= 0 ? '+' : ''}{contract.change_24h}%
-                              </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground select-none">
-                              Expires: {contract.expiry_date ? new Date(contract.expiry_date).toLocaleDateString() : "N/A"}
-                            </div>
-                            <Button
-                              variant="default"
-                              className="w-full"
-                              onClick={() => {
-                                setSelectedContract(contract);
-                                setShowContractDialog(true);
-                              }}
-                            >
-                              <TrendingDown className="h-4 w-4 mr-2" />
-                              Trade Contract
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                  <div className="text-center py-12 text-muted-foreground select-none">
+                    <TrendingDown className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-semibold">Coming Soon</p>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -3320,8 +3331,8 @@ export default function Dashboard() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </main>
-      </div>
       </div>
     </div>
   );

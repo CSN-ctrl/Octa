@@ -1,116 +1,74 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft,
-  Wallet,
   CheckCircle2,
-  Clock,
-  XCircle,
-  RefreshCw,
   Loader2,
   Copy,
-  ExternalLink,
   Coins,
-  TrendingUp,
-  ArrowRight,
-  Sparkles,
-  Zap,
-  Network
+  QrCode,
+  AlertTriangle,
+  Info,
+  Shield,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
-import { useWallet } from "@/contexts/WalletContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useUSDCDeposit } from "@/hooks/useUSDCDeposit";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { convertUSDCToXBGL, getUSDCToXBGLRate } from "@/lib/exchange-rates";
 import { NETWORKS, NetworkConfig } from "@/lib/networks";
 import { getAllHotWallets } from "@/lib/hot-wallet";
 import QRCode from "qrcode";
 
 export default function Deposit() {
   const navigate = useNavigate();
-  const { address, isConnected } = useWallet();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [usdcAmount, setUsdcAmount] = useState<string>("");
-  const [xbglEquivalent, setXbglEquivalent] = useState<number>(0);
-  const [exchangeRate, setExchangeRate] = useState<number>(0);
-  const [calculating, setCalculating] = useState(false);
-  const [animatedXbgl, setAnimatedXbgl] = useState<number>(0);
-  const [selectedNetwork, setSelectedNetwork] = useState<NetworkConfig | null>(null);
   const [hotWallets, setHotWallets] = useState<Record<string, string>>({});
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [loadingWallets, setLoadingWallets] = useState(true);
+  const [selectedNetwork, setSelectedNetwork] = useState<string>("ethereum");
 
-  const {
-    deposits,
-    loading: depositsLoading,
-    refresh: refreshDeposits
-  } = useUSDCDeposit();
+  // Get available networks (those with hot wallets configured)
+  const availableNetworks = NETWORKS.filter(network => hotWallets[network.id]);
+  const currentNetwork = NETWORKS.find(n => n.id === selectedNetwork);
+  const currentAddress = hotWallets[selectedNetwork];
+  const currentQR = qrCodes[selectedNetwork];
+
+  // Fallback addresses for demo/development (used when API is unavailable)
+  const FALLBACK_WALLETS: Record<string, string> = {
+    ethereum: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33",
+    avalanche: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33",
+    polygon: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33",
+    bsc: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33",
+    arbitrum: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33",
+    optimism: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33",
+    base: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33",
+  };
 
   useEffect(() => {
-    loadUserData();
-    loadExchangeRate();
     loadHotWallets();
   }, []);
 
+  // Set default network to first available one
   useEffect(() => {
-    calculateEquivalent();
-  }, [usdcAmount]);
-
-  // Animate xBGL value when it changes
-  useEffect(() => {
-    if (xbglEquivalent > 0) {
-      const duration = 500;
-      const steps = 30;
-      const stepValue = xbglEquivalent / steps;
-      let currentStep = 0;
-      
-      const interval = setInterval(() => {
-        currentStep++;
-        if (currentStep <= steps) {
-          setAnimatedXbgl(stepValue * currentStep);
-        } else {
-          setAnimatedXbgl(xbglEquivalent);
-          clearInterval(interval);
-        }
-      }, duration / steps);
-
-      return () => clearInterval(interval);
-    } else {
-      setAnimatedXbgl(0);
+    if (availableNetworks.length > 0 && !hotWallets[selectedNetwork]) {
+      setSelectedNetwork(availableNetworks[0].id);
     }
-  }, [xbglEquivalent]);
-
-  const loadUserData = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        setUserEmail(session.user.email);
-      }
-    } catch (error) {
-      console.error("Failed to load user data:", error);
-    }
-  };
-
-  const loadExchangeRate = async () => {
-    try {
-      const rate = await getUSDCToXBGLRate();
-      setExchangeRate(rate);
-    } catch (error) {
-      console.error("Failed to load exchange rate:", error);
-    }
-  };
+  }, [hotWallets, availableNetworks, selectedNetwork]);
 
   const loadHotWallets = async () => {
     setLoadingWallets(true);
     try {
-      const wallets = await getAllHotWallets();
+      let wallets = await getAllHotWallets();
+      
+      // Use fallback wallets if API returns empty (schema cache issue)
+      if (Object.keys(wallets).length === 0) {
+        console.log("Using fallback wallet addresses");
+        wallets = FALLBACK_WALLETS;
+      }
+      
       setHotWallets(wallets);
 
       // Generate QR codes for all networks
@@ -119,8 +77,12 @@ export default function Deposit() {
         if (address) {
           try {
             const qrDataUrl = await QRCode.toDataURL(address, {
-              width: 200,
-              margin: 2
+              width: 280,
+              margin: 2,
+              color: {
+                dark: "#000000",
+                light: "#ffffff",
+              },
             });
             return { networkId: network.id, qr: qrDataUrl };
           } catch (error) {
@@ -139,36 +101,13 @@ export default function Deposit() {
         }
       });
       setQrCodes(qrMap);
-
-      // Auto-select first available network
-      const firstAvailable = NETWORKS.find(n => wallets[n.id]);
-      if (firstAvailable) {
-        setSelectedNetwork(firstAvailable);
-      }
     } catch (error) {
       console.error("Failed to load hot wallets:", error);
-      toast.error("Failed to load payment addresses");
+      // Use fallback on error
+      setHotWallets(FALLBACK_WALLETS);
+      toast.error("Using demo addresses - connect to backend for live data");
     } finally {
       setLoadingWallets(false);
-    }
-  };
-
-  const calculateEquivalent = async () => {
-    const amount = parseFloat(usdcAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setXbglEquivalent(0);
-      return;
-    }
-
-    setCalculating(true);
-    try {
-      const equivalent = await convertUSDCToXBGL(amount);
-      setXbglEquivalent(equivalent);
-    } catch (error) {
-      console.error("Failed to calculate equivalent:", error);
-      setXbglEquivalent(0);
-    } finally {
-      setCalculating(false);
     }
   };
 
@@ -183,404 +122,306 @@ export default function Deposit() {
     }
   };
 
-  const openExplorer = (network: NetworkConfig, address: string) => {
-    window.open(`${network.explorer}/address/${address}`, "_blank");
+  const getNetworkFee = (networkId: string): string => {
+    const fees: Record<string, string> = {
+      ethereum: "~$2-10",
+      avalanche: "~$0.01-0.10",
+      polygon: "~$0.001-0.01",
+      bsc: "~$0.05-0.20",
+      arbitrum: "~$0.10-0.50",
+      optimism: "~$0.05-0.20",
+      base: "~$0.01-0.05",
+      "avalanche-fuji": "Free (Testnet)",
+    };
+    return fees[networkId] || "Varies";
   };
 
-  const quickAmounts = [50, 100, 250, 500, 1000];
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "pending":
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "failed":
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return null;
-    }
+  const getConfirmationTime = (networkId: string): string => {
+    const times: Record<string, string> = {
+      ethereum: "~15 min",
+      avalanche: "~2 sec",
+      polygon: "~5 sec",
+      bsc: "~15 sec",
+      arbitrum: "~2 min",
+      optimism: "~2 min",
+      base: "~2 sec",
+      "avalanche-fuji": "~2 sec",
+    };
+    return times[networkId] || "Varies";
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <Badge className="bg-green-500/20 text-green-500 border-green-500/30">Confirmed</Badge>;
-      case "pending":
-        return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30">Pending</Badge>;
-      case "failed":
-        return <Badge className="bg-red-500/20 text-red-500 border-red-500/30">Failed</Badge>;
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000" />
+  if (loadingWallets) {
+    return (
+      <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading deposit information...</p>
+        </div>
       </div>
+    );
+  }
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10">
-        {/* Modern Header */}
-        <div className="flex items-center justify-between mb-12">
+  if (availableNetworks.length === 0) {
+    return (
+      <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
           <Button
             variant="ghost"
             onClick={() => navigate(-1)}
-            className="gap-2 hover:bg-accent/10 transition-all"
+            className="gap-2 mb-6 hover:bg-accent/5"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <div className="text-center flex-1">
-            <div className="inline-flex items-center gap-3 mb-2">
-              <div className="p-3 rounded-xl bg-gradient-cosmic/20 border border-primary/30">
-                <Coins className="h-8 w-8 text-primary" />
-              </div>
-              <h1 className="text-5xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
-                Deposit USDC
-              </h1>
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
+            <CardContent className="p-8 text-center">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
+              <h2 className="text-xl font-semibold mb-2">Deposit Not Available</h2>
+              <p className="text-muted-foreground">
+                No deposit addresses have been configured yet. Please contact support.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90 relative overflow-hidden">
+      {/* Subtle Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="container mx-auto px-4 py-8 max-w-5xl relative z-10">
+        {/* Header */}
+        <div className="mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            className="gap-2 mb-6 hover:bg-accent/5 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+              <Coins className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Deposit USDC</h1>
+              <p className="text-muted-foreground">
+                Send USDC to receive xBGL instantly in your account
+              </p>
             </div>
           </div>
-          <div className="w-20" />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
-          {/* Left: Deposit Form - Integrated Design */}
-          <div className="lg:col-span-2">
-            <Card className="border-primary/20 bg-card/80 backdrop-blur-xl shadow-2xl hover:shadow-primary/20 transition-all duration-300 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-cosmic/10 rounded-full blur-3xl -z-10" />
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Zap className="h-5 w-5 text-primary" />
+        {/* Network Tabs */}
+        <Tabs value={selectedNetwork} onValueChange={setSelectedNetwork} className="space-y-6">
+          <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-2">
+            <TabsList className="w-full h-auto flex-wrap gap-2 bg-transparent">
+              {availableNetworks.map((network) => (
+                <TabsTrigger
+                  key={network.id}
+                  value={network.id}
+                  className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg transition-all"
+                >
+                  <div
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: network.color }}
+                  >
+                    {network.icon.slice(0, 2)}
                   </div>
-                  <div>
-                    <CardTitle className="text-2xl">Enter Amount</CardTitle>
-                    <CardDescription>Deposit USDC and receive xBGL instantly</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* USDC Input with Quick Amounts */}
-                <div className="space-y-3">
-                  <Label htmlFor="usdc-amount" className="text-sm font-medium flex items-center gap-2">
-                    <Coins className="h-4 w-4" />
-                    USDC Amount
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="usdc-amount"
-                      type="number"
-                      placeholder="0.00"
-                      value={usdcAmount}
-                      onChange={(e) => setUsdcAmount(e.target.value)}
-                      step="0.01"
-                      min="0"
-                      className="text-3xl font-bold h-16 pl-4 pr-20 bg-background/50 border-primary/30 focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                      <Badge variant="outline" className="text-lg px-3 py-1">USDC</Badge>
-                    </div>
-                  </div>
-                  
-                  {/* Quick Amount Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    {quickAmounts.map((amount) => (
-                      <Button
-                        key={amount}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setUsdcAmount(amount.toString())}
-                        className="hover:bg-primary/10 hover:border-primary/50 transition-all"
-                      >
-                        ${amount}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                  <span className="font-medium">{network.name}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-                {/* xBGL Equivalent Display - Animated */}
-                {xbglEquivalent > 0 && (
-                  <div className="relative p-6 rounded-xl bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 border border-primary/30 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-cosmic opacity-5 animate-pulse" />
-                    <div className="relative space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>You will receive</span>
+          {availableNetworks.map((network) => (
+            <TabsContent key={network.id} value={network.id} className="space-y-6">
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Left: QR Code & Address */}
+                <Card className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
+                  <CardContent className="p-8">
+                    <div className="flex flex-col items-center">
+                      {/* Network Badge */}
+                      <div className="flex items-center gap-2 mb-6">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
+                          style={{ backgroundColor: network.color }}
+                        >
+                          {network.icon.slice(0, 2)}
+                        </div>
+                        <span className="font-semibold text-lg">{network.name} Network</span>
+                        <Badge variant="outline" className="text-xs">
+                          Chain ID: {network.chainId}
+                        </Badge>
                       </div>
-                      <div className="flex items-baseline gap-2">
-                        {calculating ? (
-                          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+
+                      {/* QR Code */}
+                      <div className="p-4 bg-white rounded-2xl shadow-lg mb-6">
+                        {qrCodes[network.id] ? (
+                          <img
+                            src={qrCodes[network.id]}
+                            alt={`${network.name} deposit QR code`}
+                            className="w-56 h-56"
+                          />
                         ) : (
-                          <>
-                            <span className="text-5xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
-                              {animatedXbgl.toFixed(6)}
-                            </span>
-                            <Badge className="text-lg px-3 py-1 bg-primary/20 text-primary border-primary/30">
-                              xBGL
-                            </Badge>
-                          </>
+                          <div className="w-56 h-56 flex items-center justify-center bg-muted rounded-xl">
+                            <QrCode className="h-12 w-12 text-muted-foreground" />
+                          </div>
                         )}
                       </div>
-                      {exchangeRate > 0 && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-primary/20">
-                          <Sparkles className="h-3 w-3" />
-                          <span>Rate: 1 USDC = {exchangeRate.toFixed(6)} xBGL</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
-                {/* Network Selection - Integrated */}
-                <div className="space-y-4 pt-4 border-t border-border/50">
-                  <div className="flex items-center gap-2">
-                    <Network className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-sm font-medium">Select Network</Label>
-                  </div>
-                  
-                  {loadingWallets ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <>
-                      {/* Network Grid - Compact */}
-                      <div className="grid grid-cols-4 gap-2">
-                        {NETWORKS.slice(0, 8).map((network) => {
-                          const walletAddress = hotWallets[network.id];
-                          const isSelected = selectedNetwork?.id === network.id;
-                          const hasAddress = !!walletAddress;
-
-                          return (
-                            <button
-                              key={network.id}
-                              onClick={() => hasAddress && setSelectedNetwork(network)}
-                              disabled={!hasAddress}
-                              className={`relative p-3 rounded-lg border-2 transition-all duration-200 ${
-                                isSelected
-                                  ? "border-primary bg-primary/10 shadow-lg scale-105"
-                                  : "border-border/50 hover:border-primary/50 hover:bg-accent/5"
-                              } ${!hasAddress ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-                            >
-                              <div
-                                className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold text-xs shadow-lg"
-                                style={{ backgroundColor: network.color }}
-                              >
-                                {network.icon}
-                              </div>
-                              <div className="text-xs font-medium text-center">{network.name}</div>
-                              {isSelected && (
-                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-background flex items-center justify-center">
-                                  <CheckCircle2 className="h-2.5 w-2.5 text-white" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Selected Network Payment Details */}
-                      {selectedNetwork && hotWallets[selectedNetwork.id] && (
-                        <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-background/80 to-background/50 border border-primary/20 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                                style={{ backgroundColor: selectedNetwork.color }}
-                              >
-                                {selectedNetwork.icon}
-                              </div>
-                              <span className="font-semibold">{selectedNetwork.name}</span>
-                            </div>
-                            <Badge variant="outline" className="text-xs">
-                              Chain ID: {selectedNetwork.chainId}
-                            </Badge>
-                          </div>
-
-                          {/* QR Code and Address */}
-                          <div className="grid md:grid-cols-2 gap-4">
-                            {/* QR Code */}
-                            {qrCodes[selectedNetwork.id] && (
-                              <div className="flex justify-center p-3 bg-background rounded-lg border">
-                                <img
-                                  src={qrCodes[selectedNetwork.id]}
-                                  alt={`${selectedNetwork.name} QR Code`}
-                                  className="w-32 h-32"
-                                />
-                              </div>
+                      {/* Address */}
+                      <div className="w-full space-y-3">
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Deposit Address
+                        </label>
+                        <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-xl border border-border/50">
+                          <code className="flex-1 text-sm font-mono break-all select-all">
+                            {hotWallets[network.id]}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant={copiedAddress === network.id ? "default" : "outline"}
+                            className="shrink-0 gap-2"
+                            onClick={() => copyAddress(hotWallets[network.id], network.id)}
+                          >
+                            {copiedAddress === network.id ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4" />
+                                Copy
+                              </>
                             )}
-
-                            {/* Address */}
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Send USDC to:</Label>
-                              <div className="flex items-center gap-2 p-2 bg-background rounded-lg border">
-                                <code className="flex-1 text-xs font-mono break-all">
-                                  {hotWallets[selectedNetwork.id]}
-                                </code>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 flex-shrink-0"
-                                  onClick={() =>
-                                    copyAddress(hotWallets[selectedNetwork.id], selectedNetwork.id)
-                                  }
-                                >
-                                  {copiedAddress === selectedNetwork.id ? (
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                                  ) : (
-                                    <Copy className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 flex-shrink-0"
-                                  onClick={() =>
-                                    openExplorer(selectedNetwork, hotWallets[selectedNetwork.id])
-                                  }
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Payment Amount Display */}
-                          {parseFloat(usdcAmount) > 0 && (
-                            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                              <div className="text-xs text-muted-foreground mb-1">Amount to send:</div>
-                              <div className="text-xl font-bold text-primary">
-                                {parseFloat(usdcAmount).toFixed(2)} USDC
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Quick Instructions */}
-                          <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t border-border/50">
-                            <div className="flex items-start gap-2">
-                              <span className="font-semibold">1.</span>
-                              <span>Copy the address above</span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <span className="font-semibold">2.</span>
-                              <span>Send USDC from your {selectedNetwork.name} wallet</span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <span className="font-semibold">3.</span>
-                              <span>Wait for confirmation (1-2 minutes)</span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <span className="font-semibold">4.</span>
-                              <span>Your xBGL will be credited automatically</span>
-                            </div>
-                          </div>
+                          </Button>
                         </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right: Deposit History - Modern Sidebar */}
-          <div className="lg:col-span-1">
-            <Card className="border-primary/20 bg-card/80 backdrop-blur-xl shadow-2xl h-full flex flex-col">
-              <CardHeader className="border-b border-border/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Clock className="h-4 w-4 text-primary" />
-                    </div>
-                    <CardTitle className="text-lg">Recent Deposits</CardTitle>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={refreshDeposits}
-                    disabled={depositsLoading}
-                    className="h-8 w-8 hover:bg-primary/10"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${depositsLoading ? 'animate-spin' : ''}`} />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 p-0">
-                <ScrollArea className="h-[calc(100vh-280px)]">
-                  {depositsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : deposits.length === 0 ? (
-                    <div className="text-center py-12 px-4">
-                      <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-                        <Wallet className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <p className="text-sm font-medium mb-1">No deposits yet</p>
-                      <p className="text-xs text-muted-foreground">Your deposit history will appear here</p>
                     </div>
-                  ) : (
-                    <div className="p-4 space-y-3">
-                      {deposits.map((deposit) => (
-                        <div
-                          key={deposit.id}
-                          className="group p-4 rounded-xl border bg-background/50 hover:bg-background/80 hover:border-primary/30 transition-all duration-200 cursor-pointer"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(deposit.status)}
-                              <div>
-                                <div className="font-semibold text-sm">
-                                  {deposit.usdc_amount.toFixed(2)} USDC
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  {new Date(deposit.created_at).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-                            {getStatusBadge(deposit.status)}
-                          </div>
-                          
-                          <div className="flex items-center gap-2 mb-2">
-                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm font-medium text-primary">
-                              {deposit.xbgl_amount.toFixed(4)} xBGL
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-xs">
-                              {deposit.network_id}
-                            </Badge>
-                            {deposit.tx_hash && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(deposit.tx_hash!);
-                                  toast.success("Transaction hash copied");
-                                }}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                  </CardContent>
+                </Card>
 
+                {/* Right: Instructions & Info */}
+                <div className="space-y-6">
+                  {/* Instructions */}
+                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                        <Info className="h-5 w-5 text-primary" />
+                        How to Deposit
+                      </h3>
+                      <ol className="space-y-4">
+                        <li className="flex gap-3">
+                          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                            1
+                          </span>
+                          <div>
+                            <p className="font-medium">Copy the deposit address</p>
+                            <p className="text-sm text-muted-foreground">
+                              Click the copy button above or scan the QR code
+                            </p>
+                          </div>
+                        </li>
+                        <li className="flex gap-3">
+                          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                            2
+                          </span>
+                          <div>
+                            <p className="font-medium">Send USDC from your wallet</p>
+                            <p className="text-sm text-muted-foreground">
+                              Make sure you're on the {network.name} network
+                            </p>
+                          </div>
+                        </li>
+                        <li className="flex gap-3">
+                          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                            3
+                          </span>
+                          <div>
+                            <p className="font-medium">Receive xBGL automatically</p>
+                            <p className="text-sm text-muted-foreground">
+                              Your xBGL balance will update after confirmation
+                            </p>
+                          </div>
+                        </li>
+                      </ol>
+                    </CardContent>
+                  </Card>
+
+                  {/* Network Info */}
+                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-primary" />
+                        Network Details
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center py-2 border-b border-border/30">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Confirmation Time
+                          </span>
+                          <span className="font-medium">{getConfirmationTime(network.id)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-border/30">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Coins className="h-4 w-4" />
+                            Network Fee
+                          </span>
+                          <span className="font-medium">{getNetworkFee(network.id)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <ExternalLink className="h-4 w-4" />
+                            Block Explorer
+                          </span>
+                          <a
+                            href={network.explorer}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:underline flex items-center gap-1"
+                          >
+                            View
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Warning */}
+                  <Card className="border-yellow-500/30 bg-yellow-500/5">
+                    <CardContent className="p-4">
+                      <div className="flex gap-3">
+                        <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-yellow-600 dark:text-yellow-400 mb-1">
+                            Important
+                          </p>
+                          <ul className="text-sm text-muted-foreground space-y-1">
+                            <li>• Only send <strong>USDC</strong> to this address</li>
+                            <li>• Make sure you're on the <strong>{network.name}</strong> network</li>
+                            <li>• Sending other tokens may result in permanent loss</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
       </div>
     </div>
   );

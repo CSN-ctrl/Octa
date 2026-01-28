@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket, Coins } from "lucide-react";
+import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket, Coins, Package } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -225,45 +225,48 @@ export const Navigation = () => {
                 className="h-12 w-12 rounded-lg select-none"
               />
             </Link>
-            <div className="flex items-center gap-1 ml-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2 hover:bg-transparent"
-                onClick={() => navigate("/lore")}
-              >
-                <BookOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Lore</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2 hover:bg-transparent"
-                onClick={() => navigate("/how-it-works")}
-              >
-                <HelpCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">How It Works</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2 hover:bg-transparent"
-                onClick={() => navigate("/business")}
-              >
-                <Briefcase className="h-4 w-4" />
-                <span className="hidden sm:inline">Business</span>
-              </Button>
-              <Button
-                variant="cosmic"
-                size="sm"
-                className="gap-2 relative overflow-hidden border border-primary/50 hover:border-primary hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-primary/50"
-                onClick={() => navigate("/ilo")}
-              >
-                <Rocket className="h-4 w-4" />
-                <span className="font-bold">ILO</span>
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000"></span>
-              </Button>
-            </div>
+            {/* Navigation buttons - only show when NOT logged in */}
+            {!isAuthenticated && (
+              <div className="flex items-center gap-1 ml-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 hover:bg-transparent"
+                  onClick={() => navigate("/lore")}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span className="hidden sm:inline">Lore</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 hover:bg-transparent"
+                  onClick={() => navigate("/how-it-works")}
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">How It Works</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 hover:bg-transparent"
+                  onClick={() => navigate("/business")}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  <span className="hidden sm:inline">Business</span>
+                </Button>
+                <Button
+                  variant="cosmic"
+                  size="sm"
+                  className="gap-2 relative overflow-hidden border border-primary/50 hover:border-primary hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-primary/50"
+                  onClick={() => navigate("/ilo")}
+                >
+                  <Rocket className="h-4 w-4" />
+                  <span className="font-bold">ILO</span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000"></span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Treasury Balance - Only show on admin dashboard */}
@@ -280,6 +283,23 @@ export const Navigation = () => {
           )}
 
           <div className="flex items-center gap-2">
+            {/* Assets Button - only show when logged in, on the right side */}
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="relative gap-2 hover:bg-transparent transition-all duration-300 rounded-lg px-3 py-2 group overflow-hidden border border-primary/40 hover:border-primary/70 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 hover:from-primary/10 hover:via-primary/20 hover:to-primary/10 shadow-md hover:shadow-lg hover:shadow-primary/30 hover:scale-105"
+                onClick={() => navigate("/dashboard")}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <Package className="h-4 w-4 relative z-10 text-primary group-hover:text-primary group-hover:scale-110 transition-all duration-300" />
+                <span className="hidden sm:inline relative z-10 font-semibold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent group-hover:from-primary group-hover:via-accent group-hover:to-primary transition-all duration-300">
+                  Assets
+                </span>
+                <div className="absolute inset-0 rounded-lg bg-primary/0 group-hover:bg-primary/10 blur-xl transition-all duration-300 -z-10" />
+              </Button>
+            )}
+            
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -337,11 +357,15 @@ export const Navigation = () => {
             {/* Deposit Button - Right Side */}
             <Button
               onClick={() => navigate("/invest")}
-              className="ml-4 gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-lg hover:shadow-green-500/30 transition-all duration-300 hover:scale-105"
+              className="relative ml-4 gap-2 overflow-hidden border border-emerald-500/50 hover:border-emerald-400/80 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 rounded-lg px-3 py-2 group"
               size="sm"
             >
-              <Coins className="h-4 w-4" />
-              <span className="hidden sm:inline">Deposit</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <Coins className="h-4 w-4 relative z-10 text-white transition-transform group-hover:scale-110 group-hover:rotate-12" />
+              <span className="hidden sm:inline relative z-10 text-white group-hover:text-emerald-50 transition-colors duration-300">
+                Deposit
+              </span>
+              <div className="absolute inset-0 rounded-lg bg-green-500/0 group-hover:bg-green-500/30 blur-xl transition-all duration-300 -z-10" />
             </Button>
 
             <div className="ml-2 flex items-center gap-2">
@@ -351,9 +375,11 @@ export const Navigation = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="gap-2 hover:bg-transparent"
+                      className="relative gap-2 hover:bg-transparent group overflow-hidden border border-primary/30 hover:border-primary/60 transition-all duration-300 rounded-lg px-3 py-2 hover:shadow-lg hover:shadow-primary/20"
                     >
-                      <Settings className="h-4 w-4" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <Settings className="h-4 w-4 relative z-10 text-primary group-hover:text-primary group-hover:rotate-90 transition-all duration-300" />
+                      <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -367,10 +393,6 @@ export const Navigation = () => {
                     
                     {/* Account Management Section */}
                     <DropdownMenuLabel>Account Management</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                      <User className="mr-2 h-4 w-4" />
-                      My Dashboard
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     
                     {/* Settings Section */}

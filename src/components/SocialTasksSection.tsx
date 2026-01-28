@@ -83,7 +83,7 @@ const SocialTasksSection = () => {
                       <p className="text-white/80 text-sm font-mono">{social.handle}</p>
                     </div>
                   </div>
-                </div>
+              </div>
 
                 {/* Tasks */}
                 <div className="p-6 space-y-3">

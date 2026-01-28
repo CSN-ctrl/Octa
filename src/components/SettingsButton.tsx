@@ -77,8 +77,14 @@ export function SettingsButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <Settings className="h-4 w-4" />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="relative gap-2 hover:bg-transparent group overflow-hidden border border-primary/30 hover:border-primary/60 transition-all duration-300 rounded-lg px-3 py-2 hover:shadow-lg hover:shadow-primary/20"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Settings className="h-4 w-4 relative z-10 text-primary group-hover:text-primary group-hover:rotate-90 transition-all duration-300" />
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="glass w-56">

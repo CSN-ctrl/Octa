@@ -11,12 +11,12 @@ const StatsSection = () => {
   
   // Calculate total land bought (each plot costs 110 USDC)
   const totalLandBought = Math.floor(iloStats.totalRaisedUSDC / 110);
-  
-  const stats = [
-    {
-      icon: Users,
+
+const stats = [
+  {
+    icon: Users,
       value: iloStats.spotsTaken,
-      label: 'Pioneers',
+    label: 'Pioneers',
       gradient: 'from-violet-500 to-purple-600',
       bgGlow: 'violet-500/20',
     },
@@ -26,22 +26,22 @@ const StatsSection = () => {
       label: 'Total Land Bought',
       gradient: 'from-emerald-400 to-green-600',
       bgGlow: 'emerald-500/20',
-    },
-    {
-      icon: Bitcoin,
+  },
+  {
+    icon: Bitcoin,
       value: btcEligible,
       label: 'BTC Entries',
       gradient: 'from-amber-400 to-orange-500',
       bgGlow: 'amber-500/20',
-    },
-    {
-      icon: Target,
+  },
+  {
+    icon: Target,
       value: iloStats.spotsRemaining,
-      label: 'Spots Left',
+    label: 'Spots Left',
       gradient: 'from-blue-400 to-cyan-500',
       bgGlow: 'blue-500/20',
-    },
-  ];
+  },
+];
 
   return (
     <section className="relative py-20 px-4">
@@ -73,7 +73,7 @@ const StatsSection = () => {
                   
                   {/* Value */}
                   <div className={`text-3xl md:text-4xl font-bold mb-2 text-center bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
-                    <AnimatedCounter target={stat.value} duration={2} />
+                <AnimatedCounter target={stat.value} duration={2} />
                   </div>
                   
                   {/* Label */}

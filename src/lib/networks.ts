@@ -44,7 +44,7 @@ export const NETWORKS: NetworkConfig[] = [
   },
   {
     id: 'bsc',
-    name: 'BSC',
+    name: 'BNB Chain',
     chainId: 56,
     usdcAddress: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
     explorer: 'https://bscscan.com',
