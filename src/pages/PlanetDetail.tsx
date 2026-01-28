@@ -55,18 +55,22 @@ const PlanetDetail = () => {
   return (
     <div className="min-h-screen pt-20">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
-        <Button variant="glass" className="mb-8" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-
-        <div className="mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
-            Sarakt Prime
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Choose your path and begin your journey in the Octavia Universe
-          </p>
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="glass" className="gap-2 shrink-0" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <div className="flex-1 flex justify-center">
+            <div className="text-center mb-12">
+              <h1 className="text-5xl font-bold mb-4 bg-gradient-cosmic bg-clip-text text-transparent">
+                Sarakt Prime
+              </h1>
+              <p className="text-xl text-muted-foreground">
+                Choose your path and begin your journey in the Octavia Universe
+              </p>
+            </div>
+          </div>
+          <div className="w-[72px] shrink-0" /> {/* Spacer to balance Back button */}
         </div>
 
         {/* Path Selection */}

@@ -174,23 +174,19 @@ export default function BlackMarketDEX() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Button variant="glass" className="gap-2" onClick={() => navigate(-1)}>
+          <Button variant="glass" className="gap-2 shrink-0" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-                <Skull className="w-8 h-8 text-red-500" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
-                  Black Market DEX
-                </h1>
-                <p className="text-muted-foreground">Zarathis • Capital city of Zarathis</p>
-              </div>
+          <div className="flex-1 flex justify-center">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
+                Black Market DEX
+              </h1>
+              <p className="text-muted-foreground">Zarathis • Capital city of Zarathis</p>
             </div>
           </div>
+          <div className="w-[72px] shrink-0" /> {/* Spacer to balance Back button */}
         </div>
 
         {/* Info Banner */}

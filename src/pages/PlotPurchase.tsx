@@ -632,11 +632,13 @@ export default function PlotPurchase() {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold tracking-tight mb-2">Plot Purchase</h1>
-              <p className="text-muted-foreground">
-                Select and purchase land plots in the ChaosStar universe
-              </p>
+            <div className="flex-1 flex justify-center">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold tracking-tight mb-2">Plot Purchase</h1>
+                <p className="text-muted-foreground">
+                  Select and purchase land plots in the ChaosStar universe
+                </p>
+              </div>
             </div>
             <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
               <DialogTrigger asChild>
@@ -719,9 +721,6 @@ export default function PlotPurchase() {
             {/* Header */}
             <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
-                  <Grid3x3 className="h-6 w-6 text-primary" />
-                </div>
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold mb-1">Plot Purchase</h2>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">

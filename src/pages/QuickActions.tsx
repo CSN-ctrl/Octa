@@ -34,14 +34,15 @@ export default function QuickActionsPage() {
   return (
     <div className="min-h-screen bg-background pt-20">
       <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-3xl font-bold">Quick Actions</h1>
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="outline" onClick={() => navigate(-1)} className="gap-2 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <div className="flex-1 flex justify-center">
+            <h1 className="text-3xl font-bold text-center">Quick Actions</h1>
           </div>
+          <div className="w-[72px] shrink-0" /> {/* Spacer to balance Back button */}
         </div>
 
         {/* Portfolio Manager Application */}

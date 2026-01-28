@@ -219,17 +219,15 @@ export default function Deposit() {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            <div className="flex items-center gap-4 flex-1">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
-                <Coins className="h-8 w-8 text-primary" />
-              </div>
-              <div>
+            <div className="flex items-center gap-4 flex-1 justify-center">
+              <div className="text-center">
                 <h1 className="text-3xl font-bold tracking-tight">Deposit USDC</h1>
                 <p className="text-muted-foreground">
                   Send USDC to receive xBGL instantly in your account
                 </p>
               </div>
             </div>
+            <div className="w-[72px] shrink-0" /> {/* Spacer to balance Back button */}
           </div>
         </div>
 

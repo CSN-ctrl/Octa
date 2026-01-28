@@ -15,19 +15,22 @@ export default function PlotSell() {
           <Button 
             variant="outline" 
             onClick={() => navigate(-1)} 
-            className="gap-2"
+            className="gap-2 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <div>
-            <h1 className="text-4xl font-bold gradient-text">
-              Sell/Transfer Plots
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Transfer your plots to another address
-            </p>
+          <div className="flex-1 flex justify-center">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold gradient-text">
+                Sell/Transfer Plots
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Transfer your plots to another address
+              </p>
+            </div>
           </div>
+          <div className="w-[72px] shrink-0" /> {/* Spacer to balance Back button */}
         </div>
 
         {/* PlotSell Component */}

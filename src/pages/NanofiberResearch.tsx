@@ -201,23 +201,19 @@ export default function NanofiberResearch() {
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Button variant="glass" className="gap-2" onClick={() => navigate(-1)}>
+          <Button variant="glass" className="gap-2 shrink-0" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
-                <Zap className="w-8 h-8 text-purple-400" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                  Nanofiber Research & Harvest
-                </h1>
-                <p className="text-muted-foreground">Zarathis • Zythera</p>
-              </div>
+          <div className="flex-1 flex justify-center">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                Nanofiber Research & Harvest
+              </h1>
+              <p className="text-muted-foreground">Zarathis • Zythera</p>
             </div>
           </div>
+          <div className="w-[72px] shrink-0" /> {/* Spacer to balance Back button */}
         </div>
 
         {/* Info Banner */}
