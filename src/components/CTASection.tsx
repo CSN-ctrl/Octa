@@ -2,13 +2,40 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { useILOStats } from '@/hooks/useILOStats';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 const CTASection = () => {
   const navigate = useNavigate();
   const { stats } = useILOStats();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const joined = stats.spotsTaken;
   const spotsLeft = stats.spotsRemaining;
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleStartClick = () => {
+    if (isAuthenticated) {
+      navigate('/deposit');
+    } else {
+      toast.info("Please register to get started");
+      navigate('/register');
+    }
+  };
 
   return (
     <section className="relative py-24 px-4 bg-muted/30">
@@ -43,7 +70,7 @@ const CTASection = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/deposit')}
+              onClick={handleStartClick}
               className="btn-primary-glow text-lg w-full sm:w-auto"
             >
               Start Now

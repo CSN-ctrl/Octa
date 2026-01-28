@@ -1,13 +1,40 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Users, Sparkles, Loader2 } from 'lucide-react';
+import { Zap, Sparkles, Loader2 } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import heroBackground from '@/assets/hero-background.jpg';
 import { useILOStats } from '@/hooks/useILOStats';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 const PioneersHeroSection = () => {
   const navigate = useNavigate();
   const { stats, loading } = useILOStats();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleJoinClick = () => {
+    if (isAuthenticated) {
+      navigate('/deposit');
+    } else {
+      toast.info("Please register to join Genesis Phase");
+      navigate('/register');
+    }
+  };
   
   const totalSpots = stats.totalSpots;
   const joined = stats.spotsTaken;
@@ -76,53 +103,6 @@ const PioneersHeroSection = () => {
           Own digital land. Build your empire. <span className="text-gold font-semibold">Win 1 BTC.</span>
         </motion.p>
 
-        {/* Live Stats - Redesigned */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="flex flex-wrap justify-center gap-6 mb-8"
-        >
-          {/* Live Joined Card */}
-          <div className="group relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-accent via-primary to-accent rounded-2xl opacity-50 blur group-hover:opacity-75 transition duration-500" />
-            <div className="relative bg-background/90 backdrop-blur-xl px-8 py-5 rounded-2xl border border-white/10 flex items-center gap-4">
-              <div className="relative">
-                <div className="w-4 h-4 rounded-full bg-success animate-pulse" />
-                <div className="absolute inset-0 w-4 h-4 rounded-full bg-success animate-ping opacity-75" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Live Now</span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-accent">
-                    <AnimatedCounter target={joined} duration={2} />
-                  </span>
-                  <span className="text-muted-foreground">joined</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Spots Left Card */}
-          <div className="group relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-accent to-primary rounded-2xl opacity-50 blur group-hover:opacity-75 transition duration-500" />
-            <div className="relative bg-background/90 backdrop-blur-xl px-8 py-5 rounded-2xl border border-white/10 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Remaining</span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-primary">
-                    <AnimatedCounter target={spotsLeft} duration={2} />
-                  </span>
-                  <span className="text-muted-foreground">spots</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
         {/* Progress Bar - Enhanced */}
         <motion.div
           initial={{ opacity: 0, scaleX: 0 }}
@@ -135,7 +115,9 @@ const PioneersHeroSection = () => {
               <Sparkles className="w-4 h-4 text-accent" />
               Progress
             </span>
-            <span className="text-accent font-bold">{progress.toFixed(1)}%</span>
+            <span className="text-accent font-bold">
+              <AnimatedCounter target={spotsLeft} duration={2} /> spots remaining
+            </span>
           </div>
           <div className="h-4 bg-muted/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
             <motion.div
@@ -158,7 +140,7 @@ const PioneersHeroSection = () => {
           className="flex flex-col items-center gap-4"
         >
           <button 
-            onClick={() => navigate('/deposit')}
+            onClick={handleJoinClick}
             className="btn-primary-glow text-lg animate-pulse-glow"
           >
             Join Genesis Phase

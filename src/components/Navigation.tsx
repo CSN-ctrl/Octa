@@ -356,7 +356,14 @@ export const Navigation = () => {
 
             {/* Deposit Button - Right Side */}
             <Button
-              onClick={() => navigate("/invest")}
+              onClick={() => {
+                if (isAuthenticated) {
+                  navigate("/invest");
+                } else {
+                  toast.info("Please login to access deposit features");
+                  navigate("/register");
+                }
+              }}
               className="relative ml-4 gap-2 overflow-hidden border border-emerald-500/50 hover:border-emerald-400/80 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 rounded-lg px-3 py-2 group"
               size="sm"
             >
