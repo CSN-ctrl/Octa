@@ -184,6 +184,10 @@ export function AssetManagementSection({
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/affiliate")}>
+            <Link2 className="h-4 w-4 mr-2" />
+            Affiliate
+          </Button>
           <Button variant="outline" onClick={onRefresh} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -196,7 +200,7 @@ export function AssetManagementSection({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 ${affiliateStatus?.status === 'approved' ? 'md:grid-cols-5' : ''}`}>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -250,6 +254,25 @@ export function AssetManagementSection({
             <p className="text-xs text-muted-foreground mt-1 select-none">Available balance</p>
           </CardContent>
         </Card>
+
+        {affiliateStatus?.status === 'approved' && (
+          <Card className="border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer" onClick={() => navigate("/affiliate")}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                Affiliate Program
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold select-none text-primary">
+                {affiliateStats?.total_referrals || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 select-none">
+                {affiliateStats?.total_commission ? `${affiliateStats.total_commission.toFixed(2)} xBGL earned` : 'View affiliate dashboard'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Main Content Tabs */}

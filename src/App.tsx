@@ -43,6 +43,7 @@ const Deposit = lazy(() => import("./pages/Deposit"));
 const Pioneers = lazy(() => import("./pages/Pioneers"));
 const Invest = lazy(() => import("./pages/Invest"));
 const ApplyExpert = lazy(() => import("./pages/ApplyExpert"));
+const Affiliate = lazy(() => import("./pages/Affiliate"));
 
 // Configure React Query with optimized defaults
 const queryClient = new QueryClient({
@@ -231,6 +232,13 @@ function AppContent() {
                       <ProtectedRoute>
                         <RouteErrorBoundary routeName="Deposit">
                           <Deposit />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/affiliate" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Affiliate">
+                          <Affiliate />
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />

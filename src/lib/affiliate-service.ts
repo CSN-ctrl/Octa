@@ -408,18 +408,46 @@ export async function applyForAffiliate(
  */
 export async function getAffiliateStatus(walletAddress: string): Promise<Affiliate | null> {
   try {
-    const { data, error } = await (supabase as any)
+    const normalizedWallet = walletAddress.toLowerCase();
+    console.log("getAffiliateStatus - querying for:", normalizedWallet);
+    
+    // Try fetching all and filtering client-side to avoid 406 errors
+    console.log("Fetching all affiliates to filter client-side...");
+    const { data: allData, error: allError } = await (supabase as any)
       .from("affiliates")
-      .select("*")
-      .eq("wallet_address", walletAddress.toLowerCase())
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null; // Not found
-      throw error;
+      .select("*");
+    
+    if (allError) {
+      console.error("getAffiliateStatus error fetching all:", allError);
+      // If that fails, try the direct query as fallback
+      const { data, error } = await (supabase as any)
+        .from("affiliates")
+        .select("*")
+        .eq("wallet_address", normalizedWallet)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("getAffiliateStatus direct query error:", error);
+        if (error.code === "PGRST116") return null; // Not found
+        return null;
+      }
+      console.log("getAffiliateStatus - result (direct):", data);
+      return data;
     }
-
-    return data;
+    
+    if (allData && Array.isArray(allData)) {
+      const match = allData.find((aff: any) => 
+        aff.wallet_address?.toLowerCase() === normalizedWallet
+      );
+      if (match) {
+        console.log("getAffiliateStatus - found via client-side filter:", match);
+        return match;
+      }
+      console.log("getAffiliateStatus - no match found. Total affiliates:", allData.length);
+      console.log("Sample wallet addresses:", allData.slice(0, 3).map((a: any) => a.wallet_address));
+    }
+    
+    return null;
   } catch (error) {
     console.error("Failed to get affiliate status:", error);
     return null;

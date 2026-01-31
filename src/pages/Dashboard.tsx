@@ -250,19 +250,19 @@ export default function Dashboard() {
       if (session?.user) {
         // Always set email if available
         if (session.user.email) {
-          setUserEmail(session.user.email);
+          setUserEmail(session.user.email.toLowerCase());
         }
         
         if (session.user.user_metadata?.wallet_address) {
-          setAddress(session.user.user_metadata.wallet_address);
+          setAddress(session.user.user_metadata.wallet_address.toLowerCase());
         } else if (walletAddress) {
-          setAddress(walletAddress);
+          setAddress(walletAddress.toLowerCase());
         } else if (session.user.email) {
           // If no wallet, use email as identifier
-          setAddress(session.user.email);
+          setAddress(session.user.email.toLowerCase());
         }
       } else if (walletAddress) {
-        setAddress(walletAddress);
+        setAddress(walletAddress.toLowerCase());
       }
     };
     getAuthWallet();
@@ -271,7 +271,7 @@ export default function Dashboard() {
   // Fetch all user data
   useEffect(() => {
     const fetchData = async () => {
-      if (!address) {
+      if (!address && !userEmail) {
         setLoading(false);
         return;
       }
@@ -979,29 +979,37 @@ export default function Dashboard() {
     }
   }, [address, userEmail]);
 
-  const loadAffiliateData = async () => {
-    if (!address) return;
+  const loadAffiliateData = useCallback(async () => {
+    const identifier = address || userEmail;
+    if (!identifier) {
+      console.log("No identifier available for affiliate data");
+      return;
+    }
     
     setLoadingAffiliate(true);
     try {
-      const status = await getAffiliateStatus(address);
+      const normalizedIdentifier = identifier.toLowerCase();
+      console.log("Loading affiliate data for:", normalizedIdentifier);
+      const status = await getAffiliateStatus(normalizedIdentifier);
+      console.log("Affiliate status loaded:", status);
       setAffiliateStatus(status);
       
       if (status?.status === 'approved') {
         const [stats, referrals] = await Promise.all([
-          getAffiliateStats(address),
-          getAffiliateReferrals(address),
+          getAffiliateStats(normalizedIdentifier),
+          getAffiliateReferrals(normalizedIdentifier),
         ]);
         setAffiliateStats(stats);
         setAffiliateReferrals(referrals);
       }
     } catch (error: any) {
       logger.error("Failed to load affiliate data:", error);
-      toast.error("Failed to load affiliate data");
+      console.error("Affiliate data load error:", error);
+      // Don't show error toast - just log it
     } finally {
       setLoadingAffiliate(false);
     }
-  };
+  }, [address, userEmail]);
 
   const handleSubmitApplication = async () => {
     if (!address) {
@@ -1027,6 +1035,21 @@ export default function Dashboard() {
       setSubmittingApplication(false);
     }
   };
+
+  // Load affiliate data when address or userEmail changes
+  useEffect(() => {
+    console.log("Affiliate useEffect triggered - address:", address, "userEmail:", userEmail);
+    if (address || userEmail) {
+      // Small delay to ensure identifiers are set
+      const timer = setTimeout(() => {
+        console.log("Calling loadAffiliateData with:", address || userEmail);
+        loadAffiliateData();
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      console.log("No address or userEmail, skipping affiliate data load");
+    }
+  }, [address, userEmail, loadAffiliateData]);
 
 
   // Load recent recipients
