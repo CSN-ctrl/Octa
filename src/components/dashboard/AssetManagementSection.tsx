@@ -42,6 +42,9 @@ import {
   RefreshCw,
   Edit,
   Trash2,
+  Link2,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { PlotDocumentUpload } from "@/components/plots/PlotDocumentUpload";
 import { PlotFractionalOwnership } from "@/components/plots/PlotFractionalOwnership";
@@ -78,6 +81,9 @@ interface AssetManagementSectionProps {
   onDeletePortfolio: (portfolioId: string) => Promise<void>;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  affiliateStatus?: any;
+  affiliateStats?: any;
+  affiliateReferrals?: any[];
 }
 
 export function AssetManagementSection({
@@ -102,6 +108,9 @@ export function AssetManagementSection({
   onDeletePortfolio,
   activeTab: externalActiveTab,
   onTabChange: externalOnTabChange,
+  affiliateStatus,
+  affiliateStats,
+  affiliateReferrals = [],
 }: AssetManagementSectionProps) {
   const navigate = useNavigate();
   const [internalActiveTab, setInternalActiveTab] = useState("assets");
@@ -114,9 +123,6 @@ export function AssetManagementSection({
   });
   const [showFractionalOwnership, setShowFractionalOwnership] = useState<number | null>(null);
   const [showDocumentUpload, setShowDocumentUpload] = useState<number | null>(null);
-  const [showAffiliateDialog, setShowAffiliateDialog] = useState(false);
-  const [applicationReason, setApplicationReason] = useState("");
-  const [submittingApplication, setSubmittingApplication] = useState(false);
 
   // Use external tab state if provided, otherwise use internal state
   const activeTab = externalActiveTab ?? internalActiveTab;
@@ -178,16 +184,6 @@ export function AssetManagementSection({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => {
-              setShowAffiliateDialog(true);
-              onLoadAffiliateData();
-            }}
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Affiliate
-          </Button>
           <Button variant="outline" onClick={onRefresh} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -267,6 +263,12 @@ export function AssetManagementSection({
             <TrendingUp className="h-4 w-4 mr-2" />
             Portfolios
           </TabsTrigger>
+          {affiliateStatus?.status === 'approved' && (
+            <TabsTrigger value="affiliate">
+              <Link2 className="h-4 w-4 mr-2" />
+              Affiliate
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Assets Tab */}
@@ -658,108 +660,146 @@ export function AssetManagementSection({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Affiliate Tab - Only shown for approved affiliates */}
+        {affiliateStatus?.status === 'approved' && (
+          <TabsContent value="affiliate" className="space-y-6">
+            <Card className="glass-enhanced border-primary/20 shadow-glow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-6 w-6 text-primary" />
+                  Affiliate Program
+                </CardTitle>
+                <CardDescription>
+                  Generate and share your referral links to earn 15% commission
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Affiliate Code Display */}
+                <div className="space-y-2">
+                  <Label>Your Affiliate Code</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={affiliateStatus.affiliate_code || ''}
+                      readOnly
+                      className="font-mono font-semibold text-lg"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        if (affiliateStatus.affiliate_code) {
+                          navigator.clipboard.writeText(affiliateStatus.affiliate_code);
+                          toast.success("Affiliate code copied!");
+                        }
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Link Generator */}
+                <div className="space-y-4">
+                  <Label>Generate Referral Link</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="referral-link"
+                        value={affiliateStatus.affiliate_code ? `${window.location.origin}?ref=${affiliateStatus.affiliate_code}` : ''}
+                        readOnly
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          const link = affiliateStatus.affiliate_code ? `${window.location.origin}?ref=${affiliateStatus.affiliate_code}` : '';
+                          if (link) {
+                            navigator.clipboard.writeText(link);
+                            toast.success("Referral link copied!");
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          const link = affiliateStatus.affiliate_code ? `${window.location.origin}?ref=${affiliateStatus.affiliate_code}` : '';
+                          if (link) {
+                            window.open(link, '_blank');
+                          }
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Share this link anywhere. Users who click it will be automatically tagged with your affiliate code.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                {affiliateStats && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-primary/10">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Total Referrals</div>
+                      <div className="text-2xl font-bold">{affiliateStats.total_referrals || 0}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Total Commission</div>
+                      <div className="text-2xl font-bold">{(affiliateStats.total_commission || 0).toFixed(2)} xBGL</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Paid</div>
+                      <div className="text-2xl font-bold text-green-600">{(affiliateStats.paid_commission || 0).toFixed(2)} xBGL</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Pending</div>
+                      <div className="text-2xl font-bold text-yellow-600">{(affiliateStats.pending_commission || 0).toFixed(2)} xBGL</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Referrals */}
+                {affiliateReferrals && affiliateReferrals.length > 0 && (
+                  <div className="space-y-2 pt-4 border-t border-primary/10">
+                    <Label>Recent Referrals</Label>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {affiliateReferrals.slice(0, 10).map((referral: any) => (
+                        <div key={referral.id} className="p-3 rounded-lg border border-primary/10 bg-primary/5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-medium">
+                                {referral.referred_wallet?.slice(0, 8)}...{referral.referred_wallet?.slice(-6)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {referral.referred_email || 'No email'}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-semibold">
+                                {referral.commission_amount?.toFixed(2)} xBGL
+                              </div>
+                              <Badge variant={referral.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                                {referral.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
-      {/* Affiliate Application Dialog */}
-      <Dialog open={showAffiliateDialog} onOpenChange={setShowAffiliateDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Become an Affiliate
-            </DialogTitle>
-            <DialogDescription>
-              Join our affiliate program and help grow the ChaosStar Network
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            {/* Information Section */}
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-2">What is the Affiliate Program?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Our affiliate program is designed for individuals and organizations who want to 
-                  help expand the ChaosStar Network. As an affiliate, you'll receive tailored 
-                  compensation for bringing new users to our platform.
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-2">Benefits</h3>
-                <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                  <li>Tailored compensation structure based on your contribution</li>
-                  <li>Track your referrals and their activity</li>
-                  <li>Support the growth of the ChaosStar ecosystem</li>
-                  <li>Exclusive access to affiliate resources and tools</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">How It Works</h3>
-                <p className="text-sm text-muted-foreground">
-                  Once approved, you'll receive a unique affiliate code to share with others. 
-                  When someone uses your code to join or make purchases, you'll be credited 
-                  according to our tailored compensation structure.
-                </p>
-              </div>
-            </div>
-
-            {/* Application Form */}
-            <div className="border-t pt-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="application-reason">
-                  Why do you want to become an affiliate? (Optional)
-                </Label>
-                <Textarea
-                  id="application-reason"
-                  value={applicationReason}
-                  onChange={(e) => setApplicationReason(e.target.value)}
-                  placeholder="Tell us about your interest in promoting ChaosStar Network..."
-                  rows={4}
-                />
-              </div>
-              <Button
-                className="w-full"
-                disabled={submittingApplication}
-                onClick={async () => {
-                  if (!address) {
-                    toast.error("Please connect your wallet");
-                    return;
-                  }
-                  setSubmittingApplication(true);
-                  try {
-                    const { applyForAffiliate } = await import("@/lib/affiliate-service");
-                    const result = await applyForAffiliate(address, applicationReason || undefined);
-                    
-                    if (result.success) {
-                      toast.success("Application submitted successfully! We'll review it soon.");
-                      setApplicationReason("");
-                      setShowAffiliateDialog(false);
-                      onLoadAffiliateData();
-                    } else {
-                      toast.error(result.error || "Failed to submit application");
-                    }
-                  } catch (error: any) {
-                    logger.error("Failed to submit application:", error);
-                    toast.error("Failed to submit application");
-                  } finally {
-                    setSubmittingApplication(false);
-                  }
-                }}
-              >
-                {submittingApplication ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  "Submit Application"
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

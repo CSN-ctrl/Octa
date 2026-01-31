@@ -11,6 +11,7 @@ import { AlertCircle, Wallet, Mail, Lock, Eye, EyeOff, ArrowLeft, LogIn, UserPlu
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { logger } from "@/lib/logger";
+import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -95,6 +96,14 @@ export default function Login() {
               // Don't block login if update fails
             }
           }
+        }
+
+        // Silently tag user with affiliate code if present (first tag sticks)
+        if (authData.user?.email) {
+          getAndStoreAffiliateCode(authData.user.email.toLowerCase()).catch((err) => {
+            // Silently fail - don't interrupt login flow
+            logger.debug("Failed to store affiliate code on login:", err);
+          });
         }
 
         toast.success("Logged in successfully!");
@@ -183,6 +192,14 @@ export default function Login() {
           }
         } catch (err) {
           logger.debug("Digital identity creation skipped:", err);
+        }
+
+        // Silently tag user with affiliate code if present (first tag sticks)
+        if (authData.user?.email) {
+          getAndStoreAffiliateCode(authData.user.email.toLowerCase()).catch((err) => {
+            // Silently fail - don't interrupt signup flow
+            logger.debug("Failed to store affiliate code on signup:", err);
+          });
         }
       }
 

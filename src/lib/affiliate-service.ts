@@ -65,33 +65,41 @@ export async function getOrCreateAffiliateCode(walletAddress: string): Promise<s
 
 /**
  * Get affiliate code from URL or localStorage, then store in Supabase
+ * FIRST TAG STICKS: Never overwrites an existing tag
  */
 export async function getAndStoreAffiliateCode(walletAddress: string | null): Promise<string | null> {
   try {
-    // Check URL parameters first
+    // FIRST TAG STICKS: Check if we already have a tag stored
+    const existingTag = localStorage.getItem('chaosstar_affiliate_code');
+    
+    // Check URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const codeFromUrl = urlParams.get('ref') || urlParams.get('affiliate');
     
     if (codeFromUrl) {
-      // Store in localStorage for immediate use
-      localStorage.setItem('chaosstar_affiliate_code', codeFromUrl);
+      const normalized = codeFromUrl.trim().toUpperCase();
       
-      // If wallet is connected, also store in Supabase
-      if (walletAddress) {
-        await storeAffiliateCodeInSupabase(walletAddress, codeFromUrl);
+      // FIRST TAG STICKS: Only set if no existing tag
+      if (!existingTag) {
+        localStorage.setItem('chaosstar_affiliate_code', normalized);
       }
       
-      return codeFromUrl;
+      // Store in Supabase if we have an identifier (but don't overwrite existing)
+      if (walletAddress) {
+        await storeAffiliateCodeInSupabase(walletAddress, normalized);
+      }
+      
+      // Return existing tag if present, otherwise the new one
+      return existingTag || normalized;
     }
 
-    // Check localStorage
-    const codeFromStorage = localStorage.getItem('chaosstar_affiliate_code');
-    if (codeFromStorage && walletAddress) {
-      // Store in Supabase if not already stored
-      await storeAffiliateCodeInSupabase(walletAddress, codeFromStorage);
+    // No URL param - return existing tag and optionally persist it
+    if (existingTag && walletAddress) {
+      // Store in Supabase if not already stored (won't overwrite)
+      await storeAffiliateCodeInSupabase(walletAddress, existingTag);
     }
     
-    return codeFromStorage;
+    return existingTag;
   } catch (error) {
     console.error("Failed to get/store affiliate code:", error);
     // Fallback to localStorage only
@@ -101,30 +109,25 @@ export async function getAndStoreAffiliateCode(walletAddress: string | null): Pr
 
 /**
  * Store affiliate code in Supabase for a wallet
+ * FIRST TAG STICKS: If user already has ANY affiliate code, don't overwrite
  */
 async function storeAffiliateCodeInSupabase(walletAddress: string, affiliateCode: string): Promise<void> {
   try {
-    // Check if code already stored for this wallet
+    // FIRST TAG STICKS: Check if this user already has ANY affiliate code stored
     const { data: existing } = await (supabase as any)
       .from("user_affiliate_codes")
-      .select("id")
+      .select("id, affiliate_code")
       .eq("wallet_address", walletAddress.toLowerCase())
-      .eq("affiliate_code", affiliateCode.toUpperCase())
-      .single();
+      .limit(1)
+      .maybeSingle();
 
+    // If user already has a tag, don't overwrite it
     if (existing) {
-      // Already stored, update timestamp
-      await (supabase as any)
-        .from("user_affiliate_codes")
-        .update({
-          updated_at: new Date().toISOString(),
-        })
-        .eq("wallet_address", walletAddress.toLowerCase())
-        .eq("affiliate_code", affiliateCode.toUpperCase());
+      console.debug(`User ${walletAddress} already has affiliate code ${existing.affiliate_code}, not overwriting with ${affiliateCode}`);
       return;
     }
 
-    // Store new affiliate code reference
+    // Store new affiliate code reference (first tag for this user)
     await (supabase as any)
       .from("user_affiliate_codes")
       .insert({
@@ -524,3 +527,72 @@ export async function isAffiliateApproved(walletAddress: string): Promise<boolea
   }
 }
 
+/**
+ * Promote user to affiliate (Admin only - no application needed)
+ * Creates affiliate record with approved status directly
+ */
+export async function promoteToAffiliate(
+  walletAddress: string,
+  promotedBy: string
+): Promise<{ success: boolean; affiliateCode?: string; error?: string }> {
+  try {
+    const normalizedWallet = walletAddress.toLowerCase();
+
+    // Check if already an affiliate
+    const { data: existing } = await (supabase as any)
+      .from("affiliates")
+      .select("affiliate_code, status")
+      .eq("wallet_address", normalizedWallet)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === 'approved') {
+        return { 
+          success: true, 
+          affiliateCode: existing.affiliate_code,
+          error: "User is already an approved affiliate" 
+        };
+      }
+      // If pending/rejected, update to approved
+      const { error: updateError } = await (supabase as any)
+        .from("affiliates")
+        .update({
+          status: 'approved',
+          reviewed_by: promotedBy,
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("wallet_address", normalizedWallet);
+
+      if (updateError) throw updateError;
+      return { success: true, affiliateCode: existing.affiliate_code };
+    }
+
+    // Generate affiliate code
+    const code = `CS${normalizedWallet.slice(2, 8).toUpperCase()}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    // Create new affiliate with approved status
+    const { error: insertError } = await (supabase as any)
+      .from("affiliates")
+      .insert({
+        wallet_address: normalizedWallet,
+        affiliate_code: code,
+        commission_rate: 0.15, // 15%
+        total_referrals: 0,
+        total_commission: 0,
+        status: 'approved',
+        reviewed_by: promotedBy,
+        reviewed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+    if (insertError) throw insertError;
+
+    return { success: true, affiliateCode: code };
+  } catch (error: any) {
+    console.error("Failed to promote to affiliate:", error);
+    return { success: false, error: error.message };
+  }
+}

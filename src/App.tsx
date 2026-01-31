@@ -16,6 +16,7 @@ import Footer from "./components/Footer";
 import { loadContractAddresses } from "@/lib/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
 
 // Lazy load all pages for code splitting
 const UnifiedUniverse = lazy(() => import("./pages/UnifiedUniverse"));
@@ -123,6 +124,32 @@ const App = () => {
 // Must be inside BrowserRouter to use useLocation
 function AppContent() {
   const location = useLocation();
+  
+  // Silent affiliate tagging on ALL pages - works on any route
+  // Captures ?ref=CODE or ?affiliate=CODE from URL and stores it (first tag sticks)
+  useEffect(() => {
+    // Get user identifier if available (email or wallet)
+    const getIdentifier = async () => {
+      try {
+        // Try to get authenticated user email
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.email) {
+          return session.user.email.toLowerCase();
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Silently capture affiliate code from URL on any page
+    getIdentifier().then((identifier) => {
+      getAndStoreAffiliateCode(identifier).catch((err) => {
+        // Silently fail - don't interrupt user experience
+        console.debug("Affiliate code capture failed:", err);
+      });
+    });
+  }, [location.pathname, location.search]);
   
   return (
     <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">

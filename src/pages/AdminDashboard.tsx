@@ -70,7 +70,8 @@ import {
   type Affiliate, 
   getAllAffiliateApplications, 
   approveAffiliate, 
-  rejectAffiliate 
+  rejectAffiliate,
+  promoteToAffiliate
 } from "@/lib/affiliate-service";
 import { useWallet } from "@/contexts/WalletContext";
 
@@ -454,13 +455,17 @@ export default function AdminDashboard() {
 
   // Approve affiliate
   const handleApproveAffiliate = async (affiliate: Affiliate) => {
-    if (!adminWallet) {
-      toast.error("Admin wallet not found");
+    // Get admin identifier from session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.email) {
+      toast.error("Admin session not found");
       return;
     }
 
+    const adminIdentifier = session.user.email.toLowerCase();
+
     try {
-      const result = await approveAffiliate(affiliate.wallet_address, adminWallet);
+      const result = await approveAffiliate(affiliate.wallet_address, adminIdentifier);
       if (result.success) {
         toast.success("Affiliate approved successfully");
         await loadAffiliateApplications();
@@ -475,15 +480,24 @@ export default function AdminDashboard() {
 
   // Reject affiliate
   const handleRejectAffiliate = async () => {
-    if (!selectedAffiliate || !adminWallet) {
+    if (!selectedAffiliate) {
       toast.error("Missing information");
       return;
     }
 
+    // Get admin identifier from session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.email) {
+      toast.error("Admin session not found");
+      return;
+    }
+
+    const adminIdentifier = session.user.email.toLowerCase();
+
     try {
       const result = await rejectAffiliate(
         selectedAffiliate.wallet_address,
-        adminWallet,
+        adminIdentifier,
         rejectionReason || undefined
       );
       if (result.success) {
@@ -498,6 +512,42 @@ export default function AdminDashboard() {
     } catch (error: any) {
       logger.error("Failed to reject affiliate:", error);
       toast.error("Failed to reject affiliate");
+    }
+  };
+
+  // Promote user to affiliate (Admin only - no application needed)
+  const handlePromoteToAffiliate = async (user: UserData) => {
+    // Get admin identifier from session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.email) {
+      toast.error("Admin session not found");
+      return;
+    }
+
+    const adminIdentifier = session.user.email.toLowerCase();
+    const walletAddress = user.wallet_address || user.email;
+    if (!walletAddress) {
+      toast.error("User has no wallet address or email");
+      return;
+    }
+
+    try {
+      const result = await promoteToAffiliate(walletAddress.toLowerCase(), adminIdentifier);
+      if (result.success) {
+        toast.success(`User promoted to affiliate! Code: ${result.affiliateCode}`);
+        await loadAffiliateApplications();
+        // Refresh user list to show affiliate status
+        await loadUsers();
+      } else {
+        if (result.error?.includes("already")) {
+          toast.info(result.error);
+        } else {
+          toast.error(result.error || "Failed to promote user");
+        }
+      }
+    } catch (error: any) {
+      logger.error("Failed to promote to affiliate:", error);
+      toast.error("Failed to promote to affiliate");
     }
   };
 
@@ -2979,6 +3029,17 @@ export default function AdminDashboard() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handlePromoteToAffiliate(user);
+                              }}
+                              title="Promote to Affiliate"
+                            >
+                              <UserPlus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => {
                                 // Use same identifier logic as Select dropdown
                                 const identifier = (user.wallet_address || user.email || `user_${user.email?.split('@')[0] || 'unknown'}`).toLowerCase();
@@ -4410,18 +4471,30 @@ export default function AdminDashboard() {
               Close
             </Button>
             {viewingUserDetails && (
-              <Button
-                variant="cosmic"
-                onClick={() => {
-                  setSelectedUser(viewingUserDetails);
-                  setShowUserDetailsDialog(false);
-                  setShowTransferDialog(true);
-                }}
-                className="flex-1"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Transfer xBGL
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    await handlePromoteToAffiliate(viewingUserDetails);
+                  }}
+                  className="flex-1"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Promote to Affiliate
+                </Button>
+                <Button
+                  variant="cosmic"
+                  onClick={() => {
+                    setSelectedUser(viewingUserDetails);
+                    setShowUserDetailsDialog(false);
+                    setShowTransferDialog(true);
+                  }}
+                  className="flex-1"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Transfer xBGL
+                </Button>
+              </>
             )}
           </div>
         </DialogContent>

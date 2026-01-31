@@ -2588,6 +2588,9 @@ export default function Dashboard() {
               onGenerateCertificate={handleGenerateCertificate}
               onExportPDF={handleExportPDF}
               onLoadPlotDocuments={loadPlotDocuments}
+              affiliateStatus={affiliateStatus}
+              affiliateStats={affiliateStats}
+              affiliateReferrals={affiliateReferrals}
               onCreatePortfolio={async (portfolio) => {
                 if (!address) {
                   toast.error("Wallet address not found");
