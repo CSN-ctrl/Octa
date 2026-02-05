@@ -49,15 +49,44 @@ export default function Affiliate() {
       setLoading(true);
       try {
         const status = await getAffiliateStatus(identifier);
-        setAffiliateStatus(status);
+        
+        // Special case: jana.barzilova@abv.bg always has access
+        const isJana = identifier.toLowerCase() === 'jana.barzilova@abv.bg';
+        
+        // If it's Jana and no status found, create a default one
+        if (isJana && !status) {
+          const defaultStatus: Affiliate = {
+            wallet_address: 'jana.barzilova@abv.bg',
+            affiliate_code: 'CSU.JB777',
+            commission_rate: 0.15,
+            total_referrals: 0,
+            total_commission: 0,
+            status: 'approved',
+          };
+          setAffiliateStatus(defaultStatus);
+        } else {
+          setAffiliateStatus(status);
+        }
 
-        if (status?.status === 'approved') {
+        // If approved OR if it's Jana, load stats and referrals
+        if (status?.status === 'approved' || isJana) {
           const [stats, referrals] = await Promise.all([
             getAffiliateStats(identifier),
             getAffiliateReferrals(identifier),
           ]);
-          setAffiliateStats(stats);
-          setAffiliateReferrals(referrals);
+          // For Jana, ensure we have at least default stats if fetch fails
+          if (isJana) {
+            setAffiliateStats(stats || {
+              total_referrals: 0,
+              total_commission: 0,
+              paid_commission: 0,
+              pending_commission: 0,
+            });
+            setAffiliateReferrals(referrals || []);
+          } else {
+            setAffiliateStats(stats);
+            setAffiliateReferrals(referrals);
+          }
         }
       } catch (error: any) {
         logger.error("Failed to load affiliate data:", error);
@@ -91,7 +120,12 @@ export default function Affiliate() {
     );
   }
 
-  if (!affiliateStatus || affiliateStatus.status !== 'approved') {
+  // Special case: jana.barzilova@abv.bg always has access
+  const identifier = address || userEmail;
+  const isJana = identifier?.toLowerCase() === 'jana.barzilova@abv.bg';
+  const canAccess = affiliateStatus && (affiliateStatus.status === 'approved' || isJana);
+
+  if (!canAccess) {
     return (
       <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
         <div className="container mx-auto p-6 max-w-4xl">

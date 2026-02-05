@@ -21,7 +21,7 @@ export const TransactionItem = memo(function TransactionItem({ transaction }: Tr
   const txType = transaction.type || transaction.transaction_type || 'transaction';
   const metadata = transaction.metadata as Record<string, unknown> | undefined;
   const fromAddress = (transaction.from_address || '').toLowerCase();
-  const treasuryAddress = '0x0000000000000000000000000000000000000001';
+  const treasuryAddress = '0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33';
   const isFromTreasury = fromAddress === treasuryAddress ||
                         fromAddress === treasuryAddress.toLowerCase() ||
                         metadata?.source === 'treasury' ||

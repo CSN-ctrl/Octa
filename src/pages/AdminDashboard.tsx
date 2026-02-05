@@ -66,6 +66,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import * as supabaseService from "@/lib/supabase-service";
+import { getAllChainTransactions, Transaction as AlchemyTransaction } from "@/lib/alchemy-service";
+import { convertToXBGL, convertWithDetails, updateRatesFromAPI } from "@/lib/currency-converter";
 import { 
   type Affiliate, 
   getAllAffiliateApplications, 
@@ -122,6 +124,8 @@ export default function AdminDashboard() {
   const [treasuryTransferAmount, setTreasuryTransferAmount] = useState("");
   const [transferringFromTreasury, setTransferringFromTreasury] = useState(false);
   const [treasuryTransactions, setTreasuryTransactions] = useState<any[]>([]);
+  const [alchemyTransactions, setAlchemyTransactions] = useState<AlchemyTransaction[]>([]);
+  const [useAlchemy, setUseAlchemy] = useState(true); // Toggle between Alchemy and Supabase
   const [loadingTreasuryTransactions, setLoadingTreasuryTransactions] = useState(false);
   const [treasuryManagers, setTreasuryManagers] = useState<any[]>([]);
   const [loadingTreasuryManagers, setLoadingTreasuryManagers] = useState(false);
@@ -223,7 +227,7 @@ export default function AdminDashboard() {
   });
   
   // Treasury wallet address (special address for treasury)
-  const TREASURY_WALLET = "0x0000000000000000000000000000000000000001";
+  const TREASURY_WALLET = "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33";
 
   // Generate random wallet address for testing
   const generateTestWallet = () => {
@@ -337,22 +341,569 @@ export default function AdminDashboard() {
     await loadTreasuryManagers();
   };
 
-  // Load treasury transactions
+  // Check all user wallet addresses and process deposits
+  const checkAllUserWallets = async () => {
+    try {
+      toast.info("Checking all user wallet addresses for deposits...");
+      
+      // Get all user wallet addresses from ownership_registry
+      const { data: users, error: usersError } = await supabase
+        .from("ownership_registry")
+        .select("wallet_address")
+        .not("wallet_address", "is", null);
+      
+      if (usersError) {
+        logger.warn("Failed to fetch users from ownership_registry:", usersError);
+      }
+      
+      // Get all wallet addresses from user_balances
+      const { data: balances, error: balancesError } = await supabase
+        .from("user_balances")
+        .select("wallet_address")
+        .not("wallet_address", "is", null);
+      
+      if (balancesError) {
+        logger.warn("Failed to fetch wallets from user_balances:", balancesError);
+      }
+      
+      // Combine all unique wallet addresses
+      const allWallets = new Set<string>();
+      users?.forEach(u => {
+        if (u.wallet_address && !u.wallet_address.includes('@')) {
+          allWallets.add(u.wallet_address.toLowerCase());
+        }
+      });
+      balances?.forEach(b => {
+        if (b.wallet_address && !b.wallet_address.includes('@')) {
+          allWallets.add(b.wallet_address.toLowerCase());
+        }
+      });
+      
+      logger.info(`Found ${allWallets.size} unique wallet addresses to check`);
+      
+      // Now check for incoming transactions from Alchemy for all these wallets
+      if (useAlchemy && allWallets.size > 0) {
+        toast.info(`Fetching transactions for ${allWallets.size} wallet(s) from Alchemy...`);
+        
+        // Fetch transactions for each wallet (in batches to avoid rate limits)
+        const walletArray = Array.from(allWallets);
+        const batchSize = 5;
+        let totalIncoming = 0;
+        
+        for (let i = 0; i < walletArray.length; i += batchSize) {
+          const batch = walletArray.slice(i, i + batchSize);
+          const batchPromises = batch.map(async (wallet) => {
+            try {
+              const txs = await getAllChainTransactions(wallet, {
+                maxCount: 50,
+                category: ['external', 'erc20'],
+              });
+              
+              // Filter for incoming transactions to treasury
+              const incomingToTreasury = txs.filter((tx: AlchemyTransaction) => 
+                tx.to?.toLowerCase() === TREASURY_WALLET.toLowerCase()
+              );
+              
+              return incomingToTreasury;
+            } catch (err) {
+              logger.warn(`Failed to fetch transactions for ${wallet}:`, err);
+              return [];
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          const batchIncoming = batchResults.flat();
+          totalIncoming += batchIncoming.length;
+          
+          // Small delay to avoid rate limits
+          if (i + batchSize < walletArray.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        if (totalIncoming > 0) {
+          toast.info(`Found ${totalIncoming} incoming transaction(s) to treasury. Processing...`);
+          // Process these transactions
+          // Note: We'll need to convert them to the format expected by processIncomingDeposits
+        } else {
+          toast.info("No new incoming transactions found for user wallets");
+        }
+      }
+      
+      // Also check database for unprocessed deposits
+      await processAllExistingDeposits();
+    } catch (error: any) {
+      logger.error("Error checking user wallets:", error);
+      toast.error(`Error: ${error.message}`);
+    }
+  };
+
+  // Manually check and credit a specific wallet (for Lazar Bundev)
+  const checkAndCreditWallet = async (walletAddress: string, ownerName?: string) => {
+    try {
+      toast.info(`Checking ${ownerName || walletAddress} wallet for deposits...`);
+      
+      // Update exchange rates
+      await updateRatesFromAPI();
+      
+      // Fetch transactions from Alchemy for this wallet
+      const transactions = await getAllChainTransactions(walletAddress, {
+        maxCount: 100,
+        category: ['external', 'erc20', 'erc721', 'erc1155'],
+      });
+      
+      logger.info(`Found ${transactions.length} total transactions for ${walletAddress}`);
+      
+      // Filter for incoming transactions to treasury
+      const incomingToTreasury = transactions.filter((tx: AlchemyTransaction) => 
+        tx.to?.toLowerCase() === TREASURY_WALLET.toLowerCase()
+      );
+      
+      if (incomingToTreasury.length === 0) {
+        toast.info(`No deposits found to treasury from ${ownerName || walletAddress}`);
+        return;
+      }
+      
+      logger.info(`Found ${incomingToTreasury.length} incoming transactions to treasury`);
+      
+      // Convert Alchemy transactions to our format
+      const formattedTxs = incomingToTreasury.map((tx: AlchemyTransaction) => {
+        const USDC_ADDRESSES = [
+          '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+          '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+          '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
+          '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
+          '0x0b2c639c533813f4aa9d7837caf62653d097ff85',
+        ];
+        
+        let tokenType = 'ETH';
+        if (tx.asset) {
+          const assetLower = tx.asset.toLowerCase();
+          if (USDC_ADDRESSES.includes(assetLower) || assetLower.includes('usdc')) {
+            tokenType = 'USDC';
+          } else if (assetLower.includes('usdt')) {
+            tokenType = 'USDT';
+          } else {
+            tokenType = tx.asset;
+          }
+        }
+        
+        let amountValue = tx.value || '0';
+        if (typeof amountValue === 'string') {
+          amountValue = parseFloat(amountValue);
+        }
+        
+        return {
+          id: tx.id,
+          from_address: tx.from,
+          to_address: tx.to || '',
+          amount: amountValue.toString(),
+          token_type: tokenType,
+          transaction_type: 'transfer_in',
+          type: tx.category,
+          status: 'completed',
+          tx_hash: tx.hash,
+          created_at: new Date(tx.timestamp).toISOString(),
+          metadata: {
+            chain: tx.chain,
+            chainId: tx.chainId,
+            explorerUrl: tx.explorerUrl,
+            blockNumber: tx.blockNumber,
+            direction: tx.direction,
+          },
+        };
+      });
+      
+      // Process these deposits
+      toast.info(`Processing ${formattedTxs.length} deposit(s) for ${ownerName || walletAddress}...`);
+      await processIncomingDeposits(formattedTxs, true);
+      
+      // Reload transactions
+      await loadTreasuryTransactions();
+    } catch (error: any) {
+      logger.error(`Error checking wallet ${walletAddress}:`, error);
+      toast.error(`Error: ${error.message}`);
+    }
+  };
+
+  // Process all existing unprocessed deposits from database
+  const processAllExistingDeposits = async () => {
+    try {
+      toast.info("Checking for unprocessed deposits...");
+      
+      // Get all incoming transactions to treasury that haven't been converted yet
+      const { data: unprocessedTxs, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("to_address", TREASURY_WALLET.toLowerCase())
+        .neq("transaction_type", "deposit_converted")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      
+      if (!unprocessedTxs || unprocessedTxs.length === 0) {
+        toast.info("No unprocessed deposits found in database");
+        return;
+      }
+      
+      // Filter out transactions that already have a conversion record
+      const txHashes = unprocessedTxs.map(tx => tx.tx_hash).filter(Boolean);
+      const { data: convertedTxs } = await supabase
+        .from("transactions")
+        .select("metadata")
+        .eq("transaction_type", "deposit_converted");
+      
+      const convertedHashes = new Set(
+        convertedTxs?.map(tx => tx.metadata?.original_tx_hash).filter(Boolean) || []
+      );
+      
+      const toProcess = unprocessedTxs.filter(tx => !convertedHashes.has(tx.tx_hash));
+      
+      if (toProcess.length === 0) {
+        toast.info("All deposits have already been processed");
+        return;
+      }
+      
+      toast.info(`Found ${toProcess.length} unprocessed deposit(s). Processing...`);
+      await processIncomingDeposits(toProcess, true);
+      
+      // Reload transactions
+      await loadTreasuryTransactions();
+    } catch (error: any) {
+      logger.error("Error processing existing deposits:", error);
+      toast.error(`Error: ${error.message}`);
+    }
+  };
+
+  // Process incoming deposits and credit user accounts with xBGL
+  const processIncomingDeposits = async (incomingTransactions: any[], showNotifications = true) => {
+    try {
+      let processedCount = 0;
+      let skippedCount = 0;
+      
+      for (const tx of incomingTransactions) {
+        // Skip if already processed (check if deposit_converted transaction exists)
+        const { data: existingTx } = await supabase
+          .from("transactions")
+          .select("id, transaction_type")
+          .eq("tx_hash", tx.tx_hash)
+          .eq("transaction_type", "deposit_converted")
+          .maybeSingle();
+        
+        if (existingTx) {
+          logger.debug(`Transaction ${tx.tx_hash} already processed (deposit_converted exists), skipping`);
+          skippedCount++;
+          continue;
+        }
+        
+        // Also check if there's a regular transaction with this hash to avoid duplicates
+        const { data: regularTx } = await supabase
+          .from("transactions")
+          .select("id, transaction_type")
+          .eq("tx_hash", tx.tx_hash)
+          .neq("transaction_type", "deposit_converted")
+          .maybeSingle();
+        
+        // If there's a regular transaction but no deposit_converted, we can still process it
+        // (it might be a raw transaction that needs conversion)
+        
+        const amount = parseFloat(tx.amount || '0');
+        if (amount <= 0) {
+          logger.debug(`Skipping transaction ${tx.tx_hash} with zero or negative amount`);
+          continue;
+        }
+        
+        const tokenType = tx.token_type || 'ETH';
+        const fromAddress = tx.from_address?.toLowerCase();
+        
+        if (!fromAddress) {
+          logger.warn(`Skipping transaction ${tx.tx_hash} - no from_address`);
+          continue;
+        }
+        
+        // Convert to xBGL
+        const conversion = convertWithDetails(amount, tokenType);
+        const xbglAmount = conversion.xbglAmount;
+        
+        logger.info(`Processing deposit: ${amount} ${tokenType} from ${fromAddress} = ${xbglAmount.toFixed(6)} xBGL`);
+        logger.info(`  Conversion details: ${amount} ${tokenType} → ${conversion.eurAmount.toFixed(2)} EUR → ${xbglAmount.toFixed(6)} xBGL`);
+        
+        // Get or create user balance
+        const { getUserBalance, upsertUserBalance, updateUserBalance } = await import("@/lib/supabase-service");
+        let currentBalance = await getUserBalance(fromAddress).catch(() => null);
+        
+        logger.info(`  Current balance for ${fromAddress}: ${currentBalance?.xbgl_balance || 0} xBGL`);
+        
+        const currentXBGL = currentBalance?.xbgl_balance || 0;
+        const newXBGL = currentXBGL + xbglAmount;
+        
+        logger.info(`  New balance will be: ${newXBGL.toFixed(6)} xBGL`);
+        
+        // Update user balance
+        try {
+          if (currentBalance) {
+            await updateUserBalance(fromAddress, {
+              xbgl_balance: newXBGL,
+            });
+          } else {
+            await upsertUserBalance({
+              wallet_address: fromAddress,
+              xbgl_balance: newXBGL,
+              avax_balance: currentBalance?.avax_balance || 0,
+              chaos_balance: currentBalance?.chaos_balance || 0,
+              sc_balance: currentBalance?.sc_balance || 0,
+            });
+          }
+          
+          logger.info(`✓ Credited ${xbglAmount.toFixed(6)} xBGL to ${fromAddress}. New balance: ${newXBGL.toFixed(6)} xBGL`);
+          
+          // Create transaction record for the conversion
+          await supabaseService.createTransaction({
+            from_address: fromAddress,
+            to_address: TREASURY_WALLET.toLowerCase(),
+            amount: xbglAmount.toString(),
+            token_type: 'xBGL',
+            transaction_type: 'deposit_converted',
+            status: 'completed',
+            tx_hash: `${tx.tx_hash}_converted`, // Unique hash for conversion record
+            type: 'deposit',
+            metadata: {
+              original_amount: amount.toString(),
+              original_token: tokenType,
+              conversion_rate: conversion.exchangeRate,
+              eur_amount: conversion.eurAmount,
+              chain: tx.metadata?.chain,
+              chainId: tx.metadata?.chainId,
+              explorerUrl: tx.metadata?.explorerUrl,
+              original_tx_hash: tx.tx_hash,
+            },
+          });
+          
+          processedCount++;
+          if (showNotifications) {
+            toast.success(`Deposit processed: ${amount} ${tokenType} → ${xbglAmount.toFixed(2)} xBGL credited to ${fromAddress.slice(0, 8)}...`);
+          }
+        } catch (error: any) {
+          logger.error(`Failed to credit deposit for ${fromAddress}:`, error);
+          if (showNotifications) {
+            toast.error(`Failed to process deposit: ${error.message}`);
+          }
+        }
+      }
+      
+      if (showNotifications && processedCount > 0) {
+        toast.success(`Processed ${processedCount} deposit(s). ${skippedCount} already processed.`);
+      } else if (processedCount > 0) {
+        logger.info(`Automatically processed ${processedCount} deposit(s). ${skippedCount} already processed.`);
+      }
+    } catch (error: any) {
+      logger.error("Error processing incoming deposits:", error);
+      if (showNotifications) {
+        toast.error(`Error processing deposits: ${error.message}`);
+      }
+    }
+  };
+
+  // Load treasury transactions using Alchemy API
   const loadTreasuryTransactions = async () => {
     try {
       setLoadingTreasuryTransactions(true);
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .or(`from_address.eq.${TREASURY_WALLET.toLowerCase()},to_address.eq.${TREASURY_WALLET.toLowerCase()}`)
-        .order("created_at", { ascending: false })
-        .limit(100);
+      const treasuryLower = TREASURY_WALLET.toLowerCase();
+      
+      // Update exchange rates from API before processing
+      try {
+        await updateRatesFromAPI();
+        logger.debug("Exchange rates updated from API");
+      } catch (rateError) {
+        logger.warn("Failed to update exchange rates, using defaults:", rateError);
+      }
+      
+      if (useAlchemy) {
+        // Fetch from Alchemy API across all supported chains
+        logger.debug("Fetching treasury transactions from Alchemy API...");
+        const alchemyTxs = await getAllChainTransactions(TREASURY_WALLET, {
+          maxCount: 100, // Per chain
+          category: ['external', 'erc20', 'erc721', 'erc1155'], // Include all transfer types
+        });
+        
+        setAlchemyTransactions(alchemyTxs);
+        
+        // Convert Alchemy transactions to the format expected by the UI
+        const formattedTxs = alchemyTxs.map((tx: AlchemyTransaction) => {
+          const isOutgoing = tx.from.toLowerCase() === treasuryLower;
+          const isIncoming = tx.to?.toLowerCase() === treasuryLower;
+          
+          // Determine token type from asset or category
+          // Known USDC contract addresses on different chains
+          const USDC_ADDRESSES = [
+            '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // Ethereum
+            '0x2791bca1f2de4661ed88a30c99a7a9449aa84174', // Polygon
+            '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum
+            '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', // Base
+            '0x0b2c639c533813f4aa9d7837caf62653d097ff85', // Optimism
+          ];
+          
+          let tokenType = 'ETH'; // Default
+          if (tx.asset) {
+            const assetLower = tx.asset.toLowerCase();
+            // Check if asset is a known USDC contract address
+            if (USDC_ADDRESSES.includes(assetLower) || 
+                assetLower.includes('usdc') || 
+                assetLower.includes('usd coin') ||
+                assetLower.includes('usd-coin')) {
+              tokenType = 'USDC';
+            } else if (assetLower.includes('usdt') || assetLower.includes('tether')) {
+              tokenType = 'USDT';
+            } else if (assetLower.includes('dai')) {
+              tokenType = 'DAI';
+            } else if (assetLower.startsWith('0x') && assetLower.length === 42) {
+              // It's a contract address, try to extract token name from asset field
+              // If asset contains readable name, use it; otherwise show as contract address
+              tokenType = tx.asset.length > 20 ? tx.asset : `${tx.asset.slice(0, 6)}...${tx.asset.slice(-4)}`;
+            } else {
+              tokenType = tx.asset;
+            }
+          } else if (tx.category === 'external') {
+            // Native token transfers - use chain-specific native token symbol
+            const chainNativeTokens: Record<string, string> = {
+              'ethereum': 'ETH',
+              'polygon': 'MATIC',
+              'arbitrum': 'ETH',
+              'optimism': 'ETH',
+              'base': 'ETH',
+              'zksync': 'ETH',
+            };
+            tokenType = chainNativeTokens[tx.chain] || 'ETH';
+          }
+          
+          // Convert amount - Alchemy returns value as a number, but we need to ensure proper formatting
+          // For ERC20 tokens, the value might need decimal adjustment
+          // USDC has 6 decimals, most others have 18
+          let amountValue = tx.value || '0';
+          if (typeof amountValue === 'string') {
+            // If it's a string, parse it
+            amountValue = parseFloat(amountValue);
+          }
+          
+          return {
+            id: tx.id,
+            from_address: tx.from,
+            to_address: tx.to || '',
+            amount: amountValue.toString(),
+            token_type: tokenType,
+            transaction_type: isOutgoing ? 'transfer_out' : 'transfer_in',
+            type: tx.category,
+            status: 'completed',
+            tx_hash: tx.hash,
+            created_at: new Date(tx.timestamp).toISOString(),
+            metadata: {
+              chain: tx.chain,
+              chainId: tx.chainId,
+              explorerUrl: tx.explorerUrl,
+              blockNumber: tx.blockNumber,
+              direction: tx.direction,
+            },
+          };
+        });
+        
+        // Log breakdown
+        const incoming = formattedTxs.filter((tx: any) => 
+          tx.to_address && tx.to_address.toLowerCase() === treasuryLower
+        );
+        const outgoing = formattedTxs.filter((tx: any) => 
+          tx.from_address && tx.from_address.toLowerCase() === treasuryLower
+        );
+        const usdcTransactions = formattedTxs.filter((tx: any) => 
+          tx.token_type && tx.token_type.toLowerCase().includes('usdc')
+        );
+        
+        logger.debug(`Loaded ${formattedTxs.length} treasury transactions from Alchemy:`);
+        logger.debug(`  - Incoming: ${incoming.length}`);
+        logger.debug(`  - Outgoing: ${outgoing.length}`);
+        logger.debug(`  - USDC transactions: ${usdcTransactions.length}`);
+        logger.debug(`  - Chains: ${[...new Set(formattedTxs.map((tx: any) => tx.metadata?.chain))].join(', ')}`);
+        
+        setTreasuryTransactions(formattedTxs);
+        
+        // Save Alchemy transactions to database first (if not already saved)
+        if (formattedTxs.length > 0) {
+          try {
+            for (const tx of formattedTxs) {
+              // Check if transaction already exists
+              const { data: existing } = await supabase
+                .from("transactions")
+                .select("id")
+                .eq("tx_hash", tx.tx_hash)
+                .maybeSingle();
+              
+              if (!existing && tx.tx_hash) {
+                // Save transaction to database
+                await supabaseService.createTransaction({
+                  from_address: tx.from_address,
+                  to_address: tx.to_address,
+                  amount: tx.amount,
+                  token_type: tx.token_type,
+                  transaction_type: tx.transaction_type,
+                  status: tx.status || 'completed',
+                  tx_hash: tx.tx_hash,
+                  type: tx.type,
+                  created_at: tx.created_at,
+                  metadata: tx.metadata,
+                }).catch((err) => {
+                  // Ignore duplicate errors
+                  if (err?.code !== '23505') {
+                    logger.debug(`Failed to save transaction ${tx.tx_hash}:`, err);
+                  }
+                });
+              }
+            }
+            logger.debug(`Saved ${formattedTxs.length} transactions to database`);
+          } catch (saveError) {
+            logger.warn("Failed to save some transactions to database:", saveError);
+          }
+        }
+        
+        // Automatically process incoming transactions and credit user accounts (in background)
+        if (incoming.length > 0) {
+          logger.info(`Auto-processing ${incoming.length} incoming deposit(s)...`);
+          processIncomingDeposits(incoming, false).catch((err) => {
+            logger.error("Automatic deposit processing error:", err);
+          });
+        }
+      } else {
+        // Fallback to Supabase query
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(1000);
 
-      if (error) throw error;
-      setTreasuryTransactions(data || []);
+        if (error) throw error;
+        
+        const filtered = (data || []).filter((tx: any) => {
+          const fromMatch = tx.from_address && tx.from_address.toLowerCase() === treasuryLower;
+          const toMatch = tx.to_address && tx.to_address.toLowerCase() === treasuryLower;
+          return fromMatch || toMatch;
+        });
+        
+        setTreasuryTransactions(filtered.slice(0, 100));
+        
+        // Automatically process incoming transactions from Supabase
+        const incomingFromSupabase = filtered.filter((tx: any) => 
+          tx.to_address && tx.to_address.toLowerCase() === treasuryLower &&
+          tx.transaction_type !== 'deposit_converted' // Skip already converted
+        );
+        if (incomingFromSupabase.length > 0) {
+          logger.info(`Auto-processing ${incomingFromSupabase.length} incoming deposit(s) from Supabase...`);
+          processIncomingDeposits(incomingFromSupabase, false).catch((err) => {
+            logger.error("Automatic deposit processing error:", err);
+          });
+        }
+      }
     } catch (error: any) {
       logger.error("Failed to load treasury transactions:", error);
-      toast.error("Failed to load treasury transactions");
+      toast.error(`Failed to load treasury transactions: ${error.message}`);
+      setTreasuryTransactions([]);
     } finally {
       setLoadingTreasuryTransactions(false);
     }
@@ -1387,6 +1938,8 @@ export default function AdminDashboard() {
       loadPlanets();
     } else if (activeTab === "transactions" && transactions.length === 0 && !loadingTransactions) {
       loadTransactions();
+    } else if (activeTab === "treasury" && !loadingTreasuryTransactions) {
+      loadTreasuryData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -1642,6 +2195,21 @@ export default function AdminDashboard() {
               <nav className="space-y-1 p-4">
                 <button
                   onClick={() => {
+                    setActiveTab("treasury");
+                    loadTreasuryData();
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    activeTab === "treasury"
+                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
+                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
+                  }`}
+                >
+                  <Wallet className={`h-4 w-4 transition-transform ${activeTab === "treasury" ? "scale-110" : ""}`} />
+                  <span>Treasury</span>
+                </button>
+                <button
+                  onClick={() => {
                     setActiveTab("users");
                     if (users.length === 0) loadUsers();
                     setIsSidebarOpen(false);
@@ -1741,21 +2309,6 @@ export default function AdminDashboard() {
                 >
                   <History className={`h-4 w-4 transition-transform ${activeTab === "transactions" ? "scale-110" : ""}`} />
                   <span>Transactions</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("treasury");
-                    loadTreasuryData();
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "treasury"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <Wallet className={`h-4 w-4 transition-transform ${activeTab === "treasury" ? "scale-110" : ""}`} />
-                  <span>Treasury</span>
                 </button>
                 <button
                   onClick={() => {
@@ -2630,17 +3183,69 @@ export default function AdminDashboard() {
                       </CardTitle>
                       <CardDescription>
                         All transactions involving the treasury wallet
+                        {useAlchemy && (
+                          <span className="ml-2 text-xs text-green-400">(via Alchemy API)</span>
+                        )}
                       </CardDescription>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={loadTreasuryTransactions}
-                      disabled={loadingTreasuryTransactions}
-                      className="border-primary/30"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${loadingTreasuryTransactions ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUseAlchemy(!useAlchemy)}
+                        className="border-primary/30"
+                      >
+                        {useAlchemy ? 'Alchemy' : 'Supabase'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={loadTreasuryTransactions}
+                        disabled={loadingTreasuryTransactions}
+                        className="border-primary/30"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${loadingTreasuryTransactions ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
+                      <Button
+                        variant="default"
+                        onClick={async () => {
+                          // Check all user wallets and process deposits
+                          await checkAllUserWallets();
+                        }}
+                        disabled={loadingTreasuryTransactions}
+                        className="bg-green-600 hover:bg-green-700"
+                        title="Check all user wallets and process deposits"
+                      >
+                        Check All Wallets
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          // Process all existing unprocessed deposits from database
+                          await processAllExistingDeposits();
+                        }}
+                        disabled={loadingTreasuryTransactions}
+                        className="border-green-600 text-green-600 hover:bg-green-50"
+                        title="Process unprocessed deposits from database only"
+                      >
+                        Process DB Deposits
+                      </Button>
+                      <Button
+                        variant="default"
+                        onClick={async () => {
+                          // Credit Lazar Bundev's wallet
+                          await checkAndCreditWallet(
+                            '0x32ee1293cdd2a5ef97504ef4b97d988e83856542',
+                            'Lazar Bundev'
+                          );
+                        }}
+                        disabled={loadingTreasuryTransactions}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        title="Check and credit Lazar Bundev's wallet"
+                      >
+                        Credit Lazar
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -2651,53 +3256,176 @@ export default function AdminDashboard() {
                   ) : treasuryTransactions.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">No treasury transactions</p>
                   ) : (
-                    <div className="rounded-lg border border-primary/10 overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-primary/5">
-                          <TableRow className="border-primary/10">
-                            <TableHead>Type</TableHead>
-                            <TableHead>From</TableHead>
-                            <TableHead>To</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Token</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {treasuryTransactions.map((tx) => {
-                            const isOutgoing = tx.from_address?.toLowerCase() === TREASURY_WALLET.toLowerCase();
-                            return (
-                              <TableRow key={tx.id} className="border-primary/5 hover:bg-primary/5">
-                                <TableCell>
+                    <>
+                      {/* Summary Statistics */}
+                      {(() => {
+                        const incomingUSDC = treasuryTransactions.filter((tx: any) => 
+                          tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase() &&
+                          tx.token_type?.toLowerCase().includes('usdc')
+                        );
+                        const totalIncomingUSDC = incomingUSDC.reduce((sum: number, tx: any) => 
+                          sum + Number(tx.amount || 0), 0
+                        );
+                        const incomingXBGL = treasuryTransactions.filter((tx: any) => 
+                          tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase() &&
+                          (!tx.token_type || tx.token_type.toLowerCase().includes('xbgl'))
+                        );
+                        const totalIncomingXBGL = incomingXBGL.reduce((sum: number, tx: any) => 
+                          sum + Number(tx.amount || 0), 0
+                        );
+                        
+                        return (incomingUSDC.length > 0 || incomingXBGL.length > 0) ? (
+                          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {incomingUSDC.length > 0 && (
+                              <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                                <div className="text-sm text-muted-foreground">Incoming USDC</div>
+                                <div className="text-lg font-semibold text-green-500">
+                                  {totalIncomingUSDC.toFixed(2)} USDC
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {incomingUSDC.length} transaction{incomingUSDC.length !== 1 ? 's' : ''}
+                                </div>
+                              </div>
+                            )}
+                            {incomingXBGL.length > 0 && (
+                              <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                                <div className="text-sm text-muted-foreground">Incoming xBGL</div>
+                                <div className="text-lg font-semibold text-green-500">
+                                  {totalIncomingXBGL.toFixed(2)} xBGL
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {incomingXBGL.length} transaction{incomingXBGL.length !== 1 ? 's' : ''}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
+                      
+                      <div className="rounded-lg border border-primary/10 overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-primary/5">
+                            <TableRow className="border-primary/10">
+                              <TableHead>Type</TableHead>
+                              <TableHead>From</TableHead>
+                              <TableHead>To</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Token</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {treasuryTransactions.map((tx) => {
+                              const isOutgoing = tx.from_address?.toLowerCase() === TREASURY_WALLET.toLowerCase();
+                              const isIncoming = tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase();
+                              const isUSDC = tx.token_type?.toLowerCase().includes('usdc');
+                              return (
+                                <TableRow 
+                                  key={tx.id} 
+                                  className={`border-primary/5 hover:bg-primary/5 ${isUSDC && isIncoming ? 'bg-green-500/10' : ''}`}
+                                >
+                                  <TableCell>
                                   <Badge variant={isOutgoing ? "destructive" : "default"}>
                                     {isOutgoing ? "Outgoing" : "Incoming"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell className="font-mono text-xs">
-                                  {tx.from_address?.slice(0, 8)}...{tx.from_address?.slice(-6)}
+                                <TableCell>
+                                  {tx.metadata?.chain ? (
+                                    <Badge variant="outline" className="text-xs">
+                                      {tx.metadata.chain}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="font-mono text-xs">
-                                  {tx.to_address?.slice(0, 8)}...{tx.to_address?.slice(-6)}
+                                  <a 
+                                    href={tx.metadata?.explorerUrl?.replace('/tx/', `/address/${tx.from_address}`) || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:text-primary transition-colors"
+                                  >
+                                    {tx.from_address?.slice(0, 8)}...{tx.from_address?.slice(-6)}
+                                  </a>
                                 </TableCell>
-                                <TableCell className="font-semibold">
-                                  {Number(tx.amount || 0).toFixed(2)}
+                                <TableCell className="font-mono text-xs">
+                                  <a 
+                                    href={tx.metadata?.explorerUrl?.replace('/tx/', `/address/${tx.to_address}`) || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:text-primary transition-colors"
+                                  >
+                                    {tx.to_address?.slice(0, 8)}...{tx.to_address?.slice(-6)}
+                                  </a>
                                 </TableCell>
-                                <TableCell>{tx.token_type || "xBGL"}</TableCell>
+                                <TableCell className="font-semibold whitespace-nowrap min-w-[150px] text-right">
+                                  <div className="overflow-visible" title={tx.amount || '0'}>
+                                    {(() => {
+                                      const amount = parseFloat(tx.amount || '0');
+                                      
+                                      // Handle very large numbers
+                                      if (amount >= 1000000) {
+                                        return amount.toLocaleString('en-US', {
+                                          maximumFractionDigits: 2,
+                                          minimumFractionDigits: 2
+                                        });
+                                      } else if (amount >= 1000) {
+                                        return amount.toLocaleString('en-US', {
+                                          maximumFractionDigits: 4,
+                                          minimumFractionDigits: 2
+                                        });
+                                      } else if (amount > 0 && amount < 0.000001) {
+                                        // Show scientific notation for extremely small amounts
+                                        return amount.toExponential(4);
+                                      } else if (amount > 0 && amount < 0.01) {
+                                        // Show more decimals for very small amounts
+                                        return amount.toLocaleString('en-US', {
+                                          maximumFractionDigits: 12,
+                                          minimumFractionDigits: 0
+                                        });
+                                      } else {
+                                        // Standard formatting for normal amounts
+                                        return amount.toLocaleString('en-US', {
+                                          maximumFractionDigits: 6,
+                                          minimumFractionDigits: 2
+                                        });
+                                      }
+                                    })()}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={isUSDC ? "default" : "outline"} className={isUSDC ? "bg-blue-500/20 text-blue-300" : ""}>
+                                    {tx.token_type || "xBGL"}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell className="text-xs">
                                   {new Date(tx.created_at).toLocaleString()}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant={tx.status === "completed" ? "default" : "secondary"}>
-                                    {tx.status || "pending"}
-                                  </Badge>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={tx.status === "completed" ? "default" : "secondary"}>
+                                      {tx.status || "pending"}
+                                    </Badge>
+                                    {tx.tx_hash && tx.metadata?.explorerUrl && (
+                                      <a
+                                        href={tx.metadata.explorerUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline"
+                                      >
+                                        View
+                                      </a>
+                                    )}
+                                  </div>
                                 </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -4376,13 +5104,14 @@ export default function AdminDashboard() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Type</TableHead>
-                            <TableHead>From</TableHead>
-                            <TableHead>To</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Token</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Status</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Chain</TableHead>
+                              <TableHead>From</TableHead>
+                              <TableHead>To</TableHead>
+                              <TableHead className="min-w-[150px]">Amount</TableHead>
+                              <TableHead>Token</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -4482,18 +5211,18 @@ export default function AdminDashboard() {
                   <UserPlus className="h-4 w-4 mr-2" />
                   Promote to Affiliate
                 </Button>
-                <Button
-                  variant="cosmic"
-                  onClick={() => {
-                    setSelectedUser(viewingUserDetails);
-                    setShowUserDetailsDialog(false);
-                    setShowTransferDialog(true);
-                  }}
-                  className="flex-1"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Transfer xBGL
-                </Button>
+              <Button
+                variant="cosmic"
+                onClick={() => {
+                  setSelectedUser(viewingUserDetails);
+                  setShowUserDetailsDialog(false);
+                  setShowTransferDialog(true);
+                }}
+                className="flex-1"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Transfer xBGL
+              </Button>
               </>
             )}
           </div>

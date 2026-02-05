@@ -409,7 +409,7 @@ export default function PlotPurchase() {
             
             await createTransaction({
               from_address: authUserEmail,
-              to_address: "0x0000000000000000000000000000000000000001", // Treasury address
+              to_address: "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33", // Treasury address
               amount: PLOT_PRICE_xBGL,
               token_type: "xBGL",
               transaction_type: "plot_purchase",

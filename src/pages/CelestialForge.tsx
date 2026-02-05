@@ -2030,21 +2030,21 @@ export default function CelestialForgePage() {
               <Card className="glass">
                 <CardHeader>
                   <CardTitle>Creation Costs</CardTitle>
-                  <CardDescription>AVAX costs for creating new entities</CardDescription>
+                  <CardDescription>xBGL costs for creating new entities</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <Label>Star System Cost</Label>
                     <Input type="number" value={STAR_SYSTEM_COST} disabled className="bg-muted" />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {STAR_SYSTEM_COST.toLocaleString()} AVAX per star system
+                      {STAR_SYSTEM_COST.toLocaleString()} xBGL per star system
                     </p>
                   </div>
                   <div>
                     <Label>Planet Cost</Label>
                     <Input type="number" value={PLANET_COST} disabled className="bg-muted" />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {PLANET_COST.toLocaleString()} AVAX per planet
+                      {PLANET_COST.toLocaleString()} xBGL per planet
                     </p>
                   </div>
                 </CardContent>
@@ -2424,7 +2424,7 @@ ${cities.map((c: any) => `  - ${c.name} (Pop: ${c.population || 0})`).join("\n")
             
             <div className="space-y-4 py-4">
               <div className="bg-primary/10 border-l-4 border-primary p-4 rounded">
-                <p className="text-sm font-semibold mb-2">Cost: {STAR_SYSTEM_COST.toLocaleString()} AVAX</p>
+                <p className="text-sm font-semibold mb-2">Cost: {STAR_SYSTEM_COST.toLocaleString()} xBGL</p>
                 <p className="text-xs text-muted-foreground">
                   Creating a star system will deploy a new Avalanche subnet with its own blockchain.
                 </p>
@@ -2522,7 +2522,7 @@ ${cities.map((c: any) => `  - ${c.name} (Pop: ${c.population || 0})`).join("\n")
             
             <div className="space-y-4 py-4">
               <div className="bg-primary/10 border-l-4 border-primary p-4 rounded">
-                <p className="text-sm font-semibold mb-2">Cost: {PLANET_COST.toLocaleString()} AVAX</p>
+                <p className="text-sm font-semibold mb-2">Cost: {PLANET_COST.toLocaleString()} xBGL</p>
                 <p className="text-xs text-muted-foreground">
                   Creating a planet will deploy a validator node within the selected star system.
                 </p>

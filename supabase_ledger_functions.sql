@@ -18,7 +18,7 @@ BEGIN
   IF NEW.xbgl_balance > OLD.xbgl_balance THEN
     -- Balance increased - incoming transaction
     v_amount := NEW.xbgl_balance - OLD.xbgl_balance;
-    v_from_address := '0x0000000000000000000000000000000000000001'; -- Treasury
+    v_from_address := '0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33'; -- Treasury
     v_to_address := NEW.wallet_address;
     v_transaction_type := 'transfer';
     v_metadata := jsonb_build_object(
@@ -30,7 +30,7 @@ BEGIN
     -- Balance decreased - outgoing transaction
     v_amount := OLD.xbgl_balance - NEW.xbgl_balance;
     v_from_address := NEW.wallet_address;
-    v_to_address := '0x0000000000000000000000000000000000000001'; -- Treasury
+    v_to_address := '0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33'; -- Treasury
     v_transaction_type := 'transfer';
     v_metadata := jsonb_build_object(
       'auto_created', true,
@@ -119,7 +119,7 @@ BEGIN
       metadata
     ) VALUES (
       v_new_owner,
-      '0x0000000000000000000000000000000000000001', -- Treasury
+      '0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33', -- Treasury
       v_plot_price,
       'xBGL',
       'plot_purchase',
@@ -236,7 +236,7 @@ BEGIN
         status,
         metadata
       ) VALUES (
-        '0x0000000000000000000000000000000000000001', -- Treasury
+        '0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33', -- Treasury
         v_affiliate_wallet,
         NEW.commission_amount,
         'xBGL',

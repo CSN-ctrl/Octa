@@ -36,6 +36,22 @@ const PurchaseConfirmation = lazy(() => import("./pages/PurchaseConfirmation"));
 const Lore = lazy(() => import("./pages/Lore"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const EmailVerified = lazy(() => import("./pages/EmailVerified"));
+
+// Documentation pages
+const DocsOverview = lazy(() => import("./pages/docs/DocsOverview"));
+const DocsPaths = lazy(() => import("./pages/docs/DocsPaths"));
+const DocsIncome = lazy(() => import("./pages/docs/DocsIncome"));
+const DocsStructures = lazy(() => import("./pages/docs/DocsStructures"));
+const DocsJobs = lazy(() => import("./pages/docs/DocsJobs"));
+const DocsSovereignty = lazy(() => import("./pages/docs/DocsSovereignty"));
+const DocsSovereigntyCity = lazy(() => import("./pages/docs/DocsSovereigntyCity"));
+const DocsSovereigntyPlanet = lazy(() => import("./pages/docs/DocsSovereigntyPlanet"));
+const DocsSovereigntyStarSystem = lazy(() => import("./pages/docs/DocsSovereigntyStarSystem"));
+const DocsGettingStarted = lazy(() => import("./pages/docs/DocsGettingStarted"));
+const DocsEconomy = lazy(() => import("./pages/docs/DocsEconomy"));
+const DocsPhases = lazy(() => import("./pages/docs/DocsPhases"));
+const DocsFeatures = lazy(() => import("./pages/docs/DocsFeatures"));
+const TestTransactions = lazy(() => import("./pages/TestTransactions"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const OAuthTestClient = lazy(() => import("./pages/OAuthTestClient"));
@@ -192,8 +208,32 @@ function AppContent() {
                       <Route path="/quick-actions" element={<QuickActions />} />
                       <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
                       <Route path="/lore" element={<Lore />} />
-                      <Route path="/how-it-works" element={<HowItWorks />} />
+                      <Route path="/how-it-works" element={<Navigate to="/docs" replace />} />
                       <Route path="/email-verified" element={<EmailVerified />} />
+                      
+                      {/* Documentation routes */}
+                      <Route path="/docs" element={<DocsOverview />} />
+                      <Route path="/docs/paths" element={<DocsPaths />} />
+                      <Route path="/docs/paths/landowner" element={<DocsPaths />} />
+                      <Route path="/docs/paths/worker" element={<DocsPaths />} />
+                      <Route path="/docs/income" element={<DocsIncome />} />
+                      <Route path="/docs/income/rental" element={<DocsIncome />} />
+                      <Route path="/docs/income/wages" element={<DocsIncome />} />
+                      <Route path="/docs/income/business" element={<DocsIncome />} />
+                      <Route path="/docs/income/supporting" element={<DocsIncome />} />
+                      <Route path="/docs/structures" element={<DocsStructures />} />
+                      <Route path="/docs/jobs" element={<DocsJobs />} />
+                      <Route path="/docs/sovereignty" element={<DocsSovereignty />} />
+                      <Route path="/docs/sovereignty/city" element={<DocsSovereigntyCity />} />
+                      <Route path="/docs/sovereignty/planet" element={<DocsSovereigntyPlanet />} />
+                      <Route path="/docs/sovereignty/star-system" element={<DocsSovereigntyStarSystem />} />
+                      <Route path="/docs/getting-started" element={<DocsGettingStarted />} />
+                      <Route path="/docs/economy" element={<DocsEconomy />} />
+                      <Route path="/docs/phases" element={<DocsPhases />} />
+                      <Route path="/docs/features" element={<DocsFeatures />} />
+                      
+                      {/* Test/Dev Routes */}
+                      <Route path="/test-transactions" element={<TestTransactions />} />
                       <Route path="/auth/callback" element={<AuthCallback />} />
                       <Route path="/oauth/consent" element={<OAuthConsent />} />
                       <Route path="/oauth-test-client" element={<OAuthTestClient />} />

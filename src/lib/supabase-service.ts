@@ -213,16 +213,16 @@ export async function getPlotOwnership(plotId: number): Promise<PlotOwnership> {
 // Register ownership (wallet + email)
 export async function registerOwnership(wallet: string, email: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from("ownership_registry")
-      .upsert(
-        {
-          wallet_address: wallet,
-          email: email,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "wallet_address" }
-      );
+  const { error } = await supabase
+    .from("ownership_registry")
+    .upsert(
+      {
+        wallet_address: wallet,
+        email: email,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "wallet_address" }
+    );
 
     if (error) {
       // Silently handle if table doesn't exist
@@ -245,13 +245,13 @@ export async function registerOwnership(wallet: string, email: string): Promise<
 // Get ownership by wallet
 export async function getOwnershipByWallet(wallet: string): Promise<{ wallet_address: string; email: string } | null> {
   try {
-    const { data, error } = await supabase
-      .from("ownership_registry")
-      .select("*")
-      .eq("wallet_address", wallet)
+  const { data, error } = await supabase
+    .from("ownership_registry")
+    .select("*")
+    .eq("wallet_address", wallet)
       .maybeSingle();
 
-    if (error) {
+  if (error) {
       // Handle table doesn't exist (406) or not found gracefully
       if (error.code === "PGRST116" || error.status === 406 || error.code === "42P01") {
         return null;
@@ -259,9 +259,9 @@ export async function getOwnershipByWallet(wallet: string): Promise<{ wallet_add
       // Don't throw - just return null for other errors
       console.debug("ownership_registry query error:", error.message);
       return null;
-    }
+  }
 
-    return data;
+  return data;
   } catch (error: any) {
     // Silently handle errors - table might not exist
     if (error.status === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
@@ -275,22 +275,22 @@ export async function getOwnershipByWallet(wallet: string): Promise<{ wallet_add
 // Get ownership by email
 export async function getOwnershipByEmail(email: string): Promise<{ wallet_address: string; email: string } | null> {
   try {
-    const { data, error } = await supabase
-      .from("ownership_registry")
-      .select("*")
-      .eq("email", email)
+  const { data, error } = await supabase
+    .from("ownership_registry")
+    .select("*")
+    .eq("email", email)
       .maybeSingle();
 
-    if (error) {
+  if (error) {
       // Handle table doesn't exist (406) or not found gracefully
       if (error.code === "PGRST116" || error.status === 406 || error.code === "42P01") {
         return null;
       }
       console.debug("ownership_registry query error:", error.message);
       return null;
-    }
+  }
 
-    return data;
+  return data;
   } catch (error: any) {
     // Silently handle errors - table might not exist
     if (error.status === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {

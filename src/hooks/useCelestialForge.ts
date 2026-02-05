@@ -44,9 +44,9 @@ export function useCelestialForge() {
   const [starSystems, setStarSystems] = useState<StarSystem[]>([]);
   const [userStarSystems, setUserStarSystems] = useState<StarSystem[]>([]);
 
-  // Cost constants (in AVAX)
-  const STAR_SYSTEM_COST = 10000; // 10,000 AVAX for a new subnet
-  const PLANET_COST = 2000; // 2,000 AVAX for a master node
+  // Cost constants (in xBGL)
+  const STAR_SYSTEM_COST = 10000; // 10,000 xBGL for a new subnet
+  const PLANET_COST = 2000; // 2,000 xBGL for a master node
 
   // Fetch star system data from blockchain contract (disabled - using Supabase only)
   const fetchStarSystemFromBlockchain = useCallback(async (contractAddress: string, systemId: string): Promise<Partial<StarSystem> | null> => {
