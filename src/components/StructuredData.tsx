@@ -49,7 +49,7 @@ export function DefaultStructuredData() {
         data={{
           name: "Octavia Universe",
           url: origin,
-          logo: `${origin}/logo.png`,
+          logo: `${origin}/logo.jpg`,
           description: "Explore star systems, claim land, build your digital identity, and become part of the cosmic economy in Octavia Universe",
           sameAs: [
             // Add social media links when available
