@@ -40,7 +40,7 @@ export function StructuredData({ type = "WebSite", data }: StructuredDataProps) 
  */
 export function DefaultStructuredData() {
   // Get origin safely (works in browser environment)
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://octavia-universe.com';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.sarakt.com';
   
   return (
     <>

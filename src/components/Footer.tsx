@@ -68,7 +68,7 @@ const Footer = () => {
     { href: "#faq", label: "FAQ", icon: HelpCircle },
     { to: "/how-it-works", label: "How It Works", icon: BookOpen },
     { to: "/lore", label: "Lore", icon: BookOpen },
-    { href: "mailto:support@chaosstaruniverse.com", label: "Contact", icon: Mail },
+    { href: "mailto:support@sarakt.com", label: "Contact", icon: Mail },
   ];
 
   const legalLinks = [

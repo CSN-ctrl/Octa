@@ -2975,7 +2975,7 @@ export default function Dashboard() {
                                   variant="default"
                           className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg hover:shadow-primary/50 transition-all duration-300 hover:scale-105"
                                   onClick={() => {
-                            window.open('mailto:experts@chaosstar.network?subject=Premium Asset Consultation', '_blank');
+                            window.open('mailto:experts@sarakt.com?subject=Premium Asset Consultation', '_blank');
                                   }}
                                 >
                           <MessageCircle className="h-4 w-4 mr-2" />
