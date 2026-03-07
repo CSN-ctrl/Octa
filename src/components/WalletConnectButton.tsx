@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
-export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) => void }) {
+export function WalletConnectButton({ onConnect, className }: { onConnect?: (addr: string) => void; className?: string }) {
   const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
 
   const handleConnect = async (walletId?: string) => {
@@ -39,7 +39,7 @@ export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) 
         variant="default" 
         size="sm" 
         onClick={handleDisconnect}
-        className="gap-2"
+        className={className ?? "gap-2"}
       >
         <Wallet className="h-4 w-4" />
         {address?.slice(0, 6)}...{address?.slice(-4)}
@@ -54,7 +54,7 @@ export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) 
         variant="cosmic"
         size="sm"
         onClick={() => handleConnect(availableWallets[0]?.id)}
-        className="gap-2"
+        className={className ?? "gap-2"}
         type="button"
       >
         <Wallet className="h-4 w-4" />
@@ -67,7 +67,7 @@ export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="cosmic" size="sm" className="gap-2">
+        <Button variant="cosmic" size="sm" className={className ?? "gap-2"}>
           <Wallet className="h-4 w-4" />
           Connect Wallet
         </Button>

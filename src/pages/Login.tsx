@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useWallet } from "@/contexts/WalletContext";
+import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { address, isConnected, connect } = useWallet();
+  const { address, isConnected } = useWallet();
   
   // Determine initial tab based on route
   const initialTab = location.pathname === "/signup" ? "signup" : "login";
@@ -220,16 +221,6 @@ export default function Login() {
     }
   };
 
-  const handleConnectWallet = async () => {
-    try {
-      await connect();
-      toast.success("Wallet connected!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to connect wallet");
-    }
-  };
-
-
   return (
     <div className="min-h-screen pt-20 bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md space-y-6">
@@ -273,15 +264,10 @@ export default function Login() {
                       Wallet Connection (Optional)
                     </Label>
                     {!isConnected || !address ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleConnectWallet}
-                        className="w-full"
-                      >
-                        <Wallet className="h-4 w-4 mr-2" />
-                        Connect Wallet
-                      </Button>
+                      <WalletConnectButton
+                        className="w-full gap-2"
+                        onConnect={() => toast.success("Wallet connected!")}
+                      />
                     ) : (
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                         <div className="flex items-center justify-between text-sm">
@@ -370,15 +356,10 @@ export default function Login() {
                       Wallet Connection (Required)
                     </Label>
                     {!isConnected || !address ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleConnectWallet}
-                        className="w-full"
-                      >
-                        <Wallet className="h-4 w-4 mr-2" />
-                        Connect Wallet
-                      </Button>
+                      <WalletConnectButton
+                        className="w-full gap-2"
+                        onConnect={() => toast.success("Wallet connected!")}
+                      />
                     ) : (
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                         <div className="flex items-center justify-between text-sm">
