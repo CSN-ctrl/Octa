@@ -52,18 +52,37 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
   }
 
   // Request account access - this will trigger wallet popup
+  const CONNECT_TIMEOUT_MS = 20000; // 20s - wallet extensions (e.g. with SES/lockdown) can be slow to respond
+  const attemptConnect = (): Promise<string[]> =>
+    new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Connection timeout. Please try again."));
+      }, CONNECT_TIMEOUT_MS);
+      provider
+        .request({ method: "eth_requestAccounts" })
+        .then((accounts: string[]) => {
+          clearTimeout(timeoutId);
+          resolve(accounts);
+        })
+        .catch((err: any) => {
+          clearTimeout(timeoutId);
+          reject(err);
+        });
+    });
+
   try {
-    // Use a timeout to prevent hanging on extension conflicts
-    const requestPromise = provider.request({ 
-      method: "eth_requestAccounts",
-    });
-    
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("Connection timeout. Please try again.")), 10000);
-    });
-    
-    const accounts = await Promise.race([requestPromise, timeoutPromise]) as string[];
-    
+    let accounts: string[];
+    try {
+      accounts = await attemptConnect();
+    } catch (firstErr: any) {
+      // Retry once on timeout (SES/lockdown and other extensions can delay the first response)
+      if (firstErr?.message?.includes("timeout")) {
+        accounts = await attemptConnect();
+      } else {
+        throw firstErr;
+      }
+    }
+
     if (!accounts || accounts.length === 0) {
       throw new Error("No accounts found. Please unlock your wallet and try again.");
     }
@@ -83,9 +102,11 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
     if (error.code === 4001) {
       throw new Error("Connection request was rejected. Please approve the connection in your wallet.");
     }
-    // Handle timeout
+    // Handle timeout (SES/lockdown or other extensions can delay wallet response)
     if (error.message?.includes("timeout")) {
-      throw new Error("Connection timeout. A browser extension may be interfering. Please disable conflicting extensions and try again.");
+      throw new Error(
+        "Wallet is taking too long to respond. If you use MetaMask or a security extension (SES/lockdown), try again or allow the wallet popup—it may appear behind this window."
+      );
     }
     // Handle extension conflicts
     if (error.message?.includes("Unexpected error") || error.message?.includes("evmAsk")) {
