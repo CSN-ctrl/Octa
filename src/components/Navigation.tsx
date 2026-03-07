@@ -487,9 +487,9 @@ export const Navigation = () => {
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
                         ) : (
-                          <DropdownMenuItem disabled>
+                          <DropdownMenuItem onClick={() => handleConnectWallet()}>
                             <Wallet className="mr-2 h-4 w-4" />
-                            No wallets available
+                            Connect Wallet
                           </DropdownMenuItem>
                         )}
                       </>

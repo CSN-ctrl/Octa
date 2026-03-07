@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { ethers } from "ethers";
-import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, type WalletInfo } from "@/lib/wallet";
+import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, getBestWallet, type WalletInfo } from "@/lib/wallet";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/logger";
@@ -44,32 +44,27 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const connect = async (useWalletConnect?: boolean, walletId?: string) => {
     try {
-      // For browser wallets, always use browser wallet directly (skip WalletConnect)
-      // WalletConnect is only useful for mobile wallets, but requires a valid project ID
-      const shouldUseWalletConnect = false; // Disable WalletConnect for now due to invalid project ID
-      
-      // Check if any wallet is available
+      const shouldUseWalletConnect = false;
+
+      // Use getBestWallet() so we get window.ethereum fallback when detectWallets() is empty (e.g. some browsers inject on first interaction)
       const wallets = detectWallets();
-      if (wallets.length === 0) {
+      const best = getBestWallet();
+      if (!best) {
         toast.error("No wallet found. Please install MetaMask, Core Wallet, or another compatible wallet extension.");
         throw new Error("No wallet found. Please install a compatible wallet extension.");
       }
-      
-      // Get the provider for the selected wallet (or best available)
-      const selectedWallet = walletId 
-        ? wallets.find(w => w.id === walletId)
-        : wallets[0]; // Use first available if not specified
-      
-      if (!selectedWallet) {
-        toast.error(`Wallet "${walletId}" not found.`);
-        throw new Error(`Wallet "${walletId}" not found.`);
-      }
-      
-      // Note: Network switching removed - using Supabase instead of blockchain RPC
-      const { signer: newSigner, address: newAddress, provider: newProvider } = await connectWallet(shouldUseWalletConnect, walletId || selectedWallet.id);
+
+      const selectedWallet = walletId
+        ? wallets.find((w) => w.id === walletId) || best
+        : best;
+
+      const { signer: newSigner, address: newAddress, provider: newProvider } = await connectWallet(
+        shouldUseWalletConnect,
+        selectedWallet.id
+      );
       setSigner(newSigner);
       setAddress(newAddress);
-      setWalletProvider(selectedWallet.provider); // Store the actual provider for event listening
+      setWalletProvider(selectedWallet.provider);
       await refreshBalance(newAddress);
       toast.success("Wallet connected!");
 

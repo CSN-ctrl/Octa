@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/contexts/WalletContext";
-import { Wallet, Smartphone } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Wallet } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +12,6 @@ import {
 
 export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) => void }) {
   const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
-  const isMobile = useIsMobile();
 
   const handleConnect = async (walletId?: string) => {
     try {
@@ -49,24 +47,23 @@ export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) 
     );
   }
 
-  // Auto-connect with WalletConnect on mobile
-  if (isMobile) {
+  // Single wallet or no wallets detected: one-click Connect Wallet (works on all devices/browsers)
+  if (availableWallets.length <= 1) {
     return (
-      <Button 
-        variant="cosmic" 
-        size="sm" 
-        onClick={() => handleConnect(true)}
+      <Button
+        variant="cosmic"
+        size="sm"
+        onClick={() => handleConnect(availableWallets[0]?.id)}
         className="gap-2"
+        type="button"
       >
-        <Smartphone className="h-4 w-4" />
+        <Wallet className="h-4 w-4" />
         Connect Wallet
       </Button>
     );
   }
 
-  // Desktop: show dropdown with available wallets
-  const hasWallets = availableWallets.length > 0;
-  
+  // Multiple wallets: show dropdown to choose
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -76,11 +73,9 @@ export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) 
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="glass min-w-[200px]">
-        {hasWallets ? (
-          <>
-            <DropdownMenuLabel>Available Wallets</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {availableWallets.map((wallet) => (
+        <DropdownMenuLabel>Choose wallet</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {availableWallets.map((wallet) => (
               <DropdownMenuItem 
                 key={wallet.id} 
                 onClick={() => handleConnect(wallet.id)}
@@ -90,17 +85,6 @@ export function WalletConnectButton({ onConnect }: { onConnect?: (addr: string) 
                 {wallet.name}
               </DropdownMenuItem>
             ))}
-          </>
-        ) : (
-          <>
-            <DropdownMenuLabel>No Wallets Found</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>
-              <Wallet className="mr-2 h-4 w-4" />
-              Install MetaMask, Core Wallet, or another compatible wallet
-            </DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

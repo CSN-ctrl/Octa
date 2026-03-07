@@ -29,6 +29,10 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
   if (walletId) {
     // Use specific wallet if requested
     provider = getWalletProvider(walletId);
+    if (!provider && walletId === "generic") {
+      const best = getBestWallet();
+      if (best) provider = best.provider;
+    }
     if (!provider) {
       throw new Error(`Wallet "${walletId}" not found. Please install the wallet extension.`);
     }
