@@ -525,3 +525,29 @@ All colors MUST be HSL.
   }
 }
 
+/* Land Title Certificate: print / save as PDF – only the document is generated */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #land-title-certificate-document,
+  #land-title-certificate-document * {
+    visibility: visible;
+  }
+  #land-title-certificate-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #land-title-certificate-document .max-w-3xl {
+    max-width: 48rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+

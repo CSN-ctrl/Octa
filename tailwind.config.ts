@@ -19,6 +19,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        signature: ['"Great Vibes"', 'cursive'],
+      },
       screens: {
         'xs': '475px',
         '3xl': '1920px',

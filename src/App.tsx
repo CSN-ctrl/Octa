@@ -60,6 +60,7 @@ const Pioneers = lazy(() => import("./pages/Pioneers"));
 const Invest = lazy(() => import("./pages/Invest"));
 const ApplyExpert = lazy(() => import("./pages/ApplyExpert"));
 const Affiliate = lazy(() => import("./pages/Affiliate"));
+const LandTitleCertificate = lazy(() => import("./pages/LandTitleCertificate"));
 
 // Configure React Query with optimized defaults
 const queryClient = new QueryClient({
@@ -210,6 +211,7 @@ function AppContent() {
                       <Route path="/lore" element={<Lore />} />
                       <Route path="/how-it-works" element={<Navigate to="/docs" replace />} />
                       <Route path="/email-verified" element={<EmailVerified />} />
+                      <Route path="/land-title" element={<LandTitleCertificate />} />
                       
                       {/* Documentation routes */}
                       <Route path="/docs" element={<DocsOverview />} />
