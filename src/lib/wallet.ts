@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import EthereumProvider from "@walletconnect/ethereum-provider";
-import { detectWallets, getWalletProvider, getBestWallet, type WalletInfo } from "./wallet-detection";
+import { detectWallets, getWalletProvider, getBestWallet, getMetaMaskOrEthereumProvider, type WalletInfo } from "./wallet-detection";
 
 // ChaosStar Network configuration (for wallet connection only - no RPC)
 export const CHAOSSTAR_NETWORK = {
@@ -29,15 +29,16 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
   if (walletId) {
     // Use specific wallet if requested
     provider = getWalletProvider(walletId);
-    if (!provider && walletId === "generic") {
+    if (!provider && (walletId === "generic" || walletId === "metamask")) {
       const best = getBestWallet();
       if (best) provider = best.provider;
+      if (!provider) provider = getMetaMaskOrEthereumProvider();
     }
     if (!provider) {
       throw new Error(`Wallet "${walletId}" not found. Please install the wallet extension.`);
     }
   } else {
-    // Auto-detect best available wallet
+    // Auto-detect best available wallet (includes window.ethereum / window.metamask fallback)
     const bestWallet = getBestWallet();
     if (!bestWallet) {
       throw new Error("No wallet found. Please install MetaMask, Core Wallet, or another compatible wallet extension.");
@@ -169,7 +170,14 @@ export async function getCurrentChainId(provider?: any): Promise<number | null> 
 }
 
 // Export wallet detection functions (re-export from wallet-detection)
-export { detectWallets, getWalletProvider, getBestWallet, isWalletInstalled } from "./wallet-detection";
+export {
+  detectWallets,
+  getWalletProvider,
+  getBestWallet,
+  isWalletInstalled,
+  requestProviderAnnouncements,
+  getMetaMaskOrEthereumProvider,
+} from "./wallet-detection";
 export type { WalletInfo } from "./wallet-detection";
 
 // Check if connected to ChaosStar network - DISABLED

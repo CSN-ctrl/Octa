@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/contexts/WalletContext";
-import { Wallet } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Wallet, Smartphone, ExternalLink } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +11,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { getMobileWalletApps, getWalletAppDappUrl } from "@/lib/mobile-wallet-detection";
 
 export function WalletConnectButton({ onConnect, className }: { onConnect?: (addr: string) => void; className?: string }) {
   const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
+  const isMobile = useIsMobile();
+  const [showMobileWalletHelp, setShowMobileWalletHelp] = useState(false);
 
   const handleConnect = async (walletId?: string) => {
     try {
@@ -24,9 +36,16 @@ export function WalletConnectButton({ onConnect, className }: { onConnect?: (add
         }
       }, 200);
     } catch (error: any) {
-      // Error is already handled in WalletContext, just log here
       console.error("Wallet connection failed:", error);
+      if (isMobile && error?.message?.toLowerCase().includes("no wallet")) {
+        setShowMobileWalletHelp(true);
+      }
     }
+  };
+
+  const openInWalletApp = (walletId: string) => {
+    const url = getWalletAppDappUrl(walletId);
+    if (url) window.location.href = url;
   };
 
   const handleDisconnect = async () => {
@@ -47,31 +66,70 @@ export function WalletConnectButton({ onConnect, className }: { onConnect?: (add
     );
   }
 
+  const touchClass = isMobile ? "min-h-[44px]" : "";
+
   // Single wallet or no wallets detected: one-click Connect Wallet (works on all devices/browsers)
   if (availableWallets.length <= 1) {
+    const onConnectClick = () => {
+      if (isMobile && availableWallets.length === 0) {
+        setShowMobileWalletHelp(true);
+        return;
+      }
+      handleConnect(availableWallets[0]?.id);
+    };
     return (
-      <Button
-        variant="cosmic"
-        size="sm"
-        onClick={() => handleConnect(availableWallets[0]?.id)}
-        className={className ?? "gap-2"}
-        type="button"
-      >
-        <Wallet className="h-4 w-4" />
-        Connect Wallet
-      </Button>
+      <>
+        <Button
+          variant="cosmic"
+          size="sm"
+          onClick={onConnectClick}
+          className={`${className ?? "gap-2"} ${touchClass}`}
+          type="button"
+        >
+          <Wallet className="h-4 w-4" />
+          Connect Wallet
+        </Button>
+        <Dialog open={showMobileWalletHelp} onOpenChange={setShowMobileWalletHelp}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5" />
+                Connect on mobile
+              </DialogTitle>
+              <DialogDescription>
+                Open this site in a wallet app to connect. We'll open the app if it's installed, or take you to get it.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              {getMobileWalletApps().map((wallet) => (
+                <Button
+                  key={wallet.id}
+                  variant="outline"
+                  className="h-12 justify-start gap-3 text-left"
+                  onClick={() => openInWalletApp(wallet.id)}
+                >
+                  <span className="text-xl">{wallet.icon}</span>
+                  <span className="flex-1">Open in {wallet.name}</span>
+                  <ExternalLink className="h-4 w-4 shrink-0" />
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
   // Multiple wallets: show dropdown to choose
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="cosmic" size="sm" className={className ?? "gap-2"}>
-          <Wallet className="h-4 w-4" />
-          Connect Wallet
-        </Button>
-      </DropdownMenuTrigger>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="cosmic" size="sm" className={`${className ?? "gap-2"} ${touchClass}`}>
+            <Wallet className="h-4 w-4" />
+            Connect Wallet
+          </Button>
+        </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="glass min-w-[200px]">
         <DropdownMenuLabel>Choose wallet</DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -87,5 +145,33 @@ export function WalletConnectButton({ onConnect, className }: { onConnect?: (add
             ))}
       </DropdownMenuContent>
     </DropdownMenu>
+    <Dialog open={showMobileWalletHelp} onOpenChange={setShowMobileWalletHelp}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            Connect on mobile
+          </DialogTitle>
+          <DialogDescription>
+            Open this site in a wallet app to connect. We'll open the app if it's installed, or take you to get it.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 py-4">
+          {getMobileWalletApps().map((wallet) => (
+            <Button
+              key={wallet.id}
+              variant="outline"
+              className="h-12 justify-start gap-3 text-left"
+              onClick={() => openInWalletApp(wallet.id)}
+            >
+              <span className="text-xl">{wallet.icon}</span>
+              <span className="flex-1">Open in {wallet.name}</span>
+              <ExternalLink className="h-4 w-4 shrink-0" />
+            </Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { ethers } from "ethers";
-import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, getBestWallet, type WalletInfo } from "@/lib/wallet";
+import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, getBestWallet, requestProviderAnnouncements, type WalletInfo } from "@/lib/wallet";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/logger";
@@ -46,8 +46,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       const shouldUseWalletConnect = false;
 
-      // Use getBestWallet() so we get window.ethereum fallback when detectWallets() is empty (e.g. some browsers inject on first interaction)
+      // Trigger provider discovery on this user gesture (MetaMask and others may only inject on click)
+      requestProviderAnnouncements();
+      await new Promise((r) => setTimeout(r, 100)); // Let EIP-6963 and lazy-injected providers appear
+
       const wallets = detectWallets();
+      setAvailableWallets(wallets); // Refresh UI so dropdown shows MetaMask if it just appeared
       const best = getBestWallet();
       if (!best) {
         toast.error("No wallet found. Please install MetaMask, Core Wallet, or another compatible wallet extension.");

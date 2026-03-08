@@ -42,15 +42,59 @@ if (typeof window !== "undefined") {
 }
 
 /**
- * Get providers from window.ethereum (single or multiple)
+ * Get providers from window.ethereum (single or multiple).
+ * Also checks window.metamask for MetaMask when ethereum is missing or not MetaMask.
  */
 function getEthereumProviders(): any[] {
-  const { ethereum } = window as any;
-  if (!ethereum) return [];
-  if (Array.isArray(ethereum.providers)) return [...ethereum.providers];
-  if (ethereum.providers && typeof ethereum.providers === "object")
-    return Object.values(ethereum.providers);
-  return [ethereum];
+  const win = window as any;
+  const providers: any[] = [];
+  try {
+    const ethereum = win.ethereum;
+    if (ethereum) {
+      if (Array.isArray(ethereum.providers)) {
+        providers.push(...ethereum.providers);
+      } else if (ethereum.providers && typeof ethereum.providers === "object") {
+        providers.push(...Object.values(ethereum.providers));
+      } else {
+        providers.push(ethereum);
+      }
+    }
+  } catch (_) {
+    // Some environments throw when reading window.ethereum (e.g. strict mode)
+  }
+  // MetaMask sometimes exposes only window.metamask (e.g. certain Firefox/builds)
+  try {
+    if (win.metamask && typeof win.metamask.request === "function" && !providers.includes(win.metamask)) {
+      providers.push(win.metamask);
+    }
+  } catch (_) {}
+  return providers;
+}
+
+/**
+ * Last-resort: get MetaMask or any EIP-1193 provider directly from window.
+ * Use this when detectWallets() is empty (e.g. provider injects on user gesture).
+ */
+export function getMetaMaskOrEthereumProvider(): any {
+  const win = window as any;
+  try {
+    if (win.ethereum && typeof win.ethereum.request === "function") return win.ethereum;
+  } catch (_) {}
+  try {
+    if (win.metamask && typeof win.metamask.request === "function") return win.metamask;
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * Ask wallets to announce themselves (EIP-6963). Call this on Connect Wallet click
+ * so providers that only inject on user gesture get a chance to appear.
+ */
+export function requestProviderAnnouncements(): void {
+  if (typeof window === "undefined") return;
+  try {
+    (window as any).dispatchEvent?.(new CustomEvent("eip6963:requestProvider", { bubbles: true }));
+  } catch (_) {}
 }
 
 /**
@@ -134,10 +178,12 @@ export function getBestWallet(): WalletInfo | null {
     }
     return wallets[0];
   }
-  // Fallback: use window.ethereum directly (injected on first user gesture in some browsers)
-  const { ethereum } = window as any;
-  if (ethereum && typeof ethereum.request === "function") {
-    return providerToWallet(ethereum, "generic", "Browser Wallet", "💼");
+  // Fallback: use window.ethereum or window.metamask directly (injected on first user gesture in some browsers)
+  const direct = getMetaMaskOrEthereumProvider();
+  if (direct) {
+    const name = (direct as any).isMetaMask ? "MetaMask" : "Browser Wallet";
+    const id = (direct as any).isMetaMask ? "metamask" : "generic";
+    return providerToWallet(direct, id, name, (direct as any).isMetaMask ? "🦊" : "💼");
   }
   return null;
 }
