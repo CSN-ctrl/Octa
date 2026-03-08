@@ -20,7 +20,17 @@ import {
 } from "@/components/ui/dialog";
 import { getMobileWalletApps, getWalletAppDappUrl } from "@/lib/mobile-wallet-detection";
 
-export function WalletConnectButton({ onConnect, className }: { onConnect?: (addr: string) => void; className?: string }) {
+type ButtonVariant = "default" | "cosmic" | "outline" | "secondary" | "ghost" | "link";
+
+export function WalletConnectButton({
+  onConnect,
+  className,
+  variant = "cosmic",
+}: {
+  onConnect?: (addr: string) => void;
+  className?: string;
+  variant?: ButtonVariant;
+}) {
   const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
   const isMobile = useIsMobile();
   const [showMobileWalletHelp, setShowMobileWalletHelp] = useState(false);
@@ -80,7 +90,7 @@ export function WalletConnectButton({ onConnect, className }: { onConnect?: (add
     return (
       <>
         <Button
-          variant="cosmic"
+          variant={variant}
           size="sm"
           onClick={onConnectClick}
           className={`${className ?? "gap-2"} ${touchClass}`}
@@ -125,7 +135,7 @@ export function WalletConnectButton({ onConnect, className }: { onConnect?: (add
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="cosmic" size="sm" className={`${className ?? "gap-2"} ${touchClass}`}>
+          <Button variant={variant} size="sm" className={`${className ?? "gap-2"} ${touchClass}`}>
             <Wallet className="h-4 w-4" />
             Connect Wallet
           </Button>

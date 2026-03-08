@@ -222,35 +222,36 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen pt-20 bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-6">
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center gap-2 mb-2">
+    <div className="min-h-screen pt-16 sm:pt-20 bg-background flex items-center justify-center px-3 sm:px-4 py-6 sm:py-8">
+      <div className="w-full max-w-md space-y-4 sm:space-y-6 min-w-0">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
+          <CardHeader className="space-y-1 p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-1 sm:mb-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate(-1)}
-                className="h-8 w-8"
+                className="h-9 w-9 sm:h-8 sm:w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 shrink-0"
+                aria-label="Go back"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="text-2xl font-bold">Account</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl font-bold truncate">Account</CardTitle>
             </div>
-            <CardDescription>
+            <CardDescription className="text-sm sm:text-base">
               Sign in to your account or create a new one
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "login" | "signup")} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login" className="gap-2">
-                  <LogIn className="h-4 w-4" />
-                  Sign In
+                <TabsTrigger value="login" className="gap-2 flex-1">
+                  <LogIn className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Sign In</span>
                 </TabsTrigger>
-                <TabsTrigger value="signup" className="gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Sign Up
+                <TabsTrigger value="signup" className="gap-2 flex-1">
+                  <UserPlus className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Sign Up</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -259,13 +260,14 @@ export default function Login() {
                 <form onSubmit={handleLogin} className="space-y-4">
                   {/* Wallet Connection (Optional for login) */}
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4" />
+                    <Label className="flex items-center gap-2 text-sm">
+                      <Wallet className="h-4 w-4 shrink-0" />
                       Wallet Connection (Optional)
                     </Label>
                     {!isConnected || !address ? (
                       <WalletConnectButton
-                        className="w-full gap-2"
+                        variant="outline"
+                        className="w-full gap-2 border-primary/50 hover:bg-primary/10"
                         onConnect={() => toast.success("Wallet connected!")}
                       />
                     ) : (
@@ -280,8 +282,8 @@ export default function Login() {
 
                   {/* Email Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="login-email" className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
+                    <Label htmlFor="login-email" className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 shrink-0" />
                       Email Address
                     </Label>
                     <Input
@@ -291,14 +293,14 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-background/50 border-border/50"
+                      className="bg-background/50 border-border/50 min-h-[44px] sm:min-h-0"
                     />
                   </div>
 
                   {/* Password Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="login-password" className="flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
+                    <Label htmlFor="login-password" className="flex items-center gap-2 text-sm">
+                      <Lock className="h-4 w-4 shrink-0" />
                       Password
                     </Label>
                     <div className="relative">
@@ -309,14 +311,15 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="bg-background/50 border-border/50 pr-10"
+                        className="bg-background/50 border-border/50 pr-12 sm:pr-10 min-h-[44px] sm:min-h-0"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-0 top-0 h-full w-10"
+                        className="absolute right-0 top-0 h-full w-12 min-w-[44px] sm:w-10 sm:min-w-0"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -338,7 +341,7 @@ export default function Login() {
                   {/* Submit Button */}
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full min-h-[44px] sm:min-h-0"
                     disabled={loading}
                   >
                     {loading ? "Signing in..." : "Sign In"}
@@ -351,13 +354,14 @@ export default function Login() {
                 <form onSubmit={handleSignUp} className="space-y-4">
                   {/* Wallet Connection (Required for signup) */}
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4" />
+                    <Label className="flex items-center gap-2 text-sm">
+                      <Wallet className="h-4 w-4 shrink-0" />
                       Wallet Connection (Required)
                     </Label>
                     {!isConnected || !address ? (
                       <WalletConnectButton
-                        className="w-full gap-2"
+                        variant="outline"
+                        className="w-full gap-2 border-primary/50 hover:bg-primary/10"
                         onConnect={() => toast.success("Wallet connected!")}
                       />
                     ) : (
@@ -372,8 +376,8 @@ export default function Login() {
 
                   {/* Email Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
+                    <Label htmlFor="signup-email" className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 shrink-0" />
                       Email Address
                     </Label>
                     <Input
@@ -383,14 +387,14 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-background/50 border-border/50"
+                      className="bg-background/50 border-border/50 min-h-[44px] sm:min-h-0"
                     />
                   </div>
 
                   {/* Password Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
+                    <Label htmlFor="signup-password" className="flex items-center gap-2 text-sm">
+                      <Lock className="h-4 w-4 shrink-0" />
                       Password
                     </Label>
                     <div className="relative">
@@ -402,14 +406,15 @@ export default function Login() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         minLength={8}
-                        className="bg-background/50 border-border/50 pr-10"
+                        className="bg-background/50 border-border/50 pr-12 sm:pr-10 min-h-[44px] sm:min-h-0"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-0 top-0 h-full w-10"
+                        className="absolute right-0 top-0 h-full w-12 min-w-[44px] sm:w-10 sm:min-w-0"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -422,8 +427,8 @@ export default function Login() {
 
                   {/* Confirm Password Input */}
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm-password" className="flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
+                    <Label htmlFor="signup-confirm-password" className="flex items-center gap-2 text-sm">
+                      <Lock className="h-4 w-4 shrink-0" />
                       Confirm Password
                     </Label>
                     <div className="relative">
@@ -434,14 +439,15 @@ export default function Login() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
-                        className="bg-background/50 border-border/50 pr-10"
+                        className="bg-background/50 border-border/50 pr-12 sm:pr-10 min-h-[44px] sm:min-h-0"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-0 top-0 h-full w-10"
+                        className="absolute right-0 top-0 h-full w-12 min-w-[44px] sm:w-10 sm:min-w-0"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -463,7 +469,7 @@ export default function Login() {
                   {/* Submit Button */}
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full min-h-[44px] sm:min-h-0"
                     disabled={loading || !isConnected || !address}
                   >
                     {loading ? "Creating Account..." : "Create Account"}
