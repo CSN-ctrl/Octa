@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Globe, LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket, Coins, Package } from "lucide-react";
+import { LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket, Coins, Package } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,8 +20,10 @@ import { useSim } from "@/contexts/SimContext";
 import { ChaosStarStatus } from "./ChaosStarStatus";
 import { useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isDashboardAdmin } from "@/lib/dashboard-admin";
 
 export const Navigation = () => {
   const location = useLocation();
@@ -35,13 +37,14 @@ export const Navigation = () => {
   const [showNetworkDialog, setShowNetworkDialog] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
   const [isUserSidebarOpen, setIsUserSidebarOpen] = useState(false);
-  const [treasuryBalance, setTreasuryBalance] = useState<number>(0);
+  const [treasuryBalance, setTreasuryBalance] = useState<number>(1_000_000);
+  const [canOpenAdminDashboard, setCanOpenAdminDashboard] = useState(false);
   
   // Listen for treasury balance updates from AdminDashboard
   useEffect(() => {
     const updateTreasuryBalance = () => {
       const balance = (window as any).treasuryBalance;
-      if (balance !== undefined) {
+      if (balance !== undefined && typeof balance === 'number') {
         setTreasuryBalance(balance);
       }
     };
@@ -77,20 +80,25 @@ export const Navigation = () => {
     };
   }, [isAdminSidebarOpen]);
 
-  // Check authentication status
+  // Check authentication status + admin dashboard access (RPC-aligned)
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const refreshAuth = async (session: Session | null) => {
       setIsAuthenticated(!!session);
       setUserEmail(session?.user?.email || null);
+      if (session) {
+        setCanOpenAdminDashboard(await isDashboardAdmin(supabase));
+      } else {
+        setCanOpenAdminDashboard(false);
+      }
     };
 
-    checkAuth();
+    void (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      await refreshAuth(session);
+    })();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      setUserEmail(session?.user?.email || null);
+      void refreshAuth(session);
     });
 
     return () => subscription.unsubscribe();
@@ -174,9 +182,7 @@ export const Navigation = () => {
     adminAddress.toLowerCase() === address.toLowerCase()
   );
 
-  const navItems = [
-    ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: Globe }] as const : []),
-  ];
+  const navItems: Array<{ path: string; label: string; icon: any }> = [];
 
   return (
     <nav
@@ -269,16 +275,31 @@ export const Navigation = () => {
             )}
           </div>
 
-          {/* Treasury Balance - Only show on admin dashboard */}
+          {/* Treasury Balance - Only show on admin dashboard (never negative) */}
           {location.pathname === "/admin-dashboard" && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
               <Wallet className="h-4 w-4 text-primary" />
               <div className="flex flex-col">
                 <span className="text-xs text-muted-foreground">Treasury</span>
                 <span className="text-sm font-semibold text-primary">
-                  {treasuryBalance.toLocaleString()} xBGL
+                  {Math.max(0, Number(treasuryBalance) || 0).toLocaleString()} xBGL
                 </span>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-2"
+                onClick={() => window.dispatchEvent(new CustomEvent("adminOpenTreasuryTransfer"))}
+              >
+                Transfer
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.dispatchEvent(new CustomEvent("adminSeedPlots"))}
+              >
+                Seed plots
+              </Button>
             </div>
           )}
 
@@ -354,26 +375,28 @@ export const Navigation = () => {
               );
             })}
 
-            {/* Deposit Button - Right Side */}
-            <Button
-              onClick={() => {
-                if (isAuthenticated) {
-                  navigate("/invest");
-                } else {
-                  toast.info("Please login to access deposit features");
-                  navigate("/register");
-                }
-              }}
-              className="relative ml-4 gap-2 overflow-hidden border border-emerald-500/50 hover:border-emerald-400/80 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 rounded-lg px-3 py-2 group"
-              size="sm"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-              <Coins className="h-4 w-4 relative z-10 text-white transition-transform group-hover:scale-110 group-hover:rotate-12" />
-              <span className="hidden sm:inline relative z-10 text-white group-hover:text-emerald-50 transition-colors duration-300">
-                Deposit
-              </span>
-              <div className="absolute inset-0 rounded-lg bg-green-500/0 group-hover:bg-green-500/30 blur-xl transition-all duration-300 -z-10" />
-            </Button>
+            {/* Deposit Button - hide on admin pages */}
+            {!location.pathname.startsWith("/admin") && (
+              <Button
+                onClick={() => {
+                  if (isAuthenticated) {
+                    navigate("/invest");
+                  } else {
+                    toast.info("Please login to access deposit features");
+                    navigate("/register");
+                  }
+                }}
+                className="relative ml-4 gap-2 overflow-hidden border border-emerald-500/50 hover:border-emerald-400/80 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 rounded-lg px-3 py-2 group"
+                size="sm"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <Coins className="h-4 w-4 relative z-10 text-white transition-transform group-hover:scale-110 group-hover:rotate-12" />
+                <span className="hidden sm:inline relative z-10 text-white group-hover:text-emerald-50 transition-colors duration-300">
+                  Deposit
+                </span>
+                <div className="absolute inset-0 rounded-lg bg-green-500/0 group-hover:bg-green-500/30 blur-xl transition-all duration-300 -z-10" />
+              </Button>
+            )}
 
             <div className="ml-2 flex items-center gap-2">
               {isAuthenticated ? (
@@ -496,7 +519,7 @@ export const Navigation = () => {
                     )}
                     
                     {/* Admin Dashboard */}
-                    {(userEmail === "admin@test.com" || userEmail === "test@test.com" || userEmail === "admin@example.com" || (userEmail && userEmail.includes("admin"))) && (
+                    {canOpenAdminDashboard && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => navigate("/admin-dashboard")}>

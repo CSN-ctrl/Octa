@@ -8,7 +8,7 @@ The 404 errors you're seeing mean the SQL functions haven't been created in your
 
 ### 1. Open Supabase Dashboard
 - Go to https://supabase.com/dashboard
-- Select your project: `agqkiwarwxrcemhspxxv`
+- Select your project: `zfzsiykutsgkurmetprw`
 
 ### 2. Open SQL Editor
 - Click on "SQL Editor" in the left sidebar

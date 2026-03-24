@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { listPlanets, getPlanet, updatePlanetStatus } from "@/lib/api";
 import { useCities, useCityActions, useStargateStatus } from "@/hooks/useChaosstar";
 import { NetworkTopology } from "@/components/NetworkTopology";
+import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
 
 export default function CelestialForgePage() {
   const { address, isConnected } = useWallet();
@@ -959,7 +960,7 @@ export default function CelestialForgePage() {
                         >
                           {system.status || "unknown"}
                         </Badge>
-                        {system.id === "sarakt-star-system" || system.name === "Sarakt Star System" ? (
+                        {system.id === SARAKT_STAR_SYSTEM_ID || system.name === "Sarakt Star System" ? (
                           <Badge variant="default" className="text-xs bg-primary/20">
                             Primary System
                           </Badge>
@@ -2805,7 +2806,7 @@ ${cities.map((c: any) => `  - ${c.name} (Pop: ${c.population || 0})`).join("\n")
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   placeholder="Enter system name"
-                  disabled={editingSystem?.id === "sarakt-star-system"}
+                  disabled={editingSystem?.id === SARAKT_STAR_SYSTEM_ID}
                 />
               </div>
               
@@ -2830,7 +2831,7 @@ ${cities.map((c: any) => `  - ${c.name} (Pop: ${c.population || 0})`).join("\n")
               
               <div className="space-y-2">
                 <Label htmlFor="edit-tribute">Tribute Percent</Label>
-                {editingSystem?.id === "sarakt-star-system" || editingSystem?.name === "Sarakt Star System" ? (
+                {editingSystem?.id === SARAKT_STAR_SYSTEM_ID || editingSystem?.name === "Sarakt Star System" ? (
                   <div className="space-y-2">
                     <Input
                       id="edit-tribute"
@@ -2910,7 +2911,7 @@ ${cities.map((c: any) => `  - ${c.name} (Pop: ${c.population || 0})`).join("\n")
                       updates.push(updateStarSystemStatus(editingSystem.id, editForm.status));
                     }
                     
-                    const isSarakt = editingSystem.id === "sarakt-star-system" || editingSystem.name === "Sarakt Star System";
+                    const isSarakt = editingSystem.id === SARAKT_STAR_SYSTEM_ID || editingSystem.name === "Sarakt Star System";
                     if (!isSarakt) {
                       const contractAddress = editingSystem.contract_address || (editingSystem as any)?.metadata?.contract_address;
                       if (editForm.tribute_percent !== editingSystem.tribute_percent && contractAddress) {
@@ -2923,7 +2924,7 @@ ${cities.map((c: any) => `  - ${c.name} (Pop: ${c.population || 0})`).join("\n")
                       setEditForm({ ...editForm, tribute_percent: 0 });
                     }
                     
-                    if (editForm.name !== editingSystem.name && editingSystem.id !== "sarakt-star-system") {
+                    if (editForm.name !== editingSystem.name && editingSystem.id !== SARAKT_STAR_SYSTEM_ID) {
                       toast.info("Name updates are not yet supported. Other changes saved.");
                     }
                     
@@ -2972,7 +2973,7 @@ ${cities.map((c: any) => `  - ${c.name} (Pop: ${c.population || 0})`).join("\n")
                   <div>
                     <Label className="text-xs text-muted-foreground">Tribute</Label>
                     <div className="mt-1">
-                      {viewingSystem.id === "sarakt-star-system" || viewingSystem.name === "Sarakt Star System" ? (
+                      {viewingSystem.id === SARAKT_STAR_SYSTEM_ID || viewingSystem.name === "Sarakt Star System" ? (
                         <Badge variant="default" className="bg-primary/20">
                           Primary System (No Tribute)
                         </Badge>

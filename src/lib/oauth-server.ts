@@ -1,7 +1,9 @@
 // OAuth 2.1 Server Utilities for ChaosStar
 // Helper functions for managing OAuth clients and tokens
 
-const SUPABASE_URL = "https://agqkiwarwxrcemhspxxv.supabase.co";
+import { getSupabaseUrl } from "@/config/connections";
+
+const SUPABASE_URL = getSupabaseUrl();
 
 /**
  * OAuth 2.1 Server Endpoints

@@ -8,7 +8,7 @@ The **only way** to create accounts with test emails is using the Admin API with
 
 ### Step 1: Get Your Service Role Key
 
-1. Go to: https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv/settings/api
+1. Go to: https://supabase.com/dashboard/project/zfzsiykutsgkurmetprw/settings/api
 2. Find the **"service_role"** key (secret key)
 3. Copy it
 

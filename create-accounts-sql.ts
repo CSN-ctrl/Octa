@@ -7,6 +7,10 @@ import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import {
+  DEFAULT_SUPABASE_URL,
+  DEFAULT_SUPABASE_ANON_KEY,
+} from './src/config/supabase-project-defaults';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,15 +34,13 @@ try {
   console.warn('⚠️  Could not read .env file');
 }
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://agqkiwarwxrcemhspxxv.supabase.co';
-const PUBLISHABLE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const anonKey =
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
+  DEFAULT_SUPABASE_ANON_KEY;
 
-if (!PUBLISHABLE_KEY) {
-  console.error('❌ ERROR: VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY not found');
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, PUBLISHABLE_KEY);
+const supabase = createClient(SUPABASE_URL, anonKey);
 
 async function createAccounts() {
   console.log('🔐 Creating test accounts using signup API...\n');

@@ -25,6 +25,7 @@ const PlotSell = lazy(() => import("./pages/PlotSell"));
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminAffiliates = lazy(() => import("./pages/AdminAffiliates"));
 const Business = lazy(() => import("./pages/Business"));
 import Index from "./pages/Index";
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -263,10 +264,18 @@ function AppContent() {
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
+                    <Route path="/admin" element={<Navigate to="/admin-dashboard" replace />} />
                     <Route path="/admin-dashboard" element={
                       <ProtectedRoute>
                         <RouteErrorBoundary routeName="Admin Dashboard">
                           <AdminDashboard />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin-affiliates" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Admin Affiliates">
+                          <AdminAffiliates />
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />

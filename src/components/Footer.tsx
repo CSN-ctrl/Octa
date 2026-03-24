@@ -59,7 +59,6 @@ const Footer = () => {
     { to: "/dashboard", label: "Dashboard", icon: Sparkles },
     { to: "/invest", label: "Invest", icon: Star },
     { to: "/deposit", label: "Deposit", icon: Zap },
-    { to: "/affiliate", label: "Affiliate", icon: Sparkles },
     { to: "/universe", label: "Universe", icon: Star },
   ];
 

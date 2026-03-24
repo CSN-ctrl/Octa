@@ -656,7 +656,7 @@ let clientInstance: ChaosStarClient | null = null;
 export function getChaosStarClient(baseUrl?: string): ChaosStarClient {
   if (!clientInstance || baseUrl) {
     // Use provided server or Supabase (no localhost fallback)
-    const url = baseUrl || import.meta.env.VITE_API_URL || 'http://151.237.142.106:5001';
+    const url = baseUrl || import.meta.env.VITE_API_URL || "http://localhost:5001";
     clientInstance = new ChaosStarClient({ baseUrl: url });
   }
   return clientInstance;

@@ -18,6 +18,7 @@ type Faction = Tables<"factions">;
 type NPC = Tables<"npcs">;
 type EconomyTick = Tables<"economy_ticks">;
 type BlackMarketInvite = Tables<"black_market_invites">;
+type UserWallet = Tables<"user_wallets">;
 
 // Helper to check if error is a network/connection error
 function isNetworkError(error: any): boolean {
@@ -38,6 +39,43 @@ function handleSupabaseError(error: any, defaultValue: any = null): any {
     return defaultValue;
   }
   throw error;
+}
+
+// ==================== USER WALLETS ====================
+/** Saves or updates the connected wallet for the current user. Call after connect when user is logged in. */
+export async function saveConnectedWallet(walletAddress: string, walletLabel?: string | null): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user?.id) return;
+  const normalized = walletAddress.toLowerCase();
+  const row: TablesInsert<"user_wallets"> = {
+    user_id: session.user.id,
+    wallet_address: normalized,
+    wallet_label: walletLabel ?? null,
+    last_used_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from("user_wallets")
+    .upsert(row, { onConflict: "user_id,wallet_address", ignoreDuplicates: false });
+  if (error) {
+    if (isNetworkError(error)) return;
+    throw error;
+  }
+}
+
+/** Returns saved wallets for the current user. */
+export async function getSavedWallets(): Promise<UserWallet[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user?.id) return [];
+  const { data, error } = await supabase
+    .from("user_wallets")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .order("last_used_at", { ascending: false });
+  if (error) {
+    if (isNetworkError(error)) return [];
+    throw error;
+  }
+  return (data ?? []) as UserWallet[];
 }
 
 // ==================== PLOTS ====================
@@ -483,6 +521,7 @@ export async function getTransactions(filters?: {
   walletAddress?: string;
   fromAddress?: string;
   toAddress?: string;
+  plotId?: number;
   type?: string;
   tokenType?: string;
   limit?: number;
@@ -504,6 +543,9 @@ export async function getTransactions(filters?: {
   }
   if (filters?.type) {
     query = query.eq("type", filters.type);
+  }
+  if (filters?.plotId != null) {
+    query = query.eq("plot_id", filters.plotId);
   }
   if (filters?.tokenType) {
     query = query.eq("token_type", filters.tokenType);

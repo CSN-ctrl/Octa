@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { ethers } from "ethers";
 import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, getBestWallet, requestProviderAnnouncements, type WalletInfo } from "@/lib/wallet";
+import { saveConnectedWallet } from "@/lib/supabase-service";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/logger";
@@ -71,6 +72,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setWalletProvider(selectedWallet.provider);
       await refreshBalance(newAddress);
       toast.success("Wallet connected!");
+      saveConnectedWallet(newAddress).catch(() => {});
 
       // Listen to wallet events from the browser provider
       const { ethereum } = window as any;

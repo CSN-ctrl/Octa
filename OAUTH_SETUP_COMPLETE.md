@@ -41,7 +41,7 @@ You need to complete these steps in your Supabase Dashboard:
 
 ### Step 1: Enable OAuth 2.1 Server
 
-1. Go to: https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv
+1. Go to: https://supabase.com/dashboard/project/zfzsiykutsgkurmetprw
 2. Navigate to: **Authentication** → **OAuth 2.1 Server**
 3. Click **Enable OAuth 2.1 Server** (if not already enabled)
 
@@ -112,11 +112,11 @@ In **OAuth 2.1 Server** settings:
 - Test Client: `https://chaosstar.vercel.app/oauth-test-client`
 
 ### OAuth Endpoints
-- Authorization: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/authorize`
-- Token: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/token`
-- UserInfo: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/userinfo`
-- Discovery: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/.well-known/openid-configuration`
-- JWKS: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/.well-known/jwks.json`
+- Authorization: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/authorize`
+- Token: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/token`
+- UserInfo: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/userinfo`
+- Discovery: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/.well-known/openid-configuration`
+- JWKS: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/.well-known/jwks.json`
 
 ## 📚 Documentation
 

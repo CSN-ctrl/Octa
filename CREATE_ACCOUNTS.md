@@ -3,7 +3,7 @@
 ## Option 1: Using Admin API Script (Recommended)
 
 1. **Get your Service Role Key:**
-   - Go to: https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv/settings/api
+   - Go to: https://supabase.com/dashboard/project/zfzsiykutsgkurmetprw/settings/api
    - Copy the **service_role** key (secret key)
 
 2. **Run the script:**

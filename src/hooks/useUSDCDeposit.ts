@@ -1,3 +1,10 @@
+/**
+ * USDC deposit tracking and manual credit-by-tx-hash.
+ * - Deposit page shows hot wallet addresses; actual crediting is done in Admin Dashboard
+ *   via "Check All Wallets" / "Process DB Deposits" (processIncomingDeposits).
+ * - This hook also supports crediting when user submits a tx hash (submitTransactionHash);
+ *   that UI is not currently on the Deposit page.
+ */
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

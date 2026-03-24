@@ -18,10 +18,9 @@ interface EnvVars {
   VITE_NATIVE_TOKEN?: string;
 }
 
-// Defaults - Using Supabase as backend (no direct blockchain RPC needed)
-// If you need to use a backend API, use http://151.237.142.106
+// Defaults — align with `.env.example`. Set VITE_API_URL to your Go API (local or remote).
 const defaults: Partial<EnvVars> = {
-  VITE_API_URL: 'http://151.237.142.106:5001', // Use provided server or Supabase
+  VITE_API_URL: "http://localhost:5001",
   // RPC endpoints disabled - using Supabase instead
   VITE_CHAOSSTAR_RPC: undefined, // Not used - Supabase acts as network
   VITE_STARGATE_RPC: undefined, // Not used - Supabase acts as network

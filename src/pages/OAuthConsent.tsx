@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseUrl } from "@/config/connections";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -42,7 +43,7 @@ export default function OAuthConsent() {
 
       // Build the approval URL back to Supabase's authorization endpoint
       // Use the Supabase project URL (not the local origin)
-      const supabaseUrl = "https://agqkiwarwxrcemhspxxv.supabase.co";
+      const supabaseUrl = getSupabaseUrl();
       const approvalUrl = new URL(`${supabaseUrl}/auth/v1/authorize`);
       
       // Preserve all original parameters from the OAuth request

@@ -109,9 +109,10 @@ export interface AlchemyResponse {
   pageKey?: string;
 }
 
-// Get API key from environment or use provided key
+/** Returns trimmed key or empty string — never hardcode API keys in the bundle. */
 const getAlchemyApiKey = (): string => {
-  return import.meta.env.VITE_ALCHEMY_API_KEY || '7ckXWPjrXcABMTJKBJmRL';
+  const k = import.meta.env.VITE_ALCHEMY_API_KEY;
+  return typeof k === "string" ? k.trim() : "";
 };
 
 /**
@@ -130,6 +131,9 @@ async function fetchAssetTransfers(
   }
 ): Promise<AlchemyResponse> {
   const apiKey = getAlchemyApiKey();
+  if (!apiKey) {
+    return { transfers: [] };
+  }
   const baseUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/v2/${apiKey}`;
   
   const params: any = {
@@ -298,6 +302,9 @@ export async function getTransactionReceipt(
   }
   
   const apiKey = getAlchemyApiKey();
+  if (!apiKey) {
+    return null;
+  }
   const baseUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/v2/${apiKey}`;
   
   try {
@@ -336,6 +343,9 @@ export async function getTokenBalances(
   }
   
   const apiKey = getAlchemyApiKey();
+  if (!apiKey) {
+    return [];
+  }
   const baseUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/v2/${apiKey}`;
   
   try {
@@ -374,6 +384,9 @@ export async function getNativeBalance(
   }
   
   const apiKey = getAlchemyApiKey();
+  if (!apiKey) {
+    return '0x0';
+  }
   const baseUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/v2/${apiKey}`;
   
   try {

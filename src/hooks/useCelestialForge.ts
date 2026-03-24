@@ -4,6 +4,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "sonner";
 import * as supabaseService from "@/lib/supabase-service";
 import type { Tables } from "@/integrations/supabase/types";
+import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
 import { getStarSystemContract, getPlanetContract, STAR_SYSTEM_ABI, PLANET_ABI } from "@/lib/contracts";
 // RPC provider removed - using Supabase only
 
@@ -98,7 +99,7 @@ export function useCelestialForge() {
   const getSaraktStarSystem = useCallback(async (): Promise<StarSystem> => {
     try {
       // Try to get from Supabase first
-      const sarakt = await supabaseService.getStarSystemById("sarakt-star-system");
+      const sarakt = await supabaseService.getStarSystemById(SARAKT_STAR_SYSTEM_ID);
       if (sarakt) {
           return {
           id: sarakt.id,
@@ -123,7 +124,7 @@ export function useCelestialForge() {
 
     // Default Sarakt Star System
     return {
-      id: "sarakt-star-system",
+      id: SARAKT_STAR_SYSTEM_ID,
       name: "Sarakt Star System",
       subnet_id: "ChaosStarNetwork",
       owner_wallet: "",
@@ -153,9 +154,10 @@ export function useCelestialForge() {
         
         // Add other systems (excluding Sarakt if it was already added)
         for (const system of blockchainSystems) {
-          const isSarakt = system.id === "sarakt-star-system" || 
-                          system.name === "Sarakt Star System" ||
-                          system.subnet_id === "ChaosStarNetwork";
+          const isSarakt =
+            system.id === SARAKT_STAR_SYSTEM_ID ||
+            system.name === "Sarakt Star System" ||
+            system.subnet_id === "ChaosStarNetwork";
           if (!isSarakt) {
             allSystems.push(system);
           }
@@ -171,8 +173,7 @@ export function useCelestialForge() {
             
           // Add systems from Supabase (excluding Sarakt)
           for (const sys of systems) {
-            const isSarakt = sys.id === "sarakt-star-system" || 
-                            sys.name === "Sarakt Star System";
+            const isSarakt = sys.id === SARAKT_STAR_SYSTEM_ID || sys.name === "Sarakt Star System";
               if (!isSarakt) {
                       allSystems.push({
                 id: sys.id,

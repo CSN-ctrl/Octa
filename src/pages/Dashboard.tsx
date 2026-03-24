@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/contexts/WalletContext";
 import * as supabaseService from "@/lib/supabase-service";
+import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { TreasuryTransactions } from "@/components/TreasuryTransactions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -1287,15 +1288,19 @@ export default function Dashboard() {
         purchaseDate: plot.created_at || new Date().toISOString(),
       });
 
-      // Download certificate
-      const response = await fetch(certificate.url);
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const pdfBytes = new Uint8Array(arrayBuffer);
-      downloadCertificate(pdfBytes, certificate.filename);
+      // Download certificate (use pdfBytes when present to avoid fetch(blob URL) and CSP issues)
+      if (certificate.pdfBytes) {
+        downloadCertificate(certificate.pdfBytes, certificate.filename);
+      } else {
+        const response = await fetch(certificate.url);
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const pdfBytes = new Uint8Array(arrayBuffer);
+        downloadCertificate(pdfBytes, certificate.filename);
+      }
 
-      // Send email if email is available
-      if (userEmail) {
+      // Send email if email is available and we have a persistent URL (not blob fallback)
+      if (userEmail && !certificate.url.startsWith("blob:")) {
         await sendPlotCertificateEmail(
           userEmail,
           plot.id,
@@ -2344,7 +2349,7 @@ export default function Dashboard() {
       // Get fresh star systems data after fetch
       const allSystems = await supabaseService.getStarSystems();
       const availableSystems = (allSystems || []).filter(
-        (sys: any) => sys.owner_wallet?.toLowerCase() !== address.toLowerCase() && sys.id !== "sarakt-star-system"
+        (sys: any) => sys.owner_wallet?.toLowerCase() !== address.toLowerCase() && sys.id !== SARAKT_STAR_SYSTEM_ID
       );
       setAvailableStarSystems(availableSystems);
 
@@ -2422,16 +2427,16 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
-      <div className="flex h-[calc(100vh-5rem)]">
+      <div className="flex min-h-[calc(100vh-5rem)] items-stretch">
         {/* Sidebar Navigation - Full Height, Toggleable */}
-        <aside className={`fixed left-0 top-20 bottom-0 w-72 shrink-0 overflow-hidden border-r border-primary/30 bg-background/95 backdrop-blur-xl transform transition-transform duration-300 ease-in-out z-40 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        <aside className={`self-stretch h-auto shrink-0 overflow-hidden bg-background/95 backdrop-blur-xl transition-[width] duration-300 ease-in-out ${
+          isSidebarOpen ? 'w-72 border-r border-primary/30' : 'w-0 border-r-0'
         }`}>
           {/* Background gradient overlay - matching app style */}
           <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-background/90 pointer-events-none" />
           
           {/* Content */}
-          <div className="relative z-10 overflow-y-auto h-full pt-4">
+          <div className="relative z-10 h-full pt-4">
             <nav className="space-y-2 px-4">
               {/* Dashboard Section - Moved to top */}
               <div className="mb-2 pb-2 border-b border-primary/10">
@@ -2590,9 +2595,7 @@ export default function Dashboard() {
         </aside>
 
         {/* Main Content Area */}
-        <main className={`flex-1 min-w-0 overflow-y-auto transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? 'ml-72' : 'ml-0'
-        }`}>
+        <main className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
           <div className="container mx-auto p-6 space-y-6">
           {/* Asset Management Section */}
           {activeSection === "asset-management" && (
@@ -3281,10 +3284,6 @@ export default function Dashboard() {
           </Dialog>
           </div>
 
-          {/* Treasury Transactions Monitor */}
-          <section className="space-y-6 mt-12">
-            <TreasuryTransactions autoRefresh={true} refreshInterval={60000} />
-          </section>
         </main>
       </div>
     </div>

@@ -76,6 +76,7 @@ import {
   promoteToAffiliate
 } from "@/lib/affiliate-service";
 import { useWallet } from "@/contexts/WalletContext";
+import { isDashboardAdmin } from "@/lib/dashboard-admin";
 
 interface UserData {
   email: string;
@@ -98,6 +99,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userFilter, setUserFilter] = useState<"all" | "admin" | "with-wallet" | "no-wallet">("all");
+  const [userSort, setUserSort] = useState<"newest" | "balance" | "plots">("newest");
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [transferAmount, setTransferAmount] = useState("");
   const [transferTo, setTransferTo] = useState("");
@@ -118,7 +121,7 @@ export default function AdminDashboard() {
   const [newAccountWallet, setNewAccountWallet] = useState("");
   const [newAccountBalance, setNewAccountBalance] = useState("0");
   const [creatingAccount, setCreatingAccount] = useState(false);
-  const [treasuryBalance, setTreasuryBalance] = useState<number>(1000000000); // 1 billion xBGL
+  const [treasuryBalance, setTreasuryBalance] = useState<number>(1_000_000); // 1 million xBGL
   const [showTreasuryTransferDialog, setShowTreasuryTransferDialog] = useState(false);
   const [treasuryTransferTo, setTreasuryTransferTo] = useState("");
   const [treasuryTransferAmount, setTreasuryTransferAmount] = useState("");
@@ -142,7 +145,7 @@ export default function AdminDashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState<"all" | "treasury" | "admin" | "user">("all");
-  const [activeTab, setActiveTab] = useState<"star-systems" | "planets" | "cities" | "resources" | "documents" | "transactions" | "users" | "treasury" | "affiliates">("users");
+  const [activeTab, setActiveTab] = useState<"star-systems" | "planets" | "cities" | "resources" | "documents" | "transactions" | "users" | "treasury" | "affiliates">("treasury");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [plotsToSeed, setPlotsToSeed] = useState<string>("100");
   const [seedingPlots, setSeedingPlots] = useState(false);
@@ -228,6 +231,7 @@ export default function AdminDashboard() {
   
   // Treasury wallet address (special address for treasury)
   const TREASURY_WALLET = "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33";
+  const TREASURY_DEFAULT_BALANCE = 1_000_000; // 1 million xBGL (default/reset value)
 
   // Generate random wallet address for testing
   const generateTestWallet = () => {
@@ -248,7 +252,40 @@ export default function AdminDashboard() {
     setShowCreateAccountDialog(true);
   };
 
-  // Check admin (only auth - minimal Supabase)
+  const runSeedPlotsPrompt = async () => {
+    const raw = window.prompt("Number of plots to seed", plotsToSeed || "100");
+    if (!raw) return;
+    const count = parseInt(raw, 10);
+    if (Number.isNaN(count) || count < 1) {
+      toast.error("Please enter a valid number");
+      return;
+    }
+    try {
+      setSeedingPlots(true);
+      const { seedPlots } = await import("@/lib/seed-plots");
+      const result = await seedPlots(count);
+      result.success ? toast.success(result.message) : toast.error(result.message);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to seed plots");
+    } finally {
+      setSeedingPlots(false);
+    }
+  };
+
+  useEffect(() => {
+    const onTransfer = () => setShowTreasuryTransferDialog(true);
+    const onSeedPlots = () => {
+      void runSeedPlotsPrompt();
+    };
+    window.addEventListener("adminOpenTreasuryTransfer", onTransfer);
+    window.addEventListener("adminSeedPlots", onSeedPlots);
+    return () => {
+      window.removeEventListener("adminOpenTreasuryTransfer", onTransfer);
+      window.removeEventListener("adminSeedPlots", onSeedPlots);
+    };
+  }, [plotsToSeed]);
+
+  // Gate matches DB `is_dashboard_admin()` (RPC) with client fallback if RPC missing
   useEffect(() => {
     const checkAdmin = async () => {
       try {
@@ -258,13 +295,8 @@ export default function AdminDashboard() {
           return;
         }
 
-        const email = session.user.email;
-        const isAdminUser = email === "admin@test.com" || 
-                          email === "test@test.com" ||
-                          email === "admin@example.com" ||
-                          session.user.user_metadata?.role === "admin";
-        
-        if (!isAdminUser) {
+        const allowed = await isDashboardAdmin(supabase);
+        if (!allowed) {
           toast.error("Access denied. Admin privileges required.");
           navigate("/dashboard");
           return;
@@ -287,50 +319,60 @@ export default function AdminDashboard() {
     try {
       const { data, error } = await supabase
         .from("user_balances")
-        .select("xbgl_balance")
+        .select("xbgl_balance, avax_balance, chaos_balance, sc_balance")
         .eq("wallet_address", TREASURY_WALLET.toLowerCase())
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
         logger.error("Error loading treasury:", error);
+        setTreasuryBalance(TREASURY_DEFAULT_BALANCE);
+        (window as any).treasuryBalance = TREASURY_DEFAULT_BALANCE;
+        window.dispatchEvent(new CustomEvent('treasuryBalanceUpdate'));
         return;
       }
 
-      // Set treasury balance to 1 billion (1,000,000,000)
-      const ONE_BILLION = 1000000000;
-      let balance = data?.xbgl_balance || 0;
-      
-      // If balance is not 1 billion, update it in the database
-      if (balance !== ONE_BILLION) {
+      let balance = typeof data?.xbgl_balance === 'number' && !Number.isNaN(data.xbgl_balance)
+        ? data.xbgl_balance
+        : 0;
+
+      // If balance is negative or zero, reset to default (1 million) and persist
+      if (balance < 0 || balance === 0) {
+        balance = TREASURY_DEFAULT_BALANCE;
         try {
           const { error: updateError } = await supabase
             .from("user_balances")
             .upsert({
               wallet_address: TREASURY_WALLET.toLowerCase(),
-              xbgl_balance: ONE_BILLION,
+              xbgl_balance: TREASURY_DEFAULT_BALANCE,
+              avax_balance: data?.avax_balance ?? 0,
+              chaos_balance: data?.chaos_balance ?? 0,
+              sc_balance: data?.sc_balance ?? 0,
             }, {
               onConflict: 'wallet_address'
             });
-          
+
           if (updateError) {
-            logger.error("Failed to update treasury balance:", updateError);
+            logger.error("Failed to reset treasury balance (check RLS):", updateError);
+            toast.error("Treasury reset failed. Run SQL: UPDATE user_balances SET xbgl_balance = 1000000 WHERE wallet_address = '0x96ddab023a0e95e61a976b1a2fc98d7ab4901c33';");
           } else {
-            balance = ONE_BILLION;
-            logger.info("Treasury balance updated to 1 billion xBGL");
+            logger.info("Treasury balance reset to 1 million xBGL");
+            toast.success("Treasury balance reset to 1,000,000 xBGL");
           }
         } catch (updateErr) {
-          logger.error("Error updating treasury balance:", updateErr);
+          logger.error("Error resetting treasury balance:", updateErr);
         }
+      } else if (balance !== TREASURY_DEFAULT_BALANCE) {
+        // Show actual balance from DB
       }
-      
+
       setTreasuryBalance(balance);
       (window as any).treasuryBalance = balance;
+      window.dispatchEvent(new CustomEvent('treasuryBalanceUpdate'));
     } catch (error: any) {
       logger.error("Failed to load treasury balance:", error);
-      // Set to 1 billion even if there's an error
-      const ONE_BILLION = 1000000000;
-      setTreasuryBalance(ONE_BILLION);
-      (window as any).treasuryBalance = ONE_BILLION;
+      setTreasuryBalance(TREASURY_DEFAULT_BALANCE);
+      (window as any).treasuryBalance = TREASURY_DEFAULT_BALANCE;
+      window.dispatchEvent(new CustomEvent('treasuryBalanceUpdate'));
     }
   };
 
@@ -488,10 +530,7 @@ export default function AdminDashboard() {
           }
         }
         
-        let amountValue = tx.value || '0';
-        if (typeof amountValue === 'string') {
-          amountValue = parseFloat(amountValue);
-        }
+        const amountValue = Number(tx.value ?? 0);
         
         return {
           id: tx.id,
@@ -554,7 +593,9 @@ export default function AdminDashboard() {
         .eq("transaction_type", "deposit_converted");
       
       const convertedHashes = new Set(
-        convertedTxs?.map(tx => tx.metadata?.original_tx_hash).filter(Boolean) || []
+        (convertedTxs || [])
+          .map((tx: any) => (tx.metadata as any)?.original_tx_hash)
+          .filter(Boolean)
       );
       
       const toProcess = unprocessedTxs.filter(tx => !convertedHashes.has(tx.tx_hash));
@@ -649,9 +690,9 @@ export default function AdminDashboard() {
             await upsertUserBalance({
               wallet_address: fromAddress,
               xbgl_balance: newXBGL,
-              avax_balance: currentBalance?.avax_balance || 0,
-              chaos_balance: currentBalance?.chaos_balance || 0,
-              sc_balance: currentBalance?.sc_balance || 0,
+              avax_balance: 0,
+              chaos_balance: 0,
+              sc_balance: 0,
             });
           }
           
@@ -661,7 +702,7 @@ export default function AdminDashboard() {
           await supabaseService.createTransaction({
             from_address: fromAddress,
             to_address: TREASURY_WALLET.toLowerCase(),
-            amount: xbglAmount.toString(),
+            amount: xbglAmount,
             token_type: 'xBGL',
             transaction_type: 'deposit_converted',
             status: 'completed',
@@ -779,11 +820,7 @@ export default function AdminDashboard() {
           // Convert amount - Alchemy returns value as a number, but we need to ensure proper formatting
           // For ERC20 tokens, the value might need decimal adjustment
           // USDC has 6 decimals, most others have 18
-          let amountValue = tx.value || '0';
-          if (typeof amountValue === 'string') {
-            // If it's a string, parse it
-            amountValue = parseFloat(amountValue);
-          }
+          const amountValue = Number(tx.value ?? 0);
           
           return {
             id: tx.id,
@@ -841,7 +878,7 @@ export default function AdminDashboard() {
                 await supabaseService.createTransaction({
                   from_address: tx.from_address,
                   to_address: tx.to_address,
-                  amount: tx.amount,
+                  amount: Number(tx.amount || 0),
                   token_type: tx.token_type,
                   transaction_type: tx.transaction_type,
                   status: tx.status || 'completed',
@@ -909,22 +946,28 @@ export default function AdminDashboard() {
     }
   };
 
-  // Load treasury managers (users with treasury_role in metadata)
+  // Load treasury managers (users with treasury_role in metadata) — server RPC, not auth.admin
   const loadTreasuryManagers = async () => {
     try {
       setLoadingTreasuryManagers(true);
-      const { data: { users }, error } = await supabase.auth.admin.listUsers();
+      const { data, error } = await supabase.rpc("get_treasury_managers");
       if (error) throw error;
-      
-      const managers = users.filter((u: any) => 
-        u.user_metadata?.treasury_role === "manager" || 
-        u.user_metadata?.treasury_role === "admin" ||
-        u.user_metadata?.role === "admin"
+      const rows = (data || []) as { id: string; email: string; user_metadata: Record<string, unknown> }[];
+      setTreasuryManagers(
+        rows.map((row) => ({
+          id: row.id,
+          email: row.email,
+          user_metadata: row.user_metadata as any,
+        })) as any
       );
-      setTreasuryManagers(managers);
     } catch (error: any) {
       logger.error("Failed to load treasury managers:", error);
-      toast.error("Failed to load treasury managers");
+      toast.error(
+        error?.message?.includes("forbidden")
+          ? "Treasury managers: sign in as a dashboard admin (see is_dashboard_admin rules)."
+          : "Failed to load treasury managers"
+      );
+      setTreasuryManagers([]);
     } finally {
       setLoadingTreasuryManagers(false);
     }
@@ -938,22 +981,9 @@ export default function AdminDashboard() {
     }
 
     try {
-      // Find user by email
-      const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-      if (listError) throw listError;
-
-      const user = users.find((u: any) => u.email === newManagerEmail);
-      if (!user) {
-        toast.error("User not found");
-        return;
-      }
-
-      // Update user metadata
-      const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
-        user_metadata: {
-          ...user.user_metadata,
-          treasury_role: "manager",
-        },
+      const { error: updateError } = await supabase.rpc("admin_set_treasury_role_by_email", {
+        p_email: newManagerEmail.trim(),
+        p_treasury_role: "manager",
       });
 
       if (updateError) throw updateError;
@@ -970,15 +1000,9 @@ export default function AdminDashboard() {
   // Remove treasury manager
   const handleRemoveTreasuryManager = async (userId: string) => {
     try {
-      const { data: { user }, error: getUserError } = await supabase.auth.admin.getUserById(userId);
-      if (getUserError) throw getUserError;
-      if (!user) throw new Error("User not found");
-
-      const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
-        user_metadata: {
-          ...user.user_metadata,
-          treasury_role: null,
-        },
+      const { error: updateError } = await supabase.rpc("admin_set_treasury_role", {
+        p_user_id: userId,
+        p_treasury_role: "",
       });
 
       if (updateError) throw updateError;
@@ -1112,16 +1136,16 @@ export default function AdminDashboard() {
         .single();
 
       if (!existing) {
-        // Create treasury with large initial balance (1 billion xBGL)
+        // Create treasury with default balance (1 million xBGL)
         await supabase
           .from("user_balances")
           .insert({
             wallet_address: TREASURY_WALLET.toLowerCase(),
-            xbgl_balance: 1000000000, // 1 billion xBGL
+            xbgl_balance: TREASURY_DEFAULT_BALANCE,
             avax_balance: 0,
             chaos_balance: 0,
           });
-        const balance = 1000000000;
+        const balance = TREASURY_DEFAULT_BALANCE;
         setTreasuryBalance(balance);
         (window as any).treasuryBalance = balance;
         window.dispatchEvent(new CustomEvent('treasuryBalanceUpdate'));
@@ -1144,71 +1168,32 @@ export default function AdminDashboard() {
       // Load treasury balance first
       await initializeTreasury();
       
-      // Get all authenticated users using database function (via MCP/SQL)
+      // Auth users via SECURITY DEFINER RPC (dashboard admins only); fallback ownership_registry
       let authUsersData: any[] = [];
       let registeredUsers: any[] = [];
-      
-      try {
-        // Use RPC function to get all authenticated users from auth.users
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('get_all_auth_users' as any);
 
+      const { data: rpcData, error: rpcError } = await supabase.rpc("get_all_auth_users");
+
+      if (!rpcError && rpcData) {
+        authUsersData = rpcData as any[];
+      } else {
         if (rpcError) {
-          logger.warn("RPC function failed, falling back to ownership_registry:", rpcError.message);
-          // Fallback: Get users from ownership_registry
-          // Handle 406 errors gracefully
-          try {
-            const { data: regData, error: regError } = await supabase
-              .from("ownership_registry" as any)
-              .select("wallet_address, email")
-              .order("created_at", { ascending: false });
-            
-            if (regError) {
-              // 406 errors are expected if RLS is blocking
-              if (regError.code === 'PGRST301' || regError.message?.includes('406')) {
-                logger.debug("ownership_registry query blocked (expected):", regError.message);
-              } else {
-                logger.warn("ownership_registry query error:", regError);
-              }
-            } else {
-              registeredUsers = (regData || []) as any[];
-            }
-          } catch (err: any) {
-            logger.debug("Failed to fetch ownership_registry (non-critical):", err);
-          }
-
-          if (regError) {
-            logger.error("Failed to load registered users:", regError);
-            toast.error("Failed to load users");
-          } else {
-            registeredUsers = (regData || []) as any[];
-          }
-        } else {
-          authUsersData = (rpcData || []) as any[];
+          logger.warn("get_all_auth_users failed, falling back to ownership_registry:", rpcError.message);
         }
-      } catch (err: any) {
-        logger.error("Error loading users:", err);
-        toast.error("Failed to load users");
-        // Fallback: Get users from ownership_registry
-        // Handle 406 errors gracefully
-        try {
-          const { data: regData, error: regError } = await supabase
-            .from("ownership_registry" as any)
-            .select("wallet_address, email")
-            .order("created_at", { ascending: false });
-          
-          if (regError) {
-            // 406 errors are expected if RLS is blocking
-            if (regError.code === 'PGRST301' || regError.message?.includes('406')) {
-              logger.debug("ownership_registry query blocked (expected):", regError.message);
-            } else {
-              logger.warn("ownership_registry query error:", regError);
-            }
+        const { data: regData, error: regError } = await supabase
+          .from("ownership_registry")
+          .select("wallet_address, email")
+          .order("updated_at", { ascending: false });
+
+        if (regError) {
+          if (regError.code === "PGRST301" || regError.message?.includes("406")) {
+            logger.debug("ownership_registry query blocked (expected):", regError.message);
           } else {
-            registeredUsers = (regData || []) as any[];
+            logger.warn("ownership_registry query error:", regError);
           }
-        } catch (fallbackErr: any) {
-          logger.debug("Failed to fetch ownership_registry (non-critical):", fallbackErr);
+          toast.error("Failed to load users");
+        } else {
+          registeredUsers = (regData || []) as any[];
         }
       }
 
@@ -1427,7 +1412,7 @@ export default function AdminDashboard() {
         setUsers(usersData);
       }
       
-      // Update email map from auth users or ownership_registry
+      // Update email map from all available sources (auth + registry)
       const emailMap = new Map<string, string>();
       if (authUsersData.length > 0) {
         authUsersData.forEach((user: any) => {
@@ -1435,13 +1420,17 @@ export default function AdminDashboard() {
             emailMap.set(user.wallet_address.toLowerCase(), user.email);
           }
         });
-      } else {
-        registeredUsers?.forEach((user: any) => {
-          if (user.wallet_address && user.email) {
-            emailMap.set(user.wallet_address.toLowerCase(), user.email);
-          }
-        });
       }
+      registeredUsers?.forEach((user: any) => {
+        if (user.wallet_address && user.email) {
+          emailMap.set(user.wallet_address.toLowerCase(), user.email);
+        }
+      });
+      ownershipData?.forEach((record: any) => {
+        if (record.wallet_address && record.email) {
+          emailMap.set(record.wallet_address.toLowerCase(), record.email);
+        }
+      });
       setUserEmails(emailMap);
       
       const userCount = usersData.length || balances?.length || 0;
@@ -1633,9 +1622,9 @@ export default function AdminDashboard() {
                     logger.debug("Ledger reconciliation failed:", reconcileError);
                   }
 
-                  // Refresh transactions if on transactions tab
-                  if (activeTab === "transactions") {
-                    loadTransactions();
+                  // Keep treasury feed current after transfer
+                  if (activeTab === "treasury") {
+                    loadTreasuryTransactions();
                   }
 
                   toast.success(`Transferred ${amount} xBGL`);
@@ -1855,72 +1844,63 @@ export default function AdminDashboard() {
     }
   };
 
-  // One-time fix for kalusevgeorgi@gmail.com balance
+  // One-time balance corrections for specific accounts
   useEffect(() => {
-    const fixKalusevgeorgiBalance = async () => {
-      const FIX_EMAIL = "kalusevgeorgi@gmail.com";
-      const FIX_BALANCE = 100;
-      
-      try {
-        // Check if we've already fixed this (using localStorage flag)
-        const fixedKey = `balance_fixed_${FIX_EMAIL}`;
-        if (localStorage.getItem(fixedKey)) {
-          return; // Already fixed
-        }
+    const applyOneTimeBalanceFixes = async () => {
+      const BALANCE_FIXES = [
+        { email: "kalusevgeorgi@gmail.com", balance: 100 },
+        { email: "vader056@gmail.com", balance: 34 },
+      ];
 
-        // Find the wallet address for this email
-        const { data: ownershipData } = await supabase
-          .from("ownership_registry")
-          .select("wallet_address")
-          .eq("email", FIX_EMAIL.toLowerCase())
-          .limit(1)
-          .single();
+      for (const fix of BALANCE_FIXES) {
+        try {
+          const fixedKey = `balance_fixed_${fix.email}`;
+          if (localStorage.getItem(fixedKey)) {
+            continue;
+          }
 
-        let walletAddress: string | null = null;
-        if (ownershipData?.wallet_address) {
-          walletAddress = ownershipData.wallet_address.toLowerCase();
-        } else {
-          // Try email as identifier
-          walletAddress = FIX_EMAIL.toLowerCase();
-        }
+          const { data: ownershipData } = await supabase
+            .from("ownership_registry")
+            .select("wallet_address")
+            .eq("email", fix.email.toLowerCase())
+            .limit(1)
+            .single();
 
-        if (!walletAddress) {
-          return; // Can't find wallet, skip
-        }
+          const walletAddress = ownershipData?.wallet_address
+            ? ownershipData.wallet_address.toLowerCase()
+            : fix.email.toLowerCase();
 
-        // Get current balance
-        const { data: currentBalance } = await supabase
-          .from("user_balances")
-          .select("xbgl_balance")
-          .eq("wallet_address", walletAddress)
-          .single();
+          if (!walletAddress) continue;
 
-        // Only fix if balance is negative or very wrong
-        if (currentBalance && currentBalance.xbgl_balance !== FIX_BALANCE) {
-          // Update balance to 100
-          await supabase
+          const { data: currentBalance } = await supabase
             .from("user_balances")
-            .upsert({
-              wallet_address: walletAddress,
-              xbgl_balance: FIX_BALANCE,
-              avax_balance: currentBalance?.avax_balance || 0,
-              chaos_balance: currentBalance?.chaos_balance || 0,
-              last_synced: new Date().toISOString(),
-            }, { onConflict: "wallet_address" });
+            .select("xbgl_balance, avax_balance, chaos_balance")
+            .eq("wallet_address", walletAddress)
+            .single();
 
-          // Mark as fixed
+          if (currentBalance && currentBalance.xbgl_balance !== fix.balance) {
+            await supabase
+              .from("user_balances")
+              .upsert({
+                wallet_address: walletAddress,
+                xbgl_balance: fix.balance,
+                avax_balance: currentBalance?.avax_balance || 0,
+                chaos_balance: currentBalance?.chaos_balance || 0,
+                last_synced: new Date().toISOString(),
+              }, { onConflict: "wallet_address" });
+          }
+
           localStorage.setItem(fixedKey, "true");
-          console.log(`✅ Fixed balance for ${FIX_EMAIL}: ${FIX_BALANCE} xBGL`);
+          console.log(`✅ Fixed balance for ${fix.email}: ${fix.balance} xBGL`);
+        } catch (error: any) {
+          console.error(`Error fixing balance for ${fix.email}:`, error);
         }
-      } catch (error: any) {
-        console.error("Error fixing balance:", error);
-        // Don't show toast, just log it
       }
     };
 
     // Run fix after a short delay to ensure other data is loaded
     const timer = setTimeout(() => {
-      fixKalusevgeorgiBalance();
+      applyOneTimeBalanceFixes();
     }, 2000);
 
     return () => clearTimeout(timer);
@@ -1928,18 +1908,17 @@ export default function AdminDashboard() {
 
   // Auto-load data when switching tabs
   useEffect(() => {
-    if (activeTab === "users" && users.length === 0 && !loading) {
-      loadUsers();
-    } else if (activeTab === "cities" && !loadingCities) {
+    if (activeTab === "cities" && !loadingCities) {
       loadCities();
     } else if (activeTab === "star-systems" && starSystems.length === 0 && !loadingStarSystems) {
       loadStarSystems();
     } else if (activeTab === "planets" && planets.length === 0 && !loadingPlanets) {
       loadPlanets();
-    } else if (activeTab === "transactions" && transactions.length === 0 && !loadingTransactions) {
-      loadTransactions();
     } else if (activeTab === "treasury" && !loadingTreasuryTransactions) {
       loadTreasuryData();
+      if (users.length === 0 && !loading) {
+        loadUsers();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -1964,6 +1943,7 @@ export default function AdminDashboard() {
     let balanceSubscription: any;
     let ownershipSubscription: any;
     let identitiesSubscription: any;
+    let transactionsSubscription: any;
 
     // Wrap in try-catch to prevent app crash if subscriptions fail
     const setupSubscriptions = async () => {
@@ -1990,7 +1970,7 @@ export default function AdminDashboard() {
             },
             (payload) => {
               logger.debug('Balance change detected:', payload);
-              if (activeTab === "users" || activeTab === "treasury") {
+              if (activeTab === "treasury") {
                 loadUsers();
               }
               loadTreasuryBalance();
@@ -2020,7 +2000,7 @@ export default function AdminDashboard() {
             },
             (payload) => {
               logger.debug('Ownership registry change detected:', payload);
-              if (activeTab === "users") {
+              if (activeTab === "treasury") {
                 loadUsers();
               }
             }
@@ -2049,7 +2029,7 @@ export default function AdminDashboard() {
             },
             (payload) => {
               logger.debug('Digital identity change detected:', payload);
-              if (activeTab === "users") {
+              if (activeTab === "treasury") {
                 loadUsers();
               }
             }
@@ -2059,6 +2039,50 @@ export default function AdminDashboard() {
               logger.debug('Identities subscription active');
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
               logger.debug('Identities subscription error');
+            }
+          });
+
+        // Subscribe to transactions — auto-refresh treasury feed on every new record
+        transactionsSubscription = supabase
+          .channel('transactions_changes', {
+            config: {
+              broadcast: { self: true },
+            },
+          })
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'transactions'
+            },
+            (payload) => {
+              logger.debug('Transaction inserted:', payload);
+              if (activeTab === "treasury") {
+                loadTreasuryTransactions();
+              }
+              loadTreasuryBalance();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'transactions'
+            },
+            (payload) => {
+              logger.debug('Transaction updated:', payload);
+              if (activeTab === "treasury") {
+                loadTreasuryTransactions();
+              }
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              logger.debug('Transactions subscription active');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              logger.debug('Transactions subscription error, real-time updates disabled');
             }
           });
       } catch (error: any) {
@@ -2080,6 +2104,9 @@ export default function AdminDashboard() {
         }
         if (identitiesSubscription) {
           identitiesSubscription.unsubscribe().catch(() => {});
+        }
+        if (transactionsSubscription) {
+          transactionsSubscription.unsubscribe().catch(() => {});
         }
       } catch (error) {
         // Ignore cleanup errors
@@ -2121,11 +2148,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.wallet_address?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users
+    .filter((user) => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        user.name?.toLowerCase().includes(q) ||
+        user.email.toLowerCase().includes(q) ||
+        user.wallet_address?.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+      if (userFilter === "admin") return user.email.toLowerCase().includes("admin");
+      if (userFilter === "with-wallet") return Boolean(user.wallet_address);
+      if (userFilter === "no-wallet") return !user.wallet_address;
+      return true;
+    })
+    .sort((a, b) => {
+      if (userSort === "balance") return (b.balance?.xbgl_balance || 0) - (a.balance?.xbgl_balance || 0);
+      if (userSort === "plots") return (b.plots || 0) - (a.plots || 0);
+      return (b.totalValue || 0) - (a.totalValue || 0);
+    });
 
   const filteredTransactions = transactions.filter(tx => {
     if (transactionFilter === "all") return true;
@@ -2146,14 +2186,6 @@ export default function AdminDashboard() {
     return true;
   });
 
-  const totalStats = {
-    totalUsers: users.length,
-    totalxBGL: users.reduce((sum, u) => sum + (u.balance?.xbgl_balance || 0), 0),
-    totalPlots: users.reduce((sum, u) => sum + u.plots, 0),
-    totalPortfolios: users.reduce((sum, u) => sum + u.portfolios, 0),
-    totalValue: users.reduce((sum, u) => sum + u.totalValue, 0),
-  };
-
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -2164,166 +2196,68 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
-      <div className="container mx-auto p-6 space-y-6">
-
-
+      <div className="container mx-auto p-4 md:p-6">
       {/* Sidebar and Content Layout */}
-      <div className="flex gap-6 relative">
-        {/* Overlay */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-
+      <div className="relative">
         {/* Modern Sidebar Navigation */}
         <div
           className={`
-            fixed top-20 left-0 h-[calc(100vh-5rem)] z-50
-            w-72 shrink-0
+            fixed top-0 left-0 h-screen z-40 w-[280px]
             transform transition-transform duration-300 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            ${isSidebarOpen ? "translate-x-0" : "-translate-x-[120%]"}
           `}
         >
-          <Card className="h-full glass-enhanced border-primary/20 shadow-glow-card overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-            <CardHeader className="relative z-10 pb-3 border-b border-primary/10">
-              <CardTitle className="text-lg font-semibold gradient-text">Navigation</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 relative z-10">
-              <nav className="space-y-1 p-4">
+          <Card className="h-full overflow-hidden rounded-none border-r border-primary/15 bg-gradient-to-b from-card via-card/95 to-card/90 shadow-lg shadow-primary/10 pt-20">
+            <CardContent className="p-0 h-[calc(100vh-5rem)]">
+              <nav className="space-y-2 p-3">
+                <p className="px-2 pb-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/90">Core</p>
                 <button
                   onClick={() => {
                     setActiveTab("treasury");
                     loadTreasuryData();
                     setIsSidebarOpen(false);
                   }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  className={`relative w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                     activeTab === "treasury"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
+                      ? "bg-primary/15 text-primary border border-primary/25 shadow-sm shadow-primary/20"
+                      : "text-muted-foreground border border-transparent hover:bg-primary/8 hover:border-primary/15 hover:text-primary"
                   }`}
                 >
-                  <Wallet className={`h-4 w-4 transition-transform ${activeTab === "treasury" ? "scale-110" : ""}`} />
-                  <span>Treasury</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("users");
-                    if (users.length === 0) loadUsers();
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "users"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <Users className={`h-4 w-4 transition-transform ${activeTab === "users" ? "scale-110" : ""}`} />
-                  <span>Users</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("star-systems");
-                    if (starSystems.length === 0) loadStarSystems();
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "star-systems"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <Star className={`h-4 w-4 transition-transform ${activeTab === "star-systems" ? "scale-110" : ""}`} />
-                  <span>Star Systems</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("planets");
-                    if (planets.length === 0) loadPlanets();
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "planets"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <PlanetIcon className={`h-4 w-4 transition-transform ${activeTab === "planets" ? "scale-110" : ""}`} />
-                  <span>Planets</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("cities");
-                    loadCities(); // Always load cities when tab is opened
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "cities"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <MapPin className={`h-4 w-4 transition-transform ${activeTab === "cities" ? "scale-110" : ""}`} />
-                  <span>Cities</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("resources");
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "resources"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <Package className={`h-4 w-4 transition-transform ${activeTab === "resources" ? "scale-110" : ""}`} />
-                  <span>Resources</span>
+                  <span className="inline-flex items-center gap-2">
+                    <Wallet className="h-4 w-4" />
+                    <span>Treasury + Users</span>
+                  </span>
+                  <Badge variant="outline" className="h-5 min-w-5 px-1 text-[10px] border-primary/20 bg-background/40 text-muted-foreground">{users.length}</Badge>
                 </button>
                 <button
                   onClick={() => {
                     setActiveTab("documents");
                     setIsSidebarOpen(false);
                   }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  className={`relative w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                     activeTab === "documents"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
+                      ? "bg-primary/15 text-primary border border-primary/25 shadow-sm shadow-primary/20"
+                      : "text-muted-foreground border border-transparent hover:bg-primary/8 hover:border-primary/15 hover:text-primary"
                   }`}
                 >
-                  <FileText className={`h-4 w-4 transition-transform ${activeTab === "documents" ? "scale-110" : ""}`} />
-                  <span>Documents</span>
+                  <span className="inline-flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Documents</span>
+                  </span>
                 </button>
+                <div className="my-1 border-t border-primary/10" />
+                <p className="px-2 pb-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/90">Growth</p>
                 <button
                   onClick={() => {
-                    setActiveTab("transactions");
-                    if (transactions.length === 0) loadTransactions();
+                    navigate("/admin-affiliates");
                     setIsSidebarOpen(false);
                   }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "transactions"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground border border-transparent transition-all duration-200 hover:bg-primary/8 hover:border-primary/15 hover:text-primary"
                 >
-                  <History className={`h-4 w-4 transition-transform ${activeTab === "transactions" ? "scale-110" : ""}`} />
-                  <span>Transactions</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("affiliates");
-                    loadAffiliateApplications();
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    activeTab === "affiliates"
-                      ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02]"
-                      : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                  }`}
-                >
-                  <Users className={`h-4 w-4 transition-transform ${activeTab === "affiliates" ? "scale-110" : ""}`} />
-                  <span>Affiliates</span>
+                  <span className="inline-flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span>Affiliates</span>
+                  </span>
                 </button>
               </nav>
             </CardContent>
@@ -2331,7 +2265,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 min-w-0">
+        <div
+          className={`min-w-0 space-y-3 transition-[margin-left] duration-300 ease-in-out ${
+            isSidebarOpen ? "ml-[280px]" : "ml-0"
+          }`}
+        >
           {/* Star Systems Management */}
           {activeTab === "star-systems" && (
             <div className="space-y-6">
@@ -2828,7 +2766,7 @@ export default function AdminDashboard() {
 
           {/* Documents */}
           {activeTab === "documents" && (
-            <div className="space-y-6">
+            <div className="space-y-4">
           <Card className="glass-enhanced border-primary/20 shadow-glow-card card-hover">
             <CardHeader className="border-b border-primary/10 pb-4">
               <div className="flex items-center justify-between">
@@ -3043,276 +2981,172 @@ export default function AdminDashboard() {
 
           {/* Treasury Management */}
           {activeTab === "treasury" && (
-            <div className="space-y-6">
-              {/* Treasury Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="glass-enhanced border-primary/20 shadow-glow-card">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Wallet className="h-4 w-4" />
-                      Treasury Balance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold gradient-text">
-                      {treasuryBalance.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">xBGL</div>
-                  </CardContent>
-                </Card>
+            <div className="flex flex-col gap-4">
 
-                <Card className="glass-enhanced border-primary/20 shadow-glow-card">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <History className="h-4 w-4" />
-                      Total Transactions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold gradient-text">
-                      {treasuryTransactions.length}
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">All time</div>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-enhanced border-primary/20 shadow-glow-card">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      Treasury Managers
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold gradient-text">
-                      {treasuryManagers.length}
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">Authorized</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Treasury Actions */}
-              <Card className="glass-enhanced border-primary/20 shadow-glow-card">
+              {/* Users Management (merged into Treasury workspace) */}
+              <Card className="order-2">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Wallet className="h-5 w-5" />
-                        Treasury Management
-                      </CardTitle>
-                      <CardDescription>
-                        Configure treasury settings, manage transfers, and assign roles
-                      </CardDescription>
+                      <CardTitle>Users</CardTitle>
+                      <CardDescription>Full user info, account actions, transfers, and documents directly from each card.</CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowTreasuryConfigDialog(true)}
-                        className="border-primary/30"
-                      >
-                        <Shield className="h-4 w-4 mr-2" />
-                        Configure
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            // Treasury uses wallet address, but we can still reconcile it
-                            const result = await supabaseService.reconcileBalance(TREASURY_WALLET.toLowerCase());
-                            if (result) {
-                              toast.success(`Treasury reconciled. Difference: ${result.difference.toFixed(2)} xBGL`);
-                              await loadTreasuryBalance();
-                            } else {
-                              toast.error("Reconciliation returned no result");
-                            }
-                          } catch (error: any) {
-                            toast.error("Reconciliation failed: " + error.message);
-                          }
-                        }}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reconcile Ledger
-                      </Button>
-                      <Button
-                        variant="cosmic"
-                        onClick={() => setShowTreasuryTransferDialog(true)}
-                        className="shadow-glow-accent"
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Transfer Funds
-                      </Button>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search users..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10 w-64"
+                        />
+                      </div>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-primary/10">
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant={userFilter === "all" ? "default" : "outline"} onClick={() => setUserFilter("all")}>All</Button>
+                      <Button size="sm" variant={userFilter === "admin" ? "default" : "outline"} onClick={() => setUserFilter("admin")}>Admin</Button>
+                      <Button size="sm" variant={userFilter === "with-wallet" ? "default" : "outline"} onClick={() => setUserFilter("with-wallet")}>With wallet</Button>
+                      <Button size="sm" variant={userFilter === "no-wallet" ? "default" : "outline"} onClick={() => setUserFilter("no-wallet")}>No wallet</Button>
+                    </div>
+                    <Select value={userSort} onValueChange={(v) => setUserSort(v as typeof userSort)}>
+                      <SelectTrigger className="w-[170px] h-8">
+                        <SelectValue placeholder="Sort" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Sort: Value</SelectItem>
+                        <SelectItem value="balance">Sort: Balance</SelectItem>
+                        <SelectItem value="plots">Sort: Plots</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                      <div className="font-medium mb-2 flex items-center gap-2">
-                        <Wallet className="h-4 w-4" />
-                        Treasury Wallet
+                <CardContent className="pt-6">
+                  {filteredUsers.length === 0 ? (
+                    <div className="text-center py-16">
+                      <div className="inline-flex p-4 rounded-full bg-primary/10 mb-4">
+                        <Users className="h-8 w-8 text-primary/50" />
                       </div>
-                      <div className="font-mono text-xs text-muted-foreground break-all">
-                        {TREASURY_WALLET}
-                      </div>
+                      <p className="text-muted-foreground mb-2">{users.length === 0 ? "No users loaded" : "No users match search"}</p>
                     </div>
-                    <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                      <div className="font-medium mb-2 flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        Transfer Limits
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Min: {treasuryConfig.minTransferAmount.toLocaleString()} xBGL
-                        <br />
-                        Max: {treasuryConfig.maxTransferAmount.toLocaleString()} xBGL
-                      </div>
+                  ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                      {filteredUsers.map((user) => {
+                        const identifier = (user.wallet_address || user.email || `user_${user.email?.split('@')[0] || 'unknown'}`).toLowerCase();
+                        const displayName = user.name || userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email;
+                        const normalizedDisplayName = (displayName || "").trim().toLowerCase();
+                        const normalizedEmail = (user.email || "").trim().toLowerCase();
+                        const normalizedWallet = (user.wallet_address || "").trim().toLowerCase();
+                        const showEmailLine = Boolean(user.email) && normalizedDisplayName !== normalizedEmail;
+                        const showWalletLine = Boolean(user.wallet_address) && normalizedWallet !== normalizedDisplayName && normalizedWallet !== normalizedEmail;
+                        return (
+                          <Card key={identifier} className="glass-enhanced border-primary/20 shadow-glow-card">
+                            <CardContent className="pt-6 space-y-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-semibold text-base">{displayName}</p>
+                                  {showEmailLine && (
+                                    <p className="text-xs text-muted-foreground break-all">{user.email}</p>
+                                  )}
+                                  {showWalletLine ? (
+                                    <p className="font-mono text-xs text-muted-foreground break-all mt-1">{user.wallet_address}</p>
+                                  ) : (
+                                    !user.wallet_address && <p className="font-mono text-xs text-muted-foreground break-all mt-1">No wallet</p>
+                                  )}
+                                </div>
+                                <Badge variant="outline">{user.portfolios} portfolios</Badge>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div className="rounded-md border border-primary/10 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">xBGL</p><p className="font-semibold">{(user.balance?.xbgl_balance ?? 0).toFixed(2)}</p></div>
+                                <div className="rounded-md border border-primary/10 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">Total Value</p><p className="font-semibold">{user.totalValue.toLocaleString()} xBGL</p></div>
+                                <div className="rounded-md border border-primary/10 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">AVAX</p><p className="font-semibold">{(user.balance?.avax_balance ?? 0).toFixed(4)}</p></div>
+                                <div className="rounded-md border border-primary/10 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">Assets</p><p className="font-semibold">{user.plots} plots</p></div>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                <Button variant="outline" size="sm" onClick={async () => { await handlePromoteToAffiliate(user); }}><UserPlus className="h-4 w-4 mr-1" />Affiliate</Button>
+                                <Button variant="outline" size="sm" onClick={() => { setTreasuryTransferTo(identifier); setTreasuryTransferAmount(""); setShowTreasuryTransferDialog(true); }}><Coins className="h-4 w-4 mr-1" />Transfer</Button>
+                                <Button size="sm" onClick={async () => {
+                                  setViewingUserDetails(user);
+                                  setShowUserDetailsDialog(true);
+                                  setUserDetailsLoading(true);
+                                  try {
+                                    const plots = await supabaseService.getPlots({ ownerWallet: user.wallet_address || "", ownerEmail: user.email || "" });
+                                    setUserPlots(plots || []);
+                                    const portfolios = await supabaseService.getPortfolios(user.wallet_address || "");
+                                    setUserPortfolios(portfolios || []);
+                                    const transactions = await supabaseService.getTransactions({ walletAddress: user.wallet_address || "", limit: 100 });
+                                    setUserTransactions(transactions || []);
+                                    const walletForDocs = (user.wallet_address || "").toLowerCase();
+                                    const { data: docs } = walletForDocs
+                                      ? await supabase.from("plot_documents").select("*").eq("owner_wallet", walletForDocs).order("created_at", { ascending: false })
+                                      : { data: [] as any[] };
+                                    setUserDocuments(docs || []);
+                                    setUserResources([]);
+                                  } catch (error: any) {
+                                    logger.error("Failed to load user details:", error);
+                                    toast.error("Failed to load user details");
+                                  } finally {
+                                    setUserDetailsLoading(false);
+                                  }
+                                }}><Info className="h-4 w-4 mr-1" />Info</Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Treasury Transactions */}
-              <Card className="glass-enhanced border-primary/20 shadow-glow-card">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <History className="h-5 w-5" />
-                        Treasury Transactions
-                      </CardTitle>
-                      <CardDescription>
-                        All transactions involving the treasury wallet
-                        {useAlchemy && (
-                          <span className="ml-2 text-xs text-green-400">(via Alchemy API)</span>
-                        )}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setUseAlchemy(!useAlchemy)}
-                        className="border-primary/30"
-                      >
-                        {useAlchemy ? 'Alchemy' : 'Supabase'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={loadTreasuryTransactions}
-                        disabled={loadingTreasuryTransactions}
-                        className="border-primary/30"
-                      >
-                        <RefreshCw className={`h-4 w-4 mr-2 ${loadingTreasuryTransactions ? 'animate-spin' : ''}`} />
-                        Refresh
-                      </Button>
-                      <Button
-                        variant="default"
-                        onClick={async () => {
-                          // Check all user wallets and process deposits
-                          await checkAllUserWallets();
-                        }}
-                        disabled={loadingTreasuryTransactions}
-                        className="bg-green-600 hover:bg-green-700"
-                        title="Check all user wallets and process deposits"
-                      >
-                        Check All Wallets
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={async () => {
-                          // Process all existing unprocessed deposits from database
-                          await processAllExistingDeposits();
-                        }}
-                        disabled={loadingTreasuryTransactions}
-                        className="border-green-600 text-green-600 hover:bg-green-50"
-                        title="Process unprocessed deposits from database only"
-                      >
-                        Process DB Deposits
-                      </Button>
-                      <Button
-                        variant="default"
-                        onClick={async () => {
-                          // Credit Lazar Bundev's wallet
-                          await checkAndCreditWallet(
-                            '0x32ee1293cdd2a5ef97504ef4b97d988e83856542',
-                            'Lazar Bundev'
-                          );
-                        }}
-                        disabled={loadingTreasuryTransactions}
-                        className="bg-blue-600 hover:bg-blue-700"
-                        title="Check and credit Lazar Bundev's wallet"
-                      >
-                        Credit Lazar
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
+              <Card className="order-1 glass-enhanced border-primary/20 shadow-glow-card">
+                <CardContent className="p-3">
                   {loadingTreasuryTransactions ? (
-                    <div className="flex items-center justify-center py-16">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                   ) : treasuryTransactions.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No treasury transactions</p>
+                    <p className="text-muted-foreground text-center py-8 text-sm">No treasury transactions</p>
                   ) : (
                     <>
-                      {/* Summary Statistics */}
-                      {(() => {
-                        const incomingUSDC = treasuryTransactions.filter((tx: any) => 
-                          tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase() &&
-                          tx.token_type?.toLowerCase().includes('usdc')
-                        );
-                        const totalIncomingUSDC = incomingUSDC.reduce((sum: number, tx: any) => 
-                          sum + Number(tx.amount || 0), 0
-                        );
-                        const incomingXBGL = treasuryTransactions.filter((tx: any) => 
-                          tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase() &&
-                          (!tx.token_type || tx.token_type.toLowerCase().includes('xbgl'))
-                        );
-                        const totalIncomingXBGL = incomingXBGL.reduce((sum: number, tx: any) => 
-                          sum + Number(tx.amount || 0), 0
-                        );
-                        
-                        return (incomingUSDC.length > 0 || incomingXBGL.length > 0) ? (
-                          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {incomingUSDC.length > 0 && (
-                              <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-                                <div className="text-sm text-muted-foreground">Incoming USDC</div>
-                                <div className="text-lg font-semibold text-green-500">
-                                  {totalIncomingUSDC.toFixed(2)} USDC
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {incomingUSDC.length} transaction{incomingUSDC.length !== 1 ? 's' : ''}
-                                </div>
-                              </div>
-                            )}
-                            {incomingXBGL.length > 0 && (
-                              <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-                                <div className="text-sm text-muted-foreground">Incoming xBGL</div>
-                                <div className="text-lg font-semibold text-green-500">
-                                  {totalIncomingXBGL.toFixed(2)} xBGL
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {incomingXBGL.length} transaction{incomingXBGL.length !== 1 ? 's' : ''}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : null;
-                      })()}
-                      
-                      <div className="rounded-lg border border-primary/10 overflow-hidden">
-                        <Table>
+                      <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
+                          <p className="text-[11px] text-muted-foreground">Total</p>
+                          <p className="text-sm font-semibold">{treasuryTransactions.length}</p>
+                        </div>
+                        <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
+                          <p className="text-[11px] text-muted-foreground">Incoming</p>
+                          <p className="text-sm font-semibold">
+                            {treasuryTransactions.filter((tx) => tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase()).length}
+                          </p>
+                        </div>
+                        <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
+                          <p className="text-[11px] text-muted-foreground">Outgoing</p>
+                          <p className="text-sm font-semibold">
+                            {treasuryTransactions.filter((tx) => tx.from_address?.toLowerCase() === TREASURY_WALLET.toLowerCase()).length}
+                          </p>
+                        </div>
+                        <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
+                          <p className="text-[11px] text-muted-foreground">USDC</p>
+                          <p className="text-sm font-semibold">
+                            {treasuryTransactions.filter((tx) => tx.token_type?.toLowerCase().includes("usdc")).length}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-primary/10 overflow-x-auto">
+                        <Table className="min-w-[980px]">
                           <TableHeader className="bg-primary/5">
                             <TableRow className="border-primary/10">
-                              <TableHead>Type</TableHead>
-                              <TableHead>From</TableHead>
-                              <TableHead>To</TableHead>
-                              <TableHead>Amount</TableHead>
-                              <TableHead>Token</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Status</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px]">Dir</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px]">Chain</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px]">From</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px]">To</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px] text-right">Amount</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px]">Token</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px]">Date</TableHead>
+                              <TableHead className="h-8 px-2 text-[11px]">Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -3325,12 +3159,12 @@ export default function AdminDashboard() {
                                   key={tx.id} 
                                   className={`border-primary/5 hover:bg-primary/5 ${isUSDC && isIncoming ? 'bg-green-500/10' : ''}`}
                                 >
-                                  <TableCell>
+                                  <TableCell className="px-2 py-2">
                                   <Badge variant={isOutgoing ? "destructive" : "default"}>
                                     {isOutgoing ? "Outgoing" : "Incoming"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="px-2 py-2">
                                   {tx.metadata?.chain ? (
                                     <Badge variant="outline" className="text-xs">
                                       {tx.metadata.chain}
@@ -3339,7 +3173,7 @@ export default function AdminDashboard() {
                                     <span className="text-xs text-muted-foreground">-</span>
                                   )}
                                 </TableCell>
-                                <TableCell className="font-mono text-xs">
+                                <TableCell className="px-2 py-2 font-mono text-xs whitespace-nowrap">
                                   <a 
                                     href={tx.metadata?.explorerUrl?.replace('/tx/', `/address/${tx.from_address}`) || '#'}
                                     target="_blank"
@@ -3349,7 +3183,7 @@ export default function AdminDashboard() {
                                     {tx.from_address?.slice(0, 8)}...{tx.from_address?.slice(-6)}
                                   </a>
                                 </TableCell>
-                                <TableCell className="font-mono text-xs">
+                                <TableCell className="px-2 py-2 font-mono text-xs whitespace-nowrap">
                                   <a 
                                     href={tx.metadata?.explorerUrl?.replace('/tx/', `/address/${tx.to_address}`) || '#'}
                                     target="_blank"
@@ -3359,7 +3193,7 @@ export default function AdminDashboard() {
                                     {tx.to_address?.slice(0, 8)}...{tx.to_address?.slice(-6)}
                                   </a>
                                 </TableCell>
-                                <TableCell className="font-semibold whitespace-nowrap min-w-[150px] text-right">
+                                <TableCell className="px-2 py-2 font-semibold whitespace-nowrap min-w-[140px] text-right">
                                   <div className="overflow-visible" title={tx.amount || '0'}>
                                     {(() => {
                                       const amount = parseFloat(tx.amount || '0');
@@ -3394,15 +3228,15 @@ export default function AdminDashboard() {
                                     })()}
                                   </div>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="px-2 py-2">
                                   <Badge variant={isUSDC ? "default" : "outline"} className={isUSDC ? "bg-blue-500/20 text-blue-300" : ""}>
                                     {tx.token_type || "xBGL"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell className="text-xs">
+                                <TableCell className="px-2 py-2 text-xs whitespace-nowrap">
                                   {new Date(tx.created_at).toLocaleString()}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="px-2 py-2">
                                   <div className="flex items-center gap-2">
                                     <Badge variant={tx.status === "completed" ? "default" : "secondary"}>
                                       {tx.status || "pending"}
@@ -3430,417 +3264,9 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Treasury Managers */}
-              <Card className="glass-enhanced border-primary/20 shadow-glow-card">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5" />
-                        Treasury Managers
-                      </CardTitle>
-                      <CardDescription>
-                        Users authorized to manage treasury operations
-                      </CardDescription>
-                    </div>
-                    <Button
-                      variant="cosmic"
-                      onClick={() => setShowAddManagerDialog(true)}
-                      className="shadow-glow-accent"
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add Manager
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {loadingTreasuryManagers ? (
-                    <div className="flex items-center justify-center py-16">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : treasuryManagers.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No treasury managers</p>
-                  ) : (
-                    <div className="rounded-lg border border-primary/10 overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-primary/5">
-                          <TableRow className="border-primary/10">
-                            <TableHead>Email</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>User ID</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {treasuryManagers.map((manager) => (
-                            <TableRow key={manager.id} className="border-primary/5 hover:bg-primary/5">
-                              <TableCell className="font-medium">{manager.email}</TableCell>
-                              <TableCell>
-                                <Badge variant="default">
-                                  {manager.user_metadata?.treasury_role || manager.user_metadata?.role || "admin"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">{manager.id.slice(0, 8)}...</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRemoveTreasuryManager(manager.id)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  Remove
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
           )}
 
-          {/* Users Management */}
-          {activeTab === "users" && (
-            <div className="space-y-6">
-          {/* System Tools */}
-          <Card>
-            <CardHeader>
-              <CardTitle>System Tools</CardTitle>
-              <CardDescription>
-                Administrative tools for system management
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2 items-end">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="plots-to-seed">Number of Plots to Seed</Label>
-                  <Input
-                    id="plots-to-seed"
-                    type="number"
-                    min="1"
-                    value={plotsToSeed}
-                    onChange={(e) => setPlotsToSeed(e.target.value)}
-                    placeholder="Enter number of plots"
-                    className="w-full"
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    const count = parseInt(plotsToSeed);
-                    if (isNaN(count) || count < 1) {
-                      toast.error("Please enter a valid number of plots (at least 1)");
-                      return;
-                    }
-                    try {
-                      setSeedingPlots(true);
-                      toast.info(`Seeding ${count} plots... This may take a moment.`);
-                      const { seedPlots } = await import("@/lib/seed-plots");
-                      const result = await seedPlots(count);
-                      if (result.success) {
-                        toast.success(result.message);
-                      } else {
-                        toast.error(result.message);
-                      }
-                    } catch (error: any) {
-                      toast.error(error.message || "Failed to seed plots");
-                    } finally {
-                      setSeedingPlots(false);
-                    }
-                  }}
-                  disabled={seedingPlots}
-                >
-                  {seedingPlots ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Seeding...
-                    </>
-                  ) : (
-                    <>
-                      <Grid3x3 className="h-4 w-4 mr-2" />
-                      Seed Plots
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Total Users
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalStats.totalUsers}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Coins className="h-4 w-4" />
-                  Total xBGL
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalStats.totalxBGL.toLocaleString()}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Grid3x3 className="h-4 w-4" />
-                  Total Plots
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalStats.totalPlots}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Portfolios
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalStats.totalPortfolios}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Total Value
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalStats.totalValue.toLocaleString()}</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Users Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>All Users</CardTitle>
-                  <CardDescription>
-                    View and manage all user accounts, assets, and portfolios
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search users..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 w-64"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => loadUsers()}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Load Users
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {filteredUsers.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="inline-flex p-4 rounded-full bg-primary/10 mb-4">
-                    <Users className="h-8 w-8 text-primary/50" />
-                  </div>
-                  <p className="text-muted-foreground mb-2">
-                    {users.length === 0 ? "No users loaded" : "No users match search"}
-                  </p>
-                  <p className="text-xs text-muted-foreground/70">
-                    {users.length === 0 ? "Click 'Load Users' to fetch data" : "Try a different search term"}
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-primary/10 overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-primary/5">
-                      <TableRow className="border-primary/10 hover:bg-transparent">
-                        <TableHead className="font-semibold text-foreground">User</TableHead>
-                        <TableHead className="font-semibold text-foreground">Wallet</TableHead>
-                        <TableHead className="font-semibold text-foreground">Balance</TableHead>
-                        <TableHead className="font-semibold text-foreground">Assets</TableHead>
-                        <TableHead className="font-semibold text-foreground">Portfolios</TableHead>
-                        <TableHead className="font-semibold text-foreground">Total Value</TableHead>
-                        <TableHead className="font-semibold text-foreground">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow 
-                          key={user.wallet_address} 
-                          className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
-                            onClick={(e) => {
-                              // Only trigger if clicking on the row itself, not buttons
-                              if ((e.target as HTMLElement).closest('button')) {
-                                return;
-                              }
-                              // Use same identifier logic as Select dropdown
-                              const identifier = (user.wallet_address || user.email || `user_${user.email?.split('@')[0] || 'unknown'}`).toLowerCase();
-                              setTreasuryTransferTo(identifier);
-                              setTreasuryTransferAmount("");
-                              setShowTreasuryTransferDialog(true);
-                            }}
-                        >
-                        <TableCell>
-                          <div className="font-medium">
-                            {user.name || userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email}
-                          </div>
-                          {user.name && (userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email !== (user.wallet_address?.slice(0, 8) + "...")) && (
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              {userEmails.get(user.wallet_address?.toLowerCase() || "") || user.email}
-                            </div>
-                          )}
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {user.wallet_address?.slice(0, 8)}...{user.wallet_address?.slice(-6)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-mono text-xs">
-                            {user.wallet_address?.slice(0, 8)}...{user.wallet_address?.slice(-6)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="text-sm font-semibold">
-                              {(user.balance?.xbgl_balance ?? 0).toFixed(2)} xBGL
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {(user.balance?.avax_balance ?? 0).toFixed(4)} AVAX
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{user.plots} plots</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{user.portfolios} portfolios</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold">
-                            {user.totalValue.toLocaleString()} xBGL
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                await handlePromoteToAffiliate(user);
-                              }}
-                              title="Promote to Affiliate"
-                            >
-                              <UserPlus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                // Use same identifier logic as Select dropdown
-                                const identifier = (user.wallet_address || user.email || `user_${user.email?.split('@')[0] || 'unknown'}`).toLowerCase();
-                                setTreasuryTransferTo(identifier);
-                                setTreasuryTransferAmount("");
-                                setShowTreasuryTransferDialog(true);
-                              }}
-                              title="Quick transfer from treasury"
-                            >
-                              <Coins className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setShowTransferDialog(true);
-                              }}
-                              title="Transfer between users"
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={async () => {
-                                setViewingUserDetails(user);
-                                setShowUserDetailsDialog(true);
-                                setUserDetailsLoading(true);
-                                try {
-                                  // Load user's plots
-                                  const plots = await supabaseService.getPlots({ ownerWallet: user.wallet_address || "" });
-                                  setUserPlots(plots || []);
-                                  
-                                  // Load user's portfolios
-                                  const portfolios = await supabaseService.getPortfolios(user.wallet_address || "");
-                                  setUserPortfolios(portfolios || []);
-                                  
-                                  // Load user's transactions
-                                  const transactions = await supabaseService.getTransactions({ 
-                                    walletAddress: user.wallet_address || "",
-                                    limit: 100 
-                                  });
-                                  setUserTransactions(transactions || []);
-                                  
-                                  // Load documents (if any - placeholder for now)
-                                  setUserDocuments([]);
-                                  
-                                  // Load resources (if any - placeholder for now)
-                                  setUserResources([]);
-                                } catch (error: any) {
-                                  logger.error("Failed to load user details:", error);
-                                  toast.error("Failed to load user details");
-                                } finally {
-                                  setUserDetailsLoading(false);
-                                }
-                              }}
-                              title="View user details"
-                            >
-                              <Info className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-            </div>
-          )}
         </div>
       </div>
       </div>
@@ -4045,6 +3471,7 @@ export default function AdminDashboard() {
                         xbgl_balance: 0,
                         avax_balance: 0,
                         chaos_balance: 0,
+                        sc_balance: 0,
                       })
                       .select()
                       .single();
@@ -4054,11 +3481,23 @@ export default function AdminDashboard() {
                   const newToBalance = (toBalance?.xbgl_balance || 0) + amount;
                   const newTreasuryBalance = treasuryBalance - amount;
 
-                  // Update both balances
+                  // Ensure treasury row exists and has sufficient balance (defense in depth)
+                  const { data: treasuryRow } = await supabase
+                    .from("user_balances")
+                    .select("xbgl_balance")
+                    .eq("wallet_address", TREASURY_WALLET.toLowerCase())
+                    .single();
+                  if (!treasuryRow || (treasuryRow.xbgl_balance ?? 0) < amount) {
+                    toast.error("Treasury balance insufficient or not found. Refresh and try again.");
+                    return;
+                  }
+
+                  const nowIso = new Date().toISOString();
+                  // Update both balances atomically — last_synced triggers realtime
                   await Promise.all([
                     supabase
                       .from("user_balances")
-                      .update({ xbgl_balance: newTreasuryBalance })
+                      .update({ xbgl_balance: newTreasuryBalance, last_synced: nowIso })
                       .eq("wallet_address", TREASURY_WALLET.toLowerCase()),
                     supabase
                       .from("user_balances")
@@ -4067,6 +3506,8 @@ export default function AdminDashboard() {
                         xbgl_balance: newToBalance,
                         avax_balance: toBalance?.avax_balance || 0,
                         chaos_balance: toBalance?.chaos_balance || 0,
+                        sc_balance: toBalance?.sc_balance ?? 0,
+                        last_synced: nowIso,
                       }, { onConflict: "wallet_address" }),
                   ]);
 
@@ -4122,9 +3563,9 @@ export default function AdminDashboard() {
                   // Auto-sync: Reload users to get fresh balance data from Supabase
                   await loadUsers();
 
-                  // Refresh transactions if on transactions tab
-                  if (activeTab === "transactions") {
-                    loadTransactions();
+                  // Keep treasury feed current after transfer
+                  if (activeTab === "treasury") {
+                    loadTreasuryTransactions();
                   }
 
                   toast.success(`Transferred ${amount} xBGL from treasury to ${selectedUser.name || selectedUser.email}`);

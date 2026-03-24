@@ -34,7 +34,7 @@ The accounts don't exist yet. You need to create them first.
 If you have your Supabase service_role key:
 
 1. **Get your Service Role Key:**
-   - Go to: https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv/settings/api
+   - Go to: https://supabase.com/dashboard/project/zfzsiykutsgkurmetprw/settings/api
    - Copy the **service_role** key (secret key)
 
 2. **Run the script:**

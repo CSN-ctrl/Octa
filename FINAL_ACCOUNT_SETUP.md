@@ -12,7 +12,7 @@ The Admin API (`auth.admin.createUser`) **requires** the service_role key. The p
 
 1. **Go to Supabase Dashboard:**
    ```
-   https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv/settings/api
+   https://supabase.com/dashboard/project/zfzsiykutsgkurmetprw/settings/api
    ```
 
 2. **Find "service_role" key:**

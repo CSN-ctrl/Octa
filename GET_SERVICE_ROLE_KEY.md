@@ -9,7 +9,7 @@ The **service_role** key has **FULL DATABASE ACCESS** and bypasses all Row Level
 ## Steps to Get Your Service Role Key
 
 1. **Go to Supabase Dashboard:**
-   - Open: https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv/settings/api
+   - Open: https://supabase.com/dashboard/project/zfzsiykutsgkurmetprw/settings/api
 
 2. **Find the Service Role Key:**
    - Scroll down to the **"Project API keys"** section

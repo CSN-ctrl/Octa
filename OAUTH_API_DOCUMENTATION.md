@@ -4,12 +4,12 @@
 
 ## Base URLs
 
-- **Production**: `https://agqkiwarwxrcemhspxxv.supabase.co`
-- **Authorization Endpoint**: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/authorize`
-- **Token Endpoint**: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/token`
-- **UserInfo Endpoint**: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/userinfo`
-- **Discovery Document**: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/.well-known/openid-configuration`
-- **JWKS Endpoint**: `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/.well-known/jwks.json`
+- **Production**: `https://zfzsiykutsgkurmetprw.supabase.co`
+- **Authorization Endpoint**: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/authorize`
+- **Token Endpoint**: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/token`
+- **UserInfo Endpoint**: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/userinfo`
+- **Discovery Document**: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/.well-known/openid-configuration`
+- **JWKS Endpoint**: `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/.well-known/jwks.json`
 
 ## Overview
 
@@ -61,7 +61,7 @@ const codeChallengeMethod = "S256";
 Build the authorization URL:
 
 ```
-GET https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/authorize
+GET https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/authorize
 ```
 
 **Query Parameters:**
@@ -79,7 +79,7 @@ GET https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/authorize
 **Example:**
 
 ```javascript
-const authUrl = `https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/authorize?` +
+const authUrl = `https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/authorize?` +
   `client_id=YOUR_CLIENT_ID&` +
   `redirect_uri=https://myapp.com/callback&` +
   `response_type=code&` +
@@ -124,7 +124,7 @@ https://myapp.com/callback?error=access_denied&error_description=User+denied+the
 Exchange the authorization code for access and refresh tokens:
 
 ```
-POST https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/token
+POST https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/token
 Content-Type: application/x-www-form-urlencoded
 ```
 
@@ -142,7 +142,7 @@ Content-Type: application/x-www-form-urlencoded
 **Example:**
 
 ```javascript
-const response = await fetch('https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/token', {
+const response = await fetch('https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/token', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -186,14 +186,14 @@ const tokens = await response.json();
 ### Get User Info (OpenID Connect)
 
 ```
-GET https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/userinfo
+GET https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/userinfo
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 **Example:**
 
 ```javascript
-const response = await fetch('https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/userinfo', {
+const response = await fetch('https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/userinfo', {
   headers: {
     'Authorization': `Bearer ${accessToken}`,
   },
@@ -233,7 +233,7 @@ const response = await fetch('https://api.chaosstar.com/user/profile', {
 Access tokens expire after 1 hour. Use the refresh token to get a new access token:
 
 ```
-POST https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/token
+POST https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/token
 Content-Type: application/x-www-form-urlencoded
 ```
 
@@ -249,7 +249,7 @@ Content-Type: application/x-www-form-urlencoded
 **Example:**
 
 ```javascript
-const response = await fetch('https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/token', {
+const response = await fetch('https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/token', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -307,7 +307,7 @@ Available scopes:
 Get the discovery document for all endpoints:
 
 ```
-GET https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/.well-known/openid-configuration
+GET https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/.well-known/openid-configuration
 ```
 
 This returns all endpoints, supported scopes, response types, and more.
@@ -317,7 +317,7 @@ This returns all endpoints, supported scopes, response types, and more.
 Access tokens are JWTs. Validate them using the JWKS endpoint:
 
 ```
-GET https://agqkiwarwxrcemhspxxv.supabase.co/auth/v1/.well-known/jwks.json
+GET https://zfzsiykutsgkurmetprw.supabase.co/auth/v1/.well-known/jwks.json
 ```
 
 ## Support

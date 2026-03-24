@@ -8,7 +8,7 @@ You need to get it manually from the Supabase Dashboard.
 
 1. **Open this URL:**
    ```
-   https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv/settings/api
+   https://supabase.com/dashboard/project/zfzsiykutsgkurmetprw/settings/api
    ```
 
 2. **Find "service_role" key:**

@@ -1,10 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import {
+  DEFAULT_SUPABASE_URL,
+  DEFAULT_SUPABASE_ANON_KEY,
+} from './src/config/supabase-project-defaults';
 
-// Supabase credentials
-const supabaseUrl = 'https://agqkiwarwxrcemhspxxv.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFncWtpd2Fyd3hyY2VtaHNweHh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MTE5NDEsImV4cCI6MjA4MjM4Nzk0MX0.kaiilK_5cdDPYgFxZRKXAsmepjTpSdAw3ZdY3IW6HxM';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// Create Supabase client
+try {
+  const envFile = readFileSync(join(__dirname, '.env'), 'utf-8');
+  envFile.split('\n').forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && valueParts.length > 0) {
+        const value = valueParts.join('=').trim();
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+} catch {
+  console.warn('⚠️  Could not read .env; using defaults + existing env');
+}
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey =
+  process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function createTestAccounts() {

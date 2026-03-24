@@ -20,7 +20,7 @@
 
 ### 2. `ERR_NAME_NOT_RESOLVED` for Supabase
 **What it means:**
-- The Supabase URL `bhefhppvexefznjmyjok.supabase.co` cannot be resolved
+- The configured Supabase host (`VITE_SUPABASE_URL` or default in `src/config/supabase-project-defaults.ts`) cannot be resolved
 - This is a DNS/network issue
 
 **Possible causes:**
@@ -33,7 +33,7 @@
 1. **Check internet connection** - Make sure you're online
 2. **Check Supabase project status** - Go to https://supabase.com/dashboard
 3. **Restart Supabase project** - If paused, restart it in the dashboard
-4. **Check DNS** - Try accessing https://bhefhppvexefznjmyjok.supabase.co directly in browser
+4. **Check DNS** - Try opening your project URL from the Supabase dashboard (Settings → API) in the browser
 5. **Use VPN** - If behind a firewall, try a VPN
 
 **Current handling:**

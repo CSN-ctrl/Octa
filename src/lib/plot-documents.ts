@@ -243,29 +243,36 @@ export async function uploadCertificateToStorage(
 
 /**
  * Generate and save plot certificate
+ * Returns pdfBytes when upload failed (url is a blob URL) so caller can download without fetching blob.
  */
 export async function generateAndSaveCertificate(
   data: PlotDocumentData
-): Promise<{ url: string; filename: string }> {
+): Promise<{ url: string; filename: string; pdfBytes?: Uint8Array }> {
   const { pdfBytes, filename } = await generatePlotCertificate(data);
   const url = await uploadCertificateToStorage(pdfBytes, filename, data.plotId);
+  const isBlobUrl = url.startsWith("blob:");
 
-  // Save certificate record to database
-  try {
-    await supabase.from("plot_documents").insert({
-      plot_id: data.plotId,
-      owner_wallet: data.ownerWallet,
-      document_type: "certificate",
-      document_url: url,
-      filename: filename,
-      created_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Failed to save certificate record:", error);
-    // Continue even if database save fails
+  // Save certificate record to database (skip for blob fallback URLs)
+  if (!isBlobUrl) {
+    try {
+      await supabase.from("plot_documents").insert({
+        plot_id: data.plotId,
+        owner_wallet: data.ownerWallet,
+        document_type: "certificate",
+        document_url: url,
+        filename: filename,
+        created_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Failed to save certificate record:", error);
+    }
   }
 
-  return { url, filename };
+  return {
+    url,
+    filename,
+    ...(isBlobUrl && { pdfBytes }),
+  };
 }
 
 /**

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Network, Server, Globe, Link2, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import type { StarSystem, Planet } from "@/hooks/useCelestialForge";
+import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
 
 interface NetworkTopologyProps {
   starSystems: StarSystem[];
@@ -20,7 +21,7 @@ export function NetworkTopology({
     return starSystems.find(sys => 
       sys.name.toLowerCase().includes("sarakt") || 
       sys.subnet_id?.toLowerCase().includes("chaos") ||
-      sys.id === "sarakt-star-system"
+      sys.id === SARAKT_STAR_SYSTEM_ID
     );
   }, [starSystems]);
 
@@ -29,7 +30,7 @@ export function NetworkTopology({
     return starSystems.filter(sys => 
       !sys.name.toLowerCase().includes("sarakt") && 
       !sys.subnet_id?.toLowerCase().includes("chaos") &&
-      sys.id !== "sarakt-star-system"
+      sys.id !== SARAKT_STAR_SYSTEM_ID
     );
   }, [starSystems]);
 

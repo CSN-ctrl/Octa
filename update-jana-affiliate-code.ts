@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { DEFAULT_SUPABASE_URL } from './src/config/supabase-project-defaults';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,8 +35,7 @@ try {
   console.warn('⚠️  Could not read .env file, using environment variables only');
 }
 
-// Supabase configuration
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://agqkiwarwxrcemhspxxv.supabase.co";
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 if (!SUPABASE_SERVICE_ROLE_KEY) {

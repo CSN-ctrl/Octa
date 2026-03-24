@@ -8,11 +8,10 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-
-// Load environment variables from .env file manually
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { DEFAULT_SUPABASE_URL } from './src/config/supabase-project-defaults';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,20 +35,22 @@ try {
   console.warn('⚠️  Could not read .env file, using environment variables only');
 }
 
-// Get Supabase URL from env or use default
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://agqkiwarwxrcemhspxxv.supabase.co';
+// Use SUPABASE_URL for scripts so you can target the MCP project even when VITE_* points elsewhere.
+const SUPABASE_URL =
+  (process.env.SUPABASE_URL && process.env.SUPABASE_URL.trim()) ||
+  (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_URL.trim()) ||
+  DEFAULT_SUPABASE_URL;
 
-// Get service_role key from environment
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!SERVICE_ROLE_KEY) {
-  console.error('❌ ERROR: VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY not found');
-  console.log('\n📝 Make sure your .env file contains:');
-  console.log('   VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_key_here\n');
+  console.error('❌ ERROR: SUPABASE_SERVICE_ROLE_KEY not set');
+  console.log('\n📝 Add to .env (Dashboard → Settings → API → service_role):');
+  console.log('   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here\n');
   process.exit(1);
 }
 
-console.log('✅ Using publishable key as service_role key');
+console.log('✅ Using service_role key for Admin API');
 console.log(`   URL: ${SUPABASE_URL}`);
 console.log(`   Key: ${SERVICE_ROLE_KEY.substring(0, 20)}...\n`);
 

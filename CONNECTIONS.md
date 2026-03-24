@@ -9,10 +9,10 @@ This document lists all connections, APIs, and data sources used by the frontend
 ## 1. SUPABASE (Primary Data Layer) ✅ ACTIVE
 
 **Connection:**
-- URL: `https://agqkiwarwxrcemhspxxv.supabase.co`
-- Key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (anon key)
-- Storage: Uses `localStorage` for auth persistence
-- Location: `src/integrations/supabase/client.ts`
+- URL / anon key: **`src/config/connections.ts`** (`getSupabaseUrl`, `getSupabaseAnonKey`) — defaults match project **`zfzsiykutsgkurmetprw`** (override with `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`).
+- Client: `src/integrations/supabase/client.ts` (singleton; imports connections module only).
+- Types: `src/integrations/supabase/types.ts` — regenerate via Cursor MCP `user-supabase` → `generate_typescript_types` or Supabase CLI.
+- Storage: Uses `localStorage` for auth persistence (`chaosstar-supabase-auth`).
 
 **Tables Used:**
 - `plots` - Plot ownership and metadata
@@ -55,8 +55,8 @@ This document lists all connections, APIs, and data sources used by the frontend
 
 ## 2. BACKEND API (Go Backend) ⚠️ PARTIALLY ACTIVE
 
-**Base URL:** `http://localhost:5001` (from `VITE_API_URL` env var)
-**Location:** `src/lib/api.ts`, `src/lib/chaosstar-client.ts`
+**Base URL:** `http://localhost:5001` by default — set **`VITE_API_URL`** in `.env` for remote APIs (also update **`index.html` CSP** `connect-src` if needed).
+**Location:** `src/env.ts` (`getApiUrl`), `src/lib/chaosstar-client.ts`, `src/lib/api.ts`
 
 ### Active Endpoints Still Used:
 
@@ -276,9 +276,10 @@ This document lists all connections, APIs, and data sources used by the frontend
 ## 9. ENVIRONMENT VARIABLES
 
 **Active Variables:**
-- `VITE_API_URL` - Backend API URL (default: `http://localhost:5001`)
-- `VITE_SUPABASE_URL` - Supabase URL (hardcoded in client.ts)
-- `VITE_SUPABASE_ANON_KEY` - Supabase anon key (hardcoded in client.ts)
+- `VITE_API_URL` - Backend API URL (default: `http://localhost:5001` via `src/env.ts` and `chaosstar-client` fallback)
+- `VITE_SUPABASE_URL` - Supabase URL (default in `src/config/connections.ts` if unset)
+- `VITE_SUPABASE_ANON_KEY` - Supabase anon JWT (default in `src/config/connections.ts` if unset)
+- `VITE_ALCHEMY_API_KEY` - Alchemy (no in-repo fallback; features return empty without it)
 
 **Unused Variables (still in code but not active):**
 - `VITE_CHAOSSTAR_RPC` - RPC URL (disabled)
@@ -389,8 +390,8 @@ This document lists all connections, APIs, and data sources used by the frontend
    - Other features currently using mocks
 
 4. **Environment Variables:**
-   - Remove unused RPC-related env vars
-   - Move Supabase credentials to env vars (currently hardcoded)
+   - Remove unused RPC-related env vars if you fully drop chain RPC features
+   - Supabase credentials: defaults in `src/config/connections.ts` + overrides in `.env` (see `.env.example`)
 
 ---
 
