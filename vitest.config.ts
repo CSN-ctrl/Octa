@@ -12,6 +12,18 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      include: [
+        'src/pages/Login.tsx',
+        'src/pages/ResetPassword.tsx',
+        'src/pages/AccountSecurity.tsx',
+        'src/components/ErrorBoundary.tsx',
+      ],
+      thresholds: {
+        lines: 65,
+        statements: 65,
+        functions: 45,
+        branches: 45,
+      },
       exclude: [
         'node_modules/',
         'src/test/',

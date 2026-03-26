@@ -31,6 +31,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"login" | "signup">(initialTab);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -221,6 +223,56 @@ export default function Login() {
     }
   };
 
+  const handleMagicLink = async () => {
+    setError(null);
+    if (!email) {
+      setError("Please enter an email address first.");
+      return;
+    }
+
+    setMagicLinkLoading(true);
+    try {
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (otpError) throw otpError;
+      toast.success("Magic link sent. Check your email.");
+    } catch (err: any) {
+      logger.error("Magic link error:", err);
+      setError(err.message || "Failed to send magic link.");
+      toast.error(err.message || "Magic link failed.");
+    } finally {
+      setMagicLinkLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError(null);
+    if (!email) {
+      setError("Please enter your email to reset password.");
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (resetError) throw resetError;
+      toast.success("Password reset link sent.");
+    } catch (err: any) {
+      logger.error("Reset password error:", err);
+      setError(err.message || "Failed to send reset email.");
+      toast.error(err.message || "Password reset failed.");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen pt-16 sm:pt-20 bg-background flex items-center justify-center px-3 sm:px-4 py-6 sm:py-8">
       <div className="w-full max-w-md space-y-4 sm:space-y-6 min-w-0">
@@ -346,6 +398,24 @@ export default function Login() {
                   >
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleMagicLink}
+                      disabled={magicLinkLoading}
+                    >
+                      {magicLinkLoading ? "Sending..." : "Send Magic Link"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleForgotPassword}
+                      disabled={resetLoading}
+                    >
+                      {resetLoading ? "Sending..." : "Forgot Password?"}
+                    </Button>
+                  </div>
                 </form>
               </TabsContent>
 

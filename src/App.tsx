@@ -37,6 +37,9 @@ const PurchaseConfirmation = lazy(() => import("./pages/PurchaseConfirmation"));
 const Lore = lazy(() => import("./pages/Lore"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const EmailVerified = lazy(() => import("./pages/EmailVerified"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AccountSecurity = lazy(() => import("./pages/AccountSecurity"));
+const AdminAuth = lazy(() => import("./pages/AdminAuth"));
 
 // Documentation pages
 const DocsOverview = lazy(() => import("./pages/docs/DocsOverview"));
@@ -212,6 +215,7 @@ function AppContent() {
                       <Route path="/lore" element={<Lore />} />
                       <Route path="/how-it-works" element={<Navigate to="/docs" replace />} />
                       <Route path="/email-verified" element={<EmailVerified />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
                       <Route path="/land-title" element={<LandTitleCertificate />} />
                       
                       {/* Documentation routes */}
@@ -290,6 +294,20 @@ function AppContent() {
                       <ProtectedRoute>
                         <RouteErrorBoundary routeName="Affiliate">
                           <Affiliate />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/account-security" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Account Security">
+                          <AccountSecurity />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin-auth" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Admin Auth">
+                          <AdminAuth />
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />

@@ -12,12 +12,25 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        const flowType = searchParams.get("type");
+
+        if (flowType === "recovery") {
+          navigate("/reset-password", { replace: true });
+          return;
+        }
+
         // Exchange code for session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) throw error;
 
         if (session?.user) {
+          if (flowType === "email_change") {
+            toast.success("Email change verified successfully.");
+            navigate("/account-security");
+            return;
+          }
+
           // Update wallet address if connected
           if (isConnected && address) {
             const { error: updateError } = await supabase.auth.updateUser({
@@ -60,7 +73,7 @@ export default function AuthCallback() {
     };
 
     handleCallback();
-  }, [navigate, isConnected, address]);
+  }, [navigate, isConnected, address, searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

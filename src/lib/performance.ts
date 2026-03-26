@@ -22,14 +22,13 @@ class PerformanceMonitor {
   /**
    * Measure component render time
    */
-  measureRender(componentName: string, renderFn: () => void): void {
+  measureRender<T>(componentName: string, renderFn: () => T): T {
     if (!this.enabled) {
-      renderFn();
-      return;
+      return renderFn();
     }
 
     const start = performance.now();
-    renderFn();
+    const result = renderFn();
     const end = performance.now();
     const duration = end - start;
 
@@ -45,6 +44,8 @@ class PerformanceMonitor {
       // Warn if render takes longer than one frame (16ms)
       console.warn(`Slow render detected: ${componentName} took ${duration.toFixed(2)}ms`);
     }
+
+    return result;
   }
 
   /**
@@ -156,13 +157,11 @@ export const performanceMonitor = new PerformanceMonitor();
  */
 export function usePerformanceMeasure(componentName: string) {
   if (!performanceMonitor['enabled']) {
-    return { measureRender: (fn: () => void) => fn() };
+    return { measureRender: <T>(fn: () => T): T => fn() };
   }
 
   return {
-    measureRender: (renderFn: () => void) => {
-      performanceMonitor.measureRender(componentName, renderFn);
-    },
+    measureRender: <T>(renderFn: () => T): T => performanceMonitor.measureRender(componentName, renderFn),
   };
 }
 
@@ -176,7 +175,7 @@ export function withPerformanceMeasure<P extends object>(
   return function MeasuredComponent(props: P) {
     const { measureRender } = usePerformanceMeasure(componentName);
     
-    return measureRender(() => <Component {...props} />);
+    return measureRender(() => Component(props));
   };
 }
 
