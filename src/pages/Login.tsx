@@ -31,7 +31,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"login" | "signup">(initialTab);
-  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
   // Check if user is already logged in
@@ -223,33 +222,6 @@ export default function Login() {
     }
   };
 
-  const handleMagicLink = async () => {
-    setError(null);
-    if (!email) {
-      setError("Please enter an email address first.");
-      return;
-    }
-
-    setMagicLinkLoading(true);
-    try {
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (otpError) throw otpError;
-      toast.success("Magic link sent. Check your email.");
-    } catch (err: any) {
-      logger.error("Magic link error:", err);
-      setError(err.message || "Failed to send magic link.");
-      toast.error(err.message || "Magic link failed.");
-    } finally {
-      setMagicLinkLoading(false);
-    }
-  };
-
   const handleForgotPassword = async () => {
     setError(null);
     if (!email) {
@@ -398,24 +370,15 @@ export default function Login() {
                   >
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleMagicLink}
-                      disabled={magicLinkLoading}
-                    >
-                      {magicLinkLoading ? "Sending..." : "Send Magic Link"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleForgotPassword}
-                      disabled={resetLoading}
-                    >
-                      {resetLoading ? "Sending..." : "Forgot Password?"}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={handleForgotPassword}
+                    disabled={resetLoading}
+                  >
+                    {resetLoading ? "Sending..." : "Forgot Password?"}
+                  </Button>
                 </form>
               </TabsContent>
 

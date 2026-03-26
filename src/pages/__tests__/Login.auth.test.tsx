@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import Login from "../Login";
 
 const mockResetPasswordForEmail = vi.fn();
-const mockSignInWithOtp = vi.fn();
 const mockGetSession = vi.fn();
 const mockSignInWithPassword = vi.fn();
 const mockSignUp = vi.fn();
@@ -16,7 +15,6 @@ vi.mock("@/integrations/supabase/client", () => ({
       getSession: (...args: any[]) => mockGetSession(...args),
       signInWithPassword: (...args: any[]) => mockSignInWithPassword(...args),
       signUp: (...args: any[]) => mockSignUp(...args),
-      signInWithOtp: (...args: any[]) => mockSignInWithOtp(...args),
       resetPasswordForEmail: (...args: any[]) => mockResetPasswordForEmail(...args),
       updateUser: (...args: any[]) => mockUpdateUser(...args),
     },
@@ -70,23 +68,4 @@ describe("Login auth actions", () => {
     });
   });
 
-  it("sends magic link", async () => {
-    mockSignInWithOtp.mockResolvedValue({ error: null });
-
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>
-    );
-
-    fireEvent.change(screen.getByLabelText(/Email Address/i), {
-      target: { value: "magic@test.com" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /Send Magic Link/i }));
-
-    await waitFor(() => {
-      expect(mockSignInWithOtp).toHaveBeenCalled();
-    });
-  });
 });
