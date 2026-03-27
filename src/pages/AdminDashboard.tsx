@@ -133,6 +133,7 @@ export default function AdminDashboard() {
   const [useAlchemy, setUseAlchemy] = useState(true); // Toggle between Alchemy and Supabase
   const hasAlchemyApiKey = Boolean((import.meta.env.VITE_ALCHEMY_API_KEY || "").toString().trim());
   const [loadingTreasuryTransactions, setLoadingTreasuryTransactions] = useState(false);
+  const [treasuryTxPage, setTreasuryTxPage] = useState(1);
   const [treasuryManagers, setTreasuryManagers] = useState<any[]>([]);
   const [loadingTreasuryManagers, setLoadingTreasuryManagers] = useState(false);
   const [showTreasuryConfigDialog, setShowTreasuryConfigDialog] = useState(false);
@@ -626,11 +627,12 @@ export default function AdminDashboard() {
       let skippedCount = 0;
       
       for (const tx of incomingTransactions) {
+        const conversionTxHash = `${tx.tx_hash}_converted`;
         // Skip if already processed (check if deposit_converted transaction exists)
         const { data: existingTx } = await supabase
           .from("transactions")
           .select("id, transaction_type")
-          .eq("tx_hash", tx.tx_hash)
+          .eq("tx_hash", conversionTxHash)
           .eq("transaction_type", "deposit_converted")
           .maybeSingle();
         
@@ -639,17 +641,6 @@ export default function AdminDashboard() {
           skippedCount++;
           continue;
         }
-        
-        // Also check if there's a regular transaction with this hash to avoid duplicates
-        const { data: regularTx } = await supabase
-          .from("transactions")
-          .select("id, transaction_type")
-          .eq("tx_hash", tx.tx_hash)
-          .neq("transaction_type", "deposit_converted")
-          .maybeSingle();
-        
-        // If there's a regular transaction but no deposit_converted, we can still process it
-        // (it might be a raw transaction that needs conversion)
         
         const amount = parseFloat(tx.amount || '0');
         if (amount <= 0) {
@@ -672,46 +663,13 @@ export default function AdminDashboard() {
         logger.info(`Processing deposit: ${amount} ${tokenType} from ${fromAddress} = ${xbglAmount.toFixed(6)} xBGL`);
         logger.info(`  Conversion details: ${amount} ${tokenType} → ${conversion.eurAmount.toFixed(2)} EUR → ${xbglAmount.toFixed(6)} xBGL`);
         
-        // Get or create user balance
-        const { getUserBalance, upsertUserBalance, updateUserBalance } = await import("@/lib/supabase-service");
-        let currentBalance = await getUserBalance(fromAddress).catch(() => null);
-        
-        logger.info(`  Current balance for ${fromAddress}: ${currentBalance?.xbgl_balance || 0} xBGL`);
-        
-        const currentXBGL = currentBalance?.xbgl_balance || 0;
-        const newXBGL = currentXBGL + xbglAmount;
-        
-        logger.info(`  New balance will be: ${newXBGL.toFixed(6)} xBGL`);
-        
-        // Update user balance
         try {
-          if (currentBalance) {
-            await updateUserBalance(fromAddress, {
-              xbgl_balance: newXBGL,
-            });
-          } else {
-            await upsertUserBalance({
-              wallet_address: fromAddress,
-              xbgl_balance: newXBGL,
-              avax_balance: 0,
-              chaos_balance: 0,
-              sc_balance: 0,
-            });
-          }
-          
-          logger.info(`✓ Credited ${xbglAmount.toFixed(6)} xBGL to ${fromAddress}. New balance: ${newXBGL.toFixed(6)} xBGL`);
-          
-          // Create transaction record for the conversion
-          await supabaseService.createTransaction({
-            from_address: fromAddress,
-            to_address: TREASURY_WALLET.toLowerCase(),
-            amount: xbglAmount,
-            token_type: 'xBGL',
-            transaction_type: 'deposit_converted',
-            status: 'completed',
-            tx_hash: `${tx.tx_hash}_converted`, // Unique hash for conversion record
-            type: 'deposit',
-            metadata: {
+          // Atomic treasury -> user transfer with idempotent tx hash.
+          const { data: transferResult, error: transferError } = await supabase.rpc("admin_treasury_transfer", {
+            p_recipient: fromAddress,
+            p_amount: xbglAmount,
+            p_tx_hash: conversionTxHash,
+            p_metadata: {
               original_amount: amount.toString(),
               original_token: tokenType,
               conversion_rate: conversion.exchangeRate,
@@ -720,8 +678,19 @@ export default function AdminDashboard() {
               chainId: tx.metadata?.chainId,
               explorerUrl: tx.metadata?.explorerUrl,
               original_tx_hash: tx.tx_hash,
+              deposit_auto_conversion: true,
             },
           });
+
+          if (transferError) throw transferError;
+
+          if ((transferResult as any)?.duplicate === true) {
+            logger.info(`Conversion ${conversionTxHash} already processed, skipping duplicate.`);
+            skippedCount++;
+            continue;
+          }
+
+          logger.info(`✓ Transferred ${xbglAmount.toFixed(6)} xBGL from treasury to ${fromAddress}`);
           
           processedCount++;
           if (showNotifications) {
@@ -753,7 +722,7 @@ export default function AdminDashboard() {
     try {
       setLoadingTreasuryTransactions(true);
       const treasuryLower = TREASURY_WALLET.toLowerCase();
-      const loadFromSupabaseFallback = async () => {
+      const fetchSupabaseTreasuryTransactions = async (autoProcessIncoming = true) => {
         const { data, error } = await supabase
           .from("transactions")
           .select("*")
@@ -768,18 +737,22 @@ export default function AdminDashboard() {
           return fromMatch || toMatch;
         });
 
-        setTreasuryTransactions(filtered.slice(0, 100));
-
         const incomingFromSupabase = filtered.filter((tx: any) =>
           tx.to_address && tx.to_address.toLowerCase() === treasuryLower &&
           tx.transaction_type !== "deposit_converted"
         );
-        if (incomingFromSupabase.length > 0) {
+        if (autoProcessIncoming && incomingFromSupabase.length > 0) {
           logger.info(`Auto-processing ${incomingFromSupabase.length} incoming deposit(s) from Supabase...`);
           processIncomingDeposits(incomingFromSupabase, false).catch((err) => {
             logger.error("Automatic deposit processing error:", err);
           });
         }
+
+        return filtered;
+      };
+      const loadFromSupabaseFallback = async () => {
+        const supabaseTxs = await fetchSupabaseTreasuryTransactions(false);
+        setTreasuryTransactions((supabaseTxs || []).slice(0, 100));
       };
       
       // Update exchange rates from API before processing
@@ -891,14 +864,33 @@ export default function AdminDashboard() {
         logger.debug(`  - USDC transactions: ${usdcTransactions.length}`);
         logger.debug(`  - Chains: ${[...new Set(formattedTxs.map((tx: any) => tx.metadata?.chain))].join(', ')}`);
         
+        // Always pull DB transactions too, then merge with Alchemy so we show complete treasury history.
+        const supabaseTxs = await fetchSupabaseTreasuryTransactions();
+
         // If Alchemy is not configured/reachable or returns empty, fall back to DB transactions.
         if (formattedTxs.length === 0) {
           logger.warn("Alchemy returned 0 treasury transactions; falling back to Supabase transactions.");
-          await loadFromSupabaseFallback();
+          setTreasuryTransactions((supabaseTxs || []).slice(0, 100));
           return;
         }
 
-        setTreasuryTransactions(formattedTxs);
+        // Merge and dedupe by tx_hash (preferred) or id fallback.
+        // Wallet-originated (Alchemy) records override DB duplicates for display priority.
+        const mergedByKey = new Map<string, any>();
+        (supabaseTxs || []).forEach((tx: any) => {
+          const key = tx.tx_hash || tx.hash || tx.id;
+          if (!key) return;
+          mergedByKey.set(key, tx);
+        });
+        formattedTxs.forEach((tx: any) => {
+          const key = tx.tx_hash || tx.hash || tx.id;
+          if (!key) return;
+          mergedByKey.set(key, tx);
+        });
+        const mergedTxs = Array.from(mergedByKey.values()).sort((a: any, b: any) =>
+          new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime()
+        );
+        setTreasuryTransactions(mergedTxs.slice(0, 150));
         
         // Save Alchemy transactions to database first (if not already saved)
         if (formattedTxs.length > 0) {
@@ -2322,6 +2314,19 @@ export default function AdminDashboard() {
     return true;
   });
 
+  const TREASURY_TX_PAGE_SIZE = 10;
+  const treasuryTxTotalPages = Math.max(1, Math.ceil(treasuryTransactions.length / TREASURY_TX_PAGE_SIZE));
+  const paginatedTreasuryTransactions = treasuryTransactions.slice(
+    (treasuryTxPage - 1) * TREASURY_TX_PAGE_SIZE,
+    treasuryTxPage * TREASURY_TX_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    if (treasuryTxPage > treasuryTxTotalPages) {
+      setTreasuryTxPage(treasuryTxTotalPages);
+    }
+  }, [treasuryTxPage, treasuryTxTotalPages]);
+
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -3303,14 +3308,15 @@ export default function AdminDashboard() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {treasuryTransactions.map((tx) => {
+                            {paginatedTreasuryTransactions.map((tx) => {
                               const isOutgoing = tx.from_address?.toLowerCase() === TREASURY_WALLET.toLowerCase();
                               const isIncoming = tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase();
                               const isUSDC = tx.token_type?.toLowerCase().includes('usdc');
+                              const isAutoConversion = tx.transaction_type === "treasury_transfer" && (tx.metadata as any)?.deposit_auto_conversion === true;
                               return (
                                 <TableRow 
-                                  key={tx.id} 
-                                  className={`border-primary/5 hover:bg-primary/5 ${isUSDC && isIncoming ? 'bg-green-500/10' : ''}`}
+                                  key={tx.id || tx.tx_hash} 
+                                  className={`border-primary/5 hover:bg-primary/5 ${isIncoming ? 'bg-emerald-500/10' : ''}`}
                                 >
                                   <TableCell className="px-2 py-2">
                                   <Badge variant={isOutgoing ? "destructive" : "default"}>
@@ -3394,6 +3400,11 @@ export default function AdminDashboard() {
                                     <Badge variant={tx.status === "completed" ? "default" : "secondary"}>
                                       {tx.status || "pending"}
                                     </Badge>
+                                    {isAutoConversion && (
+                                      <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-300">
+                                        Auto xBGL
+                                      </Badge>
+                                    )}
                                     {tx.tx_hash && tx.metadata?.explorerUrl && (
                                       <a
                                         href={tx.metadata.explorerUrl}
@@ -3411,6 +3422,29 @@ export default function AdminDashboard() {
                             })}
                           </TableBody>
                         </Table>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          Page {treasuryTxPage} of {treasuryTxTotalPages} ({treasuryTransactions.length} total)
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setTreasuryTxPage((p) => Math.max(1, p - 1))}
+                            disabled={treasuryTxPage <= 1}
+                          >
+                            Prev
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setTreasuryTxPage((p) => Math.min(treasuryTxTotalPages, p + 1))}
+                            disabled={treasuryTxPage >= treasuryTxTotalPages}
+                          >
+                            Next
+                          </Button>
+                        </div>
                       </div>
                     </>
                   )}
