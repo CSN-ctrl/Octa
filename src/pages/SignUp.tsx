@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle, Wallet, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getAppOrigin } from "@/lib/app-origin";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -58,6 +59,7 @@ export default function SignUp() {
           data: {
             wallet_address: address.toLowerCase(),
           },
+          emailRedirectTo: `${getAppOrigin()}/email-verified`,
         },
       });
 

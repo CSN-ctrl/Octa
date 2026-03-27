@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/lib/logger";
+import { getAppOrigin } from "@/lib/app-origin";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -741,11 +742,9 @@ export default function AdminDashboard() {
           tx.to_address && tx.to_address.toLowerCase() === treasuryLower &&
           tx.transaction_type !== "deposit_converted"
         );
+        // Auto-processing disabled — deposits are handled manually or via admin action
         if (autoProcessIncoming && incomingFromSupabase.length > 0) {
-          logger.info(`Auto-processing ${incomingFromSupabase.length} incoming deposit(s) from Supabase...`);
-          processIncomingDeposits(incomingFromSupabase, false).catch((err) => {
-            logger.error("Automatic deposit processing error:", err);
-          });
+          logger.debug(`Found ${incomingFromSupabase.length} incoming deposit(s) from Supabase (auto-processing disabled).`);
         }
 
         return filtered;
@@ -864,33 +863,12 @@ export default function AdminDashboard() {
         logger.debug(`  - USDC transactions: ${usdcTransactions.length}`);
         logger.debug(`  - Chains: ${[...new Set(formattedTxs.map((tx: any) => tx.metadata?.chain))].join(', ')}`);
         
-        // Always pull DB transactions too, then merge with Alchemy so we show complete treasury history.
-        const supabaseTxs = await fetchSupabaseTreasuryTransactions();
-
-        // If Alchemy is not configured/reachable or returns empty, fall back to DB transactions.
-        if (formattedTxs.length === 0) {
-          logger.warn("Alchemy returned 0 treasury transactions; falling back to Supabase transactions.");
-          setTreasuryTransactions((supabaseTxs || []).slice(0, 100));
-          return;
-        }
-
-        // Merge and dedupe by tx_hash (preferred) or id fallback.
-        // Wallet-originated (Alchemy) records override DB duplicates for display priority.
-        const mergedByKey = new Map<string, any>();
-        (supabaseTxs || []).forEach((tx: any) => {
-          const key = tx.tx_hash || tx.hash || tx.id;
-          if (!key) return;
-          mergedByKey.set(key, tx);
-        });
-        formattedTxs.forEach((tx: any) => {
-          const key = tx.tx_hash || tx.hash || tx.id;
-          if (!key) return;
-          mergedByKey.set(key, tx);
-        });
-        const mergedTxs = Array.from(mergedByKey.values()).sort((a: any, b: any) =>
-          new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime()
+        // Show only Alchemy on-chain transactions (no Supabase merge for display).
+        // Sort by timestamp descending.
+        const sortedTxs = formattedTxs.sort((a: any, b: any) =>
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
-        setTreasuryTransactions(mergedTxs.slice(0, 150));
+        setTreasuryTransactions(sortedTxs);
         
         // Save Alchemy transactions to database first (if not already saved)
         if (formattedTxs.length > 0) {
@@ -930,12 +908,9 @@ export default function AdminDashboard() {
           }
         }
         
-        // Automatically process incoming transactions and credit user accounts (in background)
+        // Auto-processing disabled — deposits are handled manually or via admin action
         if (incoming.length > 0) {
-          logger.info(`Auto-processing ${incoming.length} incoming deposit(s)...`);
-          processIncomingDeposits(incoming, false).catch((err) => {
-            logger.error("Automatic deposit processing error:", err);
-          });
+          logger.debug(`Found ${incoming.length} incoming deposit(s) from Alchemy (auto-processing disabled).`);
         }
       } else {
         await loadFromSupabaseFallback();
@@ -1787,6 +1762,7 @@ export default function AdminDashboard() {
             wallet_address: newAccountWallet.toLowerCase(),
             role: newAccountEmail.includes("admin") ? "admin" : "user",
           },
+          emailRedirectTo: `${getAppOrigin()}/email-verified`,
         },
       });
 
@@ -2048,6 +2024,38 @@ export default function AdminDashboard() {
         loadUsers();
       }
     }
+  }, [activeTab]);
+
+  // Realtime subscription for on-chain transactions — refetch from Alchemy when DB changes
+  useEffect(() => {
+    if (activeTab !== "treasury") return;
+
+    const channel = supabase
+      .channel("treasury-onchain-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "transactions",
+        },
+        (payload) => {
+          const tx = payload.new as any;
+          const treasuryLower = TREASURY_WALLET.toLowerCase();
+          const isTreasuryTx =
+            tx.from_address?.toLowerCase() === treasuryLower ||
+            tx.to_address?.toLowerCase() === treasuryLower;
+          if (isTreasuryTx) {
+            logger.debug("Realtime: new treasury transaction detected, refreshing Alchemy data...");
+            loadTreasuryTransactions();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -2315,8 +2323,10 @@ export default function AdminDashboard() {
   });
 
   const TREASURY_TX_PAGE_SIZE = 10;
-  const treasuryTxTotalPages = Math.max(1, Math.ceil(treasuryTransactions.length / TREASURY_TX_PAGE_SIZE));
-  const paginatedTreasuryTransactions = treasuryTransactions.slice(
+  // All transactions in treasuryTransactions are now on-chain only (from Alchemy).
+  const treasuryDisplayTransactions = treasuryTransactions;
+  const treasuryTxTotalPages = Math.max(1, Math.ceil(treasuryDisplayTransactions.length / TREASURY_TX_PAGE_SIZE));
+  const paginatedTreasuryTransactions = treasuryDisplayTransactions.slice(
     (treasuryTxPage - 1) * TREASURY_TX_PAGE_SIZE,
     treasuryTxPage * TREASURY_TX_PAGE_SIZE
   );
@@ -3182,7 +3192,8 @@ export default function AdminDashboard() {
                         const showEmailLine = Boolean(user.email) && normalizedDisplayName !== normalizedEmail;
                         const allWallets = (user.wallets || []).filter(Boolean);
                         const hasWallets = allWallets.length > 0;
-                        const showWalletLine = Boolean(user.wallet_address) && normalizedWallet !== normalizedDisplayName && normalizedWallet !== normalizedEmail;
+                        const walletAlreadyInList = allWallets.some(w => w.toLowerCase() === normalizedWallet);
+                        const showWalletLine = Boolean(user.wallet_address) && normalizedWallet !== normalizedDisplayName && normalizedWallet !== normalizedEmail && !walletAlreadyInList;
                         return (
                           <Card key={identifier} className="glass-enhanced border-primary/20 shadow-glow-card">
                             <CardContent className="pt-6 space-y-4">
@@ -3272,24 +3283,24 @@ export default function AdminDashboard() {
                       <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
                         <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
                           <p className="text-[11px] text-muted-foreground">Total</p>
-                          <p className="text-sm font-semibold">{treasuryTransactions.length}</p>
+                          <p className="text-sm font-semibold">{treasuryDisplayTransactions.length}</p>
                         </div>
                         <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
                           <p className="text-[11px] text-muted-foreground">Incoming</p>
                           <p className="text-sm font-semibold">
-                            {treasuryTransactions.filter((tx) => tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase()).length}
+                            {treasuryDisplayTransactions.filter((tx) => tx.to_address?.toLowerCase() === TREASURY_WALLET.toLowerCase()).length}
                           </p>
                         </div>
                         <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
                           <p className="text-[11px] text-muted-foreground">Outgoing</p>
                           <p className="text-sm font-semibold">
-                            {treasuryTransactions.filter((tx) => tx.from_address?.toLowerCase() === TREASURY_WALLET.toLowerCase()).length}
+                            {treasuryDisplayTransactions.filter((tx) => tx.from_address?.toLowerCase() === TREASURY_WALLET.toLowerCase()).length}
                           </p>
                         </div>
                         <div className="rounded-md border border-primary/10 bg-primary/5 px-3 py-2">
                           <p className="text-[11px] text-muted-foreground">USDC</p>
                           <p className="text-sm font-semibold">
-                            {treasuryTransactions.filter((tx) => tx.token_type?.toLowerCase().includes("usdc")).length}
+                            {treasuryDisplayTransactions.filter((tx) => tx.token_type?.toLowerCase().includes("usdc")).length}
                           </p>
                         </div>
                       </div>
@@ -3425,7 +3436,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="mt-3 flex items-center justify-between gap-3">
                         <p className="text-xs text-muted-foreground">
-                          Page {treasuryTxPage} of {treasuryTxTotalPages} ({treasuryTransactions.length} total)
+                          Page {treasuryTxPage} of {treasuryTxTotalPages} ({treasuryDisplayTransactions.length} total)
                         </p>
                         <div className="flex items-center gap-2">
                           <Button

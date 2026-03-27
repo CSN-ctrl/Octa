@@ -20,8 +20,34 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const bootstrap = async () => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      const type = url.searchParams.get("type");
+      const authError =
+        url.searchParams.get("error_description") ||
+        url.searchParams.get("error");
+
+      if (authError) {
+        setError(decodeURIComponent(authError));
+        return;
+      }
+
       const hash = window.location.hash || "";
       if (hash.includes("type=recovery")) {
+        setIsRecoverySession(true);
+      }
+
+      // Supabase can send recovery links with ?code=... and requires exchanging code for a session.
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          setError(exchangeError.message || "Recovery link is invalid or expired.");
+          return;
+        }
+        setIsRecoverySession(true);
+      }
+
+      if (type === "recovery") {
         setIsRecoverySession(true);
       }
 

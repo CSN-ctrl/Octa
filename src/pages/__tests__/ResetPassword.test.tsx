@@ -6,6 +6,7 @@ import ResetPassword from "../ResetPassword";
 const mockGetSession = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockOnAuthStateChange = vi.fn();
+const mockExchangeCodeForSession = vi.fn();
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -13,6 +14,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       getSession: (...args: any[]) => mockGetSession(...args),
       updateUser: (...args: any[]) => mockUpdateUser(...args),
       onAuthStateChange: (...args: any[]) => mockOnAuthStateChange(...args),
+      exchangeCodeForSession: (...args: any[]) => mockExchangeCodeForSession(...args),
     },
   },
 }));
@@ -32,6 +34,7 @@ describe("ResetPassword", () => {
       data: { subscription: { unsubscribe: vi.fn() } },
     });
     mockUpdateUser.mockResolvedValue({ error: null });
+    mockExchangeCodeForSession.mockResolvedValue({ error: null });
   });
 
   it("updates password for recovery session", async () => {
@@ -56,5 +59,31 @@ describe("ResetPassword", () => {
     });
 
     window.location.hash = "";
+  });
+
+  it("handles code-based recovery links by exchanging code for session", async () => {
+    window.history.replaceState({}, "", "/reset-password?type=recovery&code=test-recovery-code");
+
+    render(
+      <MemoryRouter>
+        <ResetPassword />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockExchangeCodeForSession).toHaveBeenCalledWith("test-recovery-code");
+    });
+
+    fireEvent.change(screen.getByLabelText(/^New Password$/i), {
+      target: { value: "StrongPass123!" },
+    });
+    fireEvent.change(screen.getByLabelText(/^Confirm New Password$/i), {
+      target: { value: "StrongPass123!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Update Password/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateUser).toHaveBeenCalledWith({ password: "StrongPass123!" });
+    });
   });
 });

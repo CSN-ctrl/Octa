@@ -13,6 +13,19 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       try {
         const flowType = searchParams.get("type");
+        const code = searchParams.get("code");
+        const authError =
+          searchParams.get("error_description") || searchParams.get("error");
+
+        if (authError) {
+          throw new Error(decodeURIComponent(authError));
+        }
+
+        // Some Supabase flows provide an auth code that must be exchanged for a session.
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+        }
 
         if (flowType === "recovery") {
           navigate("/reset-password", { replace: true });
