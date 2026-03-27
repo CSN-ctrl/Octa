@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { logger } from "@/lib/logger";
 import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
+import { getAppOrigin } from "@/lib/app-origin";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -156,7 +157,7 @@ export default function Login() {
           data: {
             wallet_address: address.toLowerCase(),
           },
-          emailRedirectTo: `${window.location.origin}/email-verified`,
+          emailRedirectTo: `${getAppOrigin()}/email-verified`,
         },
       });
 
@@ -232,7 +233,7 @@ export default function Login() {
     setResetLoading(true);
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${getAppOrigin()}/reset-password`,
       });
       if (resetError) throw resetError;
       toast.success("Password reset link sent.");

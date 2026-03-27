@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, MailPlus } from "lucide-react";
 import { toast } from "sonner";
 import { isDashboardAdmin } from "@/lib/dashboard-admin";
+import { getAppOrigin } from "@/lib/app-origin";
 
 export default function AdminAuth() {
   const [inviteEmail, setInviteEmail] = useState("");
@@ -32,7 +33,7 @@ export default function AdminAuth() {
         email: inviteEmail.trim().toLowerCase(),
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${getAppOrigin()}/auth/callback`,
         },
       });
       if (otpError) throw otpError;
