@@ -82,6 +82,7 @@ interface UserData {
   email: string;
   name?: string;
   wallet_address: string | null;
+  wallets: string[];
   balance: {
     xbgl_balance: number;
     avax_balance: number;
@@ -130,6 +131,7 @@ export default function AdminDashboard() {
   const [treasuryTransactions, setTreasuryTransactions] = useState<any[]>([]);
   const [alchemyTransactions, setAlchemyTransactions] = useState<AlchemyTransaction[]>([]);
   const [useAlchemy, setUseAlchemy] = useState(true); // Toggle between Alchemy and Supabase
+  const hasAlchemyApiKey = Boolean((import.meta.env.VITE_ALCHEMY_API_KEY || "").toString().trim());
   const [loadingTreasuryTransactions, setLoadingTreasuryTransactions] = useState(false);
   const [treasuryManagers, setTreasuryManagers] = useState<any[]>([]);
   const [loadingTreasuryManagers, setLoadingTreasuryManagers] = useState(false);
@@ -751,6 +753,34 @@ export default function AdminDashboard() {
     try {
       setLoadingTreasuryTransactions(true);
       const treasuryLower = TREASURY_WALLET.toLowerCase();
+      const loadFromSupabaseFallback = async () => {
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+
+        if (error) throw error;
+
+        const filtered = (data || []).filter((tx: any) => {
+          const fromMatch = tx.from_address && tx.from_address.toLowerCase() === treasuryLower;
+          const toMatch = tx.to_address && tx.to_address.toLowerCase() === treasuryLower;
+          return fromMatch || toMatch;
+        });
+
+        setTreasuryTransactions(filtered.slice(0, 100));
+
+        const incomingFromSupabase = filtered.filter((tx: any) =>
+          tx.to_address && tx.to_address.toLowerCase() === treasuryLower &&
+          tx.transaction_type !== "deposit_converted"
+        );
+        if (incomingFromSupabase.length > 0) {
+          logger.info(`Auto-processing ${incomingFromSupabase.length} incoming deposit(s) from Supabase...`);
+          processIncomingDeposits(incomingFromSupabase, false).catch((err) => {
+            logger.error("Automatic deposit processing error:", err);
+          });
+        }
+      };
       
       // Update exchange rates from API before processing
       try {
@@ -861,6 +891,13 @@ export default function AdminDashboard() {
         logger.debug(`  - USDC transactions: ${usdcTransactions.length}`);
         logger.debug(`  - Chains: ${[...new Set(formattedTxs.map((tx: any) => tx.metadata?.chain))].join(', ')}`);
         
+        // If Alchemy is not configured/reachable or returns empty, fall back to DB transactions.
+        if (formattedTxs.length === 0) {
+          logger.warn("Alchemy returned 0 treasury transactions; falling back to Supabase transactions.");
+          await loadFromSupabaseFallback();
+          return;
+        }
+
         setTreasuryTransactions(formattedTxs);
         
         // Save Alchemy transactions to database first (if not already saved)
@@ -909,34 +946,7 @@ export default function AdminDashboard() {
           });
         }
       } else {
-        // Fallback to Supabase query
-        const { data, error } = await supabase
-          .from("transactions")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(1000);
-
-        if (error) throw error;
-        
-        const filtered = (data || []).filter((tx: any) => {
-          const fromMatch = tx.from_address && tx.from_address.toLowerCase() === treasuryLower;
-          const toMatch = tx.to_address && tx.to_address.toLowerCase() === treasuryLower;
-          return fromMatch || toMatch;
-        });
-        
-        setTreasuryTransactions(filtered.slice(0, 100));
-        
-        // Automatically process incoming transactions from Supabase
-        const incomingFromSupabase = filtered.filter((tx: any) => 
-          tx.to_address && tx.to_address.toLowerCase() === treasuryLower &&
-          tx.transaction_type !== 'deposit_converted' // Skip already converted
-        );
-        if (incomingFromSupabase.length > 0) {
-          logger.info(`Auto-processing ${incomingFromSupabase.length} incoming deposit(s) from Supabase...`);
-          processIncomingDeposits(incomingFromSupabase, false).catch((err) => {
-            logger.error("Automatic deposit processing error:", err);
-          });
-        }
+        await loadFromSupabaseFallback();
       }
     } catch (error: any) {
       logger.error("Failed to load treasury transactions:", error);
@@ -1292,6 +1302,46 @@ export default function AdminDashboard() {
         }
       });
 
+      // Get all linked wallets from user_wallets and map by user_id/email
+      let userWalletRows: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from("user_wallets")
+          .select("user_id, wallet_address, wallet_label, last_used_at");
+        if (error) {
+          logger.debug("user_wallets query unavailable/non-critical:", error.message || error);
+        } else {
+          userWalletRows = data || [];
+        }
+      } catch (err: any) {
+        logger.debug("Failed to fetch user_wallets (non-critical):", err);
+      }
+
+      const emailByUserId = new Map<string, string>();
+      authUsersData.forEach((user: any) => {
+        if (user?.id && user?.email) {
+          emailByUserId.set(String(user.id), String(user.email).toLowerCase());
+        }
+      });
+
+      const walletsByEmail = new Map<string, Set<string>>();
+      const pushWalletForEmail = (email: string | null | undefined, wallet: string | null | undefined) => {
+        const e = (email || "").toLowerCase().trim();
+        const w = (wallet || "").toLowerCase().trim();
+        if (!e || !w || w.includes("@")) return;
+        if (!walletsByEmail.has(e)) walletsByEmail.set(e, new Set<string>());
+        walletsByEmail.get(e)!.add(w);
+      };
+
+      userWalletRows.forEach((row: any) => {
+        const email = emailByUserId.get(String(row.user_id || ""));
+        pushWalletForEmail(email, row.wallet_address);
+      });
+
+      ownershipData?.forEach((record: any) => {
+        pushWalletForEmail(record.email, record.wallet_address);
+      });
+
       // Get portfolio values for total value calculation (only if using RPC function data)
       const portfolioValuesByOwner = new Map<string, number>();
       if (authUsersData.length > 0) {
@@ -1345,6 +1395,10 @@ export default function AdminDashboard() {
             email: user.email || "",
             name: user.account_name || undefined,
             wallet_address: wallet || null,
+            wallets: Array.from(new Set([
+              ...(wallet ? [String(wallet).toLowerCase()] : []),
+              ...Array.from(walletsByEmail.get(email || "") || []),
+            ])),
             balance: userBalance,
             plots: Number(user.plots_count || 0),
             portfolios: Number(user.portfolios_count || 0),
@@ -1375,6 +1429,10 @@ export default function AdminDashboard() {
             email: user.email || wallet?.slice(0, 8) + "...",
             name: namesByWallet.get(wallet) || undefined,
             wallet_address: user.wallet_address,
+            wallets: Array.from(new Set([
+              ...(user.wallet_address ? [String(user.wallet_address).toLowerCase()] : []),
+              ...Array.from(walletsByEmail.get((user.email || "").toLowerCase()) || []),
+            ])),
             balance: userBalance,
             plots,
             portfolios: portfolios.count,
@@ -1402,6 +1460,7 @@ export default function AdminDashboard() {
             email: wallet.slice(0, 8) + "...",
             name: namesByWallet.get(wallet) || undefined,
             wallet_address: balance.wallet_address,
+            wallets: [String(balance.wallet_address).toLowerCase()],
             balance: userBalance,
             plots,
             portfolios: portfolios.count,
@@ -3116,6 +3175,8 @@ export default function AdminDashboard() {
                         const normalizedEmail = (user.email || "").trim().toLowerCase();
                         const normalizedWallet = (user.wallet_address || "").trim().toLowerCase();
                         const showEmailLine = Boolean(user.email) && normalizedDisplayName !== normalizedEmail;
+                        const allWallets = (user.wallets || []).filter(Boolean);
+                        const hasWallets = allWallets.length > 0;
                         const showWalletLine = Boolean(user.wallet_address) && normalizedWallet !== normalizedDisplayName && normalizedWallet !== normalizedEmail;
                         return (
                           <Card key={identifier} className="glass-enhanced border-primary/20 shadow-glow-card">
@@ -3126,8 +3187,18 @@ export default function AdminDashboard() {
                                   {showEmailLine && (
                                     <p className="text-xs text-muted-foreground break-all">{user.email}</p>
                                   )}
-                                  {showWalletLine ? (
+                                  {showWalletLine && (
                                     <p className="font-mono text-xs text-muted-foreground break-all mt-1">{user.wallet_address}</p>
+                                  )}
+                                  {hasWallets ? (
+                                    <div className="mt-2 space-y-1">
+                                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Wallets ({allWallets.length})</p>
+                                      {allWallets.map((w) => (
+                                        <p key={`${identifier}-${w}`} className="font-mono text-[11px] text-muted-foreground break-all">
+                                          {w}
+                                        </p>
+                                      ))}
+                                    </div>
                                   ) : (
                                     !user.wallet_address && <p className="font-mono text-xs text-muted-foreground break-all mt-1">No wallet</p>
                                   )}
@@ -3180,6 +3251,11 @@ export default function AdminDashboard() {
               {/* Treasury Transactions */}
               <Card className="order-1 glass-enhanced border-primary/20 shadow-glow-card">
                 <CardContent className="p-3">
+                  {!hasAlchemyApiKey && (
+                    <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                      Alchemy API key is missing in this environment. Treasury transactions are loaded from Supabase fallback.
+                    </div>
+                  )}
                   {loadingTreasuryTransactions ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
