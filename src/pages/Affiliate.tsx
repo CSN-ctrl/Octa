@@ -18,6 +18,7 @@ import {
   type AffiliateReferral,
 } from "@/lib/affiliate-service";
 import { logger } from "@/lib/logger";
+import { getAppOrigin } from "@/lib/app-origin";
 
 export default function Affiliate() {
   const navigate = useNavigate();
@@ -99,7 +100,7 @@ export default function Affiliate() {
     loadAffiliateData();
   }, [address, userEmail]);
 
-  const baseUrl = window.location.origin;
+  const baseUrl = getAppOrigin();
   const referralLink = affiliateStatus?.affiliate_code 
     ? `${baseUrl}?ref=${affiliateStatus.affiliate_code}`
     : '';

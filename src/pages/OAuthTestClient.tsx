@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getAppOrigin } from "@/lib/app-origin";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,7 +19,7 @@ export default function OAuthTestClient() {
   // OAuth Configuration
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [redirectUri, setRedirectUri] = useState(`${window.location.origin}/oauth-test-client`);
+  const [redirectUri, setRedirectUri] = useState(`${getAppOrigin()}/oauth-test-client`);
   
   // PKCE
   const [codeVerifier, setCodeVerifier] = useState<string | null>(null);

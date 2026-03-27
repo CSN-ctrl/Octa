@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getAppOrigin } from "@/lib/app-origin";
 
 export interface EmailOptions {
   to: string;
@@ -281,7 +282,7 @@ export async function sendPlotTransferEmail(
           </div>
 
           <p>You can view and manage your plots in your dashboard.</p>
-          <a href="${window.location.origin}/dashboard" class="button">View Dashboard</a>
+          <a href="${getAppOrigin()}/dashboard" class="button">View Dashboard</a>
           
           <p>Thank you for being part of the Chaos Star Universe!</p>
           
@@ -305,7 +306,7 @@ You have received ${plotIds.length} plot${plotIds.length !== 1 ? "s" : ""} from 
 Transferred Plots:
 ${plotIds.map(plotId => `- Plot #${plotId}`).join("\n")}
 
-You can view and manage your plots in your dashboard: ${window.location.origin}/dashboard
+You can view and manage your plots in your dashboard: ${getAppOrigin()}/dashboard
 
 Thank you for being part of the Chaos Star Universe!
 

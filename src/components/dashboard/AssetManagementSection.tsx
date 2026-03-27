@@ -53,6 +53,7 @@ import { LazyImage } from "@/components/ui/LazyImage";
 import { supabase } from "@/integrations/supabase/client";
 import * as supabaseService from "@/lib/supabase-service";
 import { logger } from "@/lib/logger";
+import { getAppOrigin } from "@/lib/app-origin";
 
 interface AssetManagementSectionProps {
   address: string | null;
@@ -725,7 +726,7 @@ export function AssetManagementSection({
                     <div className="flex items-center gap-2">
                       <Input
                         id="referral-link"
-                        value={affiliateStatus.affiliate_code ? `${window.location.origin}?ref=${affiliateStatus.affiliate_code}` : ''}
+                        value={affiliateStatus.affiliate_code ? `${getAppOrigin()}?ref=${affiliateStatus.affiliate_code}` : ''}
                         readOnly
                         className="font-mono text-sm"
                       />
@@ -733,7 +734,7 @@ export function AssetManagementSection({
                         variant="outline"
                         size="icon"
                         onClick={() => {
-                          const link = affiliateStatus.affiliate_code ? `${window.location.origin}?ref=${affiliateStatus.affiliate_code}` : '';
+                          const link = affiliateStatus.affiliate_code ? `${getAppOrigin()}?ref=${affiliateStatus.affiliate_code}` : '';
                           if (link) {
                             navigator.clipboard.writeText(link);
                             toast.success("Referral link copied!");
@@ -746,7 +747,7 @@ export function AssetManagementSection({
                         variant="outline"
                         size="icon"
                         onClick={() => {
-                          const link = affiliateStatus.affiliate_code ? `${window.location.origin}?ref=${affiliateStatus.affiliate_code}` : '';
+                          const link = affiliateStatus.affiliate_code ? `${getAppOrigin()}?ref=${affiliateStatus.affiliate_code}` : '';
                           if (link) {
                             window.open(link, '_blank');
                           }

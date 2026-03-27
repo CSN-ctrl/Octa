@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/lib/logger";
@@ -126,6 +126,7 @@ export default function AdminDashboard() {
   const [treasuryTransferTo, setTreasuryTransferTo] = useState("");
   const [treasuryTransferAmount, setTreasuryTransferAmount] = useState("");
   const [transferringFromTreasury, setTransferringFromTreasury] = useState(false);
+  const treasuryTransferInFlightRef = useRef<string | null>(null);
   const [treasuryTransactions, setTreasuryTransactions] = useState<any[]>([]);
   const [alchemyTransactions, setAlchemyTransactions] = useState<AlchemyTransaction[]>([]);
   const [useAlchemy, setUseAlchemy] = useState(true); // Toggle between Alchemy and Supabase
@@ -1636,6 +1637,82 @@ export default function AdminDashboard() {
       toast.error(error.message || "Transfer failed");
     } finally {
       setTransferring(false);
+    }
+  };
+
+  const handleTreasuryTransferFromDialog = async () => {
+    if (treasuryTransferInFlightRef.current) {
+      toast.error("A treasury transfer is already in progress.");
+      return;
+    }
+
+    if (!treasuryTransferTo || !treasuryTransferAmount) {
+      toast.error("Please select a user and enter an amount");
+      return;
+    }
+
+    const selectedUser = users.find((u) => {
+      const userIdentifier = (u.wallet_address || u.email || `user_${u.email?.split("@")[0] || "unknown"}`).toLowerCase();
+      return userIdentifier === treasuryTransferTo.toLowerCase();
+    });
+
+    if (!selectedUser) {
+      toast.error("Please select a valid authenticated user");
+      return;
+    }
+
+    const amount = Number.parseFloat(treasuryTransferAmount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      toast.error("Invalid amount");
+      return;
+    }
+
+    const recipientWalletAddress = (selectedUser.wallet_address || selectedUser.email || treasuryTransferTo).toLowerCase();
+    const txHash = `treasury_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+    const lockId = `${recipientWalletAddress}:${amount}:${txHash}`;
+    treasuryTransferInFlightRef.current = lockId;
+
+    setTransferringFromTreasury(true);
+    try {
+      const { data, error } = await supabase.rpc("admin_treasury_transfer", {
+        p_recipient: recipientWalletAddress,
+        p_amount: amount,
+        p_tx_hash: txHash,
+        p_metadata: {
+          treasury_transfer: true,
+          admin_transfer: true,
+          timestamp: new Date().toISOString(),
+          recipient_email: selectedUser.email || null,
+          recipient_name: selectedUser.name || null,
+          recipient_wallet: selectedUser.wallet_address || null,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if ((data as any)?.duplicate === true) {
+        toast.message("Transfer already processed.", { description: "Duplicate request ignored." });
+      } else {
+        toast.success(`Transferred ${amount} xBGL from treasury to ${selectedUser.name || selectedUser.email}`);
+      }
+
+      // Refresh from source of truth (DB) after atomic transfer
+      await Promise.all([loadTreasuryBalance(), loadUsers()]);
+      if (activeTab === "treasury") {
+        await loadTreasuryTransactions();
+      }
+
+      setTreasuryTransferAmount("");
+      setTreasuryTransferTo("");
+      setShowTreasuryTransferDialog(false);
+    } catch (error: any) {
+      logger.error("Treasury transfer error:", error);
+      toast.error(error.message || "Transfer failed");
+    } finally {
+      setTransferringFromTreasury(false);
+      treasuryTransferInFlightRef.current = null;
     }
   };
 
@@ -3407,178 +3484,7 @@ export default function AdminDashboard() {
               </p>
             </div>
             <Button
-              onClick={async () => {
-                if (!treasuryTransferTo || !treasuryTransferAmount) {
-                  toast.error("Please select a user and enter an amount");
-                  return;
-                }
-
-                // Find the selected user by matching the identifier exactly
-                // The identifier is either wallet_address or email (lowercased)
-                const selectedUser = users.find(u => {
-                  const userIdentifier = (u.wallet_address || u.email || `user_${u.email?.split('@')[0] || 'unknown'}`).toLowerCase();
-                  return userIdentifier === treasuryTransferTo.toLowerCase();
-                });
-                
-                if (!selectedUser) {
-                  toast.error("Please select a valid authenticated user");
-                  return;
-                }
-
-                const amount = parseFloat(treasuryTransferAmount);
-                if (isNaN(amount) || amount <= 0) {
-                  toast.error("Invalid amount");
-                  return;
-                }
-
-                if (amount > treasuryBalance) {
-                  toast.error("Insufficient treasury balance");
-                  return;
-                }
-
-                setTransferringFromTreasury(true);
-                try {
-                  // Determine the wallet_address identifier using the selected user
-                  // Use the same identifier logic as the Select dropdown
-                  let recipientWalletAddress: string;
-                  
-                  if (selectedUser.wallet_address) {
-                    recipientWalletAddress = selectedUser.wallet_address.toLowerCase();
-                  } else if (selectedUser.email) {
-                    // Use email as the wallet_address identifier for users without registered wallet
-                    recipientWalletAddress = selectedUser.email.toLowerCase();
-                  } else {
-                    // Fallback: use the identifier from treasuryTransferTo
-                    recipientWalletAddress = treasuryTransferTo.toLowerCase();
-                  }
-
-                  // Get or create recipient balance
-                  let toBalance: any = null;
-                  const { data: balanceData } = await supabase
-                    .from("user_balances")
-                    .select("*")
-                    .eq("wallet_address", recipientWalletAddress)
-                    .single();
-
-                  toBalance = balanceData;
-
-                  // If balance doesn't exist, create it
-                  if (!toBalance) {
-                    const { data: newBalance } = await supabase
-                      .from("user_balances")
-                      .insert({
-                        wallet_address: recipientWalletAddress,
-                        xbgl_balance: 0,
-                        avax_balance: 0,
-                        chaos_balance: 0,
-                        sc_balance: 0,
-                      })
-                      .select()
-                      .single();
-                    toBalance = newBalance;
-                  }
-
-                  const newToBalance = (toBalance?.xbgl_balance || 0) + amount;
-                  const newTreasuryBalance = treasuryBalance - amount;
-
-                  // Ensure treasury row exists and has sufficient balance (defense in depth)
-                  const { data: treasuryRow } = await supabase
-                    .from("user_balances")
-                    .select("xbgl_balance")
-                    .eq("wallet_address", TREASURY_WALLET.toLowerCase())
-                    .single();
-                  if (!treasuryRow || (treasuryRow.xbgl_balance ?? 0) < amount) {
-                    toast.error("Treasury balance insufficient or not found. Refresh and try again.");
-                    return;
-                  }
-
-                  const nowIso = new Date().toISOString();
-                  // Update both balances atomically — last_synced triggers realtime
-                  await Promise.all([
-                    supabase
-                      .from("user_balances")
-                      .update({ xbgl_balance: newTreasuryBalance, last_synced: nowIso })
-                      .eq("wallet_address", TREASURY_WALLET.toLowerCase()),
-                    supabase
-                      .from("user_balances")
-                      .upsert({
-                        wallet_address: recipientWalletAddress,
-                        xbgl_balance: newToBalance,
-                        avax_balance: toBalance?.avax_balance || 0,
-                        chaos_balance: toBalance?.chaos_balance || 0,
-                        sc_balance: toBalance?.sc_balance ?? 0,
-                        last_synced: nowIso,
-                      }, { onConflict: "wallet_address" }),
-                  ]);
-
-                  // Create transaction record
-                  const txHash = `treasury_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                  await supabaseService.createTransaction({
-                    from_address: TREASURY_WALLET.toLowerCase(),
-                    to_address: recipientWalletAddress,
-                    amount: amount,
-                    token_type: "xBGL",
-                    type: "transfer",
-                    transaction_type: "treasury_transfer",
-                    tx_hash: txHash,
-                    status: "completed",
-                    metadata: {
-                      treasury_transfer: true,
-                      admin_transfer: true,
-                      timestamp: new Date().toISOString(),
-                      recipient_email: selectedUser.email || null,
-                      recipient_name: selectedUser.name || null,
-                      recipient_wallet: selectedUser.wallet_address || null,
-                    },
-                  });
-
-                  // Update in-memory state
-                  setTreasuryBalance(newTreasuryBalance);
-                  (window as any).treasuryBalance = newTreasuryBalance;
-                  window.dispatchEvent(new CustomEvent('treasuryBalanceUpdate'));
-                  
-                  // Update the specific user's balance in state
-                  setUsers(prev => prev.map(u => {
-                    const userIdentifier = (u.wallet_address || u.email || `user_${u.email?.split('@')[0] || 'unknown'}`).toLowerCase();
-                    if (userIdentifier === treasuryTransferTo.toLowerCase()) {
-                      return { 
-                        ...u, 
-                        balance: { 
-                          ...(u.balance || { xbgl_balance: 0, avax_balance: 0, chaos_balance: 0 }), 
-                          xbgl_balance: newToBalance 
-                        } 
-                      };
-                    }
-                    return u;
-                  }));
-
-                  // Reconcile balances with ledger
-                  try {
-                    await supabaseService.reconcileBalance(TREASURY_WALLET.toLowerCase());
-                    await supabaseService.reconcileBalance(recipientWalletAddress);
-                  } catch (reconcileError) {
-                    logger.debug("Ledger reconciliation failed:", reconcileError);
-                  }
-
-                  // Auto-sync: Reload users to get fresh balance data from Supabase
-                  await loadUsers();
-
-                  // Keep treasury feed current after transfer
-                  if (activeTab === "treasury") {
-                    loadTreasuryTransactions();
-                  }
-
-                  toast.success(`Transferred ${amount} xBGL from treasury to ${selectedUser.name || selectedUser.email}`);
-                  setTreasuryTransferAmount("");
-                  setTreasuryTransferTo("");
-                  setShowTreasuryTransferDialog(false);
-                } catch (error: any) {
-                  logger.error("Treasury transfer error:", error);
-                  toast.error(error.message || "Transfer failed");
-                } finally {
-                  setTransferringFromTreasury(false);
-                }
-              }}
+              onClick={handleTreasuryTransferFromDialog}
               disabled={transferringFromTreasury || !treasuryTransferTo || !treasuryTransferAmount}
               className="w-full"
             >
