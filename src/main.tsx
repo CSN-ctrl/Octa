@@ -14,18 +14,24 @@ if (typeof console !== "undefined") {
   const originalLog = console.log;
   const originalInfo = console.info;
   const originalWarn = console.warn;
-  
+  const originalDebug = console.debug;
+
   const isSESMessage = (message: string): boolean => {
+    const m = message.trim();
     return (
       message.includes("SES Removing unpermitted intrinsics") ||
       message.includes("Removing unpermitted intrinsics") ||
+      message.includes("Removing intrinsics.") ||
       message.includes("Removing intrinsics.%MapPrototype%") ||
       message.includes("Removing intrinsics.%WeakMapPrototype%") ||
       message.includes("Removing intrinsics.%DatePrototype%") ||
       message.includes("lockdown-install.js") ||
       message.includes("inpage.js") ||
       (message.includes("getOrInsert") && message.includes("Removing")) ||
-      (message.includes("toTemporalInstant") && message.includes("Removing"))
+      (message.includes("getOrInsertComputed") && message.includes("Removing")) ||
+      (message.includes("toTemporalInstant") && message.includes("Removing")) ||
+      // Indented continuation lines from SES (leading whitespace)
+      (/^\s*Removing intrinsics\./.test(m) && message.includes("intrinsics.%"))
     );
   };
   
@@ -45,11 +51,32 @@ if (typeof console !== "undefined") {
     );
   };
 
-  /** Firefox / Cloudflare noise when third-party WebSockets do not accept __cf_bm on this origin */
+  /** Firefox / Cloudflare noise (WebSocket context) — not actionable in app code */
   const isHarmlessCookieNoise = (message: string): boolean => {
     const msg = message.toLowerCase();
-    return msg.includes("__cf_bm") && msg.includes("rejected");
+    return (
+      (msg.includes("__cf_bm") && (msg.includes("rejected") || msg.includes("invalid domain"))) ||
+      (msg.includes("cookie") && msg.includes("invalid domain") && msg.includes("websocket"))
+    );
   };
+
+  /** Firefox third-party partitioning + Vercel Live iframe — browser privacy UX, not app bugs */
+  const isBrowserPrivacyNoise = (message: string): boolean => {
+    const msg = message.toLowerCase();
+    return (
+      (msg.includes("partitioned cookie") && msg.includes("storage access")) ||
+      msg.includes("dynamic state partitioning") ||
+      (msg.includes("vercel.live") &&
+        (msg.includes("feedback") || msg.includes("_next-live") || msg.includes("third-party")))
+    );
+  };
+
+  const shouldSuppressNoise = (message: string): boolean =>
+    isSESMessage(message) ||
+    isCSPWarning(message) ||
+    isBrowserExtensionError(message) ||
+    isHarmlessCookieNoise(message) ||
+    isBrowserPrivacyNoise(message);
 
   const isBrowserExtensionError = (message: string): boolean => {
     const msg = message.toLowerCase();
@@ -109,27 +136,29 @@ if (typeof console !== "undefined") {
 
   console.log = (...args: any[]) => {
     const message = String(args.join(" "));
-    if (!isSESMessage(message) && !isCSPWarning(message) && !isBrowserExtensionError(message)) {
+    if (!shouldSuppressNoise(message)) {
       originalLog.apply(console, args);
     }
   };
-  
+
   console.info = (...args: any[]) => {
     const message = String(args.join(" "));
-    if (!isSESMessage(message) && !isCSPWarning(message) && !isBrowserExtensionError(message)) {
+    if (!shouldSuppressNoise(message)) {
       originalInfo.apply(console, args);
     }
   };
-  
+
   console.warn = (...args: any[]) => {
     const message = String(args.join(" "));
-    if (
-      !isSESMessage(message) &&
-      !isCSPWarning(message) &&
-      !isBrowserExtensionError(message) &&
-      !isHarmlessCookieNoise(message)
-    ) {
+    if (!shouldSuppressNoise(message)) {
       originalWarn.apply(console, args);
+    }
+  };
+
+  console.debug = (...args: any[]) => {
+    const message = String(args.join(" "));
+    if (!shouldSuppressNoise(message)) {
+      originalDebug.apply(console, args);
     }
   };
 }
