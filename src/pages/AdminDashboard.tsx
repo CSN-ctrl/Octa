@@ -2029,32 +2029,41 @@ export default function AdminDashboard() {
   // Realtime subscription for on-chain transactions — refetch from Alchemy when DB changes
   useEffect(() => {
     if (activeTab !== "treasury") return;
+    if (typeof window === "undefined" || typeof WebSocket !== "function") {
+      logger.debug("WebSocket not available, skipping treasury realtime subscription");
+      return;
+    }
 
-    const channel = supabase
-      .channel("treasury-onchain-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "transactions",
-        },
-        (payload) => {
-          const tx = payload.new as any;
-          const treasuryLower = TREASURY_WALLET.toLowerCase();
-          const isTreasuryTx =
-            tx.from_address?.toLowerCase() === treasuryLower ||
-            tx.to_address?.toLowerCase() === treasuryLower;
-          if (isTreasuryTx) {
-            logger.debug("Realtime: new treasury transaction detected, refreshing Alchemy data...");
-            loadTreasuryTransactions();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      channel = supabase
+        .channel("treasury-onchain-realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "transactions",
+          },
+          (payload) => {
+            const tx = payload.new as any;
+            const treasuryLower = TREASURY_WALLET.toLowerCase();
+            const isTreasuryTx =
+              tx.from_address?.toLowerCase() === treasuryLower ||
+              tx.to_address?.toLowerCase() === treasuryLower;
+            if (isTreasuryTx) {
+              logger.debug("Realtime: new treasury transaction detected, refreshing Alchemy data...");
+              loadTreasuryTransactions();
+            }
           }
-        }
-      )
-      .subscribe();
+        );
+      channel.subscribe();
+    } catch (err) {
+      logger.error("Treasury realtime subscription failed:", err);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);

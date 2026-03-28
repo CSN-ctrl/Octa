@@ -27,6 +27,14 @@ function createSupabaseClient(): SupabaseClient<Database> {
     return supabaseInstance;
   }
 
+  // Realtime-js uses `new transport(url)` when `options.transport` is set. A string such as
+  // "websocket" throws "this.transport is not a constructor". Always pass the native
+  // WebSocket constructor in the browser so connect() never receives an invalid transport.
+  const wsCtor =
+    typeof globalThis !== "undefined" && typeof globalThis.WebSocket === "function"
+      ? globalThis.WebSocket
+      : undefined;
+
   supabaseInstance = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
       storage: localStorage,
@@ -35,12 +43,12 @@ function createSupabaseClient(): SupabaseClient<Database> {
       storageKey: "chaosstar-supabase-auth",
     },
     realtime: {
+      ...(wsCtor ? { transport: wsCtor } : {}),
       params: {
         eventsPerSecond: 10,
       },
       heartbeatIntervalMs: 30000,
       reconnectAfterMs: (tries: number) => Math.min(tries * 1000, 10000),
-      transport: "websocket" as const,
     },
     global: {
       headers: {
