@@ -17,6 +17,7 @@ if (typeof console !== "undefined") {
   
   const isSESMessage = (message: string): boolean => {
     return (
+      message.includes("SES Removing unpermitted intrinsics") ||
       message.includes("Removing unpermitted intrinsics") ||
       message.includes("Removing intrinsics.%MapPrototype%") ||
       message.includes("Removing intrinsics.%WeakMapPrototype%") ||
@@ -42,6 +43,12 @@ if (typeof console !== "undefined") {
        msg.includes("consider using a hash") ||
        msg.includes("consider using a nonce"))
     );
+  };
+
+  /** Firefox / Cloudflare noise when third-party WebSockets do not accept __cf_bm on this origin */
+  const isHarmlessCookieNoise = (message: string): boolean => {
+    const msg = message.toLowerCase();
+    return msg.includes("__cf_bm") && msg.includes("rejected");
   };
 
   const isBrowserExtensionError = (message: string): boolean => {
@@ -116,7 +123,12 @@ if (typeof console !== "undefined") {
   
   console.warn = (...args: any[]) => {
     const message = String(args.join(" "));
-    if (!isSESMessage(message) && !isCSPWarning(message) && !isBrowserExtensionError(message)) {
+    if (
+      !isSESMessage(message) &&
+      !isCSPWarning(message) &&
+      !isBrowserExtensionError(message) &&
+      !isHarmlessCookieNoise(message)
+    ) {
       originalWarn.apply(console, args);
     }
   };
