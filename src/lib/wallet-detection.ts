@@ -45,7 +45,7 @@ if (typeof window !== "undefined") {
  * Get providers from window.ethereum (single or multiple).
  * Also checks window.metamask for MetaMask when ethereum is missing or not MetaMask.
  */
-function getEthereumProviders(): any[] {
+export function getEthereumProviders(): any[] {
   const win = window as any;
   const providers: any[] = [];
   try {
@@ -69,6 +69,28 @@ function getEthereumProviders(): any[] {
     }
   } catch (_) {}
   return providers;
+}
+
+/**
+ * Rabby, Trust, and others set isMetaMask for compatibility — treat real MetaMask separately.
+ */
+export function isLikelyMetaMaskProvider(provider: any): boolean {
+  if (!provider || typeof provider.request !== "function") return false;
+  if (!provider.isMetaMask) return false;
+  if (provider.isRabby) return false;
+  if (provider.isTrust || provider.isTrustWallet) return false;
+  if (provider.isCoinbaseWallet) return false;
+  if (provider.isBraveWallet) return false;
+  if (provider.isAvalanche || provider.isCore) return false;
+  return true;
+}
+
+/** Pick the injected provider that is actually MetaMask (multi-wallet window.ethereum.providers). */
+export function findMetaMaskProvider(): any | null {
+  for (const p of getEthereumProviders()) {
+    if (isLikelyMetaMaskProvider(p)) return p;
+  }
+  return null;
 }
 
 /**
@@ -123,22 +145,22 @@ export function detectWallets(): WalletInfo[] {
     wallets.push(providerToWallet(provider, id, name, icon));
   };
 
-  // 1) window.ethereum (single or multiple)
+  // 1) window.ethereum (single or multiple) — order matters: Rabby/Trust spoof isMetaMask
   for (const provider of getEthereumProviders()) {
-    if (provider.isMetaMask && !provider.isAvalanche) {
-      add(provider, "metamask", "MetaMask", "🦊");
-    } else if (provider.isAvalanche || provider.isCore) {
-      add(provider, "core", "Core Wallet", "🔷");
+    if (provider.isRabby) {
+      add(provider, "rabby", "Rabby", "🐰");
+    } else if (provider.isTrust || provider.isTrustWallet) {
+      add(provider, "trust", "Trust Wallet", "🔒");
     } else if (provider.isCoinbaseWallet) {
       add(provider, "coinbase", "Coinbase Wallet", "🔵");
     } else if (provider.isBraveWallet) {
       add(provider, "brave", "Brave Wallet", "🦁");
-    } else if (provider.isRabby) {
-      add(provider, "rabby", "Rabby", "🐰");
-    } else if (provider.isTrust) {
-      add(provider, "trust", "Trust Wallet", "🔒");
+    } else if (provider.isAvalanche || provider.isCore) {
+      add(provider, "core", "Core Wallet", "🔷");
     } else if (provider.isPhantom) {
       add(provider, "phantom", "Phantom", "👻");
+    } else if (isLikelyMetaMaskProvider(provider)) {
+      add(provider, "metamask", "MetaMask", "🦊");
     } else {
       add(provider, "generic", "Browser Wallet", "💼");
     }
@@ -159,6 +181,10 @@ export function detectWallets(): WalletInfo[] {
  * Get a specific wallet provider by ID
  */
 export function getWalletProvider(walletId: string): any | null {
+  if (walletId === "metamask") {
+    const mm = findMetaMaskProvider();
+    if (mm) return mm;
+  }
   const wallets = detectWallets();
   const wallet = wallets.find((w) => w.id === walletId);
   return wallet?.provider || null;
@@ -179,13 +205,22 @@ export function getBestWallet(): WalletInfo | null {
     return wallets[0];
   }
   // Fallback: use window.ethereum or window.metamask directly (injected on first user gesture in some browsers)
+  const mm = findMetaMaskProvider();
+  if (mm) {
+    return providerToWallet(mm, "metamask", "MetaMask", "🦊");
+  }
   const direct = getMetaMaskOrEthereumProvider();
   if (direct) {
-    const name = (direct as any).isMetaMask ? "MetaMask" : "Browser Wallet";
-    const id = (direct as any).isMetaMask ? "metamask" : "generic";
-    return providerToWallet(direct, id, name, (direct as any).isMetaMask ? "🦊" : "💼");
+    const name = isLikelyMetaMaskProvider(direct) ? "MetaMask" : "Browser Wallet";
+    const id = isLikelyMetaMaskProvider(direct) ? "metamask" : "generic";
+    return providerToWallet(direct, id, name, id === "metamask" ? "🦊" : "💼");
   }
   return null;
+}
+
+/** WalletConnect (QR / mobile wallets) — enabled when project ID is set at build time */
+export function isWalletConnectConfigured(): boolean {
+  return Boolean(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.toString().trim());
 }
 
 /**

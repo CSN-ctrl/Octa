@@ -1,6 +1,11 @@
 import { ethers } from "ethers";
-import EthereumProvider from "@walletconnect/ethereum-provider";
-import { detectWallets, getWalletProvider, getBestWallet, getMetaMaskOrEthereumProvider, type WalletInfo } from "./wallet-detection";
+import {
+  detectWallets,
+  getWalletProvider,
+  getBestWallet,
+  getMetaMaskOrEthereumProvider,
+  type WalletInfo,
+} from "./wallet-detection";
 
 // ChaosStar Network configuration (for wallet connection only - no RPC)
 export const CHAOSSTAR_NETWORK = {
@@ -15,12 +20,37 @@ export const CHAOSSTAR_NETWORK = {
 let walletConnectProvider: any = null;
 
 export async function connectWallet(useWalletConnect = false, walletId?: string) {
-  // Skip WalletConnect for now - the project ID is invalid
-  // Always use browser wallet directly
-  // WalletConnect can be re-enabled later with a valid project ID from https://cloud.walletconnect.com
-  if (useWalletConnect) {
-    console.warn("WalletConnect is currently disabled due to invalid project ID. Using browser wallet instead.");
-    // Fall through to browser wallet connection
+  if (useWalletConnect || walletId === "walletconnect") {
+    const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.toString().trim();
+    if (!projectId) {
+      throw new Error(
+        "WalletConnect is not configured. Add VITE_WALLETCONNECT_PROJECT_ID (https://cloud.walletconnect.com) and rebuild."
+      );
+    }
+    await disconnectWalletConnect();
+    const { default: EthereumProvider } = await import("@walletconnect/ethereum-provider");
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://sarakt.com";
+    walletConnectProvider = await EthereumProvider.init({
+      projectId,
+      chains: [1],
+      optionalChains: [137, 42161, 8453, 43114, 56, 84532],
+      showQrModal: true,
+      metadata: {
+        name: "Chaos Star Universe",
+        description: "Connect your wallet",
+        url: origin,
+        icons: [`${origin}/favicon.ico`],
+      },
+    });
+    await walletConnectProvider.enable();
+    const accounts: string[] = await walletConnectProvider.request({ method: "eth_accounts" });
+    if (!accounts?.length) {
+      throw new Error("WalletConnect returned no accounts.");
+    }
+    const web3Provider = new ethers.BrowserProvider(walletConnectProvider);
+    const signer = await web3Provider.getSigner();
+    const address = await signer.getAddress();
+    return { signer, address, provider: walletConnectProvider };
   }
 
   // Get the wallet provider to use
@@ -177,6 +207,9 @@ export {
   isWalletInstalled,
   requestProviderAnnouncements,
   getMetaMaskOrEthereumProvider,
+  isWalletConnectConfigured,
+  findMetaMaskProvider,
+  isLikelyMetaMaskProvider,
 } from "./wallet-detection";
 export type { WalletInfo } from "./wallet-detection";
 

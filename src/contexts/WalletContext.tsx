@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { ethers } from "ethers";
-import { connectWallet, getConnectedAddress, disconnectWalletConnect, connectWithPrivateKey, detectWallets, getBestWallet, requestProviderAnnouncements, type WalletInfo } from "@/lib/wallet";
+import {
+  connectWallet,
+  getConnectedAddress,
+  disconnectWalletConnect,
+  connectWithPrivateKey,
+  detectWallets,
+  getBestWallet,
+  requestProviderAnnouncements,
+  isWalletConnectConfigured,
+  type WalletInfo,
+} from "@/lib/wallet";
 import { saveConnectedWallet } from "@/lib/supabase-service";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -21,6 +31,22 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+/** QR / mobile wallets when VITE_WALLETCONNECT_PROJECT_ID is set */
+function withWalletConnectOption(wallets: WalletInfo[]): WalletInfo[] {
+  if (!isWalletConnectConfigured()) return wallets;
+  if (wallets.some((w) => w.id === "walletconnect")) return wallets;
+  return [
+    ...wallets,
+    {
+      id: "walletconnect",
+      name: "WalletConnect",
+      provider: null,
+      icon: "🔗",
+      isInstalled: true,
+    },
+  ];
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
@@ -32,8 +58,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Detect available wallets on mount and when window.ethereum changes
   useEffect(() => {
     const detect = () => {
-      const wallets = detectWallets();
-      setAvailableWallets(wallets);
+      setAvailableWallets(withWalletConnectOption(detectWallets()));
     };
     
     detect();
@@ -43,99 +68,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
-  const connect = async (useWalletConnect?: boolean, walletId?: string) => {
+  const refreshBalance = async (addr?: string | null) => {
+    const addrToCheck = addr || address;
+    if (!addrToCheck) return;
+
     try {
-      const shouldUseWalletConnect = false;
+      const { getUserBalance } = await import("@/lib/supabase-service");
+      const balanceData = await getUserBalance(addrToCheck).catch((err: any) => {
+        if (err?.status === 406 || err?.code === "PGRST301") {
+          return null;
+        }
+        throw err;
+      });
 
-      // Trigger provider discovery on this user gesture (MetaMask and others may only inject on click)
-      requestProviderAnnouncements();
-      await new Promise((r) => setTimeout(r, 100)); // Let EIP-6963 and lazy-injected providers appear
-
-      const wallets = detectWallets();
-      setAvailableWallets(wallets); // Refresh UI so dropdown shows MetaMask if it just appeared
-      const best = getBestWallet();
-      if (!best) {
-        toast.error("No wallet found. Please install MetaMask, Core Wallet, or another compatible wallet extension.");
-        throw new Error("No wallet found. Please install a compatible wallet extension.");
-      }
-
-      const selectedWallet = walletId
-        ? wallets.find((w) => w.id === walletId) || best
-        : best;
-
-      const { signer: newSigner, address: newAddress, provider: newProvider } = await connectWallet(
-        shouldUseWalletConnect,
-        selectedWallet.id
-      );
-      setSigner(newSigner);
-      setAddress(newAddress);
-      setWalletProvider(selectedWallet.provider);
-      await refreshBalance(newAddress);
-      toast.success("Wallet connected!");
-      saveConnectedWallet(newAddress).catch(() => {});
-
-      // Listen to wallet events from the browser provider
-      const { ethereum } = window as any;
-      if (ethereum) {
-        // Remove any existing listeners to avoid duplicates
-        ethereum.removeAllListeners?.("accountsChanged");
-        ethereum.removeAllListeners?.("chainChanged");
-        
-        ethereum.on("accountsChanged", (accounts: string[]) => {
-          if (accounts.length === 0) {
-            disconnect();
-          } else {
-            setAddress(accounts[0]);
-            refreshBalance(accounts[0]);
-            // Update signer when account changes
-            const web3Provider = new ethers.BrowserProvider(ethereum);
-            web3Provider.getSigner().then(setSigner).catch(() => {});
-          }
-        });
-        
-        ethereum.on("chainChanged", () => {
-          // Refresh balance and signer when chain changes
-          refreshBalance(newAddress);
-          const web3Provider = new ethers.BrowserProvider(ethereum);
-          web3Provider.getSigner().then(setSigner).catch(() => {});
-        });
+      if (balanceData) {
+        const xbglBalance = balanceData.xbgl_balance || 0;
+        setBalance(xbglBalance.toString());
+      } else {
+        setBalance("0");
       }
     } catch (error: any) {
-      logger.error("Failed to connect wallet:", error);
-      
-      // Provide helpful error messages
-      let errorMessage = error.message || "Failed to connect wallet";
-      
-      // Handle specific error cases
-      if (error.message?.includes("extension conflict") || error.message?.includes("evmAsk")) {
-        errorMessage = "Browser extension conflict detected. Please disable other wallet extensions and try again.";
-      } else if (error.message?.includes("timeout")) {
-        errorMessage = "Connection timeout. Please check your wallet extension and try again.";
-      } else if (error.message?.includes("Invalid wallet provider")) {
-        errorMessage = "Invalid wallet detected. Please ensure a compatible wallet is installed and enabled.";
-      } else if (error.message?.includes("No wallet found")) {
-        errorMessage = "No wallet found. Please install MetaMask, Core Wallet, or another compatible wallet extension.";
+      if (error?.status !== 406 && error?.code !== "PGRST301") {
+        logger.debug("Failed to fetch balance from Supabase:", error);
       }
-      
-      // Don't show toast for user rejection (they know they rejected it)
-      if (error.code !== 4001 && !error.message?.includes("rejected")) {
-        toast.error(errorMessage);
-      }
-      throw error; // Re-throw so caller can handle it
-    }
-  };
-
-  const connectWithKey = async (privateKey: string) => {
-    try {
-      const { signer: newSigner, address: newAddress } = await connectWithPrivateKey(privateKey);
-      setSigner(newSigner);
-      setAddress(newAddress);
-      setWalletProvider(null); // Not using external provider
-      await refreshBalance(newAddress);
-      toast.success("Wallet connected with private key!");
-    } catch (error: any) {
-      logger.error("Failed to connect with private key:", error);
-      toast.error(error.message || "Failed to connect with private key");
+      setBalance("0");
     }
   };
 
@@ -151,36 +107,107 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     toast.info("Wallet disconnected");
   };
 
-  const refreshBalance = async (addr?: string | null) => {
-    const addrToCheck = addr || address;
-    if (!addrToCheck) return;
-
+  const attachEip1193Listeners = (eth: any, connectedAddr: string) => {
+    if (!eth?.on) return;
     try {
-      // Get balance from Supabase instead of RPC
-      const { getUserBalance } = await import("@/lib/supabase-service");
-      const balanceData = await getUserBalance(addrToCheck).catch((err: any) => {
-        // Handle 406 errors gracefully - RLS might be blocking access
-        if (err?.status === 406 || err?.code === "PGRST301") {
-          // Silently return null for permission errors
-          return null;
-        }
-        // Re-throw other errors
-        throw err;
-      });
-      
-      if (balanceData) {
-        // Use xBGL balance as the primary balance
-        const xbglBalance = balanceData.xbgl_balance || 0;
-        setBalance(xbglBalance.toString());
+      eth.removeAllListeners?.("accountsChanged");
+      eth.removeAllListeners?.("chainChanged");
+    } catch {
+      /* ignore */
+    }
+    eth.on("accountsChanged", (accounts: string[]) => {
+      if (accounts.length === 0) {
+        void disconnect();
       } else {
-        setBalance("0");
+        setAddress(accounts[0]);
+        void refreshBalance(accounts[0]);
+        const web3Provider = new ethers.BrowserProvider(eth);
+        web3Provider.getSigner().then(setSigner).catch(() => {});
       }
+    });
+    eth.on("chainChanged", () => {
+      void refreshBalance(connectedAddr);
+      const web3Provider = new ethers.BrowserProvider(eth);
+      web3Provider.getSigner().then(setSigner).catch(() => {});
+    });
+  };
+
+  const connect = async (useWalletConnect?: boolean, walletId?: string) => {
+    try {
+      requestProviderAnnouncements();
+      await new Promise((r) => setTimeout(r, 100));
+
+      const wallets = withWalletConnectOption(detectWallets());
+      setAvailableWallets(wallets);
+
+      if (useWalletConnect || walletId === "walletconnect") {
+        const { signer: newSigner, address: newAddress, provider: eip1193 } = await connectWallet(true, "walletconnect");
+        setSigner(newSigner);
+        setAddress(newAddress);
+        setWalletProvider(eip1193);
+        await refreshBalance(newAddress);
+        toast.success("Wallet connected!");
+        saveConnectedWallet(newAddress).catch(() => {});
+        attachEip1193Listeners(eip1193, newAddress);
+        return;
+      }
+
+      const best = getBestWallet();
+      if (!best) {
+        const msg = isWalletConnectConfigured()
+          ? "No browser wallet found. Install an extension or choose WalletConnect."
+          : "No wallet found. Please install MetaMask, Core Wallet, or another compatible wallet extension.";
+        toast.error(msg);
+        throw new Error(msg);
+      }
+
+      const picked = walletId ? wallets.find((w) => w.id === walletId && w.id !== "walletconnect") : null;
+      const selectedWallet = picked ?? best;
+      const connectId = walletId && walletId !== "walletconnect" ? walletId : selectedWallet.id;
+
+      const { signer: newSigner, address: newAddress, provider: eip1193 } = await connectWallet(false, connectId);
+      setSigner(newSigner);
+      setAddress(newAddress);
+      setWalletProvider(eip1193 ?? selectedWallet.provider);
+      await refreshBalance(newAddress);
+      toast.success("Wallet connected!");
+      saveConnectedWallet(newAddress).catch(() => {});
+
+      const listenerTarget = eip1193 ?? selectedWallet.provider ?? (window as any).ethereum;
+      attachEip1193Listeners(listenerTarget, newAddress);
     } catch (error: any) {
-      // Only log non-406 errors
-      if (error?.status !== 406 && error?.code !== "PGRST301") {
-        logger.debug("Failed to fetch balance from Supabase:", error);
+      logger.error("Failed to connect wallet:", error);
+
+      let errorMessage = error.message || "Failed to connect wallet";
+
+      if (error.message?.includes("extension conflict") || error.message?.includes("evmAsk")) {
+        errorMessage = "Browser extension conflict detected. Please disable other wallet extensions and try again.";
+      } else if (error.message?.includes("timeout")) {
+        errorMessage = "Connection timeout. Please check your wallet extension and try again.";
+      } else if (error.message?.includes("Invalid wallet provider")) {
+        errorMessage = "Invalid wallet detected. Please ensure a compatible wallet is installed and enabled.";
+      } else if (error.message?.includes("No wallet found")) {
+        errorMessage = "No wallet found. Please install MetaMask, Core Wallet, or another compatible wallet extension.";
       }
-      setBalance("0");
+
+      if (error.code !== 4001 && !error.message?.includes("rejected")) {
+        toast.error(errorMessage);
+      }
+      throw error;
+    }
+  };
+
+  const connectWithKey = async (privateKey: string) => {
+    try {
+      const { signer: newSigner, address: newAddress } = await connectWithPrivateKey(privateKey);
+      setSigner(newSigner);
+      setAddress(newAddress);
+      setWalletProvider(null); // Not using external provider
+      await refreshBalance(newAddress);
+      toast.success("Wallet connected with private key!");
+    } catch (error: any) {
+      logger.error("Failed to connect with private key:", error);
+      toast.error(error.message || "Failed to connect with private key");
     }
   };
 
@@ -212,10 +239,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
 
       ethereum.on("chainChanged", () => {
-        // Update state instead of reloading - smoother UX
         setAddress(null);
         setSigner(null);
-        setBalance(null);
+        setBalance("0");
         toast.info("Network changed. Please reconnect your wallet.");
       });
     }
