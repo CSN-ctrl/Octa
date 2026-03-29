@@ -25,3 +25,15 @@ export function getPasswordResetRedirectUrl(): string {
   return `${getAppOrigin()}/reset-password`;
 }
 
+/**
+ * `signUp({ options: { emailRedirectTo } })` — must be listed under Supabase Auth → Redirect URLs
+ * (e.g. https://www.sarakt.com/email-verified and https://sarakt.com/email-verified).
+ * Uses the current browser origin so production (sarakt.com / www) and previews match the link in the email.
+ */
+export function getEmailConfirmationRedirectUrl(): string {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/email-verified`;
+  }
+  return `${getAppOrigin()}/email-verified`;
+}
+

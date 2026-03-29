@@ -162,6 +162,19 @@ function AppContent() {
     navigate(`/reset-password${url.search}${url.hash}`, { replace: true });
   }, [location.pathname, location.search, location.hash, navigate]);
 
+  // Signup confirmation emails may land on Site URL root with ?type=signup or hash fragments.
+  useEffect(() => {
+    if (location.pathname === "/email-verified") return;
+
+    const url = new URL(window.location.href);
+    const searchType = url.searchParams.get("type");
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const hashType = hashParams.get("type");
+    if (searchType !== "signup" && hashType !== "signup") return;
+
+    navigate(`/email-verified${url.search}${url.hash}`, { replace: true });
+  }, [location.pathname, location.search, location.hash, navigate]);
+
   // Silent affiliate tagging on ALL pages - works on any route
   // Captures ?ref=CODE or ?affiliate=CODE from URL and stores it (first tag sticks)
   useEffect(() => {

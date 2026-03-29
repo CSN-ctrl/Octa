@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { logger } from "@/lib/logger";
 import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
-import { getAppOrigin, getPasswordResetRedirectUrl } from "@/lib/app-origin";
+import { getAppOrigin, getPasswordResetRedirectUrl, getEmailConfirmationRedirectUrl } from "@/lib/app-origin";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -157,7 +157,7 @@ export default function Login() {
           data: {
             wallet_address: address.toLowerCase(),
           },
-          emailRedirectTo: `${getAppOrigin()}/email-verified`,
+          emailRedirectTo: getEmailConfirmationRedirectUrl(),
         },
       });
 
