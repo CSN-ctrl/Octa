@@ -6,7 +6,7 @@ export default function DocsJobs() {
   return (
     <DocsLayout 
       title="Job System" 
-      description="How employment works in the economy"
+      description="Jobs connect workers to businesses—and businesses exist because citizens create demand."
     >
       <Card className="glass-card border-primary/30">
         <CardHeader>
@@ -23,18 +23,23 @@ export default function DocsJobs() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground font-medium">Citizens fund payrolls.</strong> When populations rent, shop,
+            and expand, businesses stay busy and keep hiring. Weak demand means fewer shifts and thinner wages.
+          </p>
           <div>
             <h4 className="font-semibold mb-2 text-sm">How Jobs Work</h4>
             <p className="text-sm text-muted-foreground">
               Businesses post job listings, real users have priority over NPC workers, workers apply for jobs, 
-              business owners hire workers, workers earn wages.
+              business owners hire workers, workers earn wages. That loop turns citizen demand into steady paychecks.
             </p>
           </div>
           <div>
             <h4 className="font-semibold mb-2 text-sm">Why Businesses Need Workers</h4>
             <p className="text-sm text-muted-foreground">
               Early phases have no automation. All production is manual. Cannot produce without workers. 
-              More workers = more production. This creates a strong job market with high demand for workers.
+              More workers = more production. This creates a strong job market with high demand for workers—especially
+              in hubs where citizens spend the most.
             </p>
           </div>
           <div>

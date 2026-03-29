@@ -17,7 +17,8 @@ export default function DocsFeatures() {
                 <h4 className="font-semibold">Realistic Economy</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Mirrors real-world economics with supply and demand, market-driven prices, and a circular economy
+                Mirrors real-world economics with supply and demand, market-driven prices, and a circular economy fueled
+                by citizen needs
               </p>
             </div>
             <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
@@ -35,7 +36,8 @@ export default function DocsFeatures() {
                 <h4 className="font-semibold">Player-Driven</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Real users have priority, player decisions matter, community-driven, your choices shape the world
+                Real users have priority, player decisions matter, community-driven, your choices shape the world—alongside
+                AI populations that sustain believable demand
               </p>
             </div>
             <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
@@ -44,7 +46,8 @@ export default function DocsFeatures() {
                 <h4 className="font-semibold">Progression</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Start as worker, become landowner. Start small, grow big. Multiple income streams. Build your empire
+                Start as worker, become landowner. Start small, grow big. Multiple income streams. Build your empire where
+                citizens concentrate and spend
               </p>
             </div>
           </div>

@@ -133,6 +133,8 @@ export default function AdminDashboard() {
   const [alchemyTransactions, setAlchemyTransactions] = useState<AlchemyTransaction[]>([]);
   const [useAlchemy, setUseAlchemy] = useState(true); // Toggle between Alchemy and Supabase
   const hasAlchemyApiKey = Boolean((import.meta.env.VITE_ALCHEMY_API_KEY || "").toString().trim());
+  /** Which source populated the treasury table; null until first load finishes. */
+  const [treasuryTxSource, setTreasuryTxSource] = useState<"alchemy" | "supabase" | null>(null);
   const [loadingTreasuryTransactions, setLoadingTreasuryTransactions] = useState(false);
   const [treasuryTxPage, setTreasuryTxPage] = useState(1);
   const [treasuryManagers, setTreasuryManagers] = useState<any[]>([]);
@@ -720,40 +722,46 @@ export default function AdminDashboard() {
 
   // Load treasury transactions using Alchemy API
   const loadTreasuryTransactions = async () => {
+    const treasuryLower = TREASURY_WALLET.toLowerCase();
+    const fetchSupabaseTreasuryTransactions = async (autoProcessIncoming = true) => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+
+      if (error) throw error;
+
+      const filtered = (data || []).filter((tx: any) => {
+        const fromMatch = tx.from_address && tx.from_address.toLowerCase() === treasuryLower;
+        const toMatch = tx.to_address && tx.to_address.toLowerCase() === treasuryLower;
+        return fromMatch || toMatch;
+      });
+
+      const incomingFromSupabase = filtered.filter(
+        (tx: any) =>
+          tx.to_address &&
+          tx.to_address.toLowerCase() === treasuryLower &&
+          tx.transaction_type !== "deposit_converted"
+      );
+      if (autoProcessIncoming && incomingFromSupabase.length > 0) {
+        logger.debug(
+          `Found ${incomingFromSupabase.length} incoming deposit(s) from Supabase (auto-processing disabled).`
+        );
+      }
+
+      return filtered;
+    };
+    const loadFromSupabaseFallback = async () => {
+      const supabaseTxs = await fetchSupabaseTreasuryTransactions(false);
+      setTreasuryTransactions((supabaseTxs || []).slice(0, 100));
+      setTreasuryTxSource("supabase");
+    };
+
     try {
       setLoadingTreasuryTransactions(true);
-      const treasuryLower = TREASURY_WALLET.toLowerCase();
-      const fetchSupabaseTreasuryTransactions = async (autoProcessIncoming = true) => {
-        const { data, error } = await supabase
-          .from("transactions")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(1000);
+      setTreasuryTxSource(null);
 
-        if (error) throw error;
-
-        const filtered = (data || []).filter((tx: any) => {
-          const fromMatch = tx.from_address && tx.from_address.toLowerCase() === treasuryLower;
-          const toMatch = tx.to_address && tx.to_address.toLowerCase() === treasuryLower;
-          return fromMatch || toMatch;
-        });
-
-        const incomingFromSupabase = filtered.filter((tx: any) =>
-          tx.to_address && tx.to_address.toLowerCase() === treasuryLower &&
-          tx.transaction_type !== "deposit_converted"
-        );
-        // Auto-processing disabled — deposits are handled manually or via admin action
-        if (autoProcessIncoming && incomingFromSupabase.length > 0) {
-          logger.debug(`Found ${incomingFromSupabase.length} incoming deposit(s) from Supabase (auto-processing disabled).`);
-        }
-
-        return filtered;
-      };
-      const loadFromSupabaseFallback = async () => {
-        const supabaseTxs = await fetchSupabaseTreasuryTransactions(false);
-        setTreasuryTransactions((supabaseTxs || []).slice(0, 100));
-      };
-      
       // Update exchange rates from API before processing
       try {
         await updateRatesFromAPI();
@@ -761,15 +769,21 @@ export default function AdminDashboard() {
       } catch (rateError) {
         logger.warn("Failed to update exchange rates, using defaults:", rateError);
       }
-      
-      if (useAlchemy) {
+
+      // Production (Vercel): VITE_ALCHEMY_API_KEY must be set in Project → Settings → Environment Variables.
+      // Without it, getAllChainTransactions returns [] and we must show Supabase ledger rows.
+      if (useAlchemy && !hasAlchemyApiKey) {
+        logger.warn("Treasury: VITE_ALCHEMY_API_KEY missing — loading treasury-related rows from Supabase.");
+        setAlchemyTransactions([]);
+        await loadFromSupabaseFallback();
+      } else if (useAlchemy) {
         // Fetch from Alchemy API across all supported chains
         logger.debug("Fetching treasury transactions from Alchemy API...");
         const alchemyTxs = await getAllChainTransactions(TREASURY_WALLET, {
           maxCount: 100, // Per chain
-          category: ['external', 'erc20', 'erc721', 'erc1155'], // Include all transfer types
+          category: ["external", "erc20", "erc721", "erc1155"], // Include all transfer types
         });
-        
+
         setAlchemyTransactions(alchemyTxs);
         
         // Convert Alchemy transactions to the format expected by the UI
@@ -868,43 +882,49 @@ export default function AdminDashboard() {
         const sortedTxs = formattedTxs.sort((a: any, b: any) =>
           new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
-        setTreasuryTransactions(sortedTxs);
-        
-        // Save Alchemy transactions to database first (if not already saved)
-        if (formattedTxs.length > 0) {
-          try {
-            for (const tx of formattedTxs) {
-              // Check if transaction already exists
-              const { data: existing } = await supabase
-                .from("transactions")
-                .select("id")
-                .eq("tx_hash", tx.tx_hash)
-                .maybeSingle();
-              
-              if (!existing && tx.tx_hash) {
-                // Save transaction to database
-                await supabaseService.createTransaction({
-                  from_address: tx.from_address,
-                  to_address: tx.to_address,
-                  amount: Number(tx.amount || 0),
-                  token_type: tx.token_type,
-                  transaction_type: tx.transaction_type,
-                  status: tx.status || 'completed',
-                  tx_hash: tx.tx_hash,
-                  type: tx.type,
-                  created_at: tx.created_at,
-                  metadata: tx.metadata,
-                }).catch((err) => {
-                  // Ignore duplicate errors
-                  if (err?.code !== '23505') {
-                    logger.debug(`Failed to save transaction ${tx.tx_hash}:`, err);
-                  }
-                });
+
+        if (sortedTxs.length === 0) {
+          logger.info("Treasury: Alchemy returned no transfers; loading treasury-related rows from Supabase.");
+          await loadFromSupabaseFallback();
+        } else {
+          setTreasuryTxSource("alchemy");
+          setTreasuryTransactions(sortedTxs);
+
+          // Save Alchemy transactions to database first (if not already saved)
+          if (formattedTxs.length > 0) {
+            try {
+              for (const tx of formattedTxs) {
+                const { data: existing } = await supabase
+                  .from("transactions")
+                  .select("id")
+                  .eq("tx_hash", tx.tx_hash)
+                  .maybeSingle();
+
+                if (!existing && tx.tx_hash) {
+                  await supabaseService
+                    .createTransaction({
+                      from_address: tx.from_address,
+                      to_address: tx.to_address,
+                      amount: Number(tx.amount || 0),
+                      token_type: tx.token_type,
+                      transaction_type: tx.transaction_type,
+                      status: tx.status || "completed",
+                      tx_hash: tx.tx_hash,
+                      type: tx.type,
+                      created_at: tx.created_at,
+                      metadata: tx.metadata,
+                    })
+                    .catch((err) => {
+                      if (err?.code !== "23505") {
+                        logger.debug(`Failed to save transaction ${tx.tx_hash}:`, err);
+                      }
+                    });
+                }
               }
+              logger.debug(`Saved ${formattedTxs.length} transactions to database`);
+            } catch (saveError) {
+              logger.warn("Failed to save some transactions to database:", saveError);
             }
-            logger.debug(`Saved ${formattedTxs.length} transactions to database`);
-          } catch (saveError) {
-            logger.warn("Failed to save some transactions to database:", saveError);
           }
         }
         
@@ -918,7 +938,11 @@ export default function AdminDashboard() {
     } catch (error: any) {
       logger.error("Failed to load treasury transactions:", error);
       toast.error(`Failed to load treasury transactions: ${error.message}`);
-      setTreasuryTransactions([]);
+      try {
+        await loadFromSupabaseFallback();
+      } catch {
+        setTreasuryTransactions([]);
+      }
     } finally {
       setLoadingTreasuryTransactions(false);
     }
@@ -3276,11 +3300,15 @@ export default function AdminDashboard() {
               {/* Treasury Transactions */}
               <Card className="order-1 glass-enhanced border-primary/20 shadow-glow-card">
                 <CardContent className="p-3">
-                  {!hasAlchemyApiKey && (
-                    <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                      Alchemy API key is missing in this environment. Treasury transactions are loaded from Supabase fallback.
-                    </div>
-                  )}
+                  {!loadingTreasuryTransactions &&
+                    useAlchemy &&
+                    treasuryTxSource === "supabase" && (
+                      <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                        {hasAlchemyApiKey
+                          ? "On-chain data (Alchemy) returned no transfers or the request failed; showing treasury-related rows from Supabase."
+                          : "VITE_ALCHEMY_API_KEY is not set for this build (add it under Vercel → Project → Environment Variables and redeploy). Showing treasury-related rows from Supabase."}
+                      </div>
+                    )}
                   {loadingTreasuryTransactions ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />

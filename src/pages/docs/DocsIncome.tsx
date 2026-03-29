@@ -6,9 +6,18 @@ export default function DocsIncome() {
   return (
     <DocsLayout 
       title="Income Methods" 
-      description="Multiple ways to generate income in the ChaosStar economy"
+      description="Every income stream depends on citizens needing housing, labor, or products—human players and AI populations drive demand."
     >
       <div className="space-y-6">
+        <Card className="glass-card border-primary/30">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              <strong className="text-foreground font-medium">Citizens are the main driver of profits.</strong> Rentals
+              need tenants, wages need busy businesses, and businesses need buyers. Grow income by serving population
+              demand—not by idle assets alone.
+            </p>
+          </CardContent>
+        </Card>
         {/* Method 1: Rental Income */}
         <Card className="glass-card border-primary/30">
           <CardHeader>
@@ -19,7 +28,7 @@ export default function DocsIncome() {
               <div className="flex-1">
                 <CardTitle className="text-xl mb-2">Method 1: Rental Income</CardTitle>
                 <CardDescription>
-                  For Landowners - Generate passive income from tenants
+                  For Landowners—passive income when citizens need a place to live
                 </CardDescription>
               </div>
             </div>
@@ -41,6 +50,7 @@ export default function DocsIncome() {
                 <li>Empty plots cannot generate income - you need a structure</li>
                 <li>Structures can be purchased pre-built or built using materials and builders</li>
                 <li>Rental income is your primary earning method as a landowner</li>
+                <li>Stronger citizen demand means fuller units and steadier rent</li>
                 <li>You can live in your own structure (save on rent) and also work for additional income</li>
               </ul>
             </div>
@@ -57,7 +67,7 @@ export default function DocsIncome() {
               <div className="flex-1">
                 <CardTitle className="text-xl mb-2">Method 2: Wages</CardTitle>
                 <CardDescription>
-                  For Workers - Earn income by working at businesses
+                  For Workers—paid when businesses run on citizen-driven demand
                 </CardDescription>
               </div>
             </div>
@@ -79,6 +89,7 @@ export default function DocsIncome() {
                 <li>Real users have priority over NPC workers - you get jobs first</li>
                 <li>Businesses need workers because early phases have no automation</li>
                 <li>All production is manual, creating strong job market</li>
+                <li>Jobs cluster where citizens spend—follow demand for the best wages</li>
                 <li>Workers must rent housing (don't need to own land)</li>
                 <li>You can save earnings from wages to eventually buy your own plot</li>
               </ul>
@@ -96,7 +107,7 @@ export default function DocsIncome() {
               <div className="flex-1">
                 <CardTitle className="text-xl mb-2">Method 3: Business Profits</CardTitle>
                 <CardDescription>
-                  For Business Owners - Create and run businesses
+                  For Business Owners—revenue from citizens who buy what you produce
                 </CardDescription>
               </div>
             </div>
@@ -135,7 +146,7 @@ export default function DocsIncome() {
               <div className="flex-1">
                 <CardTitle className="text-xl mb-2">Method 4: Supporting Roles</CardTitle>
                 <CardDescription>
-                  Specialized roles that support the economy
+                  Roles that keep citizen markets working—supply, build, manage, match
                 </CardDescription>
               </div>
             </div>

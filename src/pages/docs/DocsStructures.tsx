@@ -6,7 +6,7 @@ export default function DocsStructures() {
   return (
     <DocsLayout 
       title="Building Structures" 
-      description="Why you need structures and how to get them"
+      description="Structures unlock land income—but rents only flow when citizens need a roof."
     >
       <Card className="glass-card border-primary/30">
         <CardHeader>
@@ -27,7 +27,8 @@ export default function DocsStructures() {
             <h4 className="font-semibold mb-2 text-sm">Why You Need Structures</h4>
             <p className="text-sm text-muted-foreground">
               Empty plots cannot generate rental income. You need at least a basic structure 
-              (caravan, detachable house, etc.) to rent out. Structures are required to profit from your land.
+              (caravan, detachable house, etc.) to rent out. Structures are required to profit from your land—and
+              profit follows citizen demand for housing in your region.
             </p>
           </div>
           <div>

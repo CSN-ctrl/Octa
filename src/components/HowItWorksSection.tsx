@@ -35,8 +35,9 @@ const HowItWorksSection = () => {
           className="text-center mb-16"
         >
           <h2 className="section-title mb-4">Three Simple Steps</h2>
-          <p className="text-lg text-muted-foreground">
-            Join thousands of pioneers in the Chaos Star Universe
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Join thousands of pioneers in the Chaos Star Universe—where citizen demand powers the economy and your
+            future profits.
           </p>
         </motion.div>
 

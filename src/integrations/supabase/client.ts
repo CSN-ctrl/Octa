@@ -41,6 +41,9 @@ function createSupabaseClient(): SupabaseClient<Database> {
       persistSession: true,
       autoRefreshToken: true,
       storageKey: "chaosstar-supabase-auth",
+      // Parse #access_token=…&type=recovery (and similar) on load so recovery links work.
+      detectSessionInUrl: true,
+      flowType: "pkce",
     },
     realtime: {
       ...(wsCtor ? { transport: wsCtor } : {}),

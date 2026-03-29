@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, Flame, Droplets, Wind, TreePine, Hammer, Book, Loader2, Network, Wallet, Rocket, Orbit, TrendingUp, ShoppingCart, Briefcase, Settings, Trash2, X, AlertCircle, RefreshCw, Landmark, Banknote, Store, Wrench, FileText, PieChart } from "lucide-react";
+import { Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, Flame, Droplets, Wind, TreePine, Hammer, Book, Loader2, Network, Wallet, Rocket, Orbit, Cpu, TrendingUp, ShoppingCart, Briefcase, Settings, Trash2, X, AlertCircle, RefreshCw, Landmark, Banknote, Store, Wrench, FileText, PieChart } from "lucide-react";
 import heroImage from "@/assets/hero-space.jpg";
 import { useLandPlots } from "@/hooks/useLandPlots";
 import { useTreasury } from "@/hooks/useTreasury";
@@ -2100,7 +2100,11 @@ export default function UnifiedUniverse() {
                 <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
                   <div className="bg-destructive/10 border-l-4 border-destructive p-6 rounded-lg">
                     <h3 className="text-2xl font-semibold text-foreground mb-3">Advanced Structures</h3>
-                    <p>Detached houses, schools, universities, industrial complexes. Full-scale economy with wages, rents, and production loops.</p>
+                    <p>
+                      Detached houses, schools, universities, and civic infrastructure. Full-scale economy with wages,
+                      rents, and regional production loops. Mass industrial complexes and heavy supply chains are{" "}
+                      <span className="text-foreground font-semibold">Phase 3</span>.
+                    </p>
                   </div>
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
@@ -2111,6 +2115,75 @@ export default function UnifiedUniverse() {
                       <h3 className="text-xl font-semibold text-foreground mb-3">Player Faction Control</h3>
                       <p>After owning and developing 100 plots, form a faction. Manage population within your loyalty sphere. NPCs choose allegiance based on trust and benefits.</p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-amber-500/30 bg-card/50 backdrop-blur overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl -z-10" />
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                      <Factory className="w-10 h-10 text-amber-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-4xl mb-2">Phase 3: Industrial Stage</CardTitle>
+                      <Badge className="bg-amber-500/15 text-amber-100 border-amber-500/40 text-lg px-4 py-2">Future</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
+                  <div className="bg-amber-500/10 border-l-4 border-amber-500 p-6 rounded-lg">
+                    <h3 className="text-2xl font-semibold text-foreground mb-3">Scaled Production</h3>
+                    <p>
+                      Industrial complexes, logistics, and supply chains built for population-wide demand. Bulk manufacturing
+                      and energy-intensive systems unlock after civilization-level cities and markets mature.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-sky-500/30 bg-card/50 backdrop-blur overflow-hidden">
+                <div className="absolute top-0 left-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -z-10" />
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/30">
+                      <Cpu className="w-10 h-10 text-sky-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-4xl mb-2">Phase 4: Tech Stage</CardTitle>
+                      <Badge className="bg-sky-500/15 text-sky-100 border-sky-500/40 text-lg px-4 py-2">Future</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
+                  <div className="bg-sky-500/10 border-l-4 border-sky-500 p-6 rounded-lg">
+                    <h3 className="text-2xl font-semibold text-foreground mb-3">Automation &amp; Systems</h3>
+                    <p>
+                      Advanced automation and technology stack on industrial capacity—deeper markets, new economic tools,
+                      and richer strategy for landowners, workers, businesses, and sovereigns.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-violet-500/30 bg-card/50 backdrop-blur overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl -z-10" />
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/30">
+                      <Orbit className="w-10 h-10 text-violet-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-4xl mb-2">Phase 5: Cosmic Stage</CardTitle>
+                      <Badge className="bg-violet-500/15 text-violet-100 border-violet-500/40 text-lg px-4 py-2">Future</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6 text-muted-foreground text-lg leading-relaxed">
+                  <div className="bg-violet-500/10 border-l-4 border-violet-500 p-6 rounded-lg">
+                    <h3 className="text-2xl font-semibold text-foreground mb-3">Inter-System Expansion</h3>
+                    <p>
+                      Inter-system trade, sovereignty at stellar scale, and cosmic-level growth—distant markets, alliances,
+                      and long-horizon economy across the universe.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -2136,7 +2209,7 @@ export default function UnifiedUniverse() {
             </Badge>
             <h1 className="font-bold mb-6 bg-gradient-cosmic bg-clip-text text-transparent text-7xl">Chaos Star Universe</h1>
             <p className="text-2xl text-muted-foreground mb-8">
-              From rebellion to renaissance. Explore lore, claim land, build empires.
+              From ashes to empire: explore the story, seize the land, and command human and AI populations that define your era.
             </p>
             <div className="mt-6 flex items-center justify-center gap-4 flex-wrap">
               <Button

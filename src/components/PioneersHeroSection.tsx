@@ -1,39 +1,16 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Sparkles, Loader2 } from 'lucide-react';
+import { Zap, Sparkles } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import heroBackground from '@/assets/hero-background.jpg';
 import { useILOStats } from '@/hooks/useILOStats';
-import { supabase } from '@/integrations/supabase/client';
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 
 const PioneersHeroSection = () => {
   const navigate = useNavigate();
-  const { stats, loading } = useILOStats();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-    };
-    checkAuth();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-    });
-    
-    return () => subscription.unsubscribe();
-  }, []);
+  const { stats } = useILOStats();
 
   const handleJoinClick = () => {
-    if (isAuthenticated) {
-      navigate('/deposit');
-    } else {
-      toast.info("Please register to join Genesis Phase");
-      navigate('/register');
-    }
+    navigate('/deposit');
   };
   
   const totalSpots = stats.totalSpots;

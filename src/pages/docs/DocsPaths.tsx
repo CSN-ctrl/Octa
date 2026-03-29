@@ -6,7 +6,7 @@ export default function DocsPaths() {
   return (
     <DocsLayout 
       title="Participation Paths" 
-      description="Choose the path that fits your goals and resources"
+      description="Landowner, worker, or business owner—each path pays best when you serve citizen demand."
     >
       <div className="grid md:grid-cols-2 gap-6">
         {/* Path 1: Landowner */}
@@ -19,7 +19,7 @@ export default function DocsPaths() {
               <div className="flex-1">
                 <CardTitle className="text-xl mb-2">Path 1: Landowner</CardTitle>
                 <CardDescription>
-                  Own land, build structures, and earn rental income
+                  Own land, build structures, and earn rental income from citizens who need housing
                 </CardDescription>
               </div>
             </div>
@@ -36,7 +36,7 @@ export default function DocsPaths() {
               <div>
                 <h4 className="font-semibold mb-1 text-sm">How You Earn</h4>
                 <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
-                  <li>Rental income from tenants</li>
+                  <li>Rental income from tenants (citizen demand fills vacancies)</li>
                   <li>Wages if you also work</li>
                   <li>Property appreciation if you sell later</li>
                 </ul>
@@ -72,7 +72,7 @@ export default function DocsPaths() {
               <div className="flex-1">
                 <CardTitle className="text-xl mb-2">Path 2: Worker/Expat</CardTitle>
                 <CardDescription>
-                  Work at businesses, rent housing, no land ownership required
+                  Join the citizen workforce—earn wages, rent housing, no land ownership required
                 </CardDescription>
               </div>
             </div>
@@ -82,8 +82,9 @@ export default function DocsPaths() {
               <div>
                 <h4 className="font-semibold mb-1 text-sm">What You Do</h4>
                 <p className="text-sm text-muted-foreground">
-                  Get a job at someone's business, rent housing from landowners, work and live in the system. 
-                  Save earnings to eventually buy your own plot.
+                  Get a job at someone's business, rent housing from landowners, work and live in the system. Businesses
+                  stay open when citizens keep buying—your labor is part of that engine. Save earnings to eventually buy
+                  your own plot.
                 </p>
               </div>
               <div>

@@ -48,7 +48,8 @@ const PioneersHowItWorksSection = () => {
           </span>
           <h2 className="text-4xl md:text-5xl font-bold mb-4">Three Simple Steps</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Join thousands of pioneers in the Chaos Star Universe
+            Join thousands of pioneers in the Chaos Star Universe—where a growing population of players and AI
+            citizens fuels demand, jobs, and long-term returns.
           </p>
         </motion.div>
 

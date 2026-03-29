@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { logger } from "@/lib/logger";
 import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
-import { getAppOrigin } from "@/lib/app-origin";
+import { getAppOrigin, getPasswordResetRedirectUrl } from "@/lib/app-origin";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -233,7 +233,7 @@ export default function Login() {
     setResetLoading(true);
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${getAppOrigin()}/reset-password`,
+        redirectTo: getPasswordResetRedirectUrl(),
       });
       if (resetError) throw resetError;
       toast.success("Password reset link sent.");
@@ -247,7 +247,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen pt-16 sm:pt-20 bg-background flex items-center justify-center px-3 sm:px-4 py-6 sm:py-8">
+    <div className="min-h-screen pt-28 sm:pt-32 bg-background flex items-center justify-center px-3 sm:px-4 pb-10 sm:pb-12">
       <div className="w-full max-w-md space-y-4 sm:space-y-6 min-w-0">
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
           <CardHeader className="space-y-1 p-4 sm:p-6">

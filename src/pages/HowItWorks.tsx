@@ -17,6 +17,8 @@ import {
   ShoppingCart,
   Crown,
   Rocket,
+  Cpu,
+  Orbit,
   Zap,
   Shield,
   Network,
@@ -233,7 +235,8 @@ export default function HowItWorks() {
                 </h1>
               </div>
               <p className="text-lg text-muted-foreground max-w-3xl">
-                A realistic blockchain-based virtual universe where you own, build, work, and profit. 
+                A realistic blockchain-based virtual universe where you own, build, work, and profit. Citizens—human
+                players and AI populations—create the demand that makes rentals, wages, and business profits possible.
                 Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots.
               </p>
             </div>
@@ -253,10 +256,19 @@ export default function HowItWorks() {
                 <CardContent className="space-y-4">
                   <p className="text-muted-foreground leading-relaxed">
                     ChaosStar is a realistic blockchain-based virtual universe where you can own land, build structures, 
-                    work at businesses, create your own businesses, and earn income through multiple methods. The system 
+                    work at businesses, create your own businesses, and earn income through multiple methods.{" "}
+                    <strong className="text-foreground font-medium">Citizens are the main driver of profits:</strong> they
+                    need housing, jobs, and goods—without that activity, income streams do not materialize. The system 
                     mirrors real-world economics with supply and demand, market-driven prices, and a circular economy 
                     where everyone participates and benefits.
                   </p>
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <h4 className="font-semibold mb-2">Why citizens matter</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Structures and businesses only generate returns when citizens show up as tenants, workers, and
+                      buyers. Serving and growing that population is how you build sustainable profits.
+                    </p>
+                  </div>
                   <div className="grid md:grid-cols-2 gap-4 mt-6">
                     <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                       <h4 className="font-semibold mb-2">Phase 1: Limited Access</h4>
@@ -285,7 +297,8 @@ export default function HowItWorks() {
                   Participation Paths
                 </h2>
                 <p className="text-muted-foreground">
-                  Choose the path that fits your goals and resources
+                  Choose the path that fits your goals and resources—every path ultimately succeeds when citizens need
+                  what you offer.
                 </p>
               </div>
 
@@ -300,7 +313,7 @@ export default function HowItWorks() {
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">Path 1: Landowner</CardTitle>
                         <CardDescription>
-                          Own land, build structures, and earn rental income
+                          Own land, build structures, and earn rental income from citizens who need a place to live
                         </CardDescription>
                       </div>
                     </div>
@@ -311,13 +324,14 @@ export default function HowItWorks() {
                         <h4 className="font-semibold mb-1 text-sm">What You Do</h4>
                         <p className="text-sm text-muted-foreground">
                           Own plots of land (from Phase 1 purchase), build or buy structures on your plots, 
-                          rent out structures to earn income. You can also work at jobs while owning property.
+                          rent out structures to earn income. Tenants and population demand are what turn empty units
+                          into profit—you can also work at jobs while owning property.
                         </p>
                       </div>
                       <div>
                         <h4 className="font-semibold mb-1 text-sm">How You Earn</h4>
                         <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
-                          <li>Rental income from tenants</li>
+                          <li>Rental income from tenants (citizen demand fills your units)</li>
                           <li>Wages if you also work</li>
                           <li>Property appreciation if you sell later</li>
                         </ul>
@@ -353,7 +367,7 @@ export default function HowItWorks() {
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">Path 2: Worker/Expat</CardTitle>
                         <CardDescription>
-                          Work at businesses, rent housing, no land ownership required
+                          Be part of the citizen workforce—earn wages, rent housing, no land ownership required
                         </CardDescription>
                       </div>
                     </div>
@@ -363,8 +377,9 @@ export default function HowItWorks() {
                       <div>
                         <h4 className="font-semibold mb-1 text-sm">What You Do</h4>
                         <p className="text-sm text-muted-foreground">
-                          Get a job at someone's business, rent housing from landowners, work and live in the system. 
-                          Save earnings to eventually buy your own plot.
+                          Get a job at someone's business, rent housing from landowners, work and live in the system.
+                          Businesses rely on workers and customers to stay profitable—you are part of the citizen base
+                          that keeps the economy moving. Save earnings to eventually buy your own plot.
                         </p>
                       </div>
                       <div>
@@ -405,7 +420,7 @@ export default function HowItWorks() {
                   Income Methods
                 </h2>
                 <p className="text-muted-foreground">
-                  Multiple ways to generate income in the ChaosStar economy
+                  Multiple ways to generate income—all of them depend on citizens needing housing, labor, or products
                 </p>
               </div>
 
@@ -419,7 +434,7 @@ export default function HowItWorks() {
                     <div className="flex-1">
                       <CardTitle className="text-xl mb-2">Method 1: Rental Income</CardTitle>
                       <CardDescription>
-                        For Landowners - Generate passive income from tenants
+                        For Landowners—rent to citizens who need homes; demand fills your units and drives returns
                       </CardDescription>
                     </div>
                   </div>
@@ -441,6 +456,10 @@ export default function HowItWorks() {
                       <li>Empty plots cannot generate income - you need a structure</li>
                       <li>Structures can be purchased pre-built or built using materials and builders</li>
                       <li>Rental income is your primary earning method as a landowner</li>
+                      <li>
+                        Profits scale with citizen demand—more tenants and population activity means more reliable
+                        rent
+                      </li>
                       <li>You can live in your own structure (save on rent) and also work for additional income</li>
                     </ul>
                   </div>
@@ -457,7 +476,7 @@ export default function HowItWorks() {
                     <div className="flex-1">
                       <CardTitle className="text-xl mb-2">Method 2: Wages</CardTitle>
                       <CardDescription>
-                        For Workers - Earn income by working at businesses
+                        For Workers—businesses pay wages when citizen-driven demand keeps them busy
                       </CardDescription>
                     </div>
                   </div>
@@ -479,6 +498,9 @@ export default function HowItWorks() {
                       <li>Real users have priority over NPC workers - you get jobs first</li>
                       <li>Businesses need workers because early phases have no automation</li>
                       <li>All production is manual, creating strong job market</li>
+                      <li>
+                        Healthy job markets exist where citizens consume—your labor connects to that end demand
+                      </li>
                       <li>Workers must rent housing (don't need to own land)</li>
                       <li>You can save earnings from wages to eventually buy your own plot</li>
                     </ul>
@@ -496,12 +518,18 @@ export default function HowItWorks() {
                     <div className="flex-1">
                       <CardTitle className="text-xl mb-2">Method 3: Business Profits</CardTitle>
                       <CardDescription>
-                        For Business Owners - Create and run businesses
+                        For Business Owners—profits come from sales to citizens and labor that serves their needs
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Buildings and recipes do not print money by themselves.{" "}
+                    <strong className="text-foreground font-medium">Citizens are the main profit engine:</strong> they
+                    buy goods, use services, and need outputs only busy shops can supply. Scale your business where
+                    demand is strongest.
+                  </p>
                   <div>
                     <h4 className="font-semibold mb-2 text-sm">The Process</h4>
                     <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1 ml-2">
@@ -515,6 +543,7 @@ export default function HowItWorks() {
                   <div>
                     <h4 className="font-semibold mb-2 text-sm">Key Points</h4>
                     <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+                      <li>Citizen demand determines revenue—marketing to empty regions yields weak profits</li>
                       <li>Early phases have no automation - must hire workers to produce</li>
                       <li>More workers = more production capacity</li>
                       <li>Cannot operate without workers - they are essential</li>
@@ -535,7 +564,7 @@ export default function HowItWorks() {
                     <div className="flex-1">
                       <CardTitle className="text-xl mb-2">Method 4: Supporting Roles</CardTitle>
                       <CardDescription>
-                        Specialized roles that support the economy
+                        Specialized roles that keep citizen-facing markets liquid—suppliers, builders, agents
                       </CardDescription>
                     </div>
                   </div>
@@ -608,7 +637,8 @@ export default function HowItWorks() {
                     <h4 className="font-semibold mb-2 text-sm">Why You Need Structures</h4>
                     <p className="text-sm text-muted-foreground">
                       Empty plots cannot generate rental income. You need at least a basic structure 
-                      (caravan, detachable house, etc.) to rent out. Structures are required to profit from your land.
+                      (caravan, detachable house, etc.) to rent out. Structures are required to profit from your land—and
+                      only matter once citizens want to move in.
                     </p>
                   </div>
                   <div>
@@ -659,14 +689,16 @@ export default function HowItWorks() {
                     <h4 className="font-semibold mb-2 text-sm">How Jobs Work</h4>
                     <p className="text-sm text-muted-foreground">
                       Businesses post job listings, real users have priority over NPC workers, workers apply for jobs, 
-                      business owners hire workers, workers earn wages.
+                      business owners hire workers, workers earn wages. That entire loop exists to serve citizen
+                      consumption—jobs are how demand becomes paychecks.
                     </p>
                   </div>
                   <div>
                     <h4 className="font-semibold mb-2 text-sm">Why Businesses Need Workers</h4>
                     <p className="text-sm text-muted-foreground">
                       Early phases have no automation. All production is manual. Cannot produce without workers. 
-                      More workers = more production. This creates a strong job market with high demand for workers.
+                      More workers = more production. This creates a strong job market with high demand for workers—
+                      especially where citizens are buying, renting, and expanding fastest.
                     </p>
                   </div>
                   <div>
@@ -689,9 +721,10 @@ export default function HowItWorks() {
                   <Crown className="h-7 w-7 text-primary" />
                   Sovereignty - Create Your Own Rules
                 </h2>
-                <p className="text-muted-foreground">
-                  For advanced players who want control - hierarchical governance system
-                </p>
+                  <p className="text-muted-foreground">
+                    For advanced players who want control - hierarchical governance over cities and economies where
+                    citizen activity still drives tax bases and growth
+                  </p>
               </div>
 
               {/* Hierarchy Explanation */}
@@ -744,7 +777,8 @@ export default function HowItWorks() {
                   <p className="text-sm text-muted-foreground">
                     Buy an entire city and gain sovereignty over it. Set your own local economic rules and regulations, 
                     control city governance, manage city economy, set local taxes and fees (property taxes, sales taxes, etc.), 
-                    control building regulations within the city, and establish your own economic policies.
+                    control building regulations within the city, and establish your own economic policies. Thriving
+                    citizen populations expand your tax base and make sovereignty financially meaningful.
                   </p>
                   <div className="p-3 rounded bg-background/50 border border-primary/10">
                     <p className="text-xs font-semibold text-primary mb-1">Important:</p>
@@ -899,7 +933,7 @@ export default function HowItWorks() {
                   Getting Started
                 </h2>
                 <p className="text-muted-foreground">
-                  Follow these steps to begin your journey on ChaosStar
+                  Follow these steps to begin your journey on ChaosStar—then grow where citizens need you most
                 </p>
               </div>
 
@@ -925,12 +959,12 @@ export default function HowItWorks() {
                       {
                         step: 4,
                         title: "Start Earning",
-                        description: "As a Landowner: Build or buy structures on your plots, list structures for rent, earn rental income. As a Worker: Work at businesses, earn wages, pay rent from wages, save earnings to buy plots later."
+                        description: "As a Landowner: Build or buy structures on your plots, list structures for rent, earn rental income when citizens need housing. As a Worker: Work at businesses fueled by citizen demand, earn wages, pay rent from wages, save earnings to buy plots later."
                       },
                       {
                         step: 5,
                         title: "Expand and Grow",
-                        description: "Buy more plots (landowners), build more structures, create businesses, hire workers, scale your operations."
+                        description: "Buy more plots (landowners), build more structures, create businesses, hire workers, scale your operations—scale follows where citizens concentrate and spend."
                       },
                       {
                         step: 6,
@@ -966,7 +1000,7 @@ export default function HowItWorks() {
                   Economic Ecosystem
                 </h2>
                 <p className="text-muted-foreground">
-                  How income flows through the system
+                  How income flows through the system—citizens sit at the center of every major stream
                 </p>
               </div>
 
@@ -975,6 +1009,10 @@ export default function HowItWorks() {
                   <div>
                     <h4 className="font-semibold mb-2 text-sm">How Income Flows</h4>
                     <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+                      <li>
+                        Citizens (players + AI populations) create demand—that demand is the main driver of sustainable
+                        profits
+                      </li>
                       <li>Landowners earn from rentals</li>
                       <li>Workers earn from wages</li>
                       <li>Business owners earn from profits</li>
@@ -986,16 +1024,18 @@ export default function HowItWorks() {
                   <div>
                     <h4 className="font-semibold mb-2 text-sm">Circular Economy</h4>
                     <p className="text-sm text-muted-foreground">
-                      Workers need housing → rent from landowners. Landowners need structures → buy materials and hire builders. 
-                      Businesses need workers → hire from worker pool. Material suppliers need customers → sell to builders and landowners. 
-                      Income circulates through all roles, creating a sustainable economic system.
+                      At the center are citizens: they need housing → pay rent to landowners. They need goods and
+                      services → keep businesses profitable. Landowners need structures → buy materials and hire builders. 
+                      Businesses need workers → hire from the worker pool. Material suppliers need customers → sell to
+                      builders and landowners. Income circulates through all roles because population-driven demand keeps
+                      the loop turning.
                     </p>
                   </div>
                   <div>
                     <h4 className="font-semibold mb-2 text-sm">Realistic Economics</h4>
                     <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
                       <li>Mirrors real-world systems</li>
-                      <li>Supply and demand drive prices</li>
+                      <li>Supply and demand drive prices—demand starts with citizens</li>
                       <li>Competition creates fair markets</li>
                       <li>Multiple paths to success</li>
                       <li>Everyone has opportunities</li>
@@ -1036,17 +1076,38 @@ export default function HowItWorks() {
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Build structures, rent out properties, work at businesses, create businesses, full economy active. 
-                      This is when the realistic economic system becomes fully operational with structures, rentals, jobs, and businesses.
+                      Civic-scale growth—schools, universities, housing, services—with citizen populations as the engine
+                      of who pays whom. Mass industrial output begins in Phase 3.
                     </p>
                   </div>
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-3 mb-2">
-                      <Rocket className="h-6 w-6 text-primary" />
-                      <h4 className="font-semibold text-lg">Advanced Phases (Future)</h4>
+                      <Factory className="h-6 w-6 text-primary" />
+                      <h4 className="font-semibold text-lg">Phase 3: Industrial Stage (Future)</h4>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Automation becomes available, more complex economies, sovereignty options, inter-system trade, 
-                      advanced civilizations. The universe expands with new technologies and opportunities.
+                      Industrial complexes, scaled production, logistics, and heavy infrastructure. Supply chains and
+                      bulk goods align with population-wide demand from human and AI citizens.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Cpu className="h-6 w-6 text-primary" />
+                      <h4 className="font-semibold text-lg">Phase 4: Tech Stage (Future)</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Automation and advanced systems on top of industry—deeper markets, new mechanics, and richer
+                      strategic choices for players and factions.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Orbit className="h-6 w-6 text-primary" />
+                      <h4 className="font-semibold text-lg">Phase 5: Cosmic Stage (Future)</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Inter-system trade, sovereignty at stellar scale, and cosmic expansion—long-horizon economy and lore
+                      converging across the universe.
                     </p>
                   </div>
                 </CardContent>
@@ -1092,7 +1153,8 @@ export default function HowItWorks() {
                         <h4 className="font-semibold">Player-Driven</h4>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Real users have priority, player decisions matter, community-driven, your choices shape the world
+                        Real users have priority, player decisions matter, community-driven, your choices shape the world—
+                        alongside AI populations that keep demand and jobs believable
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
@@ -1101,7 +1163,8 @@ export default function HowItWorks() {
                         <h4 className="font-semibold">Progression</h4>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Start as worker, become landowner. Start small, grow big. Multiple income streams. Build your empire
+                        Start as worker, become landowner. Start small, grow big. Multiple income streams. Build your
+                        empire by capturing value where citizens concentrate
                       </p>
                     </div>
                   </div>

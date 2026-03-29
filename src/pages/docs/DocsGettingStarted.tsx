@@ -22,12 +22,12 @@ export default function DocsGettingStarted() {
     {
       step: 4,
       title: "Start Earning",
-      description: "As a Landowner: Build or buy structures on your plots, list structures for rent, earn rental income. As a Worker: Work at businesses, earn wages, pay rent from wages, save earnings to buy plots later."
+      description: "As a Landowner: Build or buy structures on your plots, list structures for rent, earn rental income when citizens need homes. As a Worker: Work at businesses powered by citizen demand, earn wages, pay rent from wages, save earnings to buy plots later."
     },
     {
       step: 5,
       title: "Expand and Grow",
-      description: "Buy more plots (landowners), build more structures, create businesses, hire workers, scale your operations."
+      description: "Buy more plots (landowners), build more structures, create businesses, hire workers, scale your operations—scale where population and spending are strongest."
     },
     {
       step: 6,
@@ -39,7 +39,7 @@ export default function DocsGettingStarted() {
   return (
     <DocsLayout 
       title="Getting Started" 
-      description="Follow these steps to begin your journey on ChaosStar"
+      description="Start your journey on ChaosStar—then grow where citizens need what you sell or rent."
     >
       <Card className="glass-card border-primary/30">
         <CardContent className="pt-6">

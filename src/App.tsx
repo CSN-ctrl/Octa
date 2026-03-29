@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { SimProvider } from "@/contexts/SimContext";
 import { Navigation } from "./components/Navigation";
@@ -146,7 +146,22 @@ const App = () => {
 // Must be inside BrowserRouter to use useLocation
 function AppContent() {
   const location = useLocation();
-  
+  const navigate = useNavigate();
+
+  // Supabase recovery emails may open the Site URL root (or /login) with ?type=recovery or #...&type=recovery.
+  // Forward to the reset page so users always get the new-password form.
+  useEffect(() => {
+    if (location.pathname === "/reset-password") return;
+
+    const url = new URL(window.location.href);
+    const searchType = url.searchParams.get("type");
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const hashType = hashParams.get("type");
+    if (searchType !== "recovery" && hashType !== "recovery") return;
+
+    navigate(`/reset-password${url.search}${url.hash}`, { replace: true });
+  }, [location.pathname, location.search, location.hash, navigate]);
+
   // Silent affiliate tagging on ALL pages - works on any route
   // Captures ?ref=CODE or ?affiliate=CODE from URL and stores it (first tag sticks)
   useEffect(() => {
@@ -189,6 +204,7 @@ function AppContent() {
                       
                       {/* Public routes */}
                       <Route path="/signup" element={<Login />} />
+                      <Route path="/register" element={<Navigate to="/signup" replace />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/universe" element={<UnifiedUniverse />} />
                       <Route path="/business" element={<Business />} />

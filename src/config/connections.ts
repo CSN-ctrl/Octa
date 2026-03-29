@@ -65,8 +65,10 @@ export function getSupabaseUrl(): string {
     console.warn(
       `[Supabase] Ignoring VITE_SUPABASE_URL (project ${urlRef}): no VITE_SUPABASE_ANON_KEY or ` +
         `VITE_SUPABASE_PUBLISHABLE_KEY in env, so the bundled default key for ${keyRef} is used. ` +
-        `Using ${DEFAULT_SUPABASE_URL} instead. To use project ${urlRef}, set matching keys from ` +
-        `https://supabase.com/dashboard/project/${urlRef}/settings/api`
+        `Using ${DEFAULT_SUPABASE_URL} instead.\n` +
+        `  → To use ${urlRef}: copy the anon (or publishable) key from ` +
+        `https://supabase.com/dashboard/project/${urlRef}/settings/api into .env.local.\n` +
+        `  → To use bundled defaults only: remove or comment out VITE_SUPABASE_URL in .env / .env.local.`
     );
     return DEFAULT_SUPABASE_URL;
   }
