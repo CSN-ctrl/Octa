@@ -15,13 +15,12 @@ export function getAppOrigin(): string {
 
 /**
  * URL passed to `resetPasswordForEmail({ redirectTo })`. Must match an entry in
- * Supabase → Authentication → URL Configuration → Redirect URLs (e.g. https://yourdomain.com/reset-password).
- * Uses the current browser origin so Vercel previews and alternate domains work; SSR/build falls back to getAppOrigin().
+ * Supabase → Authentication → URL Configuration → Redirect URLs
+ * (e.g. https://www.sarakt.com/reset-password).
+ * Uses getAppOrigin() so recovery emails always use the canonical production host
+ * (https://www.sarakt.com) when not on localhost; local dev still uses the current origin.
  */
 export function getPasswordResetRedirectUrl(): string {
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return `${window.location.origin}/reset-password`;
-  }
   return `${getAppOrigin()}/reset-password`;
 }
 
