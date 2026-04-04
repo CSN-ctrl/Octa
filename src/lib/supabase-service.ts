@@ -1292,6 +1292,8 @@ export interface TransferResult {
   success: boolean;
   transaction_id?: string;
   tx_hash?: string;
+  /** True when RPC saw an existing row in `transactions` for the same `tx_hash` (no balance change). */
+  duplicate?: boolean;
   from_balance?: number;
   to_balance?: number;
   error?: string;

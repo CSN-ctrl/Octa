@@ -28,6 +28,7 @@ import { OctagonalGrid } from "@/components/OctagonalGrid";
 import { NetworkTopology } from "@/components/NetworkTopology";
 import { useNavigate } from "react-router-dom";
 import { LazyImage } from "@/components/ui/LazyImage";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 // Real planet data is now fetched from blockchain contracts via useRealPlanetStats hook
 
@@ -1684,7 +1685,7 @@ export default function UnifiedUniverse() {
                     </div>
                     <div className="p-5 rounded-xl bg-muted/40 border border-primary/20">
                       <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Price per Plot</p>
-                      <p className="text-3xl font-bold">100 xBGL</p>
+                      <p className="text-3xl font-bold">{getPlotPriceInXBGL().toFixed(2)} xBGL</p>
                     </div>
                     <div className="p-5 rounded-xl bg-muted/40 border border-accent/20">
                       <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Your Plots</p>
@@ -2315,7 +2316,13 @@ export default function UnifiedUniverse() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3 flex-1 overflow-y-auto">
-                    {(Object.keys(planetsData || {}) || ["sarakt-prime", "zythera"]).map(id => {
+                    {(() => {
+                      const data = planetsData || {};
+                      const canonical = ["sarakt-prime", "zythera"] as const;
+                      const rest = Object.keys(data).filter((k) => !canonical.includes(k as (typeof canonical)[number]));
+                      const orderedIds = [...canonical.filter((id) => data[id]), ...rest.sort()];
+                      return orderedIds;
+                    })().map((id) => {
                       const planet = planetsData?.[id];
                       if (!planet) return null;
                       return (

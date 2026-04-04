@@ -210,6 +210,12 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'invalid amount');
   END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtext(v_hash), 7123341);
+
+  IF EXISTS (SELECT 1 FROM public.transactions WHERE tx_hash = v_hash) THEN
+    RETURN jsonb_build_object('success', true, 'tx_hash', v_hash, 'duplicate', true);
+  END IF;
+
   INSERT INTO user_balances (wallet_address) VALUES (w) ON CONFLICT (wallet_address) DO NOTHING;
 
   IF tt = 'xBGL' THEN

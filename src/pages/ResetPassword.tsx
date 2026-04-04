@@ -50,19 +50,13 @@ export default function ResetPassword() {
       if (type === "recovery") {
         setIsRecoverySession(true);
       }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        setIsRecoverySession(true);
-      }
     };
 
     bootstrap();
 
     const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+      // Do not treat every SIGNED_IN as recovery — only the explicit recovery event.
+      if (event === "PASSWORD_RECOVERY") {
         setIsRecoverySession(true);
       }
     });

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ethers } from "ethers";
 import { toast } from "sonner";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 interface Plot {
   id: number;
@@ -899,10 +900,8 @@ export function OctagonalGrid({
                             </div>
                             <div className="text-lg font-bold text-blue-100 mt-1">
                               {plotPrice ? formatPrice(plotPrice) : (() => {
-                                // Price is 100 xBGL for Phase 1 (first 10k participants)
-                                // After Phase 1, price becomes 400 xBGL
-                                // Default to Phase 1 price - actual price determined at purchase time
-                                  return "100 xBGL";
+                                // Phase 1: 100 EUR equivalent in xBGL (~195.58); purchase flow uses getPlotPriceInXBGL()
+                                return `${getPlotPriceInXBGL().toFixed(2)} xBGL`;
                               })()}
                             </div>
                           </div>

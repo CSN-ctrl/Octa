@@ -2,6 +2,17 @@ import { useState, useEffect, useCallback } from "react";
 import { useLandPlots } from "./useLandPlots";
 import { useTreasury } from "./useTreasury";
 import * as supabaseService from "@/lib/supabase-service";
+import { PLANET_SARAKT_PRIME_ID, PLANET_ZYTHERA_ID } from "@/config/world-ids";
+
+/** One UI entry per canonical planet; DB rows use UUID ids — map them to sarakt-prime / zythera keys. */
+function canonicalPlanetUiKey(planet: { id: string; name?: string | null }): string {
+  if (planet.id === PLANET_SARAKT_PRIME_ID) return "sarakt-prime";
+  if (planet.id === PLANET_ZYTHERA_ID) return "zythera";
+  const n = planet.name?.trim().toLowerCase() ?? "";
+  if (n === "sarakt prime") return "sarakt-prime";
+  if (n === "zythera") return "zythera";
+  return planet.id;
+}
 
 export interface RealPlanetStats {
   name: string;
@@ -86,18 +97,17 @@ export function useRealPlanetStats() {
       // Try to fetch real planets from Supabase
       try {
         const planets = await supabaseService.getPlanets();
-        if (planets && Array.isArray(planets)) {
-          // Map real planets from Supabase
-          const realPlanets: Record<string, RealPlanetStats> = {};
+        if (planets && Array.isArray(planets) && planets.length > 0) {
+          const merged: Record<string, RealPlanetStats> = {};
 
           for (const planet of planets) {
-            // Try to get subnet info for the planet's star system
+            const uiKey = canonicalPlanetUiKey(planet);
+
             let subnetInfo = null;
             if (planet.star_system_id) {
               try {
                 const system = await supabaseService.getStarSystemById(planet.star_system_id);
                 if (system?.subnet_id) {
-                  // Subnet info is in the star system
                   subnetInfo = {
                     subnet_id: system.subnet_id,
                     chain_id: system.chain_id,
@@ -109,45 +119,62 @@ export function useRealPlanetStats() {
               }
             }
 
-            // Calculate stats from contract data or subnet info
-            const planetCoverage = planet.planet_type === "habitable"
+            const isCanonicalHabitable =
+              uiKey === "sarakt-prime" ||
+              planet.planet_type === "habitable" ||
+              planet.planet_type === "sarakt-prime";
+            const planetCoverage = isCanonicalHabitable
               ? (plotsSold / totalPlots) * 100
               : (plotsSold / totalPlots) * 18;
 
-            realPlanets[planet.id] = {
+            const fromRow: RealPlanetStats = {
               name: planet.name,
               status: planet.status === "active" ? "Habitable" : planet.status === "deploying" ? "Deploying" : "Inactive",
               population: Math.round(planetCoverage),
               coverage: Math.round(planetCoverage),
-              tier: planet.planet_type === "habitable" ? "Capital" : planet.planet_type === "resource" ? "Resource" : "Frontier",
-              color: planet.planet_type === "habitable" ? "primary" : planet.planet_type === "resource" ? "secondary" : "destructive",
+              tier: isCanonicalHabitable ? "Capital" : planet.planet_type === "resource" ? "Resource" : "Frontier",
+              color: isCanonicalHabitable ? "primary" : planet.planet_type === "resource" ? "secondary" : "destructive",
               locked: planet.status !== "active",
-              description: `${planet.name} - ${planet.planet_type || "Unknown"} planet in the Sarakt system.`,
-              plotsSold: Math.round(plotsSold * (planet.planet_type === "habitable" ? 1 : 0.18)),
-              totalPlots: planet.planet_type === "habitable" ? totalPlots : Math.round(totalPlots * 0.18),
-              treasuryBalance: subnetInfo?.treasury_balance || "0",
+              description: `${planet.name} — ${planet.planet_type || "planet"} in the Sarakt system.`,
+              plotsSold: Math.round(plotsSold * (isCanonicalHabitable ? 1 : 0.18)),
+              totalPlots: isCanonicalHabitable ? totalPlots : Math.round(totalPlots * 0.18),
+              treasuryBalance: "0",
               rpc_url: subnetInfo?.rpc_url || planet.rpc_url,
               chain_id: subnetInfo?.chain_id || planet.chain_id,
               subnet_id: subnetInfo?.subnet_id || planet.subnet_id,
               features: [],
               districts: [{
                 name: "Octavia Capital City",
-                plots: planet.planet_type === "habitable" ? totalPlots : Math.round(totalPlots * 0.18),
+                plots: isCanonicalHabitable ? totalPlots : Math.round(totalPlots * 0.18),
                 price: 75,
-                type: planet.planet_type === "habitable" ? "Capital" : planet.planet_type === "resource" ? "Resource" : "Frontier",
+                type: isCanonicalHabitable ? "Capital" : planet.planet_type === "resource" ? "Resource" : "Frontier",
                 description: `The main settlement on ${planet.name}.`
               }]
             };
+
+            const base = uiKey === "sarakt-prime" ? saraktPrimeStats : uiKey === "zythera" ? zytheraStats : null;
+            merged[uiKey] = base
+              ? {
+                  ...base,
+                  name: planet.name,
+                  locked: fromRow.locked,
+                  population: fromRow.population,
+                  coverage: fromRow.coverage,
+                  plotsSold: fromRow.plotsSold,
+                  totalPlots: fromRow.totalPlots,
+                  treasuryBalance: fromRow.treasuryBalance || base.treasuryBalance,
+                  rpc_url: fromRow.rpc_url || base.rpc_url,
+                  chain_id: fromRow.chain_id ?? base.chain_id,
+                  subnet_id: fromRow.subnet_id || base.subnet_id,
+                }
+              : fromRow;
           }
 
-          // Merge with calculated stats
-          setPlanets({
-            "sarakt-prime": saraktPrimeStats,
-            "zythera": zytheraStats,
-            ...realPlanets
-          });
+          if (!merged["sarakt-prime"]) merged["sarakt-prime"] = saraktPrimeStats;
+          if (!merged["zythera"]) merged["zythera"] = zytheraStats;
+
+          setPlanets(merged);
         } else {
-          // Fallback to calculated stats
           setPlanets({
             "sarakt-prime": saraktPrimeStats,
             "zythera": zytheraStats

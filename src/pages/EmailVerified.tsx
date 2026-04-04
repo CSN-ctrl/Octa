@@ -12,7 +12,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  */
 export default function EmailVerified() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [verifying, setVerifying] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

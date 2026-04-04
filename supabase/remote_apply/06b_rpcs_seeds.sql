@@ -9,9 +9,9 @@
   ) VALUES (
     '0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33', w, p_amount, tt, 'mint', 'mint',
     v_hash, 'completed', COALESCE(p_metadata, '{}'::jsonb)
-  ) ON CONFLICT (tx_hash) DO NOTHING;
+  );
 
-  RETURN jsonb_build_object('success', true, 'tx_hash', v_hash);
+  RETURN jsonb_build_object('success', true, 'tx_hash', v_hash, 'duplicate', false);
 END;
 $$;
 
@@ -34,6 +34,12 @@ DECLARE
 BEGIN
   IF p_amount IS NULL OR p_amount <= 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'invalid amount');
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext(v_hash), 7123341);
+
+  IF EXISTS (SELECT 1 FROM public.transactions WHERE tx_hash = v_hash) THEN
+    RETURN jsonb_build_object('success', true, 'tx_hash', v_hash, 'duplicate', true);
   END IF;
 
   SELECT
@@ -67,9 +73,9 @@ BEGIN
   ) VALUES (
     w, '0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33', p_amount, tt, 'burn', 'burn',
     v_hash, 'completed', COALESCE(p_metadata, '{}'::jsonb)
-  ) ON CONFLICT (tx_hash) DO NOTHING;
+  );
 
-  RETURN jsonb_build_object('success', true, 'tx_hash', v_hash);
+  RETURN jsonb_build_object('success', true, 'tx_hash', v_hash, 'duplicate', false);
 END;
 $$;
 
@@ -94,6 +100,12 @@ DECLARE
 BEGIN
   IF p_amount IS NULL OR p_amount <= 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'invalid amount');
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext(v_hash), 7123341);
+
+  IF EXISTS (SELECT 1 FROM public.transactions WHERE tx_hash = v_hash) THEN
+    RETURN jsonb_build_object('success', true, 'tx_hash', v_hash, 'duplicate', true);
   END IF;
 
   SELECT
@@ -133,9 +145,9 @@ BEGIN
     from_address, to_address, amount, token_type, transaction_type, type, tx_hash, status, metadata
   ) VALUES (
     fa, ta, p_amount, tt, 'transfer', 'transfer', v_hash, 'completed', COALESCE(p_metadata, '{}'::jsonb)
-  ) ON CONFLICT (tx_hash) DO NOTHING;
+  );
 
-  RETURN jsonb_build_object('success', true, 'tx_hash', v_hash);
+  RETURN jsonb_build_object('success', true, 'tx_hash', v_hash, 'duplicate', false);
 END;
 $$;
 
