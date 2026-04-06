@@ -1451,6 +1451,7 @@ export type Database = {
         Args: never
         Returns: {
           account_name: string
+          auth_wallet_address: string | null
           avax_balance: number
           chaos_balance: number
           email: string

@@ -83,6 +83,8 @@ interface UserData {
   email: string;
   name?: string;
   wallet_address: string | null;
+  /** Wallet from auth.users raw_user_meta_data.wallet_address (Supabase Auth metadata). */
+  auth_wallet_address?: string | null;
   wallets: string[];
   balance: {
     xbgl_balance: number;
@@ -1357,6 +1359,11 @@ export default function AdminDashboard() {
           const wallet = user.wallet_address;
           const walletLower = wallet?.toLowerCase();
           const email = user.email?.toLowerCase();
+          const authWalletRaw = (user.auth_wallet_address as string | null | undefined) || "";
+          const authWalletNorm =
+            authWalletRaw.trim() && !authWalletRaw.includes("@")
+              ? authWalletRaw.trim().toLowerCase()
+              : null;
           const plotsValue = (user.plots_count || 0) * 100;
           const portfolioValue = portfolioValuesByOwner.get(walletLower || "") || 0;
 
@@ -1386,8 +1393,10 @@ export default function AdminDashboard() {
             email: user.email || "",
             name: user.account_name || undefined,
             wallet_address: wallet || null,
+            auth_wallet_address: authWalletRaw.trim() || null,
             wallets: Array.from(new Set([
               ...(wallet ? [String(wallet).toLowerCase()] : []),
+              ...(authWalletNorm ? [authWalletNorm] : []),
               ...Array.from(walletsByEmail.get(email || "") || []),
             ])),
             balance: userBalance,
@@ -1420,6 +1429,7 @@ export default function AdminDashboard() {
             email: user.email || wallet?.slice(0, 8) + "...",
             name: namesByWallet.get(wallet) || undefined,
             wallet_address: user.wallet_address,
+            auth_wallet_address: null,
             wallets: Array.from(new Set([
               ...(user.wallet_address ? [String(user.wallet_address).toLowerCase()] : []),
               ...Array.from(walletsByEmail.get((user.email || "").toLowerCase()) || []),
@@ -1451,6 +1461,7 @@ export default function AdminDashboard() {
             email: wallet.slice(0, 8) + "...",
             name: namesByWallet.get(wallet) || undefined,
             wallet_address: balance.wallet_address,
+            auth_wallet_address: null,
             wallets: [String(balance.wallet_address).toLowerCase()],
             balance: userBalance,
             plots,
@@ -2323,11 +2334,15 @@ export default function AdminDashboard() {
       const matchesSearch =
         user.name?.toLowerCase().includes(q) ||
         user.email.toLowerCase().includes(q) ||
-        user.wallet_address?.toLowerCase().includes(q);
+        user.wallet_address?.toLowerCase().includes(q) ||
+        user.auth_wallet_address?.toLowerCase().includes(q) ||
+        user.wallets?.some((w) => w.toLowerCase().includes(q));
       if (!matchesSearch) return false;
       if (userFilter === "admin") return user.email.toLowerCase().includes("admin");
-      if (userFilter === "with-wallet") return Boolean(user.wallet_address);
-      if (userFilter === "no-wallet") return !user.wallet_address;
+      if (userFilter === "with-wallet")
+        return Boolean(user.wallet_address || user.auth_wallet_address?.trim());
+      if (userFilter === "no-wallet")
+        return !user.wallet_address && !user.auth_wallet_address?.trim();
       return true;
     })
     .sort((a, b) => {
@@ -3225,6 +3240,7 @@ export default function AdminDashboard() {
                         const showEmailLine = Boolean(user.email) && normalizedDisplayName !== normalizedEmail;
                         const allWallets = (user.wallets || []).filter(Boolean);
                         const hasWallets = allWallets.length > 0;
+                        const normalizedAuthWallet = (user.auth_wallet_address || "").trim().toLowerCase();
                         const walletAlreadyInList = allWallets.some(w => w.toLowerCase() === normalizedWallet);
                         const showWalletLine = Boolean(user.wallet_address) && normalizedWallet !== normalizedDisplayName && normalizedWallet !== normalizedEmail && !walletAlreadyInList;
                         return (
@@ -3242,14 +3258,25 @@ export default function AdminDashboard() {
                                   {hasWallets ? (
                                     <div className="mt-2 space-y-1">
                                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Wallets ({allWallets.length})</p>
-                                      {allWallets.map((w) => (
-                                        <p key={`${identifier}-${w}`} className="font-mono text-[11px] text-muted-foreground break-all">
-                                          {w}
-                                        </p>
-                                      ))}
+                                      {allWallets.map((w) => {
+                                        const isAuthWallet =
+                                          Boolean(normalizedAuthWallet) && w.toLowerCase() === normalizedAuthWallet;
+                                        return (
+                                          <p key={`${identifier}-${w}`} className="font-mono text-[11px] text-muted-foreground break-all flex flex-wrap items-center gap-1.5">
+                                            <span>{w}</span>
+                                            {isAuthWallet && (
+                                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
+                                                Auth
+                                              </Badge>
+                                            )}
+                                          </p>
+                                        );
+                                      })}
                                     </div>
                                   ) : (
-                                    !user.wallet_address && <p className="font-mono text-xs text-muted-foreground break-all mt-1">No wallet</p>
+                                    !user.wallet_address && !user.auth_wallet_address?.trim() && (
+                                      <p className="font-mono text-xs text-muted-foreground break-all mt-1">No wallet</p>
+                                    )
                                   )}
                                 </div>
                                 <Badge variant="outline">{user.portfolios} portfolios</Badge>
