@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export interface OctaDocData {
   plotId: number;
@@ -60,85 +59,55 @@ const buildFilledOctaDocHtml = async (data: OctaDocData): Promise<{ html: string
   return { html, certId };
 };
 
-const renderHtmlToPdf = async (html: string): Promise<Uint8Array> => {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.left = "-10000px";
-  iframe.style.top = "0";
-  iframe.style.width = "1200px";
-  iframe.style.height = "1700px";
-  iframe.setAttribute("aria-hidden", "true");
-  document.body.appendChild(iframe);
+const LAND_TITLE_TEMPLATE_URL = new URL("../../documents/LandOwnershipTitleCertificate.pdf", import.meta.url).href;
 
-  try {
-    const doc = iframe.contentDocument;
-    if (!doc) throw new Error("Failed to initialize conversion document");
+const renderTemplatePdf = async (data: OctaDocData, certId: string): Promise<Uint8Array> => {
+  const response = await fetch(LAND_TITLE_TEMPLATE_URL, { cache: "no-store" });
+  if (!response.ok) throw new Error("Failed to load LandOwnershipTitleCertificate.pdf template");
 
-    doc.open();
-    doc.write(html);
-    doc.close();
+  const sourceBytes = new Uint8Array(await response.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(sourceBytes);
+  const pages = pdfDoc.getPages();
+  const page = pages[0];
+  const { height } = page.getSize();
+  const textColor = rgb(1, 1, 1);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const issued = dateLabel(data.purchaseDate);
+  const tx = data.transactionHash || "—";
 
-    await new Promise<void>((resolve, reject) => {
-      const maxWaitMs = 8000;
-      const start = Date.now();
-      const poll = () => {
-        const ready = doc.readyState === "complete" && doc.body;
-        if (ready) {
-          resolve();
-          return;
-        }
-        if (Date.now() - start > maxWaitMs) {
-          reject(new Error("Timed out while loading OctaDoc HTML"));
-          return;
-        }
-        setTimeout(poll, 50);
-      };
-      poll();
+  const draw = (value: string, x: number, yFromTop: number, size = 11, useBold = false) => {
+    page.drawText(value, {
+      x,
+      y: height - yFromTop,
+      size,
+      font: useBold ? bold : font,
+      color: textColor,
+      maxWidth: 360,
     });
+  };
 
-    if ((doc as any).fonts?.ready) {
-      await (doc as any).fonts.ready;
-    }
+  draw(certId, 182, 92, 10, true); // Unique Identifier
+  draw(issued, 160, 208, 11); // Date of issue
+  draw(data.ownerName || "—", 112, 292, 11);
+  draw(data.ownerWallet || "—", 150, 318, 10);
+  draw(data.ownerEmail || "—", 112, 343, 11);
+  draw(`#${data.plotId}`, 118, 432, 11);
+  draw(`(${data.coordinates.x}, ${data.coordinates.y})`, 188, 457, 11);
+  draw(data.zoneType || "—", 132, 482, 11);
+  draw(issued, 162, 507, 11); // Activation Date
+  draw(String(data.plotId), 150, 532, 11);
+  draw(tx, 176, 558, 9);
 
-    const target = doc.documentElement;
-    const canvas = await html2canvas(target, {
-      backgroundColor: "#000000",
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      windowWidth: Math.max(target.scrollWidth, 1200),
-      windowHeight: Math.max(target.scrollHeight, 1600),
-    });
-
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-      compress: true,
-    });
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
-    const imageData = canvas.toDataURL("image/jpeg", 0.95);
-
-    pdf.addImage(imageData, "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imageData, "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight;
-    }
-
-    return new Uint8Array(pdf.output("arraybuffer"));
-  } finally {
-    document.body.removeChild(iframe);
+  if (pages.length > 1) {
+    const p2 = pages[1];
+    const h2 = p2.getSize().height;
+    p2.drawText(String(data.plotId), { x: 170, y: h2 - 168, size: 11, font, color: textColor });
+    p2.drawText(tx, { x: 225, y: h2 - 195, size: 9, font, color: textColor, maxWidth: 300 });
+    p2.drawText(issued, { x: 205, y: h2 - 222, size: 11, font, color: textColor });
   }
+
+  return new Uint8Array(await pdfDoc.save());
 };
 
 export async function generateAndSaveOctaDocHtml(data: OctaDocData): Promise<{ url: string; filename: string }> {
@@ -173,8 +142,8 @@ export async function generateAndSaveOctaDocHtml(data: OctaDocData): Promise<{ u
 }
 
 export async function generateAndSaveOctaDocPdf(data: OctaDocData): Promise<{ url: string; filename: string; pdfBytes: Uint8Array }> {
-  const { html } = await buildFilledOctaDocHtml(data);
-  const pdfBytes = await renderHtmlToPdf(html);
+  const certId = `OCTA-${String(data.plotId).padStart(6, "0")}-${Date.now().toString(36).toUpperCase()}`;
+  const pdfBytes = await renderTemplatePdf(data, certId);
   const filename = `Plot_${data.plotId}_OctaDoc_${Date.now()}.pdf`;
   const objectPath = `${data.plotId}/${filename}`;
 
