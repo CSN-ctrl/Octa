@@ -376,7 +376,7 @@ export function AssetManagementSection({
                                 size="sm"
                                 className="bg-background/90 backdrop-blur-sm hover:bg-background"
                                 onClick={() => onGenerateCertificate(plot)}
-                                title="Generate PDF Certificate"
+                                title="Generate OctaDoc"
                               >
                                 <FileText className="h-3 w-3" />
                               </Button>
@@ -409,7 +409,7 @@ export function AssetManagementSection({
                                   size="sm"
                                   className="text-xs bg-background/80 backdrop-blur-sm hover:bg-background/90"
                                 onClick={() => onGenerateCertificate(plot)}
-                                title="Generate PDF Certificate"
+                                title="Generate OctaDoc"
                                 >
                                   <Download className="h-3 w-3" />
                                 </Button>

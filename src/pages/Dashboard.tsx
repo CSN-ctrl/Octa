@@ -1269,10 +1269,10 @@ export default function Dashboard() {
     }
 
     try {
-      const { generateAndSaveCertificate, downloadCertificate } = await import("@/lib/plot-documents");
+      const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
       const { sendPlotCertificateEmail } = await import("@/lib/email-service");
       
-      toast.info("Generating certificate PDF...");
+      toast.info("Generating OctaDoc...");
       
       const ownership = await supabaseService.getOwnershipByWallet(address).catch(() => null);
       const buyerEmail = ownership?.email || userEmail || "";
@@ -1297,7 +1297,7 @@ export default function Dashboard() {
         return meta?.plot_id === plot.id;
       });
 
-      const certificate = await generateAndSaveCertificate({
+      const certificate = await generateAndSaveOctaDocHtml({
         plotId: plot.id,
         ownerName,
         ownerWallet: address,
@@ -1308,16 +1308,7 @@ export default function Dashboard() {
         transactionHash: plotTx?.tx_hash || "",
       });
 
-      // Download certificate (use pdfBytes when present to avoid fetch(blob URL) and CSP issues)
-      if (certificate.pdfBytes) {
-        downloadCertificate(certificate.pdfBytes, certificate.filename);
-      } else {
-        const response = await fetch(certificate.url);
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const pdfBytes = new Uint8Array(arrayBuffer);
-        downloadCertificate(pdfBytes, certificate.filename);
-      }
+      window.open(certificate.url, "_blank", "noopener,noreferrer");
 
       if (buyerEmail && !certificate.url.startsWith("blob:")) {
         await sendPlotCertificateEmail(
@@ -1328,7 +1319,7 @@ export default function Dashboard() {
         );
       }
 
-      toast.success("PDF certificate generated and saved!");
+      toast.success("OctaDoc generated and saved!");
       await loadPlotDocuments(plot.id);
     } catch (error: any) {
       logger.error("Failed to generate certificate:", error);
@@ -1945,17 +1936,16 @@ export default function Dashboard() {
           // Generate certificate
           (async () => {
             try {
-              const { generateAndSaveCertificate } = await import("@/lib/plot-documents");
+              const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
               const { sendPlotPurchaseEmail } = await import("@/lib/email-service");
               
-              const certificate = await generateAndSaveCertificate({
+              const certificate = await generateAndSaveOctaDocHtml({
                 plotId: plotId,
                 ownerName: address.slice(0, 8) + "..." + address.slice(-6),
                 ownerWallet: address,
                 ownerEmail: buyerEmail,
                 coordinates: { x: plotData.coord_x || 0, y: plotData.coord_y || 0 },
                 zoneType: plotData.zone_type || "Residential",
-                purchasePrice: plotPrice,
                 purchaseDate: new Date().toISOString(),
                 transactionHash: txHash,
               });

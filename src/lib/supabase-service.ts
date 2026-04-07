@@ -734,28 +734,54 @@ export async function deleteDigitalIdentity(identityId: string): Promise<void> {
 export async function getUserBalance(walletAddressOrEmail: string): Promise<UserBalance | null> {
   try {
     const identifier = walletAddressOrEmail.toLowerCase();
-    
-    // First try to get balance by wallet_address
-    let { data, error } = await supabase
+
+    // Email-based users can have split balances (email row + linked wallet row).
+    // Aggregate both so dashboard current balance matches ledger accounting.
+    if (identifier.includes("@")) {
+      const ownership = await getOwnershipByEmail(identifier).catch(() => null);
+      const linkedWallet = ownership?.wallet_address?.toLowerCase();
+      const walletAddresses = linkedWallet && linkedWallet !== identifier
+        ? [identifier, linkedWallet]
+        : [identifier];
+
+      const { data: rows, error } = await supabase
+        .from("user_balances")
+        .select("*")
+        .in("wallet_address", walletAddresses);
+
+      if (error) {
+        if (error.code === "PGRST116") return null;
+        if (error.code === "PGRST301" || error.status === 406 || error.message?.includes("406")) {
+          return null;
+        }
+        console.debug("Error fetching user balance:", error);
+        return null;
+      }
+
+      if (!rows || rows.length === 0) return null;
+
+      if (rows.length === 1) return rows[0];
+
+      const preferredBase =
+        rows.find((r: any) => String(r.wallet_address || "").toLowerCase() === (linkedWallet || "")) ||
+        rows[0];
+
+      return {
+        ...preferredBase,
+        xbgl_balance: rows.reduce((sum: number, r: any) => sum + Number(r.xbgl_balance || 0), 0),
+        avax_balance: rows.reduce((sum: number, r: any) => sum + Number(r.avax_balance || 0), 0),
+        chaos_balance: rows.reduce((sum: number, r: any) => sum + Number(r.chaos_balance || 0), 0),
+        sc_balance: rows.reduce((sum: number, r: any) => sum + Number(r.sc_balance || 0), 0),
+      } as UserBalance;
+    }
+
+    // Wallet-based users: direct lookup
+    const { data, error } = await supabase
       .from("user_balances")
       .select("*")
       .eq("wallet_address", identifier)
       .maybeSingle();
-    
-    // If not found and identifier looks like an email, try by email
-    if (!data && error?.code === "PGRST116" && identifier.includes("@")) {
-      const { data: emailData, error: emailError } = await supabase
-        .from("user_balances")
-        .select("*")
-        .eq("wallet_address", identifier) // Email is stored as wallet_address for users without wallets
-        .maybeSingle();
-      
-      if (emailData) {
-        return emailData;
-      }
-      error = emailError;
-    }
-    
+
     if (error) {
       // PGRST116 = no rows returned (not an error, just no data)
       if (error.code === "PGRST116") return null;

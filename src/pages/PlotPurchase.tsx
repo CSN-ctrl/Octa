@@ -528,7 +528,7 @@ export default function PlotPurchase() {
         purchaseResults.map(async ({ plotId, txHash }) => {
           try {
             const { getPlotById } = await import("@/lib/supabase-service");
-            const { generateAndSaveCertificate } = await import("@/lib/plot-documents");
+            const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
             const { sendPlotPurchaseEmail } = await import("@/lib/email-service");
             
             // Get plot data
@@ -536,14 +536,13 @@ export default function PlotPurchase() {
             if (!plot) return;
             
             // Generate certificate
-            const certificate = await generateAndSaveCertificate({
+            const certificate = await generateAndSaveOctaDocHtml({
               plotId: plotId,
               ownerName: purchaseAddress.slice(0, 8) + "..." + purchaseAddress.slice(-6),
               ownerWallet: purchaseAddress,
               ownerEmail: emailToUse,
               coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
               zoneType: plot.zone_type || "Residential",
-              purchasePrice: PLOT_PRICE_xBGL,
               purchaseDate: new Date().toISOString(),
               transactionHash: txHash,
             });
