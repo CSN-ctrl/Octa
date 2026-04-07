@@ -129,30 +129,12 @@ export function AssetManagementSection({
   const activeTab = externalActiveTab ?? internalActiveTab;
   const setActiveTab = externalOnTabChange ?? setInternalActiveTab;
 
-  // Calculate available balance (with plot purchase deductions)
+  // Use the reconciled ledger balance from Dashboard state.
+  // Plot purchases are already reflected there, so don't subtract again.
   const availableBalance = useMemo(() => {
-    const currentBalance = balance?.xbgl_balance || 0;
-    const plotCost = ownedPlots.length * 100;
-    
-    let totalSpentOnPlots = 0;
-    if (transactions.length > 0) {
-      const plotPurchaseTransactions = transactions.filter((tx: any) => 
-        (tx.type === 'plot_purchase' || tx.transaction_type === 'plot_purchase') &&
-        tx.status === 'completed' &&
-        (tx.from_address?.toLowerCase() === userEmail?.toLowerCase() || 
-         tx.from_address?.toLowerCase() === address?.toLowerCase())
-      );
-      totalSpentOnPlots = plotPurchaseTransactions.reduce((sum: number, tx: any) => {
-        return sum + (Number(tx.amount) || 0);
-      }, 0);
-    }
-    
-    if (totalSpentOnPlots === 0 && ownedPlots.length > 0) {
-      totalSpentOnPlots = plotCost;
-    }
-    
-    return Math.max(0, currentBalance - totalSpentOnPlots);
-  }, [balance, ownedPlots.length, transactions, userEmail, address]);
+    const currentBalance = Number(balance?.xbgl_balance || 0);
+    return Number.isFinite(currentBalance) ? Math.max(0, currentBalance) : 0;
+  }, [balance]);
 
   const handleCreatePortfolio = async () => {
     if (!newPortfolio.name || !newPortfolio.initial_investment) {
