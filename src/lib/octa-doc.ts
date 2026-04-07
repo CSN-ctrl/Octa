@@ -48,9 +48,11 @@ const applyTemplateValues = (template: string, data: OctaDocData, certId: string
   return replacements.reduce((acc, [key, value]) => acc.replace(key, value), template);
 };
 
+const ORIGINAL_OCTADOC_TEMPLATE_URL = new URL("../../documents/octaDoc.html", import.meta.url).href;
+
 const buildFilledOctaDocHtml = async (data: OctaDocData): Promise<{ html: string; certId: string }> => {
   const certId = `OCTA-${String(data.plotId).padStart(6, "0")}-${Date.now().toString(36).toUpperCase()}`;
-  const templateResponse = await fetch("/documents/octaDoc.html", { cache: "no-store" });
+  const templateResponse = await fetch(ORIGINAL_OCTADOC_TEMPLATE_URL, { cache: "no-store" });
   if (!templateResponse.ok) {
     throw new Error("Failed to load octaDoc template");
   }
