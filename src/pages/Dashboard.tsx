@@ -1269,47 +1269,57 @@ export default function Dashboard() {
     }
 
     try {
-      const { generateAndSaveCertificate, downloadCertificate } = await import("@/lib/plot-documents");
+      const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
       const { sendPlotCertificateEmail } = await import("@/lib/email-service");
       
-      toast.info("Generating certificate...");
+      toast.info("Generating octaDoc...");
       
       const ownership = await supabaseService.getOwnershipByWallet(address).catch(() => null);
       const buyerEmail = ownership?.email || userEmail || "";
-
-      const certificate = await generateAndSaveCertificate({
-        plotId: plot.id,
-        ownerName: address.slice(0, 8) + "..." + address.slice(-6),
-        ownerWallet: address,
-        ownerEmail: userEmail,
-        coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
-        zoneType: plot.zone_type || "Residential",
-        purchasePrice: 100,
-        purchaseDate: plot.created_at || new Date().toISOString(),
+      const digitalIdentity = await supabaseService.getDigitalIdentity(address).catch(() => null);
+      const ownerName =
+        digitalIdentity?.name ||
+        (buyerEmail ? buyerEmail.split("@")[0] : "") ||
+        `${address.slice(0, 8)}...${address.slice(-6)}`;
+      let txQuery = supabase
+        .from("transactions")
+        .select("tx_hash, created_at, metadata")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (buyerEmail) {
+        txQuery = txQuery.or(`from_address.ilike.${address.toLowerCase()},from_address.ilike.${buyerEmail.toLowerCase()}`);
+      } else {
+        txQuery = txQuery.ilike("from_address", address.toLowerCase());
+      }
+      const { data: txData } = await txQuery;
+      const plotTx = (txData || []).find((tx: any) => {
+        const meta = tx?.metadata || {};
+        return meta?.plot_id === plot.id;
       });
 
-      // Download certificate (use pdfBytes when present to avoid fetch(blob URL) and CSP issues)
-      if (certificate.pdfBytes) {
-        downloadCertificate(certificate.pdfBytes, certificate.filename);
-      } else {
-        const response = await fetch(certificate.url);
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const pdfBytes = new Uint8Array(arrayBuffer);
-        downloadCertificate(pdfBytes, certificate.filename);
-      }
+      const certificate = await generateAndSaveOctaDocHtml({
+        plotId: plot.id,
+        ownerName,
+        ownerWallet: address,
+        ownerEmail: buyerEmail,
+        coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
+        zoneType: plot.zone_type || "Residential",
+        purchaseDate: plotTx?.created_at || plot.created_at || new Date().toISOString(),
+        transactionHash: plotTx?.tx_hash || "",
+      });
 
-      // Send email if email is available and we have a persistent URL (not blob fallback)
-      if (userEmail && !certificate.url.startsWith("blob:")) {
+      window.open(certificate.url, "_blank", "noopener,noreferrer");
+
+      if (buyerEmail) {
         await sendPlotCertificateEmail(
-          userEmail,
+          buyerEmail,
           plot.id,
           certificate.url,
-          address.slice(0, 8) + "..." + address.slice(-6)
+          ownerName
         );
       }
 
-      toast.success("Certificate generated and downloaded!");
+      toast.success("octaDoc generated and saved!");
       await loadPlotDocuments(plot.id);
     } catch (error: any) {
       logger.error("Failed to generate certificate:", error);
