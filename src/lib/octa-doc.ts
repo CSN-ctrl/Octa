@@ -29,8 +29,18 @@ const dateLabel = (iso: string): string => {
 const applyTemplateValues = (template: string, data: OctaDocData, certId: string): string => {
   const issued = dateLabel(data.purchaseDate);
   const tx = data.transactionHash || "—";
+  const signedAt = new Date().toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZoneName: "short",
+  });
   const buyerSignature = escapeHtml(data.ownerName || "Buyer Signature");
-  const sellerSignature = "Octa Investment Group";
+  const sellerSignature = "Georgi Penev";
   const sellerLabel = "SELLER: Octa Investment Group";
   const replacements: Array<[string, string]> = [
     ["Unique Identifier:", `Unique Identifier: ${escapeHtml(certId)}`],
@@ -58,7 +68,14 @@ const applyTemplateValues = (template: string, data: OctaDocData, certId: string
   if (!result.includes("buyer-esign")) {
     result = result.replace(
       `BUYER: ${escapeHtml(data.ownerName || "—")}</p>`,
-      `BUYER: ${escapeHtml(data.ownerName || "—")}</p><p id="buyer-esign" class="font-signature text-3xl italic">${buyerSignature}</p>`
+      `BUYER: ${escapeHtml(data.ownerName || "—")}</p><p id="buyer-esign" class="font-signature text-3xl italic">${buyerSignature}</p><p class="text-sm text-muted-foreground">e-Signed by ${buyerSignature} on ${escapeHtml(signedAt)}</p>`
+    );
+  }
+
+  if (!result.includes("seller-esign")) {
+    result = result.replace(
+      `${sellerLabel}</p>`,
+      `${sellerLabel}</p><p id="seller-esign" class="font-signature text-3xl italic">${sellerSignature}</p><p class="text-sm text-muted-foreground">e-Signed by Octa Investment Group on ${escapeHtml(signedAt)}</p>`
     );
   }
 
