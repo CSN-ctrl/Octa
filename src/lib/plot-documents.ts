@@ -17,181 +17,108 @@ export interface PlotDocumentData {
  * Generate plot ownership certificate PDF
  */
 export async function generatePlotCertificate(data: PlotDocumentData): Promise<{ pdfBytes: Uint8Array; filename: string }> {
-  // Create a new PDF document
+  // Create a new PDF document (styled to mirror octaDoc template sections)
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4 size
 
   // Embed fonts
   const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const certId = `OCTA-${String(data.plotId).padStart(6, "0")}-${Date.now().toString(36).toUpperCase()}`;
 
-  // Colors
-  const primaryColor = rgb(0.4, 0.3, 0.9); // Purple/violet
-  const textColor = rgb(0.1, 0.1, 0.1);
-  const mutedColor = rgb(0.5, 0.5, 0.5);
+  // Theme (dark certificate like octaDoc HTML)
+  const bg = rgb(0.03, 0.04, 0.08);
+  const panel = rgb(0.07, 0.10, 0.17);
+  const line = rgb(0.34, 0.40, 0.66);
+  const text = rgb(0.95, 0.97, 1);
+  const muted = rgb(0.70, 0.75, 0.86);
+  const accent = rgb(0.52, 0.60, 1);
 
-  // Header
-  page.drawText("CHAOS STAR UNIVERSE", {
-    x: 50,
-    y: 780,
-    size: 24,
-    font: helveticaBoldFont,
-    color: primaryColor,
-  });
+  page.drawRectangle({ x: 0, y: 0, width: 595, height: 842, color: bg });
+  page.drawRectangle({ x: 20, y: 20, width: 555, height: 802, color: panel, borderColor: line, borderWidth: 1.2 });
+  page.drawLine({ start: { x: 20, y: 760 }, end: { x: 575, y: 760 }, thickness: 1, color: line });
 
-  page.drawText("Plot Ownership Certificate", {
-    x: 50,
-    y: 750,
+  page.drawText("LAND OWNERSHIP TITLE CERTIFICATE", {
+    x: 34,
+    y: 786,
     size: 18,
     font: helveticaBoldFont,
-    color: textColor,
+    color: text,
   });
-
-  // Draw a line
-  page.drawLine({
-    start: { x: 50, y: 740 },
-    end: { x: 545, y: 740 },
-    thickness: 2,
-    color: primaryColor,
-  });
-
-  // Certificate ID
-  const certId = `CS-${String(data.plotId).padStart(6, '0')}-${Date.now().toString(36).toUpperCase()}`;
-  page.drawText(`Certificate ID: ${certId}`, {
-    x: 50,
-    y: 710,
+  page.drawText(`Sarakt Prime Registry · Plot #${data.plotId}`, {
+    x: 34,
+    y: 770,
     size: 10,
     font: helveticaFont,
-    color: mutedColor,
+    color: muted,
   });
-
-  // Main content
-  let yPos = 650;
-
-  page.drawText("This certifies that", {
-    x: 50,
-    y: yPos,
-    size: 12,
-    font: helveticaFont,
-    color: textColor,
-  });
-
-  yPos -= 30;
-
-  // Owner name (highlighted)
-  page.drawText(data.ownerName, {
-    x: 50,
-    y: yPos,
-    size: 16,
-    font: helveticaBoldFont,
-    color: primaryColor,
-  });
-
-  yPos -= 40;
-
-  page.drawText("is the rightful owner of", {
-    x: 50,
-    y: yPos,
-    size: 12,
-    font: helveticaFont,
-    color: textColor,
-  });
-
-  yPos -= 30;
-
-  // Plot ID (highlighted)
-  page.drawText(`Plot #${data.plotId}`, {
-    x: 50,
-    y: yPos,
-    size: 20,
-    font: helveticaBoldFont,
-    color: primaryColor,
-  });
-
-  yPos -= 60;
-
-  // Plot Details Section
-  page.drawText("Plot Details", {
-    x: 50,
-    y: yPos,
-    size: 14,
-    font: helveticaBoldFont,
-    color: textColor,
-  });
-
-  yPos -= 30;
-
-  const details = [
-    { label: "Plot ID:", value: `#${data.plotId}` },
-    { label: "Coordinates:", value: `(${data.coordinates.x}, ${data.coordinates.y})` },
-    { label: "Zone Type:", value: data.zoneType },
-    { label: "Purchase Price:", value: `${data.purchasePrice} xBGL` },
-    { label: "Purchase Date:", value: new Date(data.purchaseDate).toLocaleDateString() },
-    { label: "Wallet Address:", value: data.ownerWallet },
-  ];
-
-  if (data.transactionHash) {
-    details.push({ label: "Transaction Hash:", value: data.transactionHash });
-  }
-
-  details.forEach((detail) => {
-    page.drawText(detail.label, {
-      x: 70,
-      y: yPos,
-      size: 10,
-      font: helveticaFont,
-      color: mutedColor,
-    });
-
-    page.drawText(detail.value, {
-      x: 200,
-      y: yPos,
-      size: 10,
-      font: helveticaBoldFont,
-      color: textColor,
-    });
-
-    yPos -= 25;
-  });
-
-  // Footer
-  yPos = 150;
-  page.drawLine({
-    start: { x: 50, y: yPos },
-    end: { x: 545, y: yPos },
-    thickness: 1,
-    color: mutedColor,
-  });
-
-  yPos -= 30;
-
-  page.drawText("This certificate is issued by the Chaos Star Network", {
-    x: 50,
-    y: yPos,
-    size: 10,
-    font: helveticaFont,
-    color: mutedColor,
-  });
-
-  yPos -= 20;
-
-  page.drawText("and serves as proof of ownership in the Chaos Star Universe.", {
-    x: 50,
-    y: yPos,
-    size: 10,
-    font: helveticaFont,
-    color: mutedColor,
-  });
-
-  yPos -= 40;
-
-  page.drawText(`Issued: ${new Date().toLocaleDateString()}`, {
-    x: 50,
-    y: yPos,
+  page.drawText(`ID: ${certId}`, {
+    x: 370,
+    y: 770,
     size: 9,
-    font: helveticaFont,
-    color: mutedColor,
+    font: helveticaBoldFont,
+    color: accent,
   });
+
+  const drawCard = (x: number, y: number, title: string) => {
+    page.drawRectangle({ x, y, width: 260, height: 136, color: rgb(0.09, 0.12, 0.20), borderColor: line, borderWidth: 1 });
+    page.drawText(title, { x: x + 10, y: y + 118, size: 10, font: helveticaBoldFont, color: text });
+  };
+
+  drawCard(34, 596, "OWNER INFORMATION");
+  drawCard(300, 596, "PROPERTY INFORMATION");
+  drawCard(34, 446, "BLOCKCHAIN RECORD DATA");
+  drawCard(300, 446, "TITLE / ISSUER");
+
+  const drawRows = (x: number, startY: number, rows: Array<[string, string]>) => {
+    let y = startY;
+    rows.forEach(([k, v]) => {
+      page.drawText(k, { x, y, size: 8.5, font: helveticaFont, color: muted });
+      page.drawText(v, { x: x + 88, y, size: 8.5, font: helveticaBoldFont, color: text, maxWidth: 155 });
+      y -= 18;
+    });
+  };
+
+  drawRows(44, 688, [
+    ["Name:", data.ownerName || "—"],
+    ["Email:", data.ownerEmail || "—"],
+    ["Wallet:", data.ownerWallet || "—"],
+  ]);
+  drawRows(310, 688, [
+    ["Plot ID:", `#${data.plotId}`],
+    ["Coordinates:", `(${data.coordinates.x}, ${data.coordinates.y})`],
+    ["Zone Type:", data.zoneType || "—"],
+  ]);
+  drawRows(44, 538, [
+    ["NFT Token ID:", String(data.plotId)],
+    ["Date of Issue:", new Date(data.purchaseDate).toLocaleDateString()],
+    ["Tx Hash:", data.transactionHash || "—"],
+  ]);
+  drawRows(310, 538, [
+    ["Issuer:", "Octa Investment Group"],
+    ["Address:", "Sarakt · Octavia Capital City"],
+    ["Price:", `${Number(data.purchasePrice || 0).toFixed(2)} xBGL`],
+  ]);
+
+  page.drawRectangle({ x: 34, y: 250, width: 526, height: 170, color: rgb(0.09, 0.12, 0.20), borderColor: line, borderWidth: 1 });
+  page.drawText("LEGAL NOTICE", { x: 44, y: 398, size: 10, font: helveticaBoldFont, color: text });
+  const legal =
+    "This certificate confirms ownership for the referenced plot and mirrors the registry state. " +
+    "In case of discrepancy, blockchain records remain the canonical source of truth. " +
+    "Transfer rights are subject to platform rules and registry checks.";
+  page.drawText(legal, {
+    x: 44,
+    y: 374,
+    size: 9,
+    lineHeight: 13,
+    font: helveticaFont,
+    color: muted,
+    maxWidth: 506,
+  });
+
+  page.drawLine({ start: { x: 34, y: 228 }, end: { x: 560, y: 228 }, thickness: 1, color: line });
+  page.drawText("Generated by OctaDoc", { x: 44, y: 212, size: 8.5, font: helveticaFont, color: muted });
+  page.drawText(`Issued: ${new Date().toLocaleDateString()}`, { x: 430, y: 212, size: 8.5, font: helveticaFont, color: muted });
 
   // Save PDF
   const pdfBytes = await pdfDoc.save();

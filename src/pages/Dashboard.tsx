@@ -1269,10 +1269,10 @@ export default function Dashboard() {
     }
 
     try {
-      const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
+      const { generateAndSaveCertificate, downloadCertificate } = await import("@/lib/plot-documents");
       const { sendPlotCertificateEmail } = await import("@/lib/email-service");
       
-      toast.info("Generating octaDoc...");
+      toast.info("Generating certificate PDF...");
       
       const ownership = await supabaseService.getOwnershipByWallet(address).catch(() => null);
       const buyerEmail = ownership?.email || userEmail || "";
@@ -1297,7 +1297,7 @@ export default function Dashboard() {
         return meta?.plot_id === plot.id;
       });
 
-      const certificate = await generateAndSaveOctaDocHtml({
+      const certificate = await generateAndSaveCertificate({
         plotId: plot.id,
         ownerName,
         ownerWallet: address,
@@ -1308,9 +1308,18 @@ export default function Dashboard() {
         transactionHash: plotTx?.tx_hash || "",
       });
 
-      window.open(certificate.url, "_blank", "noopener,noreferrer");
+      // Download certificate (use pdfBytes when present to avoid fetch(blob URL) and CSP issues)
+      if (certificate.pdfBytes) {
+        downloadCertificate(certificate.pdfBytes, certificate.filename);
+      } else {
+        const response = await fetch(certificate.url);
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const pdfBytes = new Uint8Array(arrayBuffer);
+        downloadCertificate(pdfBytes, certificate.filename);
+      }
 
-      if (buyerEmail) {
+      if (buyerEmail && !certificate.url.startsWith("blob:")) {
         await sendPlotCertificateEmail(
           buyerEmail,
           plot.id,
@@ -1319,7 +1328,7 @@ export default function Dashboard() {
         );
       }
 
-      toast.success("octaDoc generated and saved!");
+      toast.success("PDF certificate generated and saved!");
       await loadPlotDocuments(plot.id);
     } catch (error: any) {
       logger.error("Failed to generate certificate:", error);
