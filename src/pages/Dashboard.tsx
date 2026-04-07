@@ -1269,10 +1269,10 @@ export default function Dashboard() {
     }
 
     try {
-      const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
+      const { generateAndSaveOctaDocPdf } = await import("@/lib/octa-doc");
       const { sendPlotCertificateEmail } = await import("@/lib/email-service");
       
-      toast.info("Generating OctaDoc...");
+      toast.info("Generating OctaDoc PDF...");
       
       const ownership = await supabaseService.getOwnershipByWallet(address).catch(() => null);
       const buyerEmail = ownership?.email || userEmail || "";
@@ -1297,7 +1297,7 @@ export default function Dashboard() {
         return meta?.plot_id === plot.id;
       });
 
-      const certificate = await generateAndSaveOctaDocHtml({
+      const certificate = await generateAndSaveOctaDocPdf({
         plotId: plot.id,
         ownerName,
         ownerWallet: address,
@@ -1308,7 +1308,8 @@ export default function Dashboard() {
         transactionHash: plotTx?.tx_hash || "",
       });
 
-      window.open(certificate.url, "_blank", "noopener,noreferrer");
+      const blobUrl = URL.createObjectURL(new Blob([certificate.pdfBytes], { type: "application/pdf" }));
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
 
       if (buyerEmail && !certificate.url.startsWith("blob:")) {
         await sendPlotCertificateEmail(
@@ -1319,7 +1320,7 @@ export default function Dashboard() {
         );
       }
 
-      toast.success("OctaDoc generated and saved!");
+      toast.success("OctaDoc PDF generated and saved!");
       await loadPlotDocuments(plot.id);
     } catch (error: any) {
       logger.error("Failed to generate certificate:", error);
@@ -1936,10 +1937,10 @@ export default function Dashboard() {
           // Generate certificate
           (async () => {
             try {
-              const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
+              const { generateAndSaveOctaDocPdf } = await import("@/lib/octa-doc");
               const { sendPlotPurchaseEmail } = await import("@/lib/email-service");
               
-              const certificate = await generateAndSaveOctaDocHtml({
+              const certificate = await generateAndSaveOctaDocPdf({
                 plotId: plotId,
                 ownerName: address.slice(0, 8) + "..." + address.slice(-6),
                 ownerWallet: address,
