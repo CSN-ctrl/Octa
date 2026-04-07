@@ -1261,70 +1261,94 @@ export default function Dashboard() {
     }
   };
 
-  // Generate certificate for a plot
-  const handleGenerateCertificate = async (plot: any) => {
+  const createOctaDocPdfForPlot = async (plot: any) => {
     if (!address) {
       toast.error("Please connect your wallet");
-      return;
+      return null;
     }
 
+    const { generateAndSaveOctaDocPdf } = await import("@/lib/octa-doc");
+    const { sendPlotCertificateEmail } = await import("@/lib/email-service");
+    const ownership = await supabaseService.getOwnershipByWallet(address).catch(() => null);
+    const buyerEmail = ownership?.email || userEmail || "";
+    const digitalIdentity = await supabaseService.getDigitalIdentity(address).catch(() => null);
+    const ownerName =
+      digitalIdentity?.name ||
+      (buyerEmail ? buyerEmail.split("@")[0] : "") ||
+      `${address.slice(0, 8)}...${address.slice(-6)}`;
+    let txQuery = supabase
+      .from("transactions")
+      .select("tx_hash, created_at, metadata")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (buyerEmail) {
+      txQuery = txQuery.or(`from_address.ilike.${address.toLowerCase()},from_address.ilike.${buyerEmail.toLowerCase()}`);
+    } else {
+      txQuery = txQuery.ilike("from_address", address.toLowerCase());
+    }
+    const { data: txData } = await txQuery;
+    const plotTx = (txData || []).find((tx: any) => {
+      const meta = tx?.metadata || {};
+      return meta?.plot_id === plot.id;
+    });
+
+    const certificate = await generateAndSaveOctaDocPdf({
+      plotId: plot.id,
+      ownerName,
+      ownerWallet: address,
+      ownerEmail: buyerEmail,
+      coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
+      zoneType: plot.zone_type || "Residential",
+      purchaseDate: plotTx?.created_at || plot.created_at || new Date().toISOString(),
+      transactionHash: plotTx?.tx_hash || "",
+    });
+
+    if (buyerEmail && !certificate.url.startsWith("blob:")) {
+      await sendPlotCertificateEmail(
+        buyerEmail,
+        plot.id,
+        certificate.url,
+        ownerName
+      );
+    }
+
+    return certificate;
+  };
+
+  // Generate certificate for a plot
+  const handleGenerateCertificate = async (plot: any) => {
     try {
-      const { generateAndSaveOctaDocPdf } = await import("@/lib/octa-doc");
-      const { sendPlotCertificateEmail } = await import("@/lib/email-service");
-      
       toast.info("Generating OctaDoc PDF...");
-      
-      const ownership = await supabaseService.getOwnershipByWallet(address).catch(() => null);
-      const buyerEmail = ownership?.email || userEmail || "";
-      const digitalIdentity = await supabaseService.getDigitalIdentity(address).catch(() => null);
-      const ownerName =
-        digitalIdentity?.name ||
-        (buyerEmail ? buyerEmail.split("@")[0] : "") ||
-        `${address.slice(0, 8)}...${address.slice(-6)}`;
-      let txQuery = supabase
-        .from("transactions")
-        .select("tx_hash, created_at, metadata")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (buyerEmail) {
-        txQuery = txQuery.or(`from_address.ilike.${address.toLowerCase()},from_address.ilike.${buyerEmail.toLowerCase()}`);
-      } else {
-        txQuery = txQuery.ilike("from_address", address.toLowerCase());
-      }
-      const { data: txData } = await txQuery;
-      const plotTx = (txData || []).find((tx: any) => {
-        const meta = tx?.metadata || {};
-        return meta?.plot_id === plot.id;
-      });
-
-      const certificate = await generateAndSaveOctaDocPdf({
-        plotId: plot.id,
-        ownerName,
-        ownerWallet: address,
-        ownerEmail: buyerEmail,
-        coordinates: { x: plot.coord_x || 0, y: plot.coord_y || 0 },
-        zoneType: plot.zone_type || "Residential",
-        purchaseDate: plotTx?.created_at || plot.created_at || new Date().toISOString(),
-        transactionHash: plotTx?.tx_hash || "",
-      });
-
+      const certificate = await createOctaDocPdfForPlot(plot);
+      if (!certificate) return;
       const blobUrl = URL.createObjectURL(new Blob([certificate.pdfBytes], { type: "application/pdf" }));
       window.open(blobUrl, "_blank", "noopener,noreferrer");
-
-      if (buyerEmail && !certificate.url.startsWith("blob:")) {
-        await sendPlotCertificateEmail(
-          buyerEmail,
-          plot.id,
-          certificate.url,
-          ownerName
-        );
-      }
-
       toast.success("OctaDoc PDF generated and saved!");
       await loadPlotDocuments(plot.id);
     } catch (error: any) {
       logger.error("Failed to generate certificate:", error);
       toast.error(error.message || "Failed to generate certificate");
+    }
+  };
+
+  const handleDownloadCertificate = async (plot: any) => {
+    try {
+      toast.info("Generating and downloading OctaDoc PDF...");
+      const certificate = await createOctaDocPdfForPlot(plot);
+      if (!certificate) return;
+      const blobUrl = URL.createObjectURL(new Blob([certificate.pdfBytes], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = certificate.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success("OctaDoc PDF downloaded!");
+      await loadPlotDocuments(plot.id);
+    } catch (error: any) {
+      logger.error("Failed to download certificate:", error);
+      toast.error(error.message || "Failed to download certificate");
     }
   };
 
@@ -2625,6 +2649,7 @@ export default function Dashboard() {
               onLoadAffiliateData={loadAffiliateData}
               onManagePlot={handleManagePlot}
               onGenerateCertificate={handleGenerateCertificate}
+              onDownloadCertificate={handleDownloadCertificate}
               onExportPDF={handleExportPDF}
               onLoadPlotDocuments={loadPlotDocuments}
               affiliateStatus={affiliateStatus}

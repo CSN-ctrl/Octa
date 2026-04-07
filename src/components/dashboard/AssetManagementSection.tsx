@@ -71,6 +71,7 @@ interface AssetManagementSectionProps {
   onLoadAffiliateData: () => void;
   onManagePlot: (plotId: number) => void;
   onGenerateCertificate: (plot: any) => void;
+  onDownloadCertificate: (plot: any) => void;
   onExportPDF: (plot: any) => void;
   onLoadPlotDocuments: (plotId: number) => void;
   onCreatePortfolio: (portfolio: {
@@ -103,6 +104,7 @@ export function AssetManagementSection({
   onLoadAffiliateData,
   onManagePlot,
   onGenerateCertificate,
+  onDownloadCertificate,
   onExportPDF,
   onLoadPlotDocuments,
   onCreatePortfolio,
@@ -408,8 +410,8 @@ export function AssetManagementSection({
                                   variant="ghost"
                                   size="sm"
                                   className="text-xs bg-background/80 backdrop-blur-sm hover:bg-background/90"
-                                onClick={() => onGenerateCertificate(plot)}
-                                title="Generate OctaDoc"
+                                onClick={() => onDownloadCertificate(plot)}
+                                title="Download OctaDoc PDF"
                                 >
                                   <Download className="h-3 w-3" />
                                 </Button>
