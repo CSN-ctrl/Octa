@@ -1261,13 +1261,13 @@ export default function Dashboard() {
     }
   };
 
-  const createOctaDocPdfForPlot = async (plot: any) => {
+  const createOctaDocHtmlForPlot = async (plot: any) => {
     if (!address) {
       toast.error("Please connect your wallet");
       return null;
     }
 
-    const { generateAndSaveOctaDocPdf } = await import("@/lib/octa-doc");
+    const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
     const { sendPlotCertificateEmail } = await import("@/lib/email-service");
     const ownership = await supabaseService.getOwnershipByWallet(address).catch(() => null);
     const buyerEmail = ownership?.email || userEmail || "";
@@ -1292,7 +1292,7 @@ export default function Dashboard() {
       return meta?.plot_id === plot.id;
     });
 
-    const certificate = await generateAndSaveOctaDocPdf({
+    const certificate = await generateAndSaveOctaDocHtml({
       plotId: plot.id,
       ownerName,
       ownerWallet: address,
@@ -1318,12 +1318,11 @@ export default function Dashboard() {
   // Generate certificate for a plot
   const handleGenerateCertificate = async (plot: any) => {
     try {
-      toast.info("Generating OctaDoc PDF...");
-      const certificate = await createOctaDocPdfForPlot(plot);
+      toast.info("Generating OctaDoc HTML...");
+      const certificate = await createOctaDocHtmlForPlot(plot);
       if (!certificate) return;
-      const blobUrl = URL.createObjectURL(new Blob([certificate.pdfBytes], { type: "application/pdf" }));
-      window.open(blobUrl, "_blank", "noopener,noreferrer");
-      toast.success("OctaDoc PDF generated and saved!");
+      window.open(certificate.url, "_blank", "noopener,noreferrer");
+      toast.success("OctaDoc HTML generated and saved!");
       await loadPlotDocuments(plot.id);
     } catch (error: any) {
       logger.error("Failed to generate certificate:", error);
@@ -1333,10 +1332,12 @@ export default function Dashboard() {
 
   const handleDownloadCertificate = async (plot: any) => {
     try {
-      toast.info("Generating and downloading OctaDoc PDF...");
-      const certificate = await createOctaDocPdfForPlot(plot);
+      toast.info("Generating and downloading OctaDoc HTML...");
+      const certificate = await createOctaDocHtmlForPlot(plot);
       if (!certificate) return;
-      const blobUrl = URL.createObjectURL(new Blob([certificate.pdfBytes], { type: "application/pdf" }));
+      const response = await fetch(certificate.url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
       link.download = certificate.filename;
@@ -1344,7 +1345,7 @@ export default function Dashboard() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(blobUrl);
-      toast.success("OctaDoc PDF downloaded!");
+      toast.success("OctaDoc HTML downloaded!");
       await loadPlotDocuments(plot.id);
     } catch (error: any) {
       logger.error("Failed to download certificate:", error);
@@ -1961,10 +1962,10 @@ export default function Dashboard() {
           // Generate certificate
           (async () => {
             try {
-              const { generateAndSaveOctaDocPdf } = await import("@/lib/octa-doc");
+              const { generateAndSaveOctaDocHtml } = await import("@/lib/octa-doc");
               const { sendPlotPurchaseEmail } = await import("@/lib/email-service");
               
-              const certificate = await generateAndSaveOctaDocPdf({
+              const certificate = await generateAndSaveOctaDocHtml({
                 plotId: plotId,
                 ownerName: address.slice(0, 8) + "..." + address.slice(-6),
                 ownerWallet: address,

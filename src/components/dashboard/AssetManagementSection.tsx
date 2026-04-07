@@ -411,7 +411,7 @@ export function AssetManagementSection({
                                   size="sm"
                                   className="text-xs bg-background/80 backdrop-blur-sm hover:bg-background/90"
                                 onClick={() => onDownloadCertificate(plot)}
-                                title="Download OctaDoc PDF"
+                                title="Download OctaDoc HTML"
                                 >
                                   <Download className="h-3 w-3" />
                                 </Button>
