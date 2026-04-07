@@ -29,6 +29,9 @@ const dateLabel = (iso: string): string => {
 const applyTemplateValues = (template: string, data: OctaDocData, certId: string): string => {
   const issued = dateLabel(data.purchaseDate);
   const tx = data.transactionHash || "—";
+  const buyerSignature = escapeHtml(data.ownerName || "Buyer Signature");
+  const sellerSignature = "Octa Investment Group";
+  const sellerLabel = "SELLER: Octa Investment Group";
   const replacements: Array<[string, string]> = [
     ["Unique Identifier:", `Unique Identifier: ${escapeHtml(certId)}`],
     ["Date of Issue:", `Date of Issue: ${escapeHtml(issued)}`],
@@ -43,9 +46,23 @@ const applyTemplateValues = (template: string, data: OctaDocData, certId: string
     ["Transaction Hash:", `Transaction Hash: ${escapeHtml(tx)}`],
     ["Activation Transaction Hash:", `Activation Transaction Hash: ${escapeHtml(tx)}`],
     ["Date of Title Issuance:", `Date of Title Issuance: ${escapeHtml(issued)}`],
+    ['src="image.png"', `src="${new URL("../../documents/image.png", import.meta.url).href}"`],
+    ["BUYER:..............................................................................", `BUYER: ${escapeHtml(data.ownerName || "—")}`],
+    ["SELLER:..............................................................................", sellerLabel],
+    ["Georgi Penev", sellerSignature],
   ];
 
-  return replacements.reduce((acc, [key, value]) => acc.replace(key, value), template);
+  let result = replacements.reduce((acc, [key, value]) => acc.replace(key, value), template);
+
+  // Add explicit buyer e-signature text near the buyer line.
+  if (!result.includes("buyer-esign")) {
+    result = result.replace(
+      `BUYER: ${escapeHtml(data.ownerName || "—")}</p>`,
+      `BUYER: ${escapeHtml(data.ownerName || "—")}</p><p id="buyer-esign" class="font-signature text-3xl italic">${buyerSignature}</p>`
+    );
+  }
+
+  return result;
 };
 
 const ORIGINAL_OCTADOC_TEMPLATE_URL = new URL("../../documents/octaDoc.html", import.meta.url).href;
