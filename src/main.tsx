@@ -164,6 +164,40 @@ if (typeof console !== "undefined") {
 }
 
 // Global error handlers for uncaught errors and promise rejections
+const CHUNK_RECOVERY_FLAG = "octa_chunk_reload_once";
+
+const isChunkLoadError = (value: unknown): boolean => {
+  const msg = value instanceof Error ? value.message : String(value ?? "");
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("error loading dynamically imported module") ||
+    lower.includes("failed to fetch dynamically imported module") ||
+    lower.includes("chunkloaderror") ||
+    lower.includes("/assets/") && lower.includes(".js")
+  );
+};
+
+const recoverFromStaleChunk = (): boolean => {
+  try {
+    if (sessionStorage.getItem(CHUNK_RECOVERY_FLAG) === "1") {
+      sessionStorage.removeItem(CHUNK_RECOVERY_FLAG);
+      return false;
+    }
+    sessionStorage.setItem(CHUNK_RECOVERY_FLAG, "1");
+  } catch {
+    return false;
+  }
+  window.location.reload();
+  return true;
+};
+
+window.addEventListener("vite:preloadError", (event) => {
+  const preloadErrorEvent = event as Event & { payload?: unknown };
+  if (isChunkLoadError(preloadErrorEvent.payload) && recoverFromStaleChunk()) {
+    event.preventDefault();
+  }
+});
+
 window.addEventListener('error', (event) => {
   // Don't suppress errors we've already handled
   if (event.message?.includes('Cannot redefine property: ethereum')) {
@@ -188,6 +222,11 @@ window.addEventListener('error', (event) => {
 });
 
 window.addEventListener('unhandledrejection', (event) => {
+  if (isChunkLoadError(event.reason) && recoverFromStaleChunk()) {
+    event.preventDefault();
+    return;
+  }
+
   console.error('Unhandled promise rejection:', {
     reason: event.reason,
     promise: event.promise,
