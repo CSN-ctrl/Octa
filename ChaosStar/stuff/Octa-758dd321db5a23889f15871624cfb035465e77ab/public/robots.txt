@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://www.sarakt.com/sitemap.xml
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /admin-dashboard
+Disallow: /admin-affiliates
+Disallow: /admin-auth
+Disallow: /account-security
+Disallow: /affiliate
+Disallow: /deposit
+Disallow: /plot-purchase
+Disallow: /plot-sell
+Disallow: /purchase-confirmation
+Disallow: /oauth
+Disallow: /oauth-test-client
+Disallow: /auth
+Disallow: /test-transactions
+Disallow: /login
+Disallow: /signup
+Disallow: /register
+Disallow: /reset-password
+Disallow: /email-verified
