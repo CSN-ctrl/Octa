@@ -1,0 +1,553 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  /* Fix cursor issues - prevent text cursor on non-editable elements */
+  body {
+    user-select: none;
+  }
+  
+  /* Allow text selection only in input fields and textareas */
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+  }
+  
+  /* Prevent text cursor on headings, paragraphs, and other display text */
+  h1, h2, h3, h4, h5, h6, p, span, div, label {
+    cursor: default;
+  }
+  
+  /* Only show pointer cursor on clickable elements */
+  button, a, [role="button"], [onclick] {
+    cursor: pointer;
+  }
+  
+  :root {
+    /* Cosmic Purple Sci-Fi Theme */
+    --background: 270 50% 5%;
+    --foreground: 270 20% 95%;
+
+    --card: 270 40% 8%;
+    --card-foreground: 270 20% 95%;
+
+    --popover: 270 45% 10%;
+    --popover-foreground: 270 20% 95%;
+
+    --primary: 260 65% 45%;
+    --primary-foreground: 270 10% 98%;
+
+    --secondary: 270 55% 40%;
+    --secondary-foreground: 270 10% 98%;
+
+    --muted: 270 30% 15%;
+    --muted-foreground: 270 15% 60%;
+
+    --accent: 270 70% 50%;
+    --accent-foreground: 270 10% 98%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 270 10% 98%;
+
+    --border: 270 40% 20%;
+    --input: 270 40% 15%;
+    --ring: 270 70% 55%;
+
+    --radius: 0.75rem;
+
+    /* Sci-Fi Gradients */
+    --gradient-cosmic: linear-gradient(135deg, hsl(260 65% 45%), hsl(270 70% 50%));
+    --gradient-space: linear-gradient(180deg, hsl(270 50% 5%), hsl(270 45% 8%));
+    --gradient-glow: linear-gradient(90deg, hsl(260 65% 45% / 0.1), hsl(270 70% 50% / 0.1));
+    
+    /* Glow Effects */
+    --glow-primary: 0 0 20px hsl(260 65% 45% / 0.5);
+    --glow-accent: 0 0 30px hsl(270 70% 50% / 0.6);
+    --glow-card: 0 0 40px hsl(260 65% 45% / 0.2);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-glow: box-shadow 0.3s ease-in-out;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(180deg, hsl(270 50% 5%), hsl(270 45% 8%));
+    min-height: 100vh;
+  }
+
+  /* Glowing effects */
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+
+  .glow-card {
+    box-shadow: var(--glow-card);
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: hsl(270 40% 8% / 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsl(260 65% 45% / 0.3);
+  }
+
+  /* Pioneers design system additions */
+  .glass-card {
+    @apply rounded-xl;
+    background: hsl(270 40% 8% / 0.6);
+    border: 1px solid hsl(260 65% 45% / 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px hsl(0 0% 0% / 0.4), 0 0 40px hsl(260 65% 45% / 0.2);
+  }
+
+  .glass-card:hover {
+    border-color: hsl(260 65% 45% / 0.5);
+  }
+
+  .text-gradient-cosmic {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(260 65% 45%), hsl(270 70% 50%));
+  }
+
+  .bg-gradient-cosmic {
+    background-image: linear-gradient(135deg, hsl(260 65% 45%), hsl(270 70% 50%));
+  }
+
+  .btn-primary-glow {
+    @apply bg-primary text-primary-foreground font-semibold px-8 py-4 rounded-lg transition-all duration-300;
+    box-shadow: 0 0 20px hsl(260 65% 45% / 0.5);
+  }
+
+  .btn-primary-glow:hover {
+    @apply scale-105;
+    box-shadow: 0 0 40px hsl(260 65% 45% / 0.7);
+  }
+
+  .btn-secondary-glow {
+    @apply font-semibold px-8 py-4 rounded-lg transition-all duration-300;
+    background: transparent;
+    border: 2px solid hsl(270 70% 50%);
+    color: hsl(270 70% 50%);
+  }
+
+  .btn-secondary-glow:hover {
+    background: hsl(270 70% 50% / 0.1);
+    box-shadow: 0 0 30px hsl(270 70% 50% / 0.6);
+  }
+
+  .stat-value {
+    @apply text-4xl md:text-5xl font-bold;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight;
+  }
+
+  .badge-primary {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(260 65% 45% / 0.1);
+    color: hsl(260 65% 55%);
+    border: 1px solid hsl(260 65% 45% / 0.2);
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(45 100% 51% / 0.15);
+    color: hsl(45 100% 55%);
+    border: 1px solid hsl(45 100% 51% / 0.3);
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(142 76% 45% / 0.15);
+    color: hsl(142 76% 55%);
+    border: 1px solid hsl(142 76% 45% / 0.3);
+  }
+
+  .bg-hero-glow {
+    background: radial-gradient(ellipse at top, hsl(260 65% 45% / 0.15), transparent 70%);
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  .text-gold {
+    color: hsl(45 100% 51%);
+  }
+
+  .text-success {
+    color: hsl(142 76% 45%);
+  }
+
+  /* Animated gradient border */
+  @keyframes border-glow {
+    0%, 100% {
+      border-color: hsl(260 65% 45% / 0.5);
+      box-shadow: 0 0 20px hsl(260 65% 45% / 0.3);
+    }
+    50% {
+      border-color: hsl(270 70% 50% / 0.7);
+      box-shadow: 0 0 30px hsl(270 70% 50% / 0.5);
+    }
+  }
+
+  .border-animated {
+    animation: border-glow 3s ease-in-out infinite;
+  }
+
+  /* Cosmic particles background */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  .particle {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  /* Pulse animation for balances and active states */
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 20px hsl(260 65% 45% / 0.4);
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 30px hsl(270 70% 50% / 0.6);
+    }
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Shimmer effect for loading states */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(270 40% 8% / 0.4) 0%,
+      hsl(260 65% 45% / 0.2) 50%,
+      hsl(270 40% 8% / 0.4) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* Scale on hover for interactive elements */
+  @keyframes scale-in {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  /* Balance number animation */
+  @keyframes balance-update {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+      color: hsl(270 70% 50%);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .balance-update {
+    animation: balance-update 0.5s ease-out;
+  }
+
+  /* Card hover enhancement */
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 40px hsl(260 65% 45% / 0.3);
+    border-color: hsl(260 65% 45% / 0.5);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(260 65% 45%), hsl(270 70% 50%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Octagonal shape for quick action buttons */
+  .octagon {
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  }
+  
+  .octagon-pulse {
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  }
+
+  /* Enhanced glass effect */
+  .glass-enhanced {
+    background: hsl(270 40% 8% / 0.7);
+    backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid hsl(260 65% 45% / 0.3);
+    box-shadow: 
+      0 8px 32px hsl(270 50% 5% / 0.4),
+      inset 0 1px 0 hsl(260 65% 45% / 0.1);
+  }
+
+  /* Responsive scaling and fluid typography */
+  html {
+    font-size: clamp(14px, 1vw + 0.5rem, 18px);
+  }
+
+  @media (max-width: 640px) {
+    html {
+      font-size: 14px;
+    }
+  }
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    html {
+      font-size: 16px;
+    }
+  }
+
+  @media (min-width: 1025px) {
+    html {
+      font-size: 18px;
+    }
+  }
+
+  /* Responsive container */
+  .container-responsive {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: clamp(1rem, 4vw, 2rem);
+    padding-right: clamp(1rem, 4vw, 2rem);
+  }
+
+  /* Enhanced responsive scaling for all devices */
+  #root {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Ensure all images scale responsively */
+  img, video, iframe, canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Responsive typography with better scaling */
+  h1 {
+    font-size: clamp(1.5rem, 4vw + 0.5rem, 3rem);
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: clamp(1.25rem, 3vw + 0.5rem, 2.25rem);
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: clamp(1.125rem, 2.5vw + 0.5rem, 1.875rem);
+    line-height: 1.4;
+  }
+
+  h4 {
+    font-size: clamp(1rem, 2vw + 0.5rem, 1.5rem);
+    line-height: 1.4;
+  }
+
+  p, span, div {
+    font-size: clamp(0.875rem, 1vw + 0.5rem, 1rem);
+  }
+
+  /* Responsive spacing utilities */
+  .responsive-padding {
+    padding: clamp(1rem, 4vw, 2rem);
+  }
+
+  .responsive-margin {
+    margin: clamp(1rem, 4vw, 2rem);
+  }
+
+  /* Responsive gap for flex/grid containers */
+  .responsive-gap {
+    gap: clamp(0.5rem, 2vw, 1.5rem);
+  }
+
+  /* Prevent horizontal overflow */
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Better mobile scaling for cards and containers */
+  @media (max-width: 640px) {
+    .container-responsive {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  /* Tablet optimizations */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .container-responsive {
+      padding-left: clamp(1rem, 3vw, 1.5rem);
+      padding-right: clamp(1rem, 3vw, 1.5rem);
+    }
+  }
+
+  /* Large screen optimizations */
+  @media (min-width: 1920px) {
+    .container-responsive {
+      max-width: 1920px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+
+  /* Ultra-wide screen support */
+  @media (min-width: 2560px) {
+    html {
+      font-size: clamp(18px, 1.2vw, 22px);
+    }
+  }
+
+  /* Landscape mobile optimizations */
+  @media (max-width: 896px) and (orientation: landscape) {
+    html {
+      font-size: clamp(12px, 1.5vw, 16px);
+    }
+  }
+
+  /* Touch device optimizations */
+  @media (hover: none) and (pointer: coarse) {
+    /* Remove hover-only effects on touch devices */
+    .hover\:scale-105:hover {
+      transform: none;
+    }
+    
+    /* Ensure tap targets are large enough */
+    button, a, [role="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Better touch scrolling */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+}
+
+/* Accessibility utilities */
+@layer utilities {
+  /* Screen reader only - visually hidden but accessible to screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Focus visible - show focus indicators for keyboard navigation */
+  .focus\:not-sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Pulse glow animation */
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsl(260 65% 45% / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px hsl(260 65% 45% / 0.7);
+    }
+  }
+}
+
+/* Land Title Certificate: print / save as PDF – only the document is generated */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #land-title-certificate-document,
+  #land-title-certificate-document * {
+    visibility: visible;
+  }
+  #land-title-certificate-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #land-title-certificate-document .max-w-3xl {
+    max-width: 48rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+

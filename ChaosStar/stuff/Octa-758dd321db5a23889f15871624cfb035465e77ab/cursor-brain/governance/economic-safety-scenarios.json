@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "thresholds": {
+    "min_reserve_ratio": 1.0,
+    "max_inflation_ratio": 1.1
+  },
+  "scenarios": [
+    {
+      "id": "eco-baseline",
+      "projected_treasury_balance": 1500000,
+      "projected_liabilities": 1200000,
+      "projected_minted": 90000,
+      "projected_burned": 60000,
+      "projected_sinks": 30000
+    },
+    {
+      "id": "eco-stress-drawdown",
+      "projected_treasury_balance": 1320000,
+      "projected_liabilities": 1250000,
+      "projected_minted": 100000,
+      "projected_burned": 55000,
+      "projected_sinks": 40000
+    }
+  ]
+}

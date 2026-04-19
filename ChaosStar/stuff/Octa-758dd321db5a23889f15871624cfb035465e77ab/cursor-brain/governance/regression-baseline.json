@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "updated_at_utc": "2026-04-15T00:00:00Z",
+  "tracked_fix_signatures": [
+    {
+      "id": "deposit-double-credit-guard",
+      "paths": [
+        "supabase/migrations/20260414223000_prevent_duplicate_auto_conversion_by_source_hash.sql",
+        "supabase/functions/ingest-treasury-deposits/index.ts"
+      ],
+      "required_assertions": [
+        "source_tx_hash uniqueness enforcement",
+        "converted tx hash dedupe"
+      ]
+    },
+    {
+      "id": "auth-wallet-link-consistency",
+      "paths": [
+        "src/pages/Login.tsx",
+        "src/contexts/WalletContext.tsx"
+      ],
+      "required_assertions": [
+        "identity link conflict guard",
+        "wallet metadata consistency"
+      ]
+    }
+  ],
+  "prevented_regressions": [
+    {
+      "id": "R-001",
+      "description": "Do not use browser anon client for Supabase admin APIs.",
+      "scope_prefix": "src",
+      "detect_pattern": "supabase\\.auth\\.admin\\."
+    }
+  ]
+}
