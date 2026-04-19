@@ -55,3 +55,6 @@ frontend.log
 
 # Dependency markers
 backend/.dependencies_installed
+
+# Legacy snapshot — canonical app is Octa workspace only
+stuff/octavia-nebula-core-backup/

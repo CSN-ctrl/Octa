@@ -31,8 +31,8 @@ cast --version
 ### 2. Clone/Setup Project
 
 ```bash
-# Navigate to your project directory
-cd /path/to/octavia-nebula-core-backup
+# Navigate to this Octa app root (this repository folder)
+cd /path/to/Octa
 
 # Create sandbox directory structure
 mkdir -p forge-contracts/{src,test,script,lib}
