@@ -2,6 +2,8 @@
 **Date**: 2025-12-19 15:52  
 **Status**: ✅ DEPLOYED
 
+> **2026:** VM binaries and `./build/chaosstarvm` flows below are **obsolete**; that code is not in this tree. For the current app, build `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab` with `npm run build` and deploy `dist/`.
+
 ---
 
 ## 🎉 **DEPLOYMENT SUCCESSFUL!**
@@ -14,7 +16,7 @@ ChaosStar has been built and is ready to run!
 
 ### Built Components
 - ✅ **ChaosStarVM**: `build/chaosstarvm` (19 MB)
-- ✅ **Frontend**: `octavia-nebula-core/dist/` (Built and ready)
+- ✅ **Frontend**: `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/dist/` (Built and ready)
 - ⚠️ **Backend**: Module path issue (VM and Frontend work without it)
 
 ---
@@ -25,13 +27,13 @@ ChaosStar has been built and is ready to run!
 
 **Terminal 1 - Start VM:**
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 ./build/chaosstarvm
 ```
 
 **Terminal 2 - Start Frontend:**
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm/octavia-nebula-core
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 npm run preview
 ```
 
@@ -43,13 +45,13 @@ npm run preview
 
 **Terminal 1 - Start VM:**
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 ./build/chaosstarvm
 ```
 
 **Terminal 2 - Start Frontend:**
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm/octavia-nebula-core/dist
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/dist
 python3 -m http.server 3000
 ```
 
@@ -89,12 +91,12 @@ curl http://localhost:3000
 ## 📁 **File Locations**
 
 ```
-/home/hades/Videos/ChaosStar/stuff/chaosstarvm/
+stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/
 ├── build/
 │   ├── chaosstarvm              ✅ Main VM binary (19 MB)
 │   ├── chaosstar-cli            ✅ CLI tool
 │   └── [other binaries]
-├── octavia-nebula-core/
+├── stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/
 │   └── dist/                    ✅ Frontend build
 ├── deploy_local.sh              ✅ Deployment script
 └── [source files]
@@ -120,7 +122,7 @@ curl http://localhost:9650/ext/health
 
 ### 3. **Use the CLI**
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 ./build/chaosstar-cli --help
 ```
 
@@ -152,10 +154,10 @@ tail -f logs/vm.log
 ### Frontend Won't Load
 ```bash
 # Verify dist directory exists
-ls -la octavia-nebula-core/dist/
+ls -la stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/dist/
 
 # Try different port
-cd octavia-nebula-core
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 npm run preview -- --port 5173
 ```
 
@@ -198,10 +200,10 @@ kill -9 <PID>
 ./build/chaosstarvm
 
 # Frontend (dev server)
-cd octavia-nebula-core && npm run preview
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab && npm run preview
 
 # Frontend (static server)
-cd octavia-nebula-core/dist && python3 -m http.server 3000
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/dist && python3 -m http.server 3000
 ```
 
 ### Stop Services

@@ -1,5 +1,7 @@
 # Production Infrastructure Summary
 
+> **2026:** This document describes a **removed** Go VM layout (`chaosstarvm/`). The repository now ships only the Octa web app under `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`. Treat the sections below as **historical**.
+
 ## ✅ What Was Implemented
 
 ### 1. Testing Infrastructure

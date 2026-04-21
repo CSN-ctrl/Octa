@@ -141,18 +141,16 @@ Gap:       18 action tests needed
 
 ```
 ChaosStar/
-├── stuff/chaosstarvm/              # Main project
-│   ├── vm/                         # VM implementation
-│   ├── actions/                    # 37 blockchain actions
-│   ├── storage/                    # State storage
-│   ├── octavia-nebula-core/        # React frontend
-│   ├── backend/                    # Go backend
-│   └── tests/                      # Test files
-│
-├── EXECUTIVE_SUMMARY.md            # 👈 Start here!
+├── README.md                       # How this folder maps to the Octa app
+├── stuff/
+│   └── Octa-758dd321db5a23889f15871624cfb035465e77ab/   # Canonical web app (Vite + React + Supabase)
+│       ├── src/
+│       ├── supabase/
+│       └── ...
+├── EXECUTIVE_SUMMARY.md            # 👈 Start here (historical + links)
 ├── COMPREHENSIVE_STATUS_REPORT.md  # Detailed analysis
 ├── VISUAL_STATUS_DASHBOARD.md      # Visual metrics
-├── IMMEDIATE_ACTION_PLAN.md        # Action items
+├── IMMEDIATE_ACTION_PLAN.md        # Action items (partially historical)
 │
 └── [Other documentation files...]
 ```
@@ -161,35 +159,24 @@ ChaosStar/
 
 ## 💡 Quick Commands
 
-### Build Everything
+### Octa web app (current)
 ```bash
-# Build VM
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
-go build ./...
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
+npm install
+npm run dev
+```
 
-# Build Frontend
-cd octavia-nebula-core
+### Checks
+```bash
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
+npm run test:run
+npm run typecheck
 npm run build
-
-# Build Backend
-cd ../backend
-go build
 ```
 
-### Run Tests
+### Update browserlist data (optional)
 ```bash
-# Run all action tests
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
-go test ./actions/... -v
-
-# Run specific test
-go test ./actions/transfer_test.go -v
-```
-
-### Update Dependencies
-```bash
-# Update frontend dependencies
-cd octavia-nebula-core
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 npx update-browserslist-db@latest
 ```
 
@@ -219,10 +206,9 @@ ChaosStar is **75% production ready** with:
 - `PRODUCTION_SUMMARY.md` - Infrastructure summary
 - `PROJECT_MANAGEMENT.md` - Management guidelines
 
-### In Main Project
-- `stuff/chaosstarvm/README_MATRIX.md` - Project README
-- `stuff/chaosstarvm/CODEBASE_OVERVIEW.md` - Code structure
-- `stuff/chaosstarvm/PHASE_1_IMPLEMENTATION_STATUS.md` - Phase 1 status
+### In the Octa app
+- `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/README.md` — application overview
+- `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/docs/` — additional docs when present
 
 ---
 
