@@ -22,7 +22,7 @@ const PioneersHeroSection = () => {
     <section className="relative min-h-[calc(100vh-6rem)] flex flex-col items-center justify-center px-4 pt-24 pb-20 overflow-hidden">
       {/* Hero background image */}
       <div 
-        className="absolute inset-0 opacity-40"
+        className="absolute inset-0 opacity-80"
         style={{
           backgroundImage: `url(${heroBackground})`,
           backgroundSize: 'cover',
@@ -30,9 +30,9 @@ const PioneersHeroSection = () => {
         }}
       />
       {/* Dark overlay for readability - more transparent for better text visibility */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background/90" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/35 to-background/60" />
       {/* Purple glow at top */}
-      <div className="absolute inset-0 bg-hero-glow pointer-events-none opacity-70" />
+      <div className="absolute inset-0 bg-hero-glow pointer-events-none opacity-40" />
       
       {/* Content */}
       <motion.div

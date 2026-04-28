@@ -2152,8 +2152,9 @@ export default function UnifiedUniverse() {
     <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
       <div className="relative h-[500px] overflow-hidden mb-16">
         <div className="absolute inset-0">
-          <LazyImage src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-40" loading="eager" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background"></div>
+          <LazyImage src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-60" loading="eager" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/35 to-background/60"></div>
+          <div className="absolute bottom-0 right-0 w-40 h-16 bg-gradient-to-l from-background via-background/85 to-transparent"></div>
         </div>
         <div className="relative container mx-auto px-4 h-full flex items-center justify-center text-center">
           <div className="max-w-4xl">
