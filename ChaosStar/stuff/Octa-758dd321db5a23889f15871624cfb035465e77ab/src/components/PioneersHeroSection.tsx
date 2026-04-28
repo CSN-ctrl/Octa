@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Zap, Sparkles } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
-import heroBackground from '@/assets/hero-background.jpg';
+import heroBackground from '@/assets/ChatGPT Image Apr 27, 2026, 08_49_47 AM.png';
 import { useILOStats } from '@/hooks/useILOStats';
 
 const PioneersHeroSection = () => {
@@ -19,7 +19,7 @@ const PioneersHeroSection = () => {
   const progress = stats.progressPercentage;
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-24 pb-20 overflow-hidden">
+    <section className="relative min-h-[calc(100vh-6rem)] flex flex-col items-center justify-center px-4 pt-24 pb-20 overflow-hidden">
       {/* Hero background image */}
       <div 
         className="absolute inset-0 opacity-40"
