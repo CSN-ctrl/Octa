@@ -742,7 +742,7 @@ export default function UnifiedUniverse() {
               Back to Star Map
             </Button>
             <div className="grid lg:grid-cols-3 gap-8 mb-8">
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-3">
                 <div className="flex items-center gap-4 mb-4">
                   <h1 className="text-6xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
                     {system.name}
@@ -1541,48 +1541,6 @@ export default function UnifiedUniverse() {
                   ))}
                 </div>
               </div>
-              <Card className="glass border-primary/20">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Planet Stats</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Users className="w-4 h-4" />
-                        Population
-                      </span>
-                      <span className="font-bold">{planet.population}k</span>
-                    </div>
-                    <Progress value={planet.population} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        Mapped
-                      </span>
-                      <span className="font-bold">{planet.coverage}%</span>
-                    </div>
-                    <Progress value={planet.coverage} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Building2 className="w-4 h-4" />
-                        Districts
-                      </span>
-                      <span className="font-bold">{planet.districts?.length || 0}</span>
-                    </div>
-                  </div>
-                  <div className="pt-4 border-t border-primary/20">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Tier</span>
-                      <Badge className="bg-gradient-cosmic text-white">{planet.tier}</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </div>
@@ -2150,7 +2108,7 @@ export default function UnifiedUniverse() {
 
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
-      <div className="relative h-[500px] overflow-hidden mb-16">
+      <div className="relative h-[500px] overflow-hidden">
         <div className="absolute inset-0">
           <LazyImage src={heroImage} alt="Cosmic Space" className="w-full h-full object-cover opacity-60" loading="eager" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/35 to-background/60"></div>
