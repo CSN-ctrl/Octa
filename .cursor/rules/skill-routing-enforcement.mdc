@@ -1,0 +1,54 @@
+---
+description: Enforce skill routing from task intent and touched paths, including Pirate Codex build and marketing tracks. Mandatory skill-before-code gate.
+globs:
+alwaysApply: true
+---
+
+# Skill Routing Enforcement
+
+For every task, route to the minimum required skills **before** implementation. Do not treat skills as optional decoration.
+
+## Global activation
+- Always activate `prompt-execution-governor` and **read** `.cursor/skills/prompt-execution-governor/SKILL.md` when behavior could diverge from its loop.
+
+## Mandatory skill-before-code gate (mutations)
+Before **any** repo-changing step (edits, patches, `git` writes, installs that alter lockfiles, migrations, deploy scripts):
+
+1. **Match**: Use `cursor-brain/governance/skill-routing-map.yaml` — intersect **user intent** with **paths/globs** that will change.
+2. **Select**: Name every specialized skill id you will follow (`required_skills` / `optional_skills` from matched domains). Prefer the **most specific** module skill (e.g. `pirate-codex-build-design`) over a broad track skill when both match.
+3. **Read**: Open `.cursor/skills/<skill-id>/SKILL.md` for **each** activated specialized skill and apply its workflow (at minimum: frontmatter + main checklist sections — read full file when the task is risky or unfamiliar).
+4. **No silent gaps**: If **no** domain matches, scan descriptions under `.cursor/skills/*/SKILL.md` (frontmatter `description:`) and pick the best fit **or** trigger the Question Gate — do **not** implement without declaring which skill applies.
+
+**Governor-only exception**: Pure read-only explanation/analysis **with zero repo mutations** may use only `prompt-execution-governor` if you explicitly state that **no** specialized skill applies and why.
+
+## Mandatory routing source
+- Use `cursor-brain/governance/skill-routing-map.yaml` as the source of truth (including `skill_selection_gate`).
+- Skills from **awesome-cursor-skills** live under `.cursor/skills/acs-*` (routing domains `awesome_*`). Corey Haines marketing skills use unprefixed folders (`page-cro`, etc.; domains `haines_*`).
+- **Figma** plugin skills live under `.cursor/skills/figma-*` (domains `figma_plugin_*`); they need the [Figma Cursor plugin](https://cursor.com/marketplace/figma) + MCP connected (`docs/cursor-figma-plugin.md`).
+- Optional **community `.mdc` rule** snippets are cataloged under `docs/references/awesome-cursor-rules-mdc/rules-mdc/` — copy selectively into `.cursor/rules/` (`docs/cursor-community-rules.md`).
+- If multiple domains match, activate required skills from **all** matched domains **unless** policy max skills forces prioritization — then list trade-offs and ask.
+- Keep active skills within the risk-tier maximum from `cursor-brain/governance/policy-gates.yaml`.
+
+## Pirate Codex routing
+- Prefer module-level Pirate Codex skills when intent matches a specific module.
+- Use track-level skills (`pirate-codex-build`, `pirate-codex-marketing`) as fallback when module intent is broad.
+- If intent includes build/MVP/product/tooling/design/systems/security/shipping:
+  - activate `pirate-codex-build`.
+- If intent includes marketing/growth/awareness/acquisition/funnel/traffic/conversion/revenue/campaign:
+  - activate `pirate-codex-marketing`.
+- If both tracks match, activate both and ask the user to confirm sequencing.
+
+## Evolution (living skills)
+- After substantive tasks, improve skills per `docs/skills-evolution.md` — fold recurring corrections into the relevant `SKILL.md` and note misses in `cursor-brain/memory/failures.md`.
+
+## Question gate
+- If confidence is low or intent is ambiguous, ask a focused clarification before execution.
+- If no routing domain matches and description scan does not yield a clear skill, **block** mutations until the user picks or confirms a skill.
+- If no routing domain matches and risk is L2/L3, block execution until required skills are selected.
+
+## Verification contract
+In task outputs, state:
+  1. matched domains,
+  2. specialized skills **selected** and **read** (SKILL.md opened),
+  3. blocked skills (if any),
+  4. reason for skips.

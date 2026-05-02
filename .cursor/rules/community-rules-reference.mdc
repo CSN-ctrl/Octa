@@ -1,0 +1,16 @@
+---
+description: Pointer to optional community .mdc rule catalog (copy selectively into .cursor/rules).
+globs:
+alwaysApply: true
+---
+
+# Community rules catalog (optional)
+
+Project-owned rules in `.cursor/rules/` take precedence.
+
+For **additional** stack-specific conventions, browse **`docs/references/awesome-cursor-rules-mdc/rules-mdc/`** (from [sanjeed5/awesome-cursor-rules-mdc](https://github.com/sanjeed5/awesome-cursor-rules-mdc)). Copy only the `.mdc` files that match this codebase; avoid enabling dozens at once.
+
+Refresh the snapshot: `node scripts/governance/install-awesome-cursor-rules-reference.cjs`  
+Guide: `docs/cursor-community-rules.md`
+
+**Global (all workspaces):** run `npm run cursor:publish-global` to merge this repo’s `.cursor/skills` and `.cursor/rules` into your user `~/.cursor/` folder (see `docs/skills-evolution.md`).

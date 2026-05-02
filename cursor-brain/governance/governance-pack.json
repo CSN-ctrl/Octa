@@ -1,0 +1,35 @@
+{
+  "pack_name": "governance-pack",
+  "version": "0.1.0",
+  "channels": ["dev", "staging", "prod"],
+  "current_channel": "dev",
+  "released_at_utc": "2026-04-15T00:00:00Z",
+  "artifacts": {
+    "rules": [
+      ".cursor/rules/prompt-execution-governor.mdc",
+      ".cursor/rules/cursor-brain.mdc"
+    ],
+    "skills": [
+      ".cursor/skills/prompt-execution-governor/SKILL.md",
+      ".cursor/skills/ci-quality-gates-for-risky-domains/SKILL.md",
+      ".cursor/skills/game-economy-data-model-and-simulation-governance/SKILL.md"
+    ],
+    "policies": [
+      "cursor-brain/governance/policy-gates.yaml",
+      "cursor-brain/governance/skill-routing-map.yaml",
+      "cursor-brain/governance/regression-baseline.json",
+      "cursor-brain/governance/chaos-drills.json",
+      "cursor-brain/governance/economic-safety-scenarios.json"
+    ],
+    "schemas": [
+      "cursor-brain/governance/run-score.schema.json",
+      "cursor-brain/governance/skill-lineage.json"
+    ]
+  },
+  "promotion_gates": {
+    "safety_no_regression": true,
+    "correctness_min": 98,
+    "run_score_delta_min": 5,
+    "critical_violations_allowed": 0
+  }
+}

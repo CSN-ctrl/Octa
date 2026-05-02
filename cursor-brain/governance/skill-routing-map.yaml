@@ -1,0 +1,1484 @@
+version: 4
+description: "Conditional skill activation map by domain and changed paths. Includes Corey Haines marketingskills (haines_*), awesome-cursor-skills (awesome_* -> acs-*), Figma plugin skills (figma_plugin_* -> figma-*), and project Pirate Codex skills."
+
+global:
+  always_on_skills:
+    - prompt-execution-governor
+
+# Declarative gate ? enforced via .cursor/rules and prompt-execution-governor SKILL.md
+skill_selection_gate:
+  require_specialized_skill_before_repo_mutations: true
+  require_read_skill_md_for_each_activated_skill: true
+  no_domain_match_fallback: "scan_cursor_skills_descriptions_then_question_gate"
+  governor_only_allowed_when: "read_only_analysis_or_pure_chat_with_explicit_no_skill_rationale"
+
+domains:
+  migration:
+    required_skills:
+      - supabase-rls-hardening-and-policy-design
+      - supabase-rpc-ledger-idempotency-patterns
+    path_triggers:
+      - "supabase/migrations/**"
+  deposit_ledger:
+    required_skills:
+      - onchain-ingestion-and-auto-credit
+      - deposit-auto-credit-mvp-hardening
+      - supabase-rpc-ledger-idempotency-patterns
+      - hybrid-onchain-offchain-sync-contract
+    path_triggers:
+      - "supabase/functions/ingest-treasury-deposits/**"
+      - "src/hooks/useUSDCDeposit.ts"
+      - "src/components/Treasury*.tsx"
+  auth_wallet:
+    required_skills:
+      - auth-wallet-identity-linking-playbook
+      - supabase-rls-hardening-and-policy-design
+    path_triggers:
+      - "src/pages/Login.tsx"
+      - "src/contexts/WalletContext.tsx"
+      - "src/components/ProtectedRoute.tsx"
+  onchain_offchain_sync:
+    required_skills:
+      - hybrid-onchain-offchain-sync-contract
+      - supabase-rpc-ledger-idempotency-patterns
+    path_triggers:
+      - "src/contracts/**"
+      - "src/hooks/useLandPlots.ts"
+      - "src/hooks/usePlotTransfer.ts"
+      - "src/lib/registry-sync.ts"
+      - "src/pages/PlotPurchase.tsx"
+      - "src/pages/PlotSell.tsx"
+
+  economy_governance:
+    required_skills:
+      - game-economy-data-model-and-simulation-governance
+      - supabase-rpc-ledger-idempotency-patterns
+    path_triggers:
+      - "src/hooks/useSwap.ts"
+      - "src/hooks/useMarketplace.ts"
+      - "src/hooks/usePortfolio*.ts"
+      - "src/pages/FinancialHub.tsx"
+      - "src/pages/MarketplaceTreasury.tsx"
+      - "supabase/migrations/**econom**"
+      - "supabase/migrations/**treasury**"
+
+  ops_remote_apply:
+    required_skills:
+      - mcp-ops-safety-and-audit-trail
+    path_triggers:
+      - "supabase/remote_apply/**"
+      - "scripts/**"
+  frontend_refactor:
+    optional_skills:
+      - frontend-domain-service-modularization
+    path_triggers:
+      - "src/lib/supabase-service.ts"
+  docs_architecture:
+    optional_skills:
+      - living-architecture-doc-curation
+    path_triggers:
+      - "docs/**"
+      - "cursor-brain/**"
+
+  pirate_build_track:
+    required_skills:
+      - pirate-codex-build
+    intent_triggers:
+      - "mvp"
+      - "build"
+      - "product"
+      - "tooling"
+      - "design"
+      - "systems"
+      - "security"
+      - "shipping"
+      - "launch"
+    path_triggers:
+      - "src/**"
+      - "supabase/**"
+      - ".cursor/skills/pirate-codex-build/**"
+
+  pirate_marketing_track:
+    required_skills:
+      - pirate-codex-marketing
+    intent_triggers:
+      - "marketing"
+      - "go-to-market"
+      - "growth"
+      - "awareness"
+      - "acquisition"
+      - "funnel"
+      - "traffic"
+      - "conversion"
+      - "revenue"
+      - "campaign"
+    path_triggers:
+      - "docs/**"
+      - "src/pages/**"
+      - ".cursor/skills/pirate-codex-marketing/**"
+
+  pirate_build_product_module:
+    required_skills:
+      - pirate-codex-build-product
+    intent_triggers:
+      - "idea"
+      - "mvp scope"
+      - "feature planning"
+      - "sprint planning"
+      - "user feedback"
+      - "pricing"
+      - "product pricing"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-build-product/**"
+
+  pirate_build_tooling_module:
+    required_skills:
+      - pirate-codex-build-tooling
+    intent_triggers:
+      - "local setup"
+      - "cursor agent"
+      - "cursor rules"
+      - "mcp server"
+      - "ai agents"
+      - "payment provider"
+      - "tooling"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-build-tooling/**"
+      - ".cursor/rules/**"
+
+  pirate_build_design_module:
+    required_skills:
+      - pirate-codex-build-design
+    intent_triggers:
+      - "landing page"
+      - "ui components"
+      - "style system"
+      - "user flow"
+      - "mobile responsive"
+      - "purchase experience"
+      - "design"
+      - "ux"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-build-design/**"
+      - "src/components/**"
+      - "src/pages/**"
+
+  pirate_build_systems_module:
+    required_skills:
+      - pirate-codex-build-systems
+    intent_triggers:
+      - "fixing errors"
+      - "real functions"
+      - "saving data"
+      - "login"
+      - "signup"
+      - "webhook integration"
+      - "payment gates"
+      - "systems"
+      - "backend"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-build-systems/**"
+      - "src/lib/**"
+      - "supabase/functions/**"
+
+  pirate_build_security_module:
+    required_skills:
+      - pirate-codex-build-security
+    intent_triggers:
+      - "safety first"
+      - "zero trust"
+      - "database security"
+      - "auth security"
+      - "webhook security"
+      - "payment security"
+      - "security hardening"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-build-security/**"
+      - "supabase/**"
+      - "src/contexts/**"
+
+  pirate_build_shipping_module:
+    required_skills:
+      - pirate-codex-build-shipping
+    intent_triggers:
+      - "going live"
+      - "debugging flow"
+      - "git workflow"
+      - "preview"
+      - "production"
+      - "debug production"
+      - "public changelog"
+      - "release"
+      - "shipping"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-build-shipping/**"
+      - ".github/workflows/**"
+
+  pirate_marketing_strategy_module:
+    required_skills:
+      - pirate-codex-marketing-strategy-roadmap
+    intent_triggers:
+      - "aarrr"
+      - "growth roadmap"
+      - "strategy"
+      - "bottleneck"
+      - "north-star metric"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-marketing-strategy-roadmap/**"
+      - "docs/**"
+
+  pirate_marketing_content_module:
+    required_skills:
+      - pirate-codex-marketing-content-story
+    intent_triggers:
+      - "content strategy"
+      - "story"
+      - "messaging"
+      - "awareness"
+      - "publishing cadence"
+      - "narrative"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-marketing-content-story/**"
+      - "docs/**"
+
+  pirate_marketing_funnel_module:
+    required_skills:
+      - pirate-codex-marketing-funnel-building
+    intent_triggers:
+      - "funnel"
+      - "landing pages"
+      - "crm workflows"
+      - "acquisition"
+      - "lead capture"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-marketing-funnel-building/**"
+      - "src/pages/**"
+
+  pirate_marketing_data_module:
+    required_skills:
+      - pirate-codex-marketing-data-analytics
+    intent_triggers:
+      - "analytics"
+      - "measurement"
+      - "reporting"
+      - "what we measure"
+      - "kpi"
+      - "dashboard"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-marketing-data-analytics/**"
+      - "docs/**"
+
+  pirate_marketing_traffic_module:
+    required_skills:
+      - pirate-codex-marketing-traffic-generation
+    intent_triggers:
+      - "traffic generation"
+      - "channel compass"
+      - "campaign structure"
+      - "ad creatives"
+      - "scale campaigns"
+      - "paid ads"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-marketing-traffic-generation/**"
+      - "docs/**"
+
+  pirate_marketing_conversion_module:
+    required_skills:
+      - pirate-codex-marketing-conversion-optimization
+    intent_triggers:
+      - "conversion optimization"
+      - "website testing"
+      - "email testing"
+      - "ad testing"
+      - "next experiments"
+      - "cro"
+    path_triggers:
+      - ".cursor/skills/pirate-codex-marketing-conversion-optimization/**"
+      - "docs/**"
+  # Corey Haines marketingskills ? https://github.com/coreyhaines31/marketingskills
+  # Regenerate routing snippets: node scripts/governance/generate-haines-skill-routing.cjs
+  haines_ab_test_setup:
+    required_skills:
+      - ab-test-setup
+    intent_triggers:
+      - "ab test setup"
+      - "to plan, design, or implement an a/b test or experim"
+      - "a/b test"
+      - "split test"
+      - "experiment"
+      - "test this change"
+      - "variant copy"
+      - "multivariate test"
+    path_triggers:
+      - ".cursor/skills/ab-test-setup/**"
+  haines_ad_creative:
+    required_skills:
+      - ad-creative
+    intent_triggers:
+      - "ad creative"
+      - "to generate, iterate, or scale ad creative - headlines"
+      - "ad copy variations"
+    path_triggers:
+      - ".cursor/skills/ad-creative/**"
+  haines_ai_seo:
+    required_skills:
+      - ai-seo
+    intent_triggers:
+      - "ai seo"
+      - "to optimize content for ai search engines, get cited"
+    path_triggers:
+      - ".cursor/skills/ai-seo/**"
+  haines_analytics_tracking:
+    required_skills:
+      - analytics-tracking
+    intent_triggers:
+      - "analytics tracking"
+      - "to set up, improve, or audit analytics tracking and"
+      - "set up tracking"
+      - "ga4"
+      - "google analytics"
+      - "conversion tracking"
+      - "event tracking"
+      - "utm parameters"
+    path_triggers:
+      - ".cursor/skills/analytics-tracking/**"
+  haines_aso_audit:
+    required_skills:
+      - aso-audit
+    intent_triggers:
+      - "aso audit"
+      - "to audit or optimize an app store or google play lis"
+    path_triggers:
+      - ".cursor/skills/aso-audit/**"
+  haines_churn_prevention:
+    required_skills:
+      - churn-prevention
+    intent_triggers:
+      - "churn prevention"
+      - "to reduce churn, build cancellation flows, set up sa"
+      - "churn"
+    path_triggers:
+      - ".cursor/skills/churn-prevention/**"
+  haines_cold_email:
+    required_skills:
+      - cold-email
+    intent_triggers:
+      - "cold email"
+      - "to write cold outreach emails, prospecting emails, c"
+      - "cold outreach"
+      - "prospecting email"
+      - "outbound email"
+      - "email to leads"
+      - "reach out to prospects"
+      - "sales email"
+    path_triggers:
+      - ".cursor/skills/cold-email/**"
+  haines_community_marketing:
+    required_skills:
+      - community-marketing
+    intent_triggers:
+      - "community marketing"
+      - "to create a community strategy, grow a discord or sl"
+      - "build a community"
+      - "community strategy"
+      - "discord community"
+      - "slack community"
+      - "community-led growth"
+      - "brand advocates"
+    path_triggers:
+      - ".cursor/skills/community-marketing/**"
+  haines_competitor_alternatives:
+    required_skills:
+      - competitor-alternatives
+    intent_triggers:
+      - "competitor alternatives"
+      - "to create competitor comparison or alternative pages"
+      - "alternative page"
+    path_triggers:
+      - ".cursor/skills/competitor-alternatives/**"
+  haines_competitor_profiling:
+    required_skills:
+      - competitor-profiling
+    intent_triggers:
+      - "competitor profiling"
+      - "to research, profile, or analyze competitors from th"
+      - "competitor profile"
+    path_triggers:
+      - ".cursor/skills/competitor-profiling/**"
+  haines_content_strategy:
+    required_skills:
+      - content-strategy
+    intent_triggers:
+      - "content strategy"
+      - "to plan a content strategy, decide what content to c"
+      - "what should i write about"
+      - "content ideas"
+      - "blog strategy"
+      - "topic clusters"
+      - "content planning"
+      - "editorial calendar"
+    path_triggers:
+      - ".cursor/skills/content-strategy/**"
+  haines_copy_editing:
+    required_skills:
+      - copy-editing
+    intent_triggers:
+      - "copy editing"
+      - "to edit, review, or improve existing marketing copy"
+      - "edit this copy"
+    path_triggers:
+      - ".cursor/skills/copy-editing/**"
+  haines_copywriting:
+    required_skills:
+      - copywriting
+    intent_triggers:
+      - "copywriting"
+      - "to write, rewrite, or improve marketing copy for any"
+      - "write copy for"
+      - "improve this copy"
+      - "rewrite this page"
+      - "marketing copy"
+      - "headline help"
+      - "cta copy"
+    path_triggers:
+      - ".cursor/skills/copywriting/**"
+  haines_customer_research:
+    required_skills:
+      - customer-research
+    intent_triggers:
+      - "customer research"
+      - "to conduct, analyze, or synthesize customer research"
+      - "icp research"
+      - "talk to customers"
+      - "analyze transcripts"
+      - "customer interviews"
+      - "survey analysis"
+      - "support ticket analysis"
+    path_triggers:
+      - ".cursor/skills/customer-research/**"
+  haines_directory_submissions:
+    required_skills:
+      - directory-submissions
+    intent_triggers:
+      - "directory submissions"
+      - "to submit their product to startup, saas, ai, agent"
+      - "submit to directories"
+      - "backlinks from directories"
+      - "list my product"
+      - "submit to product hunt"
+      - "betalist"
+      - "taaft"
+    path_triggers:
+      - ".cursor/skills/directory-submissions/**"
+  haines_email_sequence:
+    required_skills:
+      - email-sequence
+    intent_triggers:
+      - "email sequence"
+      - "to create or optimize an email sequence, drip campai"
+      - "drip campaign"
+      - "nurture sequence"
+      - "onboarding emails"
+      - "welcome sequence"
+      - "re-engagement emails"
+      - "email automation"
+    path_triggers:
+      - ".cursor/skills/email-sequence/**"
+  haines_form_cro:
+    required_skills:
+      - form-cro
+    intent_triggers:
+      - "form cro"
+      - "to optimize any form that is not signup/registration"
+      - "form optimization"
+      - "lead form conversions"
+      - "form friction"
+      - "form fields"
+      - "form completion rate"
+      - "contact form"
+    path_triggers:
+      - ".cursor/skills/form-cro/**"
+  haines_free_tool_strategy:
+    required_skills:
+      - free-tool-strategy
+    intent_triggers:
+      - "free tool strategy"
+      - "to plan, evaluate, or build a free tool for marketin"
+      - "engineering as marketing"
+      - "free tool"
+      - "marketing tool"
+      - "calculator"
+      - "generator"
+      - "interactive tool"
+    path_triggers:
+      - ".cursor/skills/free-tool-strategy/**"
+  haines_image:
+    required_skills:
+      - image
+    intent_triggers:
+      - "image"
+      - "to create, generate, edit, or optimize images for ma"
+      - "ai image generation"
+    path_triggers:
+      - ".cursor/skills/image/**"
+  haines_launch_strategy:
+    required_skills:
+      - launch-strategy
+    intent_triggers:
+      - "launch strategy"
+      - "to plan a product launch, feature announcement, or r"
+      - "launch"
+    path_triggers:
+      - ".cursor/skills/launch-strategy/**"
+  haines_lead_magnets:
+    required_skills:
+      - lead-magnets
+    intent_triggers:
+      - "lead magnets"
+      - "to create, plan, or optimize a lead magnet for email"
+      - "lead magnet"
+      - "gated content"
+      - "content upgrade"
+      - "downloadable"
+      - "ebook"
+      - "cheat sheet"
+    path_triggers:
+      - ".cursor/skills/lead-magnets/**"
+  haines_marketing_ideas:
+    required_skills:
+      - marketing-ideas
+    intent_triggers:
+      - "marketing ideas"
+      - "growth ideas"
+      - "how to market"
+      - "marketing tactics"
+      - "brainstorm marketing"
+      - "marketing inspiration"
+    path_triggers:
+      - ".cursor/skills/marketing-ideas/**"
+  haines_marketing_psychology:
+    required_skills:
+      - marketing-psychology
+    intent_triggers:
+      - "marketing psychology"
+      - "to apply psychological principles, mental models, or"
+      - "psychology"
+    path_triggers:
+      - ".cursor/skills/marketing-psychology/**"
+  haines_onboarding_cro:
+    required_skills:
+      - onboarding-cro
+    intent_triggers:
+      - "onboarding cro"
+      - "to optimize post-signup onboarding, user activation"
+      - "onboarding flow"
+      - "activation rate"
+      - "user activation"
+      - "first-run experience"
+      - "empty states"
+      - "onboarding checklist"
+    path_triggers:
+      - ".cursor/skills/onboarding-cro/**"
+  haines_page_cro:
+    required_skills:
+      - page-cro
+    intent_triggers:
+      - "page cro"
+      - "to optimize, improve, or increase conversions on any"
+      - "cro"
+      - "conversion rate optimization"
+      - "this page isn't converting"
+      - "improve conversions"
+      - "why isn't this page working"
+      - "my landing page sucks"
+    path_triggers:
+      - ".cursor/skills/page-cro/**"
+  haines_paid_ads:
+    required_skills:
+      - paid-ads
+    intent_triggers:
+      - "paid ads"
+      - "help with paid advertising campaigns on google ads,"
+      - "ppc"
+    path_triggers:
+      - ".cursor/skills/paid-ads/**"
+  haines_paywall_upgrade_cro:
+    required_skills:
+      - paywall-upgrade-cro
+    intent_triggers:
+      - "paywall upgrade cro"
+      - "to create or optimize in-app paywalls, upgrade scree"
+      - "paywall"
+      - "upgrade screen"
+      - "upgrade modal"
+      - "upsell"
+      - "feature gate"
+      - "convert free to paid"
+    path_triggers:
+      - ".cursor/skills/paywall-upgrade-cro/**"
+  haines_popup_cro:
+    required_skills:
+      - popup-cro
+    intent_triggers:
+      - "popup cro"
+      - "to create or optimize popups, modals, overlays, slid"
+      - "exit intent"
+      - "popup conversions"
+      - "modal optimization"
+      - "lead capture popup"
+      - "email popup"
+      - "announcement banner"
+    path_triggers:
+      - ".cursor/skills/popup-cro/**"
+  haines_pricing_strategy:
+    required_skills:
+      - pricing-strategy
+    intent_triggers:
+      - "pricing strategy"
+      - "help with pricing decisions, packaging, or monetizat"
+      - "pricing"
+    path_triggers:
+      - ".cursor/skills/pricing-strategy/**"
+  haines_product_marketing_context:
+    required_skills:
+      - product-marketing-context
+    intent_triggers:
+      - "product marketing context"
+      - "to create or update their product marketing context"
+      - "product context"
+    path_triggers:
+      - ".cursor/skills/product-marketing-context/**"
+  haines_programmatic_seo:
+    required_skills:
+      - programmatic-seo
+    intent_triggers:
+      - "programmatic seo"
+      - "to create seo-driven pages at scale using templates"
+      - "template pages"
+      - "pages at scale"
+      - "directory pages"
+      - "location pages"
+      - "[keyword] + [city] pages"
+      - "comparison pages"
+    path_triggers:
+      - ".cursor/skills/programmatic-seo/**"
+  haines_referral_program:
+    required_skills:
+      - referral-program
+    intent_triggers:
+      - "referral program"
+      - "to create, optimize, or analyze a referral program,"
+      - "referral"
+    path_triggers:
+      - ".cursor/skills/referral-program/**"
+  haines_revops:
+    required_skills:
+      - revops
+    intent_triggers:
+      - "revops"
+      - "help with revenue operations, lead lifecycle managem"
+    path_triggers:
+      - ".cursor/skills/revops/**"
+  haines_sales_enablement:
+    required_skills:
+      - sales-enablement
+    intent_triggers:
+      - "sales enablement"
+      - "to create sales collateral, pitch decks, one-pagers"
+      - "sales deck"
+    path_triggers:
+      - ".cursor/skills/sales-enablement/**"
+  haines_schema_markup:
+    required_skills:
+      - schema-markup
+    intent_triggers:
+      - "schema markup"
+      - "to add, fix, or optimize schema markup and structure"
+      - "structured data"
+      - "json-ld"
+      - "rich snippets"
+      - "schema.org"
+      - "faq schema"
+      - "product schema"
+    path_triggers:
+      - ".cursor/skills/schema-markup/**"
+  haines_seo_audit:
+    required_skills:
+      - seo-audit
+    intent_triggers:
+      - "seo audit"
+      - "to audit, review, or diagnose seo issues on their si"
+      - "technical seo"
+      - "why am i not ranking"
+      - "seo issues"
+      - "on-page seo"
+      - "meta tags review"
+      - "seo health check"
+    path_triggers:
+      - ".cursor/skills/seo-audit/**"
+  haines_signup_flow_cro:
+    required_skills:
+      - signup-flow-cro
+    intent_triggers:
+      - "signup flow cro"
+      - "to optimize signup, registration, account creation,"
+      - "signup conversions"
+      - "registration friction"
+      - "signup form optimization"
+      - "free trial signup"
+      - "reduce signup dropoff"
+      - "account creation flow"
+    path_triggers:
+      - ".cursor/skills/signup-flow-cro/**"
+  haines_site_architecture:
+    required_skills:
+      - site-architecture
+    intent_triggers:
+      - "site architecture"
+      - "to plan, map, or restructure their website's page hi"
+      - "sitemap"
+      - "site map"
+      - "visual sitemap"
+      - "site structure"
+      - "page hierarchy"
+      - "information architecture"
+    path_triggers:
+      - ".cursor/skills/site-architecture/**"
+  haines_social_content:
+    required_skills:
+      - social-content
+    intent_triggers:
+      - "social content"
+      - "help creating, scheduling, or optimizing social medi"
+      - "linkedin post"
+    path_triggers:
+      - ".cursor/skills/social-content/**"
+  haines_video:
+    required_skills:
+      - video
+    intent_triggers:
+      - "video"
+      - "to create, generate, or produce video content using"
+      - "video production"
+    path_triggers:
+      - ".cursor/skills/video/**"
+  # awesome-cursor-skills - https://github.com/spencerpauly/awesome-cursor-skills (local copy: .cursor/skills/acs-*)
+  # Regenerate: node scripts/governance/generate-acs-skill-routing.cjs
+  awesome_accessibility_auditing:
+    required_skills:
+      - acs-accessibility-auditing
+    intent_triggers:
+      - "accessibility auditing"
+    path_triggers:
+      - ".cursor/skills/acs-accessibility-auditing/**"
+  awesome_adding_analytics:
+    required_skills:
+      - acs-adding-analytics
+    intent_triggers:
+      - "adding analytics"
+    path_triggers:
+      - ".cursor/skills/acs-adding-analytics/**"
+  awesome_adding_api_docs:
+    required_skills:
+      - acs-adding-api-docs
+    intent_triggers:
+      - "adding api docs"
+    path_triggers:
+      - ".cursor/skills/acs-adding-api-docs/**"
+  awesome_adding_auth:
+    required_skills:
+      - acs-adding-auth
+    intent_triggers:
+      - "adding auth"
+    path_triggers:
+      - ".cursor/skills/acs-adding-auth/**"
+  awesome_adding_docker:
+    required_skills:
+      - acs-adding-docker
+    intent_triggers:
+      - "adding docker"
+    path_triggers:
+      - ".cursor/skills/acs-adding-docker/**"
+  awesome_adding_e2e_tests:
+    required_skills:
+      - acs-adding-e2e-tests
+    intent_triggers:
+      - "adding e2e tests"
+    path_triggers:
+      - ".cursor/skills/acs-adding-e2e-tests/**"
+  awesome_adding_error_tracking:
+    required_skills:
+      - acs-adding-error-tracking
+    intent_triggers:
+      - "adding error tracking"
+    path_triggers:
+      - ".cursor/skills/acs-adding-error-tracking/**"
+  awesome_adding_feature_flags:
+    required_skills:
+      - acs-adding-feature-flags
+    intent_triggers:
+      - "adding feature flags"
+    path_triggers:
+      - ".cursor/skills/acs-adding-feature-flags/**"
+  awesome_adding_stripe:
+    required_skills:
+      - acs-adding-stripe
+    intent_triggers:
+      - "adding stripe"
+    path_triggers:
+      - ".cursor/skills/acs-adding-stripe/**"
+  awesome_api_smoke_testing:
+    required_skills:
+      - acs-api-smoke-testing
+    intent_triggers:
+      - "api smoke testing"
+    path_triggers:
+      - ".cursor/skills/acs-api-smoke-testing/**"
+  awesome_architecture_decision_records:
+    required_skills:
+      - acs-architecture-decision-records
+    intent_triggers:
+      - "architecture decision records"
+    path_triggers:
+      - ".cursor/skills/acs-architecture-decision-records/**"
+  awesome_auditing_performance:
+    required_skills:
+      - acs-auditing-performance
+    intent_triggers:
+      - "auditing performance"
+    path_triggers:
+      - ".cursor/skills/acs-auditing-performance/**"
+  awesome_auditing_security:
+    required_skills:
+      - acs-auditing-security
+    intent_triggers:
+      - "auditing security"
+    path_triggers:
+      - ".cursor/skills/acs-auditing-security/**"
+  awesome_auto_type_checking:
+    required_skills:
+      - acs-auto-type-checking
+    intent_triggers:
+      - "auto type checking"
+    path_triggers:
+      - ".cursor/skills/acs-auto-type-checking/**"
+  awesome_babysitting_pr:
+    required_skills:
+      - acs-babysitting-pr
+    intent_triggers:
+      - "babysitting pr"
+      - "a pr is open and you want the agent to keep it merge"
+    path_triggers:
+      - ".cursor/skills/acs-babysitting-pr/**"
+  awesome_best_of_n_solving:
+    required_skills:
+      - acs-best-of-n-solving
+    intent_triggers:
+      - "best of n solving"
+    path_triggers:
+      - ".cursor/skills/acs-best-of-n-solving/**"
+  awesome_building_skills_from_patterns:
+    required_skills:
+      - acs-building-skills-from-patterns
+    intent_triggers:
+      - "building skills from patterns"
+      - "the same multi-step workflow repeats in cursor (user"
+    path_triggers:
+      - ".cursor/skills/acs-building-skills-from-patterns/**"
+  awesome_codebase_onboarding:
+    required_skills:
+      - acs-codebase-onboarding
+    intent_triggers:
+      - "codebase onboarding"
+    path_triggers:
+      - ".cursor/skills/acs-codebase-onboarding/**"
+  awesome_comparing_branches_visually:
+    required_skills:
+      - acs-comparing-branches-visually
+    intent_triggers:
+      - "comparing branches visually"
+    path_triggers:
+      - ".cursor/skills/acs-comparing-branches-visually/**"
+  awesome_converting_css_modules_to_tailwind:
+    required_skills:
+      - acs-converting-css-modules-to-tailwind
+    intent_triggers:
+      - "converting css modules to tailwind"
+    path_triggers:
+      - ".cursor/skills/acs-converting-css-modules-to-tailwind/**"
+  awesome_converting_css_to_tailwind:
+    required_skills:
+      - acs-converting-css-to-tailwind
+    intent_triggers:
+      - "converting css to tailwind"
+    path_triggers:
+      - ".cursor/skills/acs-converting-css-to-tailwind/**"
+  awesome_creating_pr:
+    required_skills:
+      - acs-creating-pr
+    intent_triggers:
+      - "creating pr"
+    path_triggers:
+      - ".cursor/skills/acs-creating-pr/**"
+  awesome_dark_mode_testing:
+    required_skills:
+      - acs-dark-mode-testing
+    intent_triggers:
+      - "dark mode testing"
+    path_triggers:
+      - ".cursor/skills/acs-dark-mode-testing/**"
+  awesome_database_design:
+    required_skills:
+      - acs-database-design
+    intent_triggers:
+      - "database design"
+    path_triggers:
+      - ".cursor/skills/acs-database-design/**"
+  awesome_detecting_port_conflicts:
+    required_skills:
+      - acs-detecting-port-conflicts
+    intent_triggers:
+      - "detecting port conflicts"
+    path_triggers:
+      - ".cursor/skills/acs-detecting-port-conflicts/**"
+  awesome_exporting_to_png:
+    required_skills:
+      - acs-exporting-to-png
+    intent_triggers:
+      - "exporting to png"
+    path_triggers:
+      - ".cursor/skills/acs-exporting-to-png/**"
+  awesome_finding_dev_server_url:
+    required_skills:
+      - acs-finding-dev-server-url
+    intent_triggers:
+      - "finding dev server url"
+    path_triggers:
+      - ".cursor/skills/acs-finding-dev-server-url/**"
+  awesome_fixing_broken_links:
+    required_skills:
+      - acs-fixing-broken-links
+    intent_triggers:
+      - "fixing broken links"
+    path_triggers:
+      - ".cursor/skills/acs-fixing-broken-links/**"
+  awesome_form_testing:
+    required_skills:
+      - acs-form-testing
+    intent_triggers:
+      - "form testing"
+    path_triggers:
+      - ".cursor/skills/acs-form-testing/**"
+  awesome_generating_images:
+    required_skills:
+      - acs-generating-images
+    intent_triggers:
+      - "generating images"
+    path_triggers:
+      - ".cursor/skills/acs-generating-images/**"
+  awesome_grinding_until_pass:
+    required_skills:
+      - acs-grinding-until-pass
+    intent_triggers:
+      - "grinding until pass"
+      - "you want the agent to autonomously grind through tes"
+    path_triggers:
+      - ".cursor/skills/acs-grinding-until-pass/**"
+  awesome_incident_response:
+    required_skills:
+      - acs-incident-response
+    intent_triggers:
+      - "incident response"
+    path_triggers:
+      - ".cursor/skills/acs-incident-response/**"
+  awesome_kubernetes_deploying:
+    required_skills:
+      - acs-kubernetes-deploying
+    intent_triggers:
+      - "kubernetes deploying"
+    path_triggers:
+      - ".cursor/skills/acs-kubernetes-deploying/**"
+  awesome_monitoring_terminal_errors:
+    required_skills:
+      - acs-monitoring-terminal-errors
+    intent_triggers:
+      - "monitoring terminal errors"
+      - "an error appears, navigate to the failing file and l"
+    path_triggers:
+      - ".cursor/skills/acs-monitoring-terminal-errors/**"
+  awesome_network_request_auditing:
+    required_skills:
+      - acs-network-request-auditing
+    intent_triggers:
+      - "network request auditing"
+    path_triggers:
+      - ".cursor/skills/acs-network-request-auditing/**"
+  awesome_parallel_ci_triage:
+    required_skills:
+      - acs-parallel-ci-triage
+    intent_triggers:
+      - "parallel ci triage"
+      - "github actions fails, fetch failing job logs and ass"
+    path_triggers:
+      - ".cursor/skills/acs-parallel-ci-triage/**"
+  awesome_parallel_code_review:
+    required_skills:
+      - acs-parallel-code-review
+    intent_triggers:
+      - "parallel code review"
+    path_triggers:
+      - ".cursor/skills/acs-parallel-code-review/**"
+  awesome_parallel_exploring:
+    required_skills:
+      - acs-parallel-exploring
+    intent_triggers:
+      - "parallel exploring"
+      - "onboarding onto a new project, understanding archite"
+    path_triggers:
+      - ".cursor/skills/acs-parallel-exploring/**"
+  awesome_parallel_test_fixing:
+    required_skills:
+      - acs-parallel-test-fixing
+    intent_triggers:
+      - "parallel test fixing"
+      - "multiple tests fail, assign each failing test file t"
+    path_triggers:
+      - ".cursor/skills/acs-parallel-test-fixing/**"
+  awesome_profiling_performance:
+    required_skills:
+      - acs-profiling-performance
+    intent_triggers:
+      - "profiling performance"
+      - "a page feels slow or janky."
+    path_triggers:
+      - ".cursor/skills/acs-profiling-performance/**"
+  awesome_prompt_engineering:
+    required_skills:
+      - acs-prompt-engineering
+    intent_triggers:
+      - "prompt engineering"
+    path_triggers:
+      - ".cursor/skills/acs-prompt-engineering/**"
+  awesome_python_tdd_with_uv:
+    required_skills:
+      - acs-python-tdd-with-uv
+    intent_triggers:
+      - "python tdd with uv"
+    path_triggers:
+      - ".cursor/skills/acs-python-tdd-with-uv/**"
+  awesome_react_native_patterns:
+    required_skills:
+      - acs-react-native-patterns
+    intent_triggers:
+      - "react native patterns"
+    path_triggers:
+      - ".cursor/skills/acs-react-native-patterns/**"
+  awesome_recording_browser_flow_as_test:
+    required_skills:
+      - acs-recording-browser-flow-as-test
+    intent_triggers:
+      - "recording browser flow as test"
+    path_triggers:
+      - ".cursor/skills/acs-recording-browser-flow-as-test/**"
+  awesome_responsive_testing:
+    required_skills:
+      - acs-responsive-testing
+    intent_triggers:
+      - "responsive testing"
+    path_triggers:
+      - ".cursor/skills/acs-responsive-testing/**"
+  awesome_reviewing_code:
+    required_skills:
+      - acs-reviewing-code
+    intent_triggers:
+      - "reviewing code"
+    path_triggers:
+      - ".cursor/skills/acs-reviewing-code/**"
+  awesome_saving_workspace_context:
+    required_skills:
+      - acs-saving-workspace-context
+    intent_triggers:
+      - "saving workspace context"
+    path_triggers:
+      - ".cursor/skills/acs-saving-workspace-context/**"
+  awesome_screenshotting_changelog:
+    required_skills:
+      - acs-screenshotting-changelog
+    intent_triggers:
+      - "screenshotting changelog"
+      - "preparing a pr with visual changes."
+    path_triggers:
+      - ".cursor/skills/acs-screenshotting-changelog/**"
+  awesome_seo_auditing:
+    required_skills:
+      - acs-seo-auditing
+    intent_triggers:
+      - "seo auditing"
+    path_triggers:
+      - ".cursor/skills/acs-seo-auditing/**"
+  awesome_setting_up_ci:
+    required_skills:
+      - acs-setting-up-ci
+    intent_triggers:
+      - "setting up ci"
+    path_triggers:
+      - ".cursor/skills/acs-setting-up-ci/**"
+  awesome_setting_up_terraform:
+    required_skills:
+      - acs-setting-up-terraform
+    intent_triggers:
+      - "setting up terraform"
+    path_triggers:
+      - ".cursor/skills/acs-setting-up-terraform/**"
+  awesome_suggesting_cursor_hooks:
+    required_skills:
+      - acs-suggesting-cursor-hooks
+    intent_triggers:
+      - "suggesting cursor hooks"
+      - "the user keeps asking for the same check to run (lin"
+    path_triggers:
+      - ".cursor/skills/acs-suggesting-cursor-hooks/**"
+  awesome_suggesting_cursor_rules:
+    required_skills:
+      - acs-suggesting-cursor-rules
+    intent_triggers:
+      - "suggesting cursor rules"
+      - "the user repeats the same correction or convention m"
+    path_triggers:
+      - ".cursor/skills/acs-suggesting-cursor-rules/**"
+  awesome_suggesting_skills:
+    required_skills:
+      - acs-suggesting-skills
+    intent_triggers:
+      - "suggesting skills"
+      - "the user struggles with a task that a known skill co"
+    path_triggers:
+      - ".cursor/skills/acs-suggesting-skills/**"
+  awesome_switching_projects:
+    required_skills:
+      - acs-switching-projects
+    intent_triggers:
+      - "switching projects"
+      - "the user asks to switch projects, open another repo"
+    path_triggers:
+      - ".cursor/skills/acs-switching-projects/**"
+  awesome_systematic_debugging:
+    required_skills:
+      - acs-systematic-debugging
+    intent_triggers:
+      - "systematic debugging"
+    path_triggers:
+      - ".cursor/skills/acs-systematic-debugging/**"
+  awesome_tailing_build_output:
+    required_skills:
+      - acs-tailing-build-output
+    intent_triggers:
+      - "tailing build output"
+    path_triggers:
+      - ".cursor/skills/acs-tailing-build-output/**"
+  awesome_updating_npm_package:
+    required_skills:
+      - acs-updating-npm-package
+    intent_triggers:
+      - "updating npm package"
+    path_triggers:
+      - ".cursor/skills/acs-updating-npm-package/**"
+  awesome_using_ui_stack:
+    required_skills:
+      - acs-using-ui-stack
+    intent_triggers:
+      - "using ui stack"
+      - "generating ui."
+    path_triggers:
+      - ".cursor/skills/acs-using-ui-stack/**"
+  awesome_verifying_in_browser:
+    required_skills:
+      - acs-verifying-in-browser
+    intent_triggers:
+      - "verifying in browser"
+    path_triggers:
+      - ".cursor/skills/acs-verifying-in-browser/**"
+  awesome_verifying_markdown_formatting:
+    required_skills:
+      - acs-verifying-markdown-formatting
+    intent_triggers:
+      - "verifying markdown formatting"
+    path_triggers:
+      - ".cursor/skills/acs-verifying-markdown-formatting/**"
+  awesome_visual_qa_testing:
+    required_skills:
+      - acs-visual-qa-testing
+    intent_triggers:
+      - "visual qa testing"
+    path_triggers:
+      - ".cursor/skills/acs-visual-qa-testing/**"
+  awesome_writing_commit_messages:
+    required_skills:
+      - acs-writing-commit-messages
+    intent_triggers:
+      - "writing commit messages"
+    path_triggers:
+      - ".cursor/skills/acs-writing-commit-messages/**"
+  awesome_writing_copy:
+    required_skills:
+      - acs-writing-copy
+    intent_triggers:
+      - "writing copy"
+    path_triggers:
+      - ".cursor/skills/acs-writing-copy/**"
+  awesome_writing_tests:
+    required_skills:
+      - acs-writing-tests
+    intent_triggers:
+      - "writing tests"
+      - "the user asks to add tests, improve coverage, or tes"
+    path_triggers:
+      - ".cursor/skills/acs-writing-tests/**"
+  # Figma Cursor plugin (mcp-server-guide) - https://github.com/figma/mcp-server-guide and https://cursor.com/marketplace/figma
+  # Regenerate: node scripts/governance/generate-figma-plugin-skill-routing.cjs
+  figma_plugin_code_connect:
+    required_skills:
+      - figma-code-connect
+    intent_triggers:
+      - "figma code connect"
+      - "the user mentions code connect, figma component mapp"
+    path_triggers:
+      - ".cursor/skills/figma-code-connect/**"
+  figma_plugin_create_design_system_rules:
+    required_skills:
+      - figma-create-design-system-rules
+    intent_triggers:
+      - "figma create design system rules"
+      - "create design system rules"
+    path_triggers:
+      - ".cursor/skills/figma-create-design-system-rules/**"
+  figma_plugin_create_new_file:
+    required_skills:
+      - figma-create-new-file
+    intent_triggers:
+      - "figma create new file"
+      - "the user wants to create a new figma design or figja"
+      - "to create a new figma design or figjam file, or when"
+    path_triggers:
+      - ".cursor/skills/figma-create-new-file/**"
+  figma_plugin_generate_design:
+    required_skills:
+      - figma-generate-design
+    intent_triggers:
+      - "figma generate design"
+      - "alongside figma-use when the task involves translati"
+      - "write to figma from code"
+      - "write to figma"
+      - "create in figma from code"
+      - "push page to figma"
+      - "take this app/page and build it in figma"
+      - "create a screen"
+    path_triggers:
+      - ".cursor/skills/figma-generate-design/**"
+  figma_plugin_generate_diagram:
+    required_skills:
+      - figma-generate-diagram
+    intent_triggers:
+      - "figma generate diagram"
+    path_triggers:
+      - ".cursor/skills/figma-generate-diagram/**"
+  figma_plugin_generate_library:
+    required_skills:
+      - figma-generate-library
+    intent_triggers:
+      - "figma generate library"
+      - "the user wants to create variables/tokens, build com"
+      - "to create variables/tokens, build component librarie"
+    path_triggers:
+      - ".cursor/skills/figma-generate-library/**"
+  figma_plugin_implement_design:
+    required_skills:
+      - figma-implement-design
+    intent_triggers:
+      - "figma implement design"
+      - "implementing ui code from figma files, when user men"
+    path_triggers:
+      - ".cursor/skills/figma-implement-design/**"
+  figma_plugin_use:
+    required_skills:
+      - figma-use
+    intent_triggers:
+      - "figma use"
+    path_triggers:
+      - ".cursor/skills/figma-use/**"
+  figma_plugin_use_figjam:
+    required_skills:
+      - figma-use-figjam
+    intent_triggers:
+      - "figma use figjam"
+    path_triggers:
+      - ".cursor/skills/figma-use-figjam/**"
+
+  ci_and_release:
+    required_skills:
+      - ci-quality-gates-for-risky-domains
+    path_triggers:
+      - ".github/workflows/**"
+      - "scripts/governance/**"
+      - "cursor-brain/governance/**"
+
+  solidity_tests_alignment:
+    required_skills:
+      - foundry-sandbox-alignment-and-contract-test-porting
+    path_triggers:
+      - "src/contracts/**"
+      - "docs/phase1-sandbox/**"
+      - "**/foundry.toml"
+      - "**/*.t.sol"
+
+skill_catalog:
+  enforced_skills:
+    - prompt-execution-governor
+    - auth-wallet-identity-linking-playbook
+    - ab-test-setup
+    - ad-creative
+    - ai-seo
+    - analytics-tracking
+    - aso-audit
+    - churn-prevention
+    - cold-email
+    - community-marketing
+    - competitor-alternatives
+    - competitor-profiling
+    - content-strategy
+    - copy-editing
+    - copywriting
+    - customer-research
+    - directory-submissions
+    - email-sequence
+    - form-cro
+    - free-tool-strategy
+    - image
+    - launch-strategy
+    - lead-magnets
+    - marketing-ideas
+    - marketing-psychology
+    - onboarding-cro
+    - page-cro
+    - paid-ads
+    - paywall-upgrade-cro
+    - popup-cro
+    - pricing-strategy
+    - product-marketing-context
+    - programmatic-seo
+    - referral-program
+    - revops
+    - sales-enablement
+    - schema-markup
+    - seo-audit
+    - signup-flow-cro
+    - site-architecture
+    - social-content
+    - video
+    - acs-accessibility-auditing
+    - acs-adding-analytics
+    - acs-adding-api-docs
+    - acs-adding-auth
+    - acs-adding-docker
+    - acs-adding-e2e-tests
+    - acs-adding-error-tracking
+    - acs-adding-feature-flags
+    - acs-adding-stripe
+    - acs-api-smoke-testing
+    - acs-architecture-decision-records
+    - acs-auditing-performance
+    - acs-auditing-security
+    - acs-auto-type-checking
+    - acs-babysitting-pr
+    - acs-best-of-n-solving
+    - acs-building-skills-from-patterns
+    - acs-codebase-onboarding
+    - acs-comparing-branches-visually
+    - acs-converting-css-modules-to-tailwind
+    - acs-converting-css-to-tailwind
+    - acs-creating-pr
+    - acs-dark-mode-testing
+    - acs-database-design
+    - acs-detecting-port-conflicts
+    - acs-exporting-to-png
+    - acs-finding-dev-server-url
+    - acs-fixing-broken-links
+    - acs-form-testing
+    - acs-generating-images
+    - acs-grinding-until-pass
+    - acs-incident-response
+    - acs-kubernetes-deploying
+    - acs-monitoring-terminal-errors
+    - acs-network-request-auditing
+    - acs-parallel-ci-triage
+    - acs-parallel-code-review
+    - acs-parallel-exploring
+    - acs-parallel-test-fixing
+    - acs-profiling-performance
+    - acs-prompt-engineering
+    - acs-python-tdd-with-uv
+    - acs-react-native-patterns
+    - acs-recording-browser-flow-as-test
+    - acs-responsive-testing
+    - acs-reviewing-code
+    - acs-saving-workspace-context
+    - acs-screenshotting-changelog
+    - acs-seo-auditing
+    - acs-setting-up-ci
+    - acs-setting-up-terraform
+    - acs-suggesting-cursor-hooks
+    - acs-suggesting-cursor-rules
+    - acs-suggesting-skills
+    - acs-switching-projects
+    - acs-systematic-debugging
+    - acs-tailing-build-output
+    - acs-updating-npm-package
+    - acs-using-ui-stack
+    - acs-verifying-in-browser
+    - acs-verifying-markdown-formatting
+    - acs-visual-qa-testing
+    - acs-writing-commit-messages
+    - acs-writing-copy
+    - acs-writing-tests
+    - figma-code-connect
+    - figma-create-design-system-rules
+    - figma-create-new-file
+    - figma-generate-design
+    - figma-generate-diagram
+    - figma-generate-library
+    - figma-implement-design
+    - figma-use
+    - figma-use-figjam
+    - ci-quality-gates-for-risky-domains
+    - deposit-auto-credit-mvp-hardening
+    - foundry-sandbox-alignment-and-contract-test-porting
+    - frontend-domain-service-modularization
+    - game-economy-data-model-and-simulation-governance
+    - hybrid-onchain-offchain-sync-contract
+    - living-architecture-doc-curation
+    - mcp-ops-safety-and-audit-trail
+    - onchain-ingestion-and-auto-credit
+    - pirate-codex-build
+    - pirate-codex-build-design
+    - pirate-codex-build-product
+    - pirate-codex-build-security
+    - pirate-codex-build-shipping
+    - pirate-codex-build-systems
+    - pirate-codex-build-tooling
+    - pirate-codex-marketing
+    - pirate-codex-marketing-content-story
+    - pirate-codex-marketing-conversion-optimization
+    - pirate-codex-marketing-data-analytics
+    - pirate-codex-marketing-funnel-building
+    - pirate-codex-marketing-strategy-roadmap
+    - pirate-codex-marketing-traffic-generation
+    - supabase-rls-hardening-and-policy-design
+    - supabase-rpc-ledger-idempotency-patterns
+
+question_gate:
+  ask_if:
+    - "multiple_valid_outcomes == true"
+    - "scope_unclear == true"
+    - "success_criteria_missing == true"
+    - "risk_tier in [L2, L3] and material_assumptions == true"
+    - "no_skill_matches_task_after_map_and_description_scan == true"

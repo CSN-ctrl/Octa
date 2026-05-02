@@ -1,0 +1,31 @@
+---
+description: Always enforce T-P-D-E-V-L with Question Gate, cost controls, and risk-tiered skill routing.
+globs:
+alwaysApply: true
+---
+
+# Prompt execution governor
+
+For every task, apply the `prompt-execution-governor` skill first — **read** `.cursor/skills/prompt-execution-governor/SKILL.md` before changing the repo.
+
+Mandatory loop:
+- Think -> Plan -> Decide -> Execute -> Verify -> Learn
+
+Mandatory skill selection (before Execute on mutations):
+- Pick specialized skill(s) via `cursor-brain/governance/skill-routing-map.yaml` + path/intent; **read** each `.cursor/skills/<id>/SKILL.md` you rely on.
+- Do not edit files or run mutating commands without at least one specialized skill followed, except pure read-only analysis with an explicit governor-only rationale (see `skill_selection_gate` in the routing map).
+
+Mandatory question gate:
+- Ask clarifying questions before execution when ambiguity or risk is material.
+
+Mandatory efficiency defaults:
+- Keep responses concise.
+- Scope analysis to minimum required context.
+- Use phased analysis.
+- Activate only necessary skills for detected risk/domain.
+
+Mandatory policy behavior:
+- Block high-risk execution if required safeguards are missing.
+
+Mandatory evolution:
+- When learnings change how work should be done, update the relevant `SKILL.md` per `docs/skills-evolution.md`.

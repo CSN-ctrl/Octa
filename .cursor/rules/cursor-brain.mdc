@@ -1,0 +1,18 @@
+---
+description: Use cursor-brain folder for PLAN/BUILD/ANALYZE/IMPROVE workflow and memory
+globs:
+alwaysApply: true
+---
+
+# Cursor brain workflow
+
+For non-trivial tasks, prefer this loop:
+
+1. **PLAN** — Read `cursor-brain/tasks.md`, `cursor-brain/memory/long_term.md`, and `cursor-brain/memory/failures.md`. Match specialized skill(s) via `cursor-brain/governance/skill-routing-map.yaml`, read each `.cursor/skills/<id>/SKILL.md` you will use, then outline steps before large edits.
+2. **BUILD** — Ship production code in repo root `src/`. Use `cursor-brain/src/` only for scratch. Follow `cursor-brain/patterns.md`; avoid `cursor-brain/anti_patterns.md`.
+3. **ANALYZE** — Review changes; if something failed or was fragile, append to `cursor-brain/memory/failures.md`.
+4. **IMPROVE** — Update `cursor-brain/memory/long_term.md` or `cursor-brain/patterns.md` with durable lessons; promote stable lessons into relevant `SKILL.md` files per `docs/skills-evolution.md`.
+
+Full mode definitions: **`cursor-brain/brain.md`**.
+
+Reset **`cursor-brain/memory/short_term.md`** when starting a new task.

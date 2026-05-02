@@ -1,0 +1,15 @@
+---
+description: On implementation work, the first substantive reply lists matched skills (Skills line) before edits.
+globs:
+alwaysApply: true
+---
+
+# Implementation skills first
+
+When the user asks for **implementation** — code changes, refactors, fixes, config updates, migrations, new files, dependency installs that alter lockfiles, or other **repo mutations**:
+
+1. In the **first substantive assistant message**, include a **Skills** (or **Skill match**) section **before** making edits or running mutating shell commands.
+2. That section must list: matched routing domains (from `cursor-brain/governance/skill-routing-map.yaml`), the specialized skill ids you will follow, and confirm you **read** `.cursor/skills/<id>/SKILL.md` for each (or cite the governor-only read-only exception from `skill_selection_gate`).
+3. Use concise bullets; no code edits until this is stated (unless the user already received this in the same turn from a prior message — then one line “Skills unchanged: …” is enough).
+
+Purely **read-only** questions (explain, locate, review with no writes) may skip the Skills section if you state that no mutation is planned.

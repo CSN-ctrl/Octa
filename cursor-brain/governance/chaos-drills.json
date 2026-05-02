@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "drills": [
+    {
+      "id": "CH-DB-001",
+      "target": "supabase-ingestion-path",
+      "severity": "high",
+      "next_due_utc": "2026-12-31T00:00:00Z",
+      "runbook": "Simulate delayed ingestion and verify alerting plus replay workflow."
+    },
+    {
+      "id": "CH-TREASURY-001",
+      "target": "treasury-conversion-path",
+      "severity": "critical",
+      "next_due_utc": "2026-12-31T00:00:00Z",
+      "runbook": "Inject treasury transfer failure and verify duplicate suppression + rollback guidance."
+    }
+  ]
+}

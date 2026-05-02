@@ -1,0 +1,600 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  /* Readable content: allow selection (docs, marketing copy). UI controls remain explicit. */
+  body {
+    user-select: text;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Allow text selection only in input fields and textareas */
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+  }
+  
+  /* Prevent text cursor on headings, paragraphs, and other display text */
+  h1, h2, h3, h4, h5, h6, p, span, div, label {
+    cursor: default;
+  }
+  
+  /* Only show pointer cursor on clickable elements */
+  button, a, [role="button"], [onclick] {
+    cursor: pointer;
+  }
+  
+  :root {
+    /* Refined dark foundation + violet accent — reads “premium product”, not arcade */
+    --background: 260 22% 4%;
+    --foreground: 260 14% 96%;
+
+    --card: 260 24% 7%;
+    --card-foreground: 260 14% 96%;
+
+    --popover: 260 26% 9%;
+    --popover-foreground: 260 14% 96%;
+
+    --primary: 262 72% 58%;
+    --primary-foreground: 260 20% 99%;
+
+    --secondary: 260 30% 18%;
+    --secondary-foreground: 260 14% 96%;
+
+    --muted: 260 18% 14%;
+    --muted-foreground: 260 12% 58%;
+
+    --accent: 268 65% 56%;
+    --accent-foreground: 260 20% 99%;
+
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 260 20% 99%;
+
+    --border: 260 20% 17%;
+    --input: 260 22% 12%;
+    --ring: 262 72% 58%;
+
+    --radius: 0.875rem;
+
+    --gradient-cosmic: linear-gradient(135deg, hsl(262 72% 54%), hsl(268 65% 52%));
+    --gradient-space: linear-gradient(180deg, hsl(260 22% 4%), hsl(260 24% 7%));
+    --gradient-glow: linear-gradient(90deg, hsl(262 72% 58% / 0.12), hsl(268 65% 56% / 0.12));
+
+    --glow-primary: 0 0 28px hsl(262 72% 58% / 0.22);
+    --glow-accent: 0 0 36px hsl(268 65% 56% / 0.2);
+    --glow-card:
+      0 1px 0 hsl(260 25% 98% / 0.04) inset,
+      0 24px 48px hsl(0 0% 0% / 0.35),
+      0 0 0 1px hsl(260 22% 22% / 0.55);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-glow: box-shadow 0.3s ease-in-out;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    background:
+      radial-gradient(ellipse 120% 80% at 50% -20%, hsl(262 40% 18% / 0.14), transparent 55%),
+      linear-gradient(180deg, hsl(260 22% 4%) 0%, hsl(260 24% 6%) 45%, hsl(260 22% 4%) 100%);
+    min-height: 100vh;
+  }
+
+  /* Glowing effects */
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+
+  .glow-card {
+    box-shadow: var(--glow-card);
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: hsl(260 24% 7% / 0.72);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid hsl(260 22% 100% / 0.06);
+  }
+
+  .glass-card {
+    @apply rounded-xl;
+    background: hsl(260 24% 7% / 0.65);
+    border: 1px solid hsl(260 22% 100% / 0.08);
+    backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: var(--glow-card);
+  }
+
+  .glass-card:hover {
+    border-color: hsl(262 72% 58% / 0.28);
+  }
+
+  .text-gradient-cosmic {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(262 72% 62%), hsl(268 65% 58%));
+  }
+
+  .bg-gradient-cosmic {
+    background-image: linear-gradient(135deg, hsl(262 72% 52%), hsl(268 65% 50%));
+  }
+
+  .btn-primary-glow {
+    @apply inline-flex items-center justify-center bg-primary text-primary-foreground font-semibold px-8 py-4 rounded-full tracking-[0.1em] uppercase cursor-pointer;
+    border: 1px solid hsl(43 48% 62% / 0.28);
+    transition: box-shadow 0.2s ease-out, transform 0.2s ease-out, filter 0.2s ease-out, border-color 0.2s ease-out;
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.14) inset,
+      0 0 0 1px rgba(232, 220, 180, 0.08) inset,
+      0 4px 26px -6px hsl(262 72% 28% / 0.82);
+  }
+
+  .btn-primary-glow:hover {
+    filter: brightness(1.05);
+    border-color: hsl(43 48% 62% / 0.42);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.16) inset,
+      0 0 0 1px rgba(232, 220, 180, 0.12) inset,
+      0 12px 36px -8px hsl(262 72% 42% / 0.48);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary-glow:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+  }
+
+  .btn-secondary-glow {
+    @apply inline-flex items-center justify-center font-semibold px-8 py-4 rounded-xl transition-[box-shadow,transform,background-color,border-color] duration-200 ease-out cursor-pointer text-foreground backdrop-blur-md;
+    background: hsl(260 24% 9% / 0.72);
+    border: 1px solid hsl(260 22% 100% / 0.14);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
+      0 2px 12px -4px rgba(0, 0, 0, 0.4);
+  }
+
+  .btn-secondary-glow:hover {
+    background: hsl(262 72% 58% / 0.12);
+    border-color: hsl(262 72% 58% / 0.38);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.1) inset,
+      0 8px 24px -8px hsl(262 72% 40% / 0.35);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary-glow:active {
+    transform: translateY(0);
+  }
+
+  .stat-value {
+    @apply text-4xl md:text-5xl font-bold;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight;
+    letter-spacing: -0.02em;
+  }
+
+  .badge-primary {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide;
+    background: hsl(262 72% 58% / 0.1);
+    color: hsl(262 72% 72%);
+    border: 1px solid hsl(262 72% 58% / 0.22);
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(45 100% 51% / 0.15);
+    color: hsl(45 100% 55%);
+    border: 1px solid hsl(45 100% 51% / 0.3);
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    background: hsl(142 76% 45% / 0.15);
+    color: hsl(142 76% 55%);
+    border: 1px solid hsl(142 76% 45% / 0.3);
+  }
+
+  .bg-hero-glow {
+    background: radial-gradient(ellipse at top, hsl(262 72% 58% / 0.12), transparent 68%);
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  .text-gold {
+    color: hsl(45 100% 51%);
+  }
+
+  .text-success {
+    color: hsl(142 76% 45%);
+  }
+
+  /* Animated gradient border */
+  @keyframes border-glow {
+    0%, 100% {
+      border-color: hsl(260 65% 45% / 0.5);
+      box-shadow: 0 0 20px hsl(260 65% 45% / 0.3);
+    }
+    50% {
+      border-color: hsl(270 70% 50% / 0.7);
+      box-shadow: 0 0 30px hsl(270 70% 50% / 0.5);
+    }
+  }
+
+  .border-animated {
+    animation: border-glow 3s ease-in-out infinite;
+  }
+
+  /* Cosmic particles background */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  .particle {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  /* Pulse animation for balances and active states */
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 20px hsl(260 65% 45% / 0.4);
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 30px hsl(270 70% 50% / 0.6);
+    }
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Shimmer effect for loading states */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(270 40% 8% / 0.4) 0%,
+      hsl(260 65% 45% / 0.2) 50%,
+      hsl(270 40% 8% / 0.4) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* Scale on hover for interactive elements */
+  @keyframes scale-in {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  /* Balance number animation */
+  @keyframes balance-update {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+      color: hsl(270 70% 50%);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .balance-update {
+    animation: balance-update 0.5s ease-out;
+  }
+
+  /* Card hover enhancement */
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 40px hsl(260 65% 45% / 0.3);
+    border-color: hsl(260 65% 45% / 0.5);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(262 72% 58%), hsl(268 65% 56%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Octagonal shape for quick action buttons */
+  .octagon {
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  }
+  
+  .octagon-pulse {
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  }
+
+  /* Enhanced glass effect */
+  .glass-enhanced {
+    background: hsl(270 40% 8% / 0.7);
+    backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid hsl(260 65% 45% / 0.3);
+    box-shadow: 
+      0 8px 32px hsl(270 50% 5% / 0.4),
+      inset 0 1px 0 hsl(260 65% 45% / 0.1);
+  }
+
+  html {
+    font-size: 16px;
+  }
+
+  @media (max-width: 640px) {
+    html {
+      font-size: 15px;
+    }
+  }
+
+  /* Responsive container */
+  .container-responsive {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: clamp(1rem, 4vw, 2rem);
+    padding-right: clamp(1rem, 4vw, 2rem);
+  }
+
+  /* Enhanced responsive scaling for all devices */
+  #root {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Ensure all images scale responsively */
+  img, video, iframe, canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Responsive typography with better scaling */
+  h1 {
+    font-size: clamp(1.5rem, 4vw + 0.5rem, 3rem);
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: clamp(1.25rem, 3vw + 0.5rem, 2.25rem);
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: clamp(1.125rem, 2.5vw + 0.5rem, 1.875rem);
+    line-height: 1.4;
+  }
+
+  h4 {
+    font-size: clamp(1rem, 2vw + 0.5rem, 1.5rem);
+    line-height: 1.4;
+  }
+
+  /* Responsive spacing utilities */
+  .responsive-padding {
+    padding: clamp(1rem, 4vw, 2rem);
+  }
+
+  .responsive-margin {
+    margin: clamp(1rem, 4vw, 2rem);
+  }
+
+  /* Responsive gap for flex/grid containers */
+  .responsive-gap {
+    gap: clamp(0.5rem, 2vw, 1.5rem);
+  }
+
+  /* Prevent horizontal overflow */
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Better mobile scaling for cards and containers */
+  @media (max-width: 640px) {
+    .container-responsive {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  /* Tablet optimizations */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .container-responsive {
+      padding-left: clamp(1rem, 3vw, 1.5rem);
+      padding-right: clamp(1rem, 3vw, 1.5rem);
+    }
+  }
+
+  /* Large screen optimizations */
+  @media (min-width: 1920px) {
+    .container-responsive {
+      max-width: 1920px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+
+  @media (min-width: 2560px) {
+    html {
+      font-size: 17px;
+    }
+  }
+
+  /* Landscape mobile optimizations */
+  @media (max-width: 896px) and (orientation: landscape) {
+    html {
+      font-size: clamp(12px, 1.5vw, 16px);
+    }
+  }
+
+  /* Touch device optimizations */
+  @media (hover: none) and (pointer: coarse) {
+    /* Remove hover-only effects on touch devices */
+    .hover\:scale-105:hover {
+      transform: none;
+    }
+    
+    /* Ensure tap targets are large enough */
+    button, a, [role="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Better touch scrolling */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+}
+
+/* Long-form marketing / legal readability */
+@layer components {
+  .app-prose-lead {
+    @apply text-muted-foreground;
+  }
+
+  .app-prose {
+    @apply text-sm sm:text-[15px] text-muted-foreground leading-relaxed;
+  }
+
+  .app-prose strong {
+    @apply text-foreground font-medium;
+  }
+
+  /** Full-width app surfaces (dashboard, hub) below fixed nav */
+  .app-page-canvas {
+    @apply min-h-screen pt-20 bg-gradient-to-b from-background via-background/[0.98] to-background;
+  }
+
+  .app-page-inner {
+    @apply w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8;
+  }
+
+  /** Admin / data-dense surfaces — wider readable width */
+  .app-page-inner-fluid {
+    @apply w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6;
+  }
+}
+
+/* Accessibility utilities */
+@layer utilities {
+  /* Screen reader only - visually hidden but accessible to screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Focus visible - show focus indicators for keyboard navigation */
+  .focus\:not-sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Pulse glow animation */
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.12) inset,
+        0 4px 22px -6px hsl(262 72% 28% / 0.85),
+        0 0 0 0 hsl(262 72% 58% / 0);
+    }
+    50% {
+      box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.14) inset,
+        0 10px 36px -8px hsl(262 72% 42% / 0.5),
+        0 0 28px -6px hsl(262 72% 58% / 0.28);
+    }
+  }
+}
+
+/* Land Title Certificate: print / save as PDF – only the document is generated */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #land-title-certificate-document,
+  #land-title-certificate-document * {
+    visibility: visible;
+  }
+  #land-title-certificate-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #land-title-certificate-document .max-w-3xl {
+    max-width: 48rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+

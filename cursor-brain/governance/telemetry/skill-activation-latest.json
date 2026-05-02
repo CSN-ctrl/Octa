@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-04-15T19:49:51.735Z",
+  "changed_files_count": 3,
+  "changed_files": [
+    "src/pages/Login.tsx",
+    "scripts/governance/skill-activation-trace.mjs",
+    "supabase/functions/ingest-treasury-deposits/index.ts"
+  ],
+  "always_on_skills": [
+    "prompt-execution-governor"
+  ],
+  "matched_domains": [
+    {
+      "domain": "deposit_ledger",
+      "required_skills": [
+        "onchain-ingestion-and-auto-credit",
+        "deposit-auto-credit-mvp-hardening",
+        "supabase-rpc-ledger-idempotency-patterns",
+        "hybrid-onchain-offchain-sync-contract"
+      ],
+      "optional_skills": [],
+      "trigger_matches": [
+        {
+          "trigger": "supabase/functions/ingest-treasury-deposits/**",
+          "files": [
+            "supabase/functions/ingest-treasury-deposits/index.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "auth_wallet",
+      "required_skills": [
+        "auth-wallet-identity-linking-playbook",
+        "supabase-rls-hardening-and-policy-design"
+      ],
+      "optional_skills": [],
+      "trigger_matches": [
+        {
+          "trigger": "src/pages/Login.tsx",
+          "files": [
+            "src/pages/Login.tsx"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ops_remote_apply",
+      "required_skills": [
+        "mcp-ops-safety-and-audit-trail"
+      ],
+      "optional_skills": [],
+      "trigger_matches": [
+        {
+          "trigger": "scripts/**",
+          "files": [
+            "scripts/governance/skill-activation-trace.mjs"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ci_and_release",
+      "required_skills": [
+        "ci-quality-gates-for-risky-domains"
+      ],
+      "optional_skills": [],
+      "trigger_matches": [
+        {
+          "trigger": "scripts/governance/**",
+          "files": [
+            "scripts/governance/skill-activation-trace.mjs"
+          ]
+        }
+      ]
+    }
+  ],
+  "activated_skills": [
+    "auth-wallet-identity-linking-playbook",
+    "ci-quality-gates-for-risky-domains",
+    "deposit-auto-credit-mvp-hardening",
+    "hybrid-onchain-offchain-sync-contract",
+    "mcp-ops-safety-and-audit-trail",
+    "onchain-ingestion-and-auto-credit",
+    "prompt-execution-governor",
+    "supabase-rls-hardening-and-policy-design",
+    "supabase-rpc-ledger-idempotency-patterns"
+  ],
+  "skipped_skills": [
+    {
+      "skill": "foundry-sandbox-alignment-and-contract-test-porting",
+      "reason": "no matching domain trigger in changed files"
+    },
+    {
+      "skill": "frontend-domain-service-modularization",
+      "reason": "no matching domain trigger in changed files"
+    },
+    {
+      "skill": "game-economy-data-model-and-simulation-governance",
+      "reason": "no matching domain trigger in changed files"
+    },
+    {
+      "skill": "living-architecture-doc-curation",
+      "reason": "no matching domain trigger in changed files"
+    }
+  ]
+}

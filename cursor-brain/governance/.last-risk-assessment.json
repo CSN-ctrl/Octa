@@ -1,0 +1,17 @@
+{
+  "risk_tier": "L0",
+  "changed_files": [],
+  "touched_domains": {
+    "migration": false,
+    "deposit_ledger": false,
+    "auth_wallet": false,
+    "ops_remote_apply": false,
+    "frontend_refactor": false,
+    "docs_architecture": false
+  },
+  "touches_governance": false,
+  "touches_auth_or_admin": false,
+  "touches_ledger_or_deposit": false,
+  "require_chaos_drill": false,
+  "require_economic_simulation": false
+}
