@@ -1,0 +1,45 @@
+name: Governance Pack Promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_channel:
+        description: "Promotion target channel"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate current governance pack
+        run: npm run governance:validate-pack
+
+      - name: Promote governance pack channel
+        run: npm run governance:promote-pack -- ${{ inputs.target_channel }}
+
+      - name: Commit promoted pack
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cursor-brain/governance/governance-pack.json
+          git commit -m "chore(governance): promote pack to ${{ inputs.target_channel }}" || exit 0
+          git push

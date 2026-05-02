@@ -1,4 +1,7 @@
 {
+  "installCommand": "npm install --prefix ChaosStar/stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab",
+  "buildCommand": "npm run build --prefix ChaosStar/stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab",
+  "outputDirectory": "ChaosStar/stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/dist",
   "rewrites": [
     {
       "source": "/((?!api/|assets/|.*\\..*).*)",
@@ -9,7 +12,10 @@
     {
       "source": "/:path*",
       "has": [
-        { "type": "host", "value": "sarakt.com" }
+        {
+          "type": "host",
+          "value": "sarakt.com"
+        }
       ],
       "destination": "https://www.sarakt.com/:path*",
       "permanent": true
@@ -72,4 +78,3 @@
     }
   ]
 }
-

@@ -1,0 +1,53 @@
+version: 1
+description: "Machine-checkable policy gates for Think-Plan-Decide-Execute-Verify-Learn."
+
+risk_tiers:
+  L0:
+    approval_required: false
+    max_active_skills: 2
+    blocks: []
+  L1:
+    approval_required: false
+    max_active_skills: 3
+    blocks:
+      - missing_verification_plan
+  L2:
+    approval_required: true
+    max_active_skills: 4
+    blocks:
+      - low_confidence
+      - missing_required_skill
+      - missing_rollback
+  L3:
+    approval_required: true
+    max_active_skills: 5
+    blocks:
+      - low_confidence
+      - missing_required_skill
+      - missing_rollback
+      - destructive_action_without_explicit_approval
+      - ledger_change_without_idempotency_guard
+      - auth_or_admin_change_without_access_review
+
+block_conditions:
+  low_confidence:
+    when: "confidence < 70"
+    action: "question_gate"
+  missing_required_skill:
+    when: "required_skills_not_activated == true"
+    action: "block"
+  missing_verification_plan:
+    when: "verification_checks_defined == false"
+    action: "block"
+  missing_rollback:
+    when: "risk_tier in [L2, L3] and rollback_defined == false"
+    action: "block"
+  destructive_action_without_explicit_approval:
+    when: "destructive_or_irreversible == true and explicit_approval == false"
+    action: "block"
+  ledger_change_without_idempotency_guard:
+    when: "touches_ledger_or_deposit == true and idempotency_guard_defined == false"
+    action: "block"
+  auth_or_admin_change_without_access_review:
+    when: "touches_auth_or_admin == true and access_review_defined == false"
+    action: "block"

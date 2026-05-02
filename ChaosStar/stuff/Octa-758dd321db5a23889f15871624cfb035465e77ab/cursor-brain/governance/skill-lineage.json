@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "updated_at_utc": "2026-04-15T00:00:00Z",
+  "skills": [
+    {
+      "name": "prompt-execution-governor",
+      "current_version": "0.1.0",
+      "lineage": [
+        {
+          "version": "0.1.0",
+          "date_utc": "2026-04-15T00:00:00Z",
+          "change_summary": "Initial orchestration loop with question gate, policy gates, scoring model, and v3 governance modules.",
+          "parent_version": null,
+          "promoted_to": "dev",
+          "run_score_delta": 0,
+          "critical_violations": 0,
+          "kpi_delta": {
+            "safety": 0,
+            "correctness": 0,
+            "latency": 0,
+            "observability": 0,
+            "adoption": 0
+          },
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "name": "ci-quality-gates-for-risky-domains",
+      "current_version": "0.1.0",
+      "lineage": [
+        {
+          "version": "0.1.0",
+          "date_utc": "2026-04-15T00:00:00Z",
+          "change_summary": "Risk-tiered CI gates integrated with governance telemetry and hooks.",
+          "parent_version": null,
+          "promoted_to": "dev",
+          "run_score_delta": 0,
+          "critical_violations": 0,
+          "status": "active"
+        }
+      ]
+    }
+  ]
+}

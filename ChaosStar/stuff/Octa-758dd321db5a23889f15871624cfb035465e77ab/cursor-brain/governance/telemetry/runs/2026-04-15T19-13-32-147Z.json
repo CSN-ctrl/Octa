@@ -1,0 +1,9 @@
+{
+  "generated_at_utc": "2026-04-15T19:13:32.147Z",
+  "risk_tier": "L2",
+  "commit_sha": "local",
+  "ref_name": "local",
+  "workflow": "local",
+  "lineage_version": 1,
+  "tracked_skills": 2
+}

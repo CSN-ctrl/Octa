@@ -1,0 +1,14 @@
+---
+description: Keep repository root clean and prevent trash accumulation.
+alwaysApply: true
+---
+
+# Root Hygiene
+
+- Treat repository root as production-critical surface.
+- Do not add temporary reports, one-off scripts, backups, or generated artifacts to root.
+- Place SQL migrations under `supabase/migrations/`.
+- Place governance automation under `scripts/governance/`.
+- Place documentation under `docs/` unless it is core root metadata (`README.md`, `package.json`, `tsconfig*.json`, `vite.config.ts`).
+- Remove generated cache files (for example `*.tsbuildinfo`) and keep them gitignored.
+- Before deleting root files, verify they are not build/runtime requirements.

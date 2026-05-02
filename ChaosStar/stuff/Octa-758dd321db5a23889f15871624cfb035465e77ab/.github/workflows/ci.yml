@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  risk_assessment:
+    runs-on: ubuntu-latest
+    outputs:
+      risk_tier: ${{ steps.risk.outputs.risk_tier }}
+      require_chaos_drill: ${{ steps.risk.outputs.require_chaos_drill }}
+      require_economic_simulation: ${{ steps.risk.outputs.require_economic_simulation }}
+      touches_governance: ${{ steps.risk.outputs.touches_governance }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Assess changed-path risk tier
+        id: risk
+        run: npm run governance:risk
+
+  validate_base:
+    needs: risk_assessment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate governance pack
+        run: npm run governance:validate-pack
+
+      - name: Validate skill routing coverage
+        run: npm run governance:check-skill-routing
+
+      - name: Validate policy gates
+        env:
+          RISK_TIER: ${{ needs.risk_assessment.outputs.risk_tier }}
+        run: npm run governance:policy-gates
+
+      - name: Temporal regression guard
+        run: npm run governance:regression-guard
+
+      - name: Emit lineage telemetry
+        env:
+          RISK_TIER: ${{ needs.risk_assessment.outputs.risk_tier }}
+        run: npm run governance:lineage
+
+      - name: Upload governance telemetry
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-telemetry
+          path: |
+            cursor-brain/governance/.last-risk-assessment.json
+            cursor-brain/governance/telemetry/runs/
+
+  validate_high_risk:
+    if: needs.risk_assessment.outputs.risk_tier == 'L2' || needs.risk_assessment.outputs.risk_tier == 'L3'
+    needs: risk_assessment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
+  chaos_economy_hooks:
+    if: needs.risk_assessment.outputs.require_chaos_drill == 'true' || needs.risk_assessment.outputs.require_economic_simulation == 'true'
+    needs: risk_assessment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run chaos/economic hooks
+        env:
+          REQUIRE_CHAOS_DRILL: ${{ needs.risk_assessment.outputs.require_chaos_drill }}
+          REQUIRE_ECONOMIC_SIMULATION: ${{ needs.risk_assessment.outputs.require_economic_simulation }}
+        run: npm run governance:hooks
+
+      - name: Upload simulation reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-simulation-reports
+          path: |
+            cursor-brain/governance/.last-chaos-drill-report.json
+            cursor-brain/governance/.last-economic-sim-report.json

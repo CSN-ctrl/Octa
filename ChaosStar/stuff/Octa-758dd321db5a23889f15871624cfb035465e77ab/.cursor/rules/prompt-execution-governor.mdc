@@ -1,0 +1,24 @@
+---
+description: Always enforce T-P-D-E-V-L with Question Gate, cost controls, and risk-tiered skill routing.
+globs:
+alwaysApply: true
+---
+
+# Prompt execution governor
+
+For every task, apply the `prompt-execution-governor` skill first.
+
+Mandatory loop:
+- Think -> Plan -> Decide -> Execute -> Verify -> Learn
+
+Mandatory question gate:
+- Ask clarifying questions before execution when ambiguity or risk is material.
+
+Mandatory efficiency defaults:
+- Keep responses concise.
+- Scope analysis to minimum required context.
+- Use phased analysis.
+- Activate only necessary skills for detected risk/domain.
+
+Mandatory policy behavior:
+- Block high-risk execution if required safeguards are missing.

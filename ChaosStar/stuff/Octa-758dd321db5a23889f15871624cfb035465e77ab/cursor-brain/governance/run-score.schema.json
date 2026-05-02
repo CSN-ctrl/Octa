@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cursor-brain/governance/run-score.schema.json",
+  "title": "PromptExecutionRunScore",
+  "type": "object",
+  "required": [
+    "task_id",
+    "timestamp_utc",
+    "risk_tier",
+    "skills_used",
+    "safety_score",
+    "correctness_score",
+    "latency_score",
+    "observability_score",
+    "adoption_score",
+    "run_score",
+    "outcome",
+    "violations"
+  ],
+  "properties": {
+    "task_id": { "type": "string", "minLength": 1 },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "risk_tier": { "type": "string", "enum": ["L0", "L1", "L2", "L3"] },
+    "skills_used": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "safety_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "correctness_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "latency_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "observability_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "adoption_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "run_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "outcome": { "type": "string", "enum": ["success", "partial", "fail"] },
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity"],
+        "properties": {
+          "code": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "warn", "error", "critical"] },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "mutation_candidate": { "type": "string" },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": false
+}

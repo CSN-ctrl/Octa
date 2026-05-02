@@ -1,0 +1,15 @@
+Supabase → Authentication → Email templates
+
+Paste the HTML from each .html file into the matching template in the dashboard.
+Subjects (suggested):
+
+  Confirm signup   → Confirm your Chaos Star account
+  Reset password   → Reset your Sarakt password
+
+Required: Authentication → URL configuration includes:
+  https://www.sarakt.com/email-verified
+  https://www.sarakt.com/reset-password
+  http://localhost:5173/email-verified   (or your dev port)
+  http://localhost:5173/reset-password
+
+Links in templates must use href="{{ .ConfirmationURL }}" only (Supabase builds the full URL).

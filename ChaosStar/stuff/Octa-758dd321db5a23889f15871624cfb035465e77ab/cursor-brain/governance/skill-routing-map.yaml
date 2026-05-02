@@ -1,0 +1,114 @@
+version: 1
+description: "Conditional skill activation map by domain and changed paths."
+
+global:
+  always_on_skills:
+    - prompt-execution-governor
+
+domains:
+  migration:
+    required_skills:
+      - supabase-rls-hardening-and-policy-design
+      - supabase-rpc-ledger-idempotency-patterns
+    path_triggers:
+      - "supabase/migrations/**"
+  deposit_ledger:
+    required_skills:
+      - onchain-ingestion-and-auto-credit
+      - deposit-auto-credit-mvp-hardening
+      - supabase-rpc-ledger-idempotency-patterns
+      - hybrid-onchain-offchain-sync-contract
+    path_triggers:
+      - "supabase/functions/ingest-treasury-deposits/**"
+      - "src/hooks/useUSDCDeposit.ts"
+      - "src/components/Treasury*.tsx"
+  auth_wallet:
+    required_skills:
+      - auth-wallet-identity-linking-playbook
+      - supabase-rls-hardening-and-policy-design
+    path_triggers:
+      - "src/pages/Login.tsx"
+      - "src/contexts/WalletContext.tsx"
+      - "src/components/ProtectedRoute.tsx"
+  onchain_offchain_sync:
+    required_skills:
+      - hybrid-onchain-offchain-sync-contract
+      - supabase-rpc-ledger-idempotency-patterns
+    path_triggers:
+      - "src/contracts/**"
+      - "src/hooks/useLandPlots.ts"
+      - "src/hooks/usePlotTransfer.ts"
+      - "src/lib/registry-sync.ts"
+      - "src/pages/PlotPurchase.tsx"
+      - "src/pages/PlotSell.tsx"
+
+  economy_governance:
+    required_skills:
+      - game-economy-data-model-and-simulation-governance
+      - supabase-rpc-ledger-idempotency-patterns
+    path_triggers:
+      - "src/hooks/useSwap.ts"
+      - "src/hooks/useMarketplace.ts"
+      - "src/hooks/usePortfolio*.ts"
+      - "src/pages/FinancialHub.tsx"
+      - "src/pages/MarketplaceTreasury.tsx"
+      - "supabase/migrations/**econom**"
+      - "supabase/migrations/**treasury**"
+
+  ops_remote_apply:
+    required_skills:
+      - mcp-ops-safety-and-audit-trail
+    path_triggers:
+      - "supabase/remote_apply/**"
+      - "scripts/**"
+  frontend_refactor:
+    optional_skills:
+      - frontend-domain-service-modularization
+    path_triggers:
+      - "src/lib/supabase-service.ts"
+  docs_architecture:
+    optional_skills:
+      - living-architecture-doc-curation
+    path_triggers:
+      - "docs/**"
+      - "cursor-brain/**"
+
+  ci_and_release:
+    required_skills:
+      - ci-quality-gates-for-risky-domains
+    path_triggers:
+      - ".github/workflows/**"
+      - "scripts/governance/**"
+      - "cursor-brain/governance/**"
+
+  solidity_tests_alignment:
+    required_skills:
+      - foundry-sandbox-alignment-and-contract-test-porting
+    path_triggers:
+      - "src/contracts/**"
+      - "docs/phase1-sandbox/**"
+      - "**/foundry.toml"
+      - "**/*.t.sol"
+
+skill_catalog:
+  enforced_skills:
+    - prompt-execution-governor
+    - auth-wallet-identity-linking-playbook
+    - ci-quality-gates-for-risky-domains
+    - deposit-auto-credit-mvp-hardening
+    - foundry-sandbox-alignment-and-contract-test-porting
+    - frontend-domain-service-modularization
+    - game-economy-data-model-and-simulation-governance
+    - hybrid-onchain-offchain-sync-contract
+    - living-architecture-doc-curation
+    - mcp-ops-safety-and-audit-trail
+    - onchain-ingestion-and-auto-credit
+    - supabase-rls-hardening-and-policy-design
+    - supabase-rpc-ledger-idempotency-patterns
+
+question_gate:
+  ask_if:
+    - "multiple_valid_outcomes == true"
+    - "scope_unclear == true"
+    - "success_criteria_missing == true"
+    - "risk_tier in [L2, L3] and material_assumptions == true"
