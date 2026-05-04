@@ -1,7 +1,22 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import tabIcon from "./assets/Gemini_Generated_Image_yrp2wayrp2wayrp2.png";
 import { initSentry } from "./lib/sentry";
+
+function applyTabIcon(href: string) {
+  for (const rel of ["icon", "apple-touch-icon"] as const) {
+    let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+    if (!el) {
+      el = document.createElement("link");
+      el.rel = rel;
+      document.head.appendChild(el);
+    }
+    el.type = "image/png";
+    el.href = href;
+  }
+}
+applyTabIcon(tabIcon);
 
 // Initialize Sentry error tracking
 const sentry = initSentry();
