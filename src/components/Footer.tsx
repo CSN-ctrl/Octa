@@ -130,9 +130,9 @@ const Footer = () => {
                 Build your empire in the Chaos Star Universe. Invest in virtual assets and grow your portfolio across galaxies.
               </p>
               <div className="parent">
-                {socialLinks.map((social, index) => (
+              {socialLinks.map((social, index) => (
                   <motion.div
-                    key={social.name}
+                  key={social.name}
                     initial={{ opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
@@ -140,12 +140,12 @@ const Footer = () => {
                     className="flex"
                   >
                     <a
-                      href={social.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                       className={`child child-${index + 1} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/75 focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
-                      aria-label={social.name}
-                    >
+                  aria-label={social.name}
+                >
                       <span className={`button btn-${index + 1}`}>
                         <span className="footer-social-icon scale-125" aria-hidden>
                           {social.svg}
@@ -153,8 +153,8 @@ const Footer = () => {
                       </span>
                     </a>
                   </motion.div>
-                ))}
-              </div>
+              ))}
+            </div>
             </Cosmic3dShell>
           </motion.div>
 
