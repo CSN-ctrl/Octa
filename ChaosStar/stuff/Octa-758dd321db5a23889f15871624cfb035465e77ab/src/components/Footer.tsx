@@ -100,7 +100,7 @@ const Footer = () => {
             <div className="flex flex-col items-center gap-4 mb-6">
               <div className="flex items-center justify-center">
                 <img 
-                  src="/logo.jpg" 
+                  src="/logo.png" 
                   alt="Chaos Star Universe Logo" 
                   className="h-16 w-16 rounded-lg select-none"
                 />

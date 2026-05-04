@@ -1,2 +1,2 @@
 /** Canonical logo under `public/` — used in nav, footer, and should match OG / Twitter image. */
-export const CHAOS_STAR_LOGO_URL = "/logo.jpg";
+export const CHAOS_STAR_LOGO_URL = "/logo.png";
