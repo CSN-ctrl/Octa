@@ -392,7 +392,7 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
 
     const plotIds = Array.from(selectedPlots);
     let recipientAddress = recipient;
-    let recipientEmailAddress = recipientEmail;
+    const recipientEmailAddress = recipientEmail;
 
     // If wallet is not connected, use email transfer
     if (!isConnected) {

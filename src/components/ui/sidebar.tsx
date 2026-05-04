@@ -40,6 +40,11 @@ function useSidebar() {
   return context;
 }
 
+/** Safe outside {@link SidebarProvider}; use for optional chrome (e.g. nav toggle). */
+function useOptionalSidebar() {
+  return React.useContext(SidebarContext);
+}
+
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -633,5 +638,6 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  useOptionalSidebar,
   useSidebar,
 };

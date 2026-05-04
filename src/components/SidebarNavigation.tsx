@@ -25,7 +25,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-  useSidebar,
+  useOptionalSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -243,24 +243,9 @@ export function SidebarNavigation() {
 }
 
 export function SidebarToggle() {
-  try {
-    const { toggleSidebar } = useSidebar();
-    
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9"
-        onClick={toggleSidebar}
-        data-sidebar="trigger"
-      >
-        <Menu className="h-5 w-5" />
-        <span className="sr-only">Toggle Sidebar</span>
-      </Button>
-    );
-  } catch (error) {
-    console.error("SidebarToggle error:", error);
-    // Fallback button if sidebar context is not available
+  const sidebar = useOptionalSidebar();
+
+  if (!sidebar) {
     return (
       <Button
         variant="ghost"
@@ -273,5 +258,18 @@ export function SidebarToggle() {
       </Button>
     );
   }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-9 w-9"
+      onClick={sidebar.toggleSidebar}
+      data-sidebar="trigger"
+    >
+      <Menu className="h-5 w-5" />
+      <span className="sr-only">Toggle Sidebar</span>
+    </Button>
+  );
 }
 

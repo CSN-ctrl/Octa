@@ -284,7 +284,7 @@ export default function Dashboard() {
       setLoading(true);
       try {
         // Fetch plots - try by wallet address and email
-        let plots = await supabaseService.getPlots({ 
+        const plots = await supabaseService.getPlots({ 
           ownerWallet: address,
           ownerEmail: userEmail || undefined
         });

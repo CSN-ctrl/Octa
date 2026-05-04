@@ -1828,7 +1828,7 @@ export async function getCityStats(cityName?: string): Promise<{
   zones: Array<{ zone_type: string; count: number }>;
   total_value: number;
 } | null> {
-  let query = supabase.from("plots").select("zone_type, owner_wallet");
+  const query = supabase.from("plots").select("zone_type, owner_wallet");
 
   if (cityName) {
     // If we had a city_name column, we'd filter here

@@ -13,7 +13,7 @@ export interface WalletInfo {
 }
 
 // EIP-6963: providers announced asynchronously (e.g. some mobile browsers, Safari)
-let eip6963Providers: Map<string, { provider: any; info: { name: string; icon?: string } }> = new Map();
+const eip6963Providers: Map<string, { provider: any; info: { name: string; icon?: string } }> = new Map();
 
 function initEip6963() {
   if (typeof window === "undefined") return;
@@ -195,7 +195,7 @@ export function getWalletProvider(walletId: string): any | null {
  * Fallback: if no wallets detected but window.ethereum exists, use it (some browsers inject on first interaction).
  */
 export function getBestWallet(): WalletInfo | null {
-  let wallets = detectWallets();
+  const wallets = detectWallets();
   if (wallets.length > 0) {
     const priority = ["metamask", "core", "coinbase", "brave", "rabby", "trust", "phantom", "generic"];
     for (const id of priority) {
