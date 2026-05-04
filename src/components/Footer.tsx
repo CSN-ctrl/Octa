@@ -11,7 +11,8 @@ import {
   Zap
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { CHAOS_STAR_LOGO_URL } from "@/lib/brand-logo-url";
+import { Cosmic3dShell } from "@/components/cosmic-3d-shell";
+import { ChaosStarLogo3DLink } from "@/components/chaos-star-logo-3d-link";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -121,47 +122,38 @@ const Footer = () => {
             transition={{ duration: 0.5 }}
             className="text-center mb-12 pb-8 border-b border-border/30"
           >
-            <div className="flex w-full flex-col items-center gap-5 mb-2">
-              <Link
-                to="/"
-                className="rounded-xl ring-2 ring-primary/20 shadow-lg shadow-primary/5 transition hover:ring-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label="Chaos Star Universe home"
-              >
-                <img
-                  src={CHAOS_STAR_LOGO_URL}
-                  alt="Chaos Star Universe"
-                  className="h-16 w-16 rounded-lg object-cover select-none sm:h-20 sm:w-20"
-                  width={80}
-                  height={80}
-                  draggable={false}
-                />
-              </Link>
-              <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed text-center">
+            <Cosmic3dShell className="flex w-full flex-col items-center gap-5 mb-2">
+              <ChaosStarLogo3DLink variant="footer" />
+              <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed tracking-wide text-center">
                 Build your empire in the Chaos Star Universe. Invest in virtual assets and grow your portfolio across galaxies.
               </p>
-              <div className="flex flex-wrap justify-center gap-3">
+              <div className="parent">
                 {socialLinks.map((social, index) => (
-                  <motion.a
+                  <motion.div
                     key={social.name}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    initial={{ opacity: 0, scale: 0.92 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: index * 0.08, duration: 0.3 }}
-                    whileHover={{ scale: 1.06 }}
-                    whileTap={{ scale: 0.96 }}
-                    className="w-12 h-12 rounded-xl bg-background/60 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground transition-colors duration-300 hover:text-foreground hover:bg-primary/10 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/75 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    aria-label={social.name}
+                    transition={{ delay: index * 0.1, duration: 0.35 }}
+                    className="flex"
                   >
-                    <span className="footer-social-icon scale-125" aria-hidden>
-                      {social.svg}
-                    </span>
-                  </motion.a>
+                    <a
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`child child-${index + 1} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/75 focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+                      aria-label={social.name}
+                    >
+                      <span className={`button btn-${index + 1}`}>
+                        <span className="footer-social-icon scale-125" aria-hidden>
+                          {social.svg}
+                        </span>
+                      </span>
+                    </a>
+                  </motion.div>
                 ))}
               </div>
-            </div>
+            </Cosmic3dShell>
           </motion.div>
 
           {/* Main Footer Content - Multi Column */}
