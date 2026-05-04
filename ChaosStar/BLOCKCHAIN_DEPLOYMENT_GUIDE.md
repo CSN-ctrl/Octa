@@ -26,7 +26,7 @@ RPC Endpoint: http://127.0.0.1:<PORT>/ext/bc/<BLOCKCHAIN_ID>/rpc
 ### Step 1: Start Avalanche Network
 
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 
 # Start the local Avalanche network
 avalanche --skip-update-check network start
@@ -96,7 +96,7 @@ http://127.0.0.1:9650/ext/bc/<BLOCKCHAIN_ID>/rpc
 I've created `deploy_blockchain.sh` for you:
 
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 ./deploy_blockchain.sh
 ```
 
@@ -137,13 +137,13 @@ avalanche blockchain list
 
 Once you have the RPC URL, update the frontend:
 
-### File: `octavia-nebula-core/.env`
+### File: `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/.env`
 ```env
 VITE_RPC_URL=http://127.0.0.1:9650/ext/bc/<YOUR_BLOCKCHAIN_ID>/rpc
 VITE_CHAIN_ID=chaosstar
 ```
 
-### File: `octavia-nebula-core/src/config.ts` (if exists)
+### File: `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/src/config.ts` (if exists)
 ```typescript
 export const RPC_URL = "http://127.0.0.1:9650/ext/bc/<YOUR_BLOCKCHAIN_ID>/rpc"
 ```
@@ -175,7 +175,7 @@ avalanche blockchain describe chaosstar
 
 ### 4. Configure Frontend
 ```bash
-cd octavia-nebula-core
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 echo "VITE_RPC_URL=<YOUR_RPC_URL>" > .env
 ```
 

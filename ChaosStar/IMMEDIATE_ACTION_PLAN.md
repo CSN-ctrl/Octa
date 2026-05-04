@@ -16,7 +16,7 @@
 
 ### 1. Update Frontend Dependencies ⚡
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm/octavia-nebula-core
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 npx update-browserslist-db@latest
 ```
 **Time**: 5 minutes  
@@ -28,20 +28,17 @@ npx update-browserslist-db@latest
 2. `PlotIssuance` - Planet owner functionality
 3. `FormFaction` - Social system
 
-**Template to Follow**:
-```bash
-# Copy existing test pattern
-cp /home/hades/Videos/ChaosStar/stuff/chaosstarvm/actions/plot_purchase_test.go \
-   /home/hades/Videos/ChaosStar/stuff/chaosstarvm/actions/develop_plot_test.go
-```
+**Template to Follow** (historical — Go VM tests were removed with `chaosstarvm/`):
+
+Use Vitest patterns under `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/src/**/__tests__/` as a guide for new frontend tests.
 
 **Time**: 4-6 hours  
 **Impact**: Increases coverage to 40%
 
 ### 3. Run Full Test Suite 🔍
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
-go test ./actions/... -v
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
+npm run test:run
 ```
 **Time**: 10 minutes  
 **Impact**: Verify all existing tests pass
@@ -65,7 +62,7 @@ go test ./actions/... -v
 ### 5. Set Up Basic Monitoring 📊
 ```bash
 # Install Prometheus
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 # Add prometheus.yml configuration
 # Wire up metrics endpoints
 ```
@@ -113,8 +110,9 @@ cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
 
 ### 9. Performance Benchmarking ⚡
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
-go test -bench=. ./actions/...
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
+# Frontend perf work is app-specific; there is no Go actions bench in this tree.
+npm run build
 ```
 **Metrics to Track**:
 - Action execution time
@@ -248,15 +246,13 @@ Month 3:  [███████████████████████
 ## 📞 Need Help?
 
 ### Resources:
-- **Project Analysis**: `/home/hades/Videos/ChaosStar/CHAOSSTAR_PROJECT_ANALYSIS.md`
-- **Phase 1 Status**: `/home/hades/Videos/ChaosStar/stuff/chaosstarvm/PHASE_1_IMPLEMENTATION_STATUS.md`
-- **Production Summary**: `/home/hades/Videos/ChaosStar/PRODUCTION_SUMMARY.md`
-- **Comprehensive Report**: `/home/hades/Videos/ChaosStar/COMPREHENSIVE_STATUS_REPORT.md`
+- **Project Analysis**: `CHAOSSTAR_PROJECT_ANALYSIS.md` (historical sections retained)
+- **Production Summary**: `PRODUCTION_SUMMARY.md`
+- **Comprehensive Report**: `COMPREHENSIVE_STATUS_REPORT.md`
 
-### Test Examples:
-- Transfer: `actions/transfer_test.go`
-- Plot Purchase: `actions/plot_purchase_test.go`
-- Atomic Swap: `actions/atomic_swap_test.go`
+### Test examples (historical)
+
+Go VM `actions/*_test.go` files were removed with `chaosstarvm/`. Use Vitest specs under the Octa app’s `src/` tree instead.
 
 ---
 

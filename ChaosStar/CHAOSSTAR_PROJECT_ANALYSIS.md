@@ -1,66 +1,44 @@
 # ChaosStar Project - Comprehensive Analysis
 
+> **Repository note (2026):** The standalone Go VM (`chaosstarvm`), embedded `hypersdk`, and `chaosstar-wallet` are **no longer in this tree**. The **canonical app** is the Octa web client at `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`. Everything below Section 1 is **historical design context** unless it explicitly matches files that still exist.
+
 ## Executive Summary
 
 **ChaosStar** is a comprehensive blockchain-based virtual world and economic simulation system built on **HyperSDK** for the **Avalanche** network. It implements a complex multi-planet, multi-currency economy with plots, buildings, NPCs, factions, and a phase-based progression system.
 
-**Project Type**: Blockchain Virtual World / Economic Simulation Game
-**Blockchain**: Avalanche (HyperSDK-based)
-**Languages**: Go (467 files), Solidity (472 contracts), TypeScript/React (1,489 files)
-**Status**: Production-ready infrastructure, active development
+**Project Type**: Blockchain Virtual World / Economic Simulation Game  
+**Blockchain**: Avalanche (HyperSDK-based)  
+**Languages (historical monorepo)**: Go, Solidity, TypeScript/React  
+**Current repo surface**: TypeScript/React Octa app + Supabase + docs in `ChaosStar/`  
 **License**: Copyright (C) 2024, ChaosStar Network
 
 ---
 
 ## 1. Project Architecture Overview
 
-### 1.1 High-Level Structure
+### 1.1 High-Level Structure (current repository)
 
 ```
 ChaosStar/
-├── chaosstarvm/              # Core VM (Go) - 467 Go files
-│   ├── actions/             # 49 action files (37+ actions)
-│   ├── backend/             # Go backend server
-│   ├── octavia-nebula-core/ # React frontend + Solidity contracts
-│   └── ...
-├── hypersdk/                # HyperSDK framework (Avalanche Labs)
-├── avalanche-sdk-typescript/ # TypeScript SDK for Avalanche
-├── avalanche-starter-kit/   # Starter templates
-├── chaosstar-wallet/        # React wallet application
-└── the-bastion/            # SSH bastion (security infrastructure)
+├── README.md                 # Entry point for this folder
+├── stuff/
+│   └── Octa-758dd321db5a23889f15871624cfb035465e77ab/   # Vite + React + Supabase (canonical app)
+│       ├── src/
+│       ├── supabase/
+│       ├── documents/
+│       └── ...
+└── *.md                      # Status / planning documents (many describe the retired VM layout)
 ```
 
-### 1.2 Core Components
+### 1.2 Core Components (current)
 
-1. **ChaosStar VM** (`chaosstarvm/`)
-   - HyperSDK-based virtual machine
-   - 37+ blockchain actions
-   - State management system
-   - Event system
-   - Multi-token support
+1. **Octa web application** (`stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`)
+   - React + TypeScript + Vite
+   - Wallet and on-chain UX (see app source and `README.md` in that directory)
+   - Supabase migrations and RPCs under `supabase/`
 
-2. **Backend Server** (`chaosstarvm/backend/`)
-   - Go-based REST API
-   - EVM contract interaction
-   - PDF document processing
-   - Contract deployment service
-
-3. **Frontend** (`chaosstarvm/octavia-nebula-core/`)
-   - React + TypeScript
-   - Celestial Forge interface
-   - Star system/planet/city management
-   - Real-time blockchain data
-
-4. **Smart Contracts** (`chaosstarvm/octavia-nebula-core/`)
-   - Solidity contracts (472 files)
-   - ERC-721/ERC-1155 tokens
-   - Land ownership system
-   - Treasury contracts
-
-5. **HyperSDK Framework** (`hypersdk/`)
-   - High-performance blockchain framework
-   - Customizable VM architecture
-   - State management primitives
+2. **Historical VM / wallet / monorepo pieces** (removed from git)
+   - Prior Go VM, CLI, separate wallet app, and local `hypersdk` replace directives are **not** checked in anymore. Design details for those systems may still appear later in this document for reference.
 
 ---
 
@@ -410,7 +388,7 @@ Raw Materials → Refined Materials → Advanced Materials → Products
 
 ### 3.5 Backend Server
 
-**Go Backend** (`chaosstarvm/backend/`):
+**Go Backend** (historical; was `chaosstarvm/backend/`):
 - RESTful API endpoints
 - EVM contract interaction via `go-ethereum`
 - PDF document processing
@@ -429,7 +407,7 @@ Raw Materials → Refined Materials → Advanced Materials → Products
 
 ### 3.6 Frontend Application
 
-**React Frontend** (`chaosstarvm/octavia-nebula-core/`):
+**React frontend** (`stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`):
 - TypeScript + React
 - Vite build system
 - Real-time blockchain data
@@ -467,7 +445,7 @@ Raw Materials → Refined Materials → Advanced Materials → Products
 ### 3.8 Document System
 
 **PDF Document Processing**:
-- Template system (PDF templates in `octavia-nebula-core/documents/`)
+- Template system (PDF templates in `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/documents/`)
 - Text overlay system
 - Document types: Plot deeds, certificates
 
@@ -770,34 +748,24 @@ Raw Materials → Refined Materials → Advanced Materials → Products
 
 ## 11. Project Structure
 
+**Historical layout** (Go VM monorepo; not present in this repository anymore):
+
 ```
-chaosstarvm/
-├── actions/              # 49 action files (37+ actions)
-├── backend/              # Go backend server
-├── buildings/            # Building system
-├── consts/               # Constants and type IDs
-├── districts/            # District system
-├── events/               # Event system
-├── factions/             # Faction system
-├── phases/               # Phase system
-├── population/           # Population and rental system
-├── resources/            # Resource production system
-├── storage/              # State storage functions
-├── treasury/             # Treasury management
-├── lending/              # Loan system
-├── employment/           # NPC employment
-├── research/             # Technology research
-├── reputation/           # Reputation system
-├── metrics/              # Metrics system
-├── performance/          # Performance optimizations
-├── security/             # Security validation
-├── config/               # Configuration
-├── tests/                # Test suites
-├── docs/                 # Documentation
-├── scripts/              # Deployment scripts
-├── cmd/                  # CLI and commands
-├── vm/                   # VM implementation
-└── octavia-nebula-core/  # React frontend + Solidity contracts
+chaosstarvm/   # removed — see git history if needed
+├── actions/
+├── backend/
+├── ...
+└── (frontend lived alongside or in a sibling tree in older snapshots)
+```
+
+**Current layout:**
+
+```
+ChaosStar/stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/
+├── src/
+├── supabase/
+├── public/
+└── ...
 ```
 
 ---

@@ -2,6 +2,8 @@
 **Date**: 2025-12-19 15:47  
 **Status**: ✅ **PRODUCTION READY**
 
+> **2026:** This snapshot predates removal of the Go VM and related binaries. **Do not** run the `go build` / `go test` commands here unless you restore that code. Use the Octa app (`npm run build`, `npm run test:run`) instead.
+
 ---
 
 ## 🎉 **MISSION ACCOMPLISHED!**
@@ -63,7 +65,7 @@ Test Files:       [████████████████████�
 
 ### ✅ Run Tests
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 go test ./actions/... -v
 ```
 
@@ -73,14 +75,14 @@ go test ./actions/... -v
 go build -ldflags="-s -w" -o build/chaosstarvm .
 
 # Frontend
-cd octavia-nebula-core && npm run build
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab && npm run build
 
 # Backend
 cd ../backend && go build -o build/backend .
 ```
 
 ### ✅ Deploy
-Follow the guide: `/home/hades/Videos/ChaosStar/PRODUCTION_DEPLOYMENT_GUIDE.md`
+Follow the guide: [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md)
 
 ---
 
@@ -249,11 +251,11 @@ High-level overview:
 ### Build Commands
 ```bash
 # Build VM
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 go build -o build/chaosstarvm .
 
 # Build Frontend
-cd octavia-nebula-core
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 npm run build
 
 # Build Backend
@@ -274,7 +276,7 @@ go test ./actions/... -cover
 ```
 
 ### Deployment
-See: `/home/hades/Videos/ChaosStar/PRODUCTION_DEPLOYMENT_GUIDE.md`
+See: [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md)
 
 ---
 

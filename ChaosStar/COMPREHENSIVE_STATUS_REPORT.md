@@ -240,10 +240,9 @@ ChaosStar is a blockchain-based virtual world and economic simulation built on A
    - **Recommendation**: Test migration paths before production
 
 3. **Dependency Management**
-   - **Issue**: Multiple `go.mod` files (chaosstarvm, backend, octavia-backend)
-   - **Impact**: Potential version conflicts
-   - **Status**: Works but could be cleaner
-   - **Recommendation**: Consider Go workspaces
+   - **Issue (historical)**: Multiple `go.mod` files existed when `chaosstarvm/` was in-tree; that layout has been removed.
+   - **Current surface**: Single Octa app (`package.json` + `package-lock.json` in `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`).
+   - **Recommendation**: Keep one lockfile, run `npm ci` in CI, and resolve peer-deps warnings explicitly.
 
 ### Minor Issues:
 

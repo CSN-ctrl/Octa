@@ -1,6 +1,9 @@
 # ChaosStar - Complete Documentation Index
-**Date**: 2025-12-19  
-**Status**: ✅ PRODUCTION READY
+
+> **2026 update:** The Go VM, Avalanche fork tooling, and standalone wallet described in many linked reports are **not in this repository**. The **canonical product** is the Octa web app at `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`. Treat older “100% ready” claims and Go commands below as **historical**.
+
+**Date**: 2025-12-19 (original index)  
+**Status**: Mixed — see [README.md](README.md) and the Octa app `README.md` for the current surface.
 
 ---
 
@@ -157,17 +160,13 @@ Tests:            [████████████████████�
 
 ---
 
-## 📞 Quick Commands
+## 📞 Quick Commands (Octa app)
 
-### Build
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
-go build -o build/chaosstarvm .
-```
-
-### Test
-```bash
-go test ./actions/... -v
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
+npm ci
+npm run test:run
+npm run build
 ```
 
 ### Deploy
@@ -177,7 +176,7 @@ See [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md)
 
 ## 📁 File Locations
 
-All documentation is in: `/home/hades/Videos/ChaosStar/`
+Planning and status markdown live in this `ChaosStar/` folder (next to `stuff/`). Paths are relative to the repository root unless stated otherwise.
 
 ```
 ChaosStar/

@@ -197,18 +197,14 @@ Need to complete:
 
 ### Immediate (This Week)
 ```bash
-# 1. Update dependencies (5 min)
-cd octavia-nebula-core
+# 1. Update dependencies (optional, few minutes)
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 npx update-browserslist-db@latest
 
-# 2. Run existing tests (10 min)
-cd ../
-go test ./actions/... -v
+# 2. Run the Octa unit tests
+npm run test:run
 
-# 3. Add 3 critical tests (6 hours)
-# - DevelopPlot
-# - PlotIssuance
-# - FormFaction
+# 3. Follow up on CI / typecheck / lint in that package as needed
 ```
 
 ### Short-term (Next Month)
@@ -257,23 +253,14 @@ The project is in **excellent shape** - just needs the final polish! 🚀
 - **Project Analysis**: `CHAOSSTAR_PROJECT_ANALYSIS.md`
 
 ### Key Directories
-- **VM Code**: `/home/hades/Videos/ChaosStar/stuff/chaosstarvm/`
-- **Frontend**: `/home/hades/Videos/ChaosStar/stuff/chaosstarvm/octavia-nebula-core/`
-- **Tests**: `/home/hades/Videos/ChaosStar/stuff/chaosstarvm/actions/*_test.go`
+- **Octa web app**: `stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/` (React + Vite + Supabase)
 
 ### Quick Commands
 ```bash
-# Build VM
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
-go build ./...
-
-# Build Frontend
-cd octavia-nebula-core
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
+npm install
+npm run test:run
 npm run build
-
-# Run Tests
-cd ..
-go test ./actions/... -v
 ```
 
 ---

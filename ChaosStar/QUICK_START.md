@@ -1,51 +1,28 @@
-# Quick Start - Project Management
+# Quick Start (Octa web app)
 
-## This Week (Critical)
+All active application code lives under:
 
-1. **Add Tests** (2 days)
-   ```bash
-   cd chaosstarvm
-   # Start with transfer_test.go (template provided)
-   # Add tests for: Transfer, PlotPurchase, Tribute
-   ```
+`stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`
 
-2. **Set Up CI** (1 day)
-   ```bash
-   # Workflow file provided at .github/workflows/vm-ci.yml
-   # Enable in GitHub repository
-   ```
+## Local development
 
-3. **Create Makefile** (30 min)
-   ```bash
-   # Already created at chaosstarvm/Makefile
-   make test
-   make build
-   ```
+```bash
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
+npm install
+npm run dev
+```
 
-4. **Consolidate Docs** (1 day)
-   ```bash
-   mkdir -p chaosstarvm/docs/systems
-   mv chaosstarvm/*_SYSTEM.md chaosstarvm/docs/systems/
-   ```
+## Checks (from the same directory)
 
-## Next Week
+```bash
+npm run test:run
+npm run typecheck
+npm run build
+```
 
-1. Add integration tests
-2. Set up monitoring
-3. Security audit
-4. Performance profiling
+Note: `npm run lint` may require an ESLint flat config; see the Octa app’s tooling state in that folder.
 
-## Don't Do
+## Documentation
 
-- ❌ Big refactors without tests
-- ❌ New features without tests
-- ❌ Manual deployments
-- ❌ Ignoring CI failures
-
-## Do
-
-- ✅ Test every action
-- ✅ Run CI on every PR
-- ✅ Document as you code
-- ✅ Small, incremental changes
-
+- [README.md](README.md) — how this `ChaosStar/` tree relates to Octa
+- Many other `.md` files here are **legacy status reports**; prefer the Octa app’s `README.md` and `docs/` for current product behavior.

@@ -1,5 +1,7 @@
 # Phase 1 & 2 Ready for Real Data Testing
 
+> **2026:** The `go test` / `tests/scenarios` layout and `chaosstarvm/` tree referenced here are **not present** in the repository anymore. Phase work today should target the Octa app (`stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/`) and its Vitest suite.
+
 ## 🎉 What's Been Created
 
 I've set up a comprehensive production readiness plan and testing infrastructure for Phase 1 (Tribal) and Phase 2 (Civilization) of ChaosStar.
@@ -28,7 +30,7 @@ I've set up a comprehensive production readiness plan and testing infrastructure
 ### Step 1: Setup Environment
 
 ```bash
-cd /home/hades/Videos/ChaosStar/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 ./scripts/setup_test_environment.sh
 ```
 

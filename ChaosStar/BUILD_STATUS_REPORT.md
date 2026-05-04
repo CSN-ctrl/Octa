@@ -2,6 +2,8 @@
 **Date**: 2025-12-19 15:37  
 **Test Type**: Compilation & Error Check
 
+> **2026:** This report records **historical** Go VM builds. The VM sources are no longer in the repository. Current build verification: `cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab && npm run build`.
+
 ---
 
 ## 🎯 Executive Summary
@@ -200,28 +202,28 @@ Overall:          [████████████████████�
 
 ### Verify VM Build
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 go build ./...
 echo $?  # Should output: 0
 ```
 
 ### Verify AvalancheGo Build
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm/avalanchego
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/avalanchego
 go build ./main
 echo $?  # Should output: 0
 ```
 
 ### Verify Avalanche CLI Build
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm/avalanche-cli
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab/avalanche-cli
 go build ./main.go
 echo $?  # Should output: 0
 ```
 
 ### Run Working Tests
 ```bash
-cd /home/hades/Videos/ChaosStar/stuff/chaosstarvm
+cd stuff/Octa-758dd321db5a23889f15871624cfb035465e77ab
 go test ./actions -run TestPlotPurchase -v
 go test ./actions -run TestTransfer -v
 go test ./actions -run TestAtomicSwap -v
