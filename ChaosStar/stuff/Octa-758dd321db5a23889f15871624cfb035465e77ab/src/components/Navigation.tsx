@@ -226,7 +226,7 @@ export const Navigation = () => {
               className="flex items-center gap-2 cursor-pointer select-none hover:opacity-80 transition-opacity"
             >
               <img
-                src="/logo.png"
+                src="/chaos-star-logo.png"
                 alt="logo"
                 className="h-12 w-12 rounded-lg select-none"
               />
