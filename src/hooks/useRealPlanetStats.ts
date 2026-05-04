@@ -139,9 +139,9 @@ export function useRealPlanetStats() {
               plotsSold: Math.round(plotsSold * (isCanonicalHabitable ? 1 : 0.18)),
               totalPlots: isCanonicalHabitable ? totalPlots : Math.round(totalPlots * 0.18),
               treasuryBalance: "0",
-              rpc_url: subnetInfo?.rpc_url || planet.rpc_url,
-              chain_id: subnetInfo?.chain_id || planet.chain_id,
-              subnet_id: subnetInfo?.subnet_id || planet.subnet_id,
+              rpc_url: subnetInfo?.rpc_url ?? "",
+              chain_id: subnetInfo?.chain_id ?? 0,
+              subnet_id: subnetInfo?.subnet_id ?? "",
               features: [],
               districts: [{
                 name: "Octavia Capital City",
@@ -180,12 +180,13 @@ export function useRealPlanetStats() {
             "zythera": zytheraStats
           });
         }
-      } catch (error) {
+      } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error(String(error));
         // Suppress timeout errors - backend might not be available
-        const isTimeoutError = error.name === "AbortError" ||
-          error.name === "DOMException" ||
-          error.message?.includes("timeout") ||
-          error.message?.includes("Failed to fetch");
+        const isTimeoutError = err.name === "AbortError" ||
+          err.name === "DOMException" ||
+          err.message?.includes("timeout") ||
+          err.message?.includes("Failed to fetch");
         if (!isTimeoutError) {
           console.warn("Could not fetch planets from API, using calculated stats:", error);
         } else {

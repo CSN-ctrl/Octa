@@ -148,7 +148,7 @@ export async function uploadCertificateToStorage(
       // If bucket doesn't exist, create it or use public URL
       console.error("Storage upload error:", error);
       // Fallback: return a data URL
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       return url;
     }
@@ -162,7 +162,7 @@ export async function uploadCertificateToStorage(
   } catch (error) {
     console.error("Failed to upload certificate:", error);
     // Fallback: return a data URL
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     return url;
   }
@@ -206,7 +206,7 @@ export async function generateAndSaveCertificate(
  * Download certificate as file
  */
 export function downloadCertificate(pdfBytes: Uint8Array, filename: string): void {
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

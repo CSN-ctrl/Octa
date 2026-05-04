@@ -30,10 +30,13 @@ function initEip6963() {
   } catch (_) {}
 }
 
-function addEip6963Provider(provider: any, info?: { name: string; icon?: string }) {
+function addEip6963Provider(provider: any, info?: { name?: string; icon?: string }) {
   if (!provider || typeof provider.request !== "function") return;
   const key = (provider as any).uuid || `${provider.request?.name || "eip6963"}-${Math.random()}`;
-  eip6963Providers.set(key, { provider, info: info || { name: "Browser Wallet" } });
+  eip6963Providers.set(key, {
+    provider,
+    info: { name: info?.name ?? "Browser Wallet", icon: info?.icon },
+  });
 }
 
 // Run EIP-6963 init once

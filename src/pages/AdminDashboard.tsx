@@ -1838,6 +1838,7 @@ export default function AdminDashboard() {
         setUsers(prev => [...prev, {
           email: newAccountEmail.split("@")[0] || "user",
           wallet_address: newAccountWallet.toLowerCase(),
+          wallets: [newAccountWallet.toLowerCase()],
           balance: {
             xbgl_balance: 0, // Always 0 for new accounts
             avax_balance: 0,

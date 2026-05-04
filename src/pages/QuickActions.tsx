@@ -436,12 +436,12 @@ export default function QuickActionsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(portfolios?.[0]?.holdings || []).length === 0 ? (
+                    {(((portfolios?.[0] as { holdings?: unknown[] } | undefined)?.holdings) || []).length === 0 ? (
                       <tr>
                         <td className="p-3 text-muted-foreground" colSpan={4}>No holdings yet</td>
                       </tr>
                     ) : (
-                      (portfolios?.[0]?.holdings || []).map((h: any, idx: number) => (
+                      (((portfolios?.[0] as { holdings?: any[] } | undefined)?.holdings) || []).map((h: any, idx: number) => (
                         <tr key={idx} className="border-b hover:bg-muted/30">
                           <td className="p-3">{h.asset_type}</td>
                           <td className="p-3 font-mono">{h.identifier}</td>

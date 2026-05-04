@@ -31,13 +31,13 @@ export function TokenMetadata({ tokenAddress, showDetails = true }: TokenMetadat
     setError(null);
     
     try {
-      const data = await getTokenMetadata(tokenAddress);
+      const data = (await getTokenMetadata(tokenAddress)) as TokenData | null;
       if (data && (data.name || data.symbol)) {
         setMetadata(data);
       } else {
         // Try one more time with a small delay (sometimes RPC needs a moment)
         await new Promise(resolve => setTimeout(resolve, 500));
-        const retryData = await getTokenMetadata(tokenAddress);
+        const retryData = (await getTokenMetadata(tokenAddress)) as TokenData | null;
         if (retryData && (retryData.name || retryData.symbol)) {
           setMetadata(retryData);
         } else {

@@ -101,7 +101,7 @@ if (typeof console !== "undefined") {
       if (prop === 'ethereum' && obj === window && window.ethereum) {
         // Silently ignore - extension is trying to inject but property already exists
         try {
-          return originalDefineProperty.call(this, obj, prop, descriptor);
+          return originalDefineProperty.call(Object, obj, prop, descriptor);
         } catch (e: any) {
           // If redefinition fails (which is expected), just return the object
           if (e.message?.includes('Cannot redefine property')) {
@@ -110,7 +110,7 @@ if (typeof console !== "undefined") {
           throw e;
         }
       }
-      return originalDefineProperty.call(this, obj, prop, descriptor);
+      return originalDefineProperty.call(Object, obj, prop, descriptor);
     } as typeof Object.defineProperty;
   } catch (e) {
     // If we can't override, just suppress console errors

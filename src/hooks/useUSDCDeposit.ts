@@ -97,7 +97,13 @@ export function useUSDCDeposit() {
         .limit(20);
 
       if (error) throw error;
-      setDeposits(data || []);
+      const rows = data || [];
+      setDeposits(
+        rows.map((row) => ({
+          ...row,
+          status: row.status as DepositRecord["status"],
+        })),
+      );
     } catch (error: any) {
       console.error("Failed to load deposits:", error);
     }

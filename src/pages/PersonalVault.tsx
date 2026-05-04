@@ -140,7 +140,7 @@ export default function PersonalVault() {
 
       // Show pending transfer
       const pendingTransfer: Transfer = {
-        hash: transferResult.txHash || "pending",
+        hash: transferResult.tx_hash || "pending",
         to: recipientAddress,
         amount: transferAmount,
         timestamp: new Date(),
@@ -149,7 +149,7 @@ export default function PersonalVault() {
       setRecentTransfers(prev => [pendingTransfer, ...prev]);
 
       // Update transfer status
-      const txHash = transferResult.txHash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      const txHash = transferResult.tx_hash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
       
       // Update pending transfer with actual hash
       setRecentTransfers(prev => prev.map(t => 

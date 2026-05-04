@@ -58,6 +58,9 @@ export interface TreasuryData {
   balance_xen: string;
   total_revenue_xbgl: string;
   total_plots_sold: number;
+  /** Optional per-token balances from API (token id string -> raw amount). */
+  balances?: Record<string, number>;
+  exchange_rates?: Record<number, number>;
 }
 
 export interface ProposalData {
@@ -171,6 +174,8 @@ export class ChaosStarClient {
     chain: string;
     chain_id: number;
     blockchain_id: string;
+    /** Legacy/alternate health label from some gateways */
+    health?: string;
   }> {
     // Check Supabase connection instead of backend API
     try {
@@ -181,6 +186,7 @@ export class ChaosStarClient {
         return {
           status: "healthy",
           health: "healthy",
+          contract_connected: true,
           stargate_connected: true,
           chain: "ChaosStar",
           chain_id: 43113,
@@ -195,6 +201,7 @@ export class ChaosStarClient {
     return {
       status: "degraded",
       health: "degraded",
+      contract_connected: false,
       stargate_connected: false,
       chain: "ChaosStar",
       chain_id: 43113,

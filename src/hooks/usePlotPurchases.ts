@@ -41,7 +41,7 @@ export function usePlotPurchases(address?: string) {
             plot_id: tx.plot_id || 0,
             buyer_address: address,
             purchase_price: tx.amount?.toString() || "0",
-            transaction_hash: tx.transaction_hash,
+            transaction_hash: tx.tx_hash,
             timestamp: tx.created_at || new Date().toISOString(),
           }));
         
@@ -78,7 +78,7 @@ export function usePlotPurchases(address?: string) {
               plot_id: tx.plot_id || 0,
               buyer_address: address,
               purchase_price: tx.amount?.toString() || "0",
-              transaction_hash: tx.transaction_hash,
+              transaction_hash: tx.tx_hash,
               timestamp: tx.created_at || new Date().toISOString(),
             }));
           const plots = await getPlotsByOwner(address);

@@ -1,20 +1,21 @@
 import { useEffect, useRef } from "react";
-import anime from "animejs";
+import { animate, stagger } from "animejs";
 
 export function useAnime() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const root = containerRef.current;
+    if (!root) return;
+    const targets = root.querySelectorAll(".anime-card");
+    if (!targets.length) return;
 
-    // Stagger animation for cards
-    anime({
-      targets: containerRef.current.querySelectorAll(".anime-card"),
+    animate(targets, {
       opacity: [0, 1],
       translateY: [30, 0],
-      delay: anime.stagger(100),
+      delay: stagger(100),
       duration: 600,
-      easing: "easeOutExpo",
+      ease: "out(4)",
     });
   }, []);
 
@@ -30,14 +31,13 @@ export function animateNumber(
 ) {
   if (!element) return;
 
-  anime({
-    targets: { value: from },
+  const state = { value: from };
+  animate(state, {
     value: to,
     duration,
-    easing: "easeOutExpo",
-    update: function(anim) {
-      const val = (anim.animatables[0].target as any).value;
-      element.textContent = val.toFixed(decimals);
+    ease: "out(4)",
+    onUpdate: () => {
+      element.textContent = state.value.toFixed(decimals);
     },
   });
 }
@@ -45,30 +45,27 @@ export function animateNumber(
 export function animateCardHover(element: HTMLElement | null, isHovering: boolean) {
   if (!element) return;
 
-  anime({
-    targets: element,
+  animate(element, {
     scale: isHovering ? 1.05 : 1,
     boxShadow: isHovering
       ? "0 10px 40px rgba(139, 92, 246, 0.3)"
       : "0 2px 10px rgba(139, 92, 246, 0.1)",
     duration: 300,
-    easing: "easeOutQuad",
+    ease: "out(2)",
   });
 }
 
 export function animateGlow(element: HTMLElement | null, intensity: number = 1) {
   if (!element) return;
 
-  anime({
-    targets: element,
+  animate(element, {
     boxShadow: [
       `0 0 ${10 * intensity}px rgba(139, 92, 246, ${0.3 * intensity})`,
       `0 0 ${20 * intensity}px rgba(139, 92, 246, ${0.5 * intensity})`,
       `0 0 ${10 * intensity}px rgba(139, 92, 246, ${0.3 * intensity})`,
     ],
     duration: 2000,
-    easing: "easeInOutSine",
+    ease: "inOut(2)",
     loop: true,
   });
 }
-

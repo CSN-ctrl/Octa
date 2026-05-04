@@ -7,7 +7,7 @@ import { getAppOrigin } from "@/lib/app-origin";
 import { useLocation } from "react-router-dom";
 
 interface StructuredDataProps {
-  type?: "Organization" | "WebSite" | "WebPage" | "Product" | "BreadcrumbList" | "FAQPage";
+  type?: "Organization" | "WebSite" | "WebPage" | "Product" | "BreadcrumbList" | "FAQPage" | "Article";
   data: Record<string, unknown>;
   id?: string;
 }

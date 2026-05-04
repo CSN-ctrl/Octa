@@ -120,7 +120,7 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
           if (CONTRACT_ADDRESSES.accountRegistry) {
             try {
               // Contract verification disabled - assume deployed if address exists
-              const code = "0x1234"; // Placeholder - contract verification disabled
+              const code: string = "0x1234"; // Placeholder - contract verification disabled
               if (!code || code === "0x") {
                 // Contract not deployed - expected, silently skip
                 // Continue to try Supabase as fallback
@@ -150,7 +150,7 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
           // Get all account IDs for connected wallet
           let accountIds: bigint[] = [];
           try {
-            accountIds = await withTimeout(contract.getAccountsByWallet(address), 10000);
+            accountIds = (await withTimeout(contract.getAccountsByWallet(address), 10000)) as bigint[];
           } catch (error: any) {
             // Handle BAD_DATA errors (contract not deployed or function doesn't exist)
             if (error.code === "BAD_DATA" || error.message?.includes("could not decode")) {
@@ -177,13 +177,13 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
           const allAccountPromises = addressesToCheck.map(async (addr) => {
             try {
               const ids = await withTimeout(contract.getAccountsByWallet(addr), 5000);
-              return { address: addr, accountIds: ids };
+              return { address: addr, accountIds: ids as bigint[] };
             } catch (error: any) {
               // Handle BAD_DATA errors gracefully
               if (error.code === "BAD_DATA" || error.message?.includes("could not decode")) {
                 console.debug(`AccountRegistry getAccountsByWallet() unavailable for ${addr}`);
               }
-              return { address: addr, accountIds: [] };
+              return { address: addr, accountIds: [] as bigint[] };
             }
           });
           
@@ -395,7 +395,7 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
       {
         try {
           // Contract verification disabled - assume deployed
-          const code = "0x1234"; // Placeholder
+          const code: string = "0x1234"; // Placeholder
           if (!code || code === "0x") {
             // Contract not deployed, need to deploy it
             const rpcUrl = "http://127.0.0.1:41773/ext/bc/wtHFpLKd93iiPmBBsCdeTEPz6Quj9MoCL8NpuxoFXHtvTVeT1/rpc";
@@ -473,11 +473,6 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
       
       // Reload accounts to show the newly created account
       await loadAccounts();
-      
-      return {
-        id: `blockchain-${blockchainAccountId.toString()}`,
-        blockchain_account_id: blockchainAccountId.toString(),
-      };
     } catch (error: any) {
       console.error("Failed to create account:", error);
       toast.error(error.message || "Failed to create account");
@@ -799,7 +794,7 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
       if (!privateKey) return null;
       
       // RPC provider removed - using Supabase only
-      const provider = null;
+      const provider: ethers.Provider | null = null;
       if (!provider) return null;
       
       return new ethers.Wallet(privateKey, provider);

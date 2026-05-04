@@ -3,6 +3,8 @@
  * Tracks component render times, API calls, and user interactions
  */
 
+import React from "react";
+
 interface PerformanceMetric {
   name: string;
   value: number;
@@ -175,7 +177,7 @@ export function withPerformanceMeasure<P extends object>(
   return function MeasuredComponent(props: P) {
     const { measureRender } = usePerformanceMeasure(componentName);
     
-    return measureRender(() => Component(props));
+    return measureRender(() => React.createElement(Component, props));
   };
 }
 

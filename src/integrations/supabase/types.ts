@@ -1536,6 +1536,15 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_treasury_transfer: {
+        Args: {
+          p_amount: number
+          p_metadata?: Json
+          p_recipient: string
+          p_tx_hash: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       automation_type: "auto_reinvest" | "recurring_deposit" | "rebalance"
@@ -1664,6 +1673,9 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+/** Plot row alias for components that expect a `Plot` type from generated schema. */
+export type Plot = Tables<"plots">
 
 export const Constants = {
   public: {

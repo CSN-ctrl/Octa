@@ -8,10 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePlotPurchases } from "@/hooks/usePlotPurchases";
 import { useWallet } from "@/contexts/WalletContext";
-import { ExternalLink, MapPin, Calendar, Coins, Hash, Loader2 } from "lucide-react";
+import { ExternalLink, Calendar, Coins, Hash, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 // RPC provider removed - using Supabase only
-import { ethers } from "ethers";
 
 export function PurchaseHistory() {
   const { address } = useWallet();
@@ -79,7 +78,7 @@ export function PurchaseHistory() {
       <CardContent>
         <div className="space-y-4">
           {purchases.map((purchase) => (
-            <Card key={purchase.id} className="glass border-primary/10">
+            <Card key={`${purchase.plot_id}-${purchase.timestamp}`} className="glass border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -87,24 +86,13 @@ export function PurchaseHistory() {
                       <Badge variant="outline" className="text-sm">
                         Plot #{purchase.plot_id}
                       </Badge>
-                      {purchase.coordinates && (
-                        <Badge variant="secondary" className="text-xs">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          ({purchase.coordinates.x}, {purchase.coordinates.y})
-                        </Badge>
-                      )}
-                      {purchase.level && (
-                        <Badge variant="secondary" className="text-xs">
-                          Level {purchase.level}
-                        </Badge>
-                      )}
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Coins className="h-4 w-4" />
                         <span>
-                          {purchase.purchase_price_formatted.toFixed(2)} {purchase.currency}
+                          {Number(purchase.purchase_price || 0).toFixed(2)} xBGL
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">

@@ -116,14 +116,19 @@ export async function getEnhancedBalances(address: string) {
 /**
  * Get transaction history for an address
  */
-export async function getTransactionHistory(address: string, limit = 50) {
+export async function getTransactionHistory(address: string, _limit = 50) {
   try {
-    const transactions = await chainKit.data.evm.address.transactions.list({
+    const listFn = chainKit.data.evm.address.transactions.list as (req: {
+      address: `0x${string}`;
+    }) => Promise<{ data?: unknown[] } | unknown[]>;
+    const res = await listFn({
       address: address as `0x${string}`,
-      limit,
     });
-    
-    return transactions.data || [];
+    if (Array.isArray(res)) return res;
+    if (res && typeof res === "object" && "data" in res) {
+      return (res as { data: unknown[] }).data || [];
+    }
+    return [];
   } catch (error) {
     console.error('Error fetching transaction history:', error);
     // Return empty array instead of throwing to allow graceful degradation
@@ -143,74 +148,17 @@ export async function getTokenMetadata(tokenAddress: string) {
         const metadata = await chainKit.data.evm.contracts.getMetadata({
           address: tokenAddress as `0x${string}`,
         });
-        if (metadata && metadata.data) {
-          return metadata.data;
-        }
+        const meta =
+          metadata && typeof metadata === "object" && "data" in metadata
+            ? (metadata as { data: unknown }).data
+            : metadata;
+        if (meta) return meta;
       }
     } catch (chainKitError) {
       console.debug("ChainKit contract metadata not available, using fallback:", chainKitError);
     }
-    
-    // Fallback: Get token info directly from ERC20 contract
-    try {
-      // RPC provider removed - using Supabase only
-      // Token metadata fetching disabled
-      console.debug("RPC provider removed - token metadata fetching disabled");
-      return null;
-      
-      const tokenContract = getERC20Contract(tokenAddress);
-      
-      // Try to fetch token metadata with individual calls and better error handling
-      let name = "Unknown Token";
-      let symbol = "UNK";
-      let decimals = 18;
-      let totalSupply = "0";
-      
-      try {
-        name = await tokenContract.name();
-      } catch (e) {
-        console.debug("Could not fetch token name:", e);
-      }
-      
-      try {
-        symbol = await tokenContract.symbol();
-      } catch (e) {
-        console.debug("Could not fetch token symbol:", e);
-      }
-      
-      try {
-        decimals = await tokenContract.decimals();
-      } catch (e) {
-        console.debug("Could not fetch token decimals:", e);
-      }
-      
-      try {
-        // Check if totalSupply method exists by trying to call it
-        // Some tokens don't implement totalSupply, so we make it optional
-        const supply = await tokenContract.totalSupply();
-        if (supply && supply.toString() !== "0x") {
-          totalSupply = supply.toString();
-        }
-      } catch (e: any) {
-        // totalSupply is optional - many tokens don't have it
-        // Only log if it's not a "method not found" or "bad data" error
-        if (e?.code !== "BAD_DATA" && !e?.message?.includes("could not decode")) {
-          console.debug("Could not fetch token totalSupply:", e);
-        }
-      }
-      
-      // Return metadata even if some fields failed (at least we have something)
-      return {
-        name,
-        symbol,
-        decimals: Number(decimals),
-        totalSupply,
-      };
-    } catch (contractError) {
-      console.debug("Could not fetch token metadata from contract:", contractError);
-      return null;
-    }
-    
+
+    console.debug("RPC provider removed - token metadata fetching disabled");
     return null;
   } catch (error) {
     console.debug('Error fetching token metadata:', error);
@@ -224,11 +172,19 @@ export async function getTokenMetadata(tokenAddress: string) {
  */
 export async function getAddressAnalytics(address: string) {
   try {
-    const analytics = await chainKit.data.evm.address.analytics.get({
+    const addrApi = chainKit.data.evm.address as {
+      analytics?: { get: (q: { address: `0x${string}` }) => Promise<unknown> };
+    };
+    const analytics = await addrApi.analytics?.get?.({
       address: address as `0x${string}`,
     });
-    
-    return analytics.data;
+    if (analytics === undefined) {
+      throw new Error("analytics unavailable");
+    }
+    if (analytics && typeof analytics === "object" && "data" in analytics) {
+      return (analytics as { data: unknown }).data;
+    }
+    return analytics as unknown;
   } catch (error) {
     console.error('Error fetching address analytics:', error);
     // Return default structure instead of throwing

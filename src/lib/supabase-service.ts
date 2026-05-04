@@ -20,6 +20,14 @@ type EconomyTick = Tables<"economy_ticks">;
 type BlackMarketInvite = Tables<"black_market_invites">;
 type UserWallet = Tables<"user_wallets">;
 
+function pgErrStatus(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "status" in error) {
+    const s = (error as { status?: number }).status;
+    return typeof s === "number" ? s : undefined;
+  }
+  return undefined;
+}
+
 // Helper to check if error is a network/connection error
 function isNetworkError(error: any): boolean {
   const message = error?.message || error?.toString() || "";
@@ -264,7 +272,7 @@ export async function registerOwnership(wallet: string, email: string): Promise<
 
     if (error) {
       // Silently handle if table doesn't exist
-      if (error.status === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
+      if (pgErrStatus(error) === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
         console.debug("ownership_registry table not available, skipping registration");
         return;
       }
@@ -272,7 +280,7 @@ export async function registerOwnership(wallet: string, email: string): Promise<
     }
   } catch (error: any) {
     // Silently handle errors - table might not exist
-    if (error.status === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
+    if (pgErrStatus(error) === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
       console.debug("ownership_registry table not available");
       return;
     }
@@ -291,7 +299,7 @@ export async function getOwnershipByWallet(wallet: string): Promise<{ wallet_add
 
   if (error) {
       // Handle table doesn't exist (406) or not found gracefully
-      if (error.code === "PGRST116" || error.status === 406 || error.code === "42P01") {
+      if (error.code === "PGRST116" || pgErrStatus(error) === 406 || error.code === "42P01") {
         return null;
       }
       // Don't throw - just return null for other errors
@@ -302,7 +310,7 @@ export async function getOwnershipByWallet(wallet: string): Promise<{ wallet_add
   return data;
   } catch (error: any) {
     // Silently handle errors - table might not exist
-    if (error.status === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
+    if (pgErrStatus(error) === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
       return null;
     }
     console.debug("Failed to get ownership by wallet:", error);
@@ -321,7 +329,7 @@ export async function getOwnershipByEmail(email: string): Promise<{ wallet_addre
 
   if (error) {
       // Handle table doesn't exist (406) or not found gracefully
-      if (error.code === "PGRST116" || error.status === 406 || error.code === "42P01") {
+      if (error.code === "PGRST116" || pgErrStatus(error) === 406 || error.code === "42P01") {
         return null;
       }
       console.debug("ownership_registry query error:", error.message);
@@ -331,7 +339,7 @@ export async function getOwnershipByEmail(email: string): Promise<{ wallet_addre
   return data;
   } catch (error: any) {
     // Silently handle errors - table might not exist
-    if (error.status === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
+    if (pgErrStatus(error) === 406 || error.code === "42P01" || error.message?.includes("does not exist")) {
       return null;
     }
     console.debug("Failed to get ownership by email:", error);
@@ -559,7 +567,7 @@ export async function getTransactions(filters?: {
 
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data ?? []) as Transaction[];
 }
 
 export async function getTransactionByHash(txHash: string): Promise<Transaction | null> {
@@ -751,7 +759,7 @@ export async function getUserBalance(walletAddressOrEmail: string): Promise<User
 
       if (error) {
         if (error.code === "PGRST116") return null;
-        if (error.code === "PGRST301" || error.status === 406 || error.message?.includes("406")) {
+        if (error.code === "PGRST301" || pgErrStatus(error) === 406 || error.message?.includes("406")) {
           return null;
         }
         console.debug("Error fetching user balance:", error);
@@ -786,12 +794,12 @@ export async function getUserBalance(walletAddressOrEmail: string): Promise<User
       // PGRST116 = no rows returned (not an error, just no data)
       if (error.code === "PGRST116") return null;
       // 406 = Not Acceptable (likely RLS policy blocking or content negotiation issue)
-      if (error.code === "PGRST301" || error.status === 406 || error.message?.includes("406")) {
+      if (error.code === "PGRST301" || pgErrStatus(error) === 406 || error.message?.includes("406")) {
         // Silently return null for permission/content negotiation errors
         return null;
       }
       // Only log non-406 errors
-      if (error.status !== 406) {
+      if (pgErrStatus(error) !== 406) {
         console.debug("Error fetching user balance:", error);
       }
       return null; // Return null instead of throwing for better UX
@@ -799,7 +807,7 @@ export async function getUserBalance(walletAddressOrEmail: string): Promise<User
     return data;
   } catch (error: any) {
     // Handle 406 errors gracefully
-    if (error?.status === 406 || error?.code === "PGRST301" || error?.message?.includes("406")) {
+    if (pgErrStatus(error) === 406 || error?.code === "PGRST301" || error?.message?.includes("406")) {
       // Silently return null for permission/content negotiation errors
       return null;
     }
@@ -1692,16 +1700,14 @@ export async function getTransactionsWithLedger(
   }
 
   const transactionSets = await Promise.all(
-    identifiers.map((id) => getTransactions({ walletAddress: id, limit }).catch(() => [])),
+    identifiers.map((id) => getTransactions({ walletAddress: id, limit }).catch(() => [] as Transaction[])),
   );
-  const transactions = transactionSets
-    .flat()
-    .reduce((acc, tx) => {
+  const transactions = (transactionSets.flat() as Transaction[]).reduce((acc, tx) => {
       const key = tx.id || tx.tx_hash || Math.random().toString(36);
       if (!acc.has(key)) acc.set(key, tx);
       return acc;
     }, new Map<string, Transaction>());
-  const merged = Array.from(transactions.values())
+  const merged: Transaction[] = Array.from(transactions.values())
     .sort((a, b) => (new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()))
     .slice(0, limit);
 

@@ -84,7 +84,7 @@ describe("Treasury Transfer Logic", () => {
       });
 
       expect(result.error).toBeNull();
-      expect(result.data?.duplicate).toBe(true);
+      expect((result.data as { duplicate?: boolean } | null)?.duplicate).toBe(true);
     });
 
     it("should reject transfer with insufficient treasury balance", async () => {

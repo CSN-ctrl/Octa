@@ -284,10 +284,10 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
 
       // Get recipient's wallet address (if they have one) or use email as identifier
       const { data: recipientOwnership } = await supabase
-        .from("ownership")
+        .from("ownership_registry")
         .select("wallet_address")
         .eq("email", email.toLowerCase())
-        .single();
+        .maybeSingle();
 
       const newOwnerIdentifier = recipientOwnership?.wallet_address || email.toLowerCase();
 
@@ -309,6 +309,8 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
           amount: 0, // Plot transfers don't involve tokens
           token_type: "PLOT",
           transaction_type: "plot_transfer",
+          type: "plot_transfer",
+          tx_hash: `email-transfer-${plotId}-${Date.now()}`,
           status: "completed",
           metadata: {
             plot_id: plotId,
@@ -329,6 +331,8 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
         amount: commission,
         token_type: "xBGL",
         transaction_type: "transfer_commission",
+        type: "transfer_commission",
+        tx_hash: `email-commission-${plotIds.join("-")}-${Date.now()}`,
         status: "completed",
         metadata: {
           plot_ids: plotIds,
@@ -415,10 +419,10 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
       try {
         const { supabase } = await import("@/integrations/supabase/client");
         const { data: ownership } = await supabase
-          .from("ownership")
+          .from("ownership_registry")
           .select("wallet_address")
           .eq("email", recipientEmail.toLowerCase())
-          .single();
+          .maybeSingle();
         
         if (ownership?.wallet_address) {
           recipientAddress = ownership.wallet_address;
@@ -500,8 +504,9 @@ export function PlotSell({ onTransferComplete }: PlotSellProps) {
               amount: 0, // Plot transfers don't involve tokens
               token_type: "PLOT",
               transaction_type: "plot_transfer",
+              type: "plot_transfer",
               status: "completed",
-              tx_hash: txHash || null,
+              tx_hash: txHash || `wallet-transfer-${plotIds.join("-")}-${Date.now()}`,
               metadata: {
                 plot_ids: plotIds,
                 transfer_method: transferMethod,

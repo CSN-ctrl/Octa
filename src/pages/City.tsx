@@ -73,8 +73,10 @@ export default function CityPage() {
     },
   ];
 
+  type CityDisplay = (typeof defaultCities)[number];
+
   // Merge default cities with fetched cities
-  const allCities = [...defaultCities, ...(cities || [])].filter((city, index, self) =>
+  const allCities = [...defaultCities, ...((cities || []) as unknown as CityDisplay[])].filter((city, index, self) =>
     index === self.findIndex(c => c.id === city.id || c.name === city.name)
   );
 

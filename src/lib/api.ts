@@ -78,7 +78,7 @@ export async function fetchPendingPurchases(): Promise<PendingPurchase[]> {
       buyer: purchase.buyer_wallet,
       amount: Number(purchase.purchase_price),
       paymentToken: purchase.currency || "xBGL",
-      timestamp: new Date(purchase.created_at).getTime(),
+      timestamp: new Date(purchase.created_at ?? 0).getTime(),
     }));
   } catch (error: any) {
     const { logger } = await import("@/lib/logger");
@@ -336,3 +336,92 @@ export async function getCityStats(cityName?: string) {
   const { getCityStats: fromDb } = await import("@/lib/supabase-service");
   return fromDb(cityName);
 }
+
+// ---------------------------------------------------------------------------
+// Compatibility exports (Supabase-first stack — stubs and thin wrappers)
+// ---------------------------------------------------------------------------
+
+export interface Account {
+  id: string;
+  name: string;
+  wallet_address: string;
+  type?: string;
+  owner_wallet?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  wallet_key_name?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function listAccounts(_wallet: string): Promise<{ accounts: Account[] }> {
+  return { accounts: [] };
+}
+
+export async function createAccount(_body: Partial<Account>): Promise<{ id: string }> {
+  return { id: "stub-account" };
+}
+
+export async function listClusters(_wallet: string): Promise<{ clusters: unknown[] }> {
+  return { clusters: [] };
+}
+
+export async function updateAccount(_id: string, _updates: unknown): Promise<void> {}
+
+export async function deleteAccount(_id: string): Promise<void> {}
+
+export function getApiBase(): string {
+  const base = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL;
+  return (base || "").replace(/\/+$/, "") || "http://localhost:5001";
+}
+
+export async function getTreasury(): Promise<{
+  balances?: Record<string, string | number>;
+  exchange_rates?: Record<string, number>;
+}> {
+  return { balances: {}, exchange_rates: {} };
+}
+
+export async function upsertPortfolio(_payload: {
+  wallet: string;
+  holdings?: unknown[];
+  recurring_investment_monthly?: number;
+  manager_id?: string | null;
+  portfolio_type?: string;
+}): Promise<void> {}
+
+export async function getPortfolio(_wallet: string): Promise<{ holdings?: unknown[] } | null> {
+  return { holdings: [] };
+}
+
+export async function listNpcs(): Promise<{ npcs: unknown[] }> {
+  return { npcs: [] };
+}
+
+export async function spawnNpcs(_count?: number, _kind?: string): Promise<{ ok: boolean }> {
+  void _count;
+  void _kind;
+  return { ok: false };
+}
+
+export async function listZones(): Promise<{ zones: Record<string, unknown> }> {
+  return { zones: {} };
+}
+
+export async function listFactions(): Promise<{ factions: unknown[] }> {
+  return { factions: [] };
+}
+
+export async function listPlanets(_systemId?: string): Promise<{ planets: unknown[] }> {
+  return { planets: [] };
+}
+
+export async function getPlanet(_id: string): Promise<unknown | null> {
+  return null;
+}
+
+export async function updatePlanetStatus(
+  _planetId: string,
+  _status: "active" | "deploying" | "inactive"
+): Promise<void> {}

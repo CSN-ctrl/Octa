@@ -54,6 +54,7 @@ interface License {
   status: "active" | "expired" | "pending";
   researchLevel: number;
   totalHarvested: number;
+  licenseType?: "research" | "harvest";
 }
 
 export default function NanofiberResearch() {
@@ -131,10 +132,12 @@ export default function NanofiberResearch() {
         setLicenses([...licenses, {
           id: `license-${Date.now()}`,
           circleId: selectedCircle.id,
-          licenseType: licenseType,
+          location: selectedCircle.location,
+          licenseType,
           status: "pending",
           issuedAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          researchLevel: 0,
           totalHarvested: 0,
         }]);
       }, 1000);

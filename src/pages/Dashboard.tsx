@@ -916,10 +916,13 @@ export default function Dashboard() {
       setSearchParams(newParams, { replace: true });
     }
     
-    window.addEventListener('plots-purchased', handlePlotsPurchased as EventListener);
-    
+    const plotsPurchasedListener = ((evt: Event) => {
+      void handlePlotsPurchased(evt as CustomEvent);
+    }) as EventListener;
+    window.addEventListener("plots-purchased", plotsPurchasedListener);
+
     return () => {
-      window.removeEventListener('plots-purchased', handlePlotsPurchased as EventListener);
+      window.removeEventListener("plots-purchased", plotsPurchasedListener);
     };
   }, [address, userEmail, searchParams, setSearchParams]);
 
@@ -1242,7 +1245,6 @@ export default function Dashboard() {
     
     setLoadingDocuments(prev => ({ ...prev, [plotId]: true }));
     try {
-      // @ts-expect-error - Supabase type definitions are too strict
       const { data, error } = await supabase
         .from("plot_documents")
         .select("*")
@@ -1895,7 +1897,6 @@ export default function Dashboard() {
       let plotData: any;
       if (!existingPlot) {
         // Create plot if it doesn't exist
-        // @ts-expect-error - Supabase type definitions are too strict
         const { data: newPlot, error: createError } = await supabase
           .from("plots")
           .insert({
@@ -1918,7 +1919,6 @@ export default function Dashboard() {
         }
 
         // Update plot ownership
-        // @ts-expect-error - Supabase type definitions are too strict
         const { error: updateError } = await supabase
           .from("plots")
           .update({ owner_wallet: address.toLowerCase() } as any)
@@ -1932,7 +1932,6 @@ export default function Dashboard() {
 
       // Deduct balance
       const newBalance = (balanceData.xbgl_balance || 0) - plotPrice;
-      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -2030,7 +2029,6 @@ export default function Dashboard() {
       }
 
       // Update plot ownership
-      // @ts-expect-error - Supabase type definitions are too strict
       const { error: updateError } = await supabase
         .from("plots")
         .update({ owner_wallet: address.toLowerCase() } as any)
@@ -2040,7 +2038,6 @@ export default function Dashboard() {
 
       // Deduct balance
       const newBalance = (balanceData.xbgl_balance || 0) - plotPrice;
-      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -2137,7 +2134,6 @@ export default function Dashboard() {
     if (!address) return;
     try {
       // Load all active listings
-      // @ts-expect-error - Supabase type definitions are too strict
       const { data: allListings, error } = await supabase
         .from("marketplace_listings")
         .select("*")
@@ -2187,7 +2183,6 @@ export default function Dashboard() {
 
       // Transfer ownership if it's a plot
       if (listing.asset_type === "plot" || listing.asset_type === "property") {
-        // @ts-expect-error - Supabase type definitions are too strict
         const { error: updateError } = await supabase
           .from("plots")
           .update({ owner_wallet: address.toLowerCase() } as any)
@@ -2198,7 +2193,6 @@ export default function Dashboard() {
 
       // Update buyer balance
       const newBuyerBalance = (balanceData.xbgl_balance || 0) - listing.price;
-      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -2215,7 +2209,6 @@ export default function Dashboard() {
 
       // Update seller balance (after commission)
       const newSellerBalance = (sellerBalance?.xbgl_balance || 0) + sellerReceives;
-      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("user_balances")
         .upsert({
@@ -2226,7 +2219,6 @@ export default function Dashboard() {
         } as any);
 
       // Create commission transaction for sale
-      // @ts-expect-error - Supabase type definitions are too strict
       await supabase.from("transactions").insert({
         from_address: listing.seller_wallet.toLowerCase(),
         to_address: "treasury_commission",
@@ -2244,7 +2236,6 @@ export default function Dashboard() {
       } as any);
 
       // Update listing status
-      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("marketplace_listings")
         .update({
@@ -2283,7 +2274,6 @@ export default function Dashboard() {
     if (!confirm("Are you sure you want to cancel this listing?")) return;
 
     try {
-      // @ts-expect-error - Supabase type definitions are too strict
       await supabase
         .from("marketplace_listings")
         .update({ status: "cancelled" } as any)
@@ -2766,7 +2756,6 @@ export default function Dashboard() {
                   });
 
                   // Create commission transaction for listing
-                  // @ts-expect-error - Supabase type definitions are too strict
                   await supabase.from("transactions").insert({
                     from_address: address.toLowerCase(),
                     to_address: "treasury_commission",

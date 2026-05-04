@@ -69,11 +69,11 @@ export function useAccountRegistry() {
       const contract = getAccountRegistryContract();
       
       // Get all account IDs for this wallet
-      const accountIds = await withTimeout(contract.getAccountsByWallet(address), 10000);
+      const accountIds = (await withTimeout(contract.getAccountsByWallet(address), 10000)) as bigint[];
       
       // Get primary account
       try {
-        const primaryId = await withTimeout(contract.getPrimaryAccount(address), 5000);
+        const primaryId = (await withTimeout(contract.getPrimaryAccount(address), 5000)) as bigint;
         setPrimaryAccountId(primaryId > 0n ? primaryId : null);
       } catch {
         setPrimaryAccountId(null);

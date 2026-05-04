@@ -10,6 +10,8 @@ const getContractAddresses = () => {
     treasury: import.meta.env.VITE_TREASURY_ADDRESS || "",
     dummyToken: import.meta.env.VITE_DUMMY_TOKEN_ADDRESS || "",
     xbglToken: import.meta.env.VITE_XBGL_TOKEN_ADDRESS || "0x868306CeD3bb5Aa8fBc4BD8fA2727484cDfE1D89", // xBGL Token (Wrapped Native)
+    /** Alias for CSN / xBGL token used by legacy account UI */
+    csnToken: import.meta.env.VITE_XBGL_TOKEN_ADDRESS || "0x868306CeD3bb5Aa8fBc4BD8fA2727484cDfE1D89",
     plotRegistry: import.meta.env.VITE_PLOT_REGISTRY_ADDRESS || "",
     accountRegistry: import.meta.env.VITE_ACCOUNT_REGISTRY_ADDRESS || "",
   };

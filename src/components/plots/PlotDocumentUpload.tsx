@@ -171,7 +171,7 @@ export function PlotDocumentUpload({ plotId, plotData, onUploadComplete }: PlotD
       if (uploadError) {
         // If bucket doesn't exist, try to create a blob URL as fallback
         console.error("Storage upload error:", uploadError);
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
         const blobUrl = URL.createObjectURL(blob);
         
         // Save document record with blob URL
@@ -207,7 +207,7 @@ export function PlotDocumentUpload({ plotId, plotData, onUploadComplete }: PlotD
       }
       
       // Download the document
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
