@@ -15,7 +15,6 @@ export function BlockchainSimulator() {
     transfer,
     mint,
     burn,
-    getBalance,
     getAllBalances,
     getTotalSupply,
     loading,

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocsLayout } from "@/components/DocsLayout";
-import { Crown, Shield, Rocket, Globe, Landmark } from "lucide-react";
+import { Shield, Rocket, Globe, Landmark } from "lucide-react";
 
 export default function DocsSovereignty() {
   return (

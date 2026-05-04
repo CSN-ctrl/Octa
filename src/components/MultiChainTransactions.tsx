@@ -7,7 +7,6 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -68,37 +67,6 @@ export function MultiChainTransactions({
     }
     return transactionsByChain[selectedChain] || [];
   }, [transactions, transactionsByChain, selectedChain]);
-
-  // Get chain icon/color
-  const getChainColor = (chain: string) => {
-    const colors: Record<string, string> = {
-      ethereum: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      polygon: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-      arbitrum: 'bg-sky-500/20 text-sky-400 border-sky-500/30',
-      optimism: 'bg-red-500/20 text-red-400 border-red-500/30',
-      base: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-      zksync: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    };
-    return colors[chain] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-  };
-
-  const formatValue = (value: string, asset: string | null) => {
-    const num = parseFloat(value);
-    if (isNaN(num) || num === 0) return '0';
-    if (num < 0.0001) return '< 0.0001';
-    if (num < 1) return num.toFixed(6);
-    if (num < 1000) return num.toFixed(4);
-    return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  };
-
-  const shortenAddress = (addr: string | null) => {
-    if (!addr) return 'Contract Creation';
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
-
-  const shortenHash = (hash: string) => {
-    return `${hash.slice(0, 10)}...${hash.slice(-6)}`;
-  };
 
   if (!address) {
     return (

@@ -5,7 +5,6 @@ import {
   Mail, 
   HelpCircle, 
   BookOpen,
-  ExternalLink,
   Sparkles,
   ArrowRight,
   Star,

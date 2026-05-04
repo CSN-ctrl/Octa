@@ -12,7 +12,7 @@ import { Wallet, Users, Coins } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 
 export function AccountSelector() {
-  const { accounts, selectedAccount, setSelectedAccount, mainFundedAccount, isMainFundedAccount } = useAccountManagement();
+  const { accounts, selectedAccount, setSelectedAccount, mainFundedAccount } = useAccountManagement();
   const { address } = useWallet();
 
   // Check if current address is the main funded account

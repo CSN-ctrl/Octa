@@ -14,13 +14,10 @@ import {
   Copy, 
   Check,
   Wallet,
-  Coins,
   Loader2,
-  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useChainAccounts, ChainAccount } from "@/hooks/useChainAccounts";
-import { TOKENS } from "@/lib/tokens";
 
 interface ChainAccountsListProps {
   onSelectAccount?: (account: ChainAccount) => void;

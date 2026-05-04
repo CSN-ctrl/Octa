@@ -285,3 +285,54 @@ export async function describeAvalancheSubnet(subnetName: string): Promise<Avala
     chain_id: 8088,
   };
 }
+
+/** Wallet list for admin / diagnostics (Supabase-only stack — empty by default). */
+export async function getAllWalletBalances(): Promise<{
+  success: boolean;
+  rpc_url?: string;
+  total_wallets?: number;
+  total_balance?: string;
+  wallets?: Array<{
+    address: string;
+    name: string;
+    source: "avalanche_cli" | "database";
+    balance: string;
+    balance_wei: string;
+    csn_balance?: string;
+    isMainFunded?: boolean;
+    account_id?: string;
+    account_type?: string;
+    error?: string;
+  }>;
+  error?: string;
+}> {
+  return { success: true, wallets: [] };
+}
+
+/** Custom subnet metadata for settings UI (stub). */
+export async function getCustomSubnetInfo(): Promise<{
+  success: boolean;
+  error?: string;
+  subnet_name?: string;
+  rpc_url?: string;
+  custom_subnet_id?: string;
+  avalanche_subnet_id?: string;
+  avalanche_blockchain_id?: string;
+}> {
+  return {
+    success: true,
+    subnet_name: "ChaosStarNetwork",
+    rpc_url: "http://127.0.0.1:24362/ext/bc/ChaosStar/rpc",
+  };
+}
+
+/** City plot list from backend (stub — use Supabase getPlots in UI when needed). */
+export async function listCityPlots(): Promise<{ plots: BackendPlot[] }> {
+  return { plots: [] };
+}
+
+/** Re-export city stats from Supabase service for `@/lib/api` consumers. */
+export async function getCityStats(cityName?: string) {
+  const { getCityStats: fromDb } = await import("@/lib/supabase-service");
+  return fromDb(cityName);
+}

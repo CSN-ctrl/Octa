@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogIn, User, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket, Coins, Package } from "lucide-react";
+import { LogIn, LogOut, Settings, Wallet, Shield, Menu, X, Briefcase, BookOpen, HelpCircle, Rocket, Coins, Package } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useWallet } from "@/contexts/WalletContext";
-import { useDigitalID } from "@/hooks/useDigitalID";
 import { useSim } from "@/contexts/SimContext";
 import { ChaosStarStatus } from "./ChaosStarStatus";
 import { useEffect, useRef, useState } from "react";
@@ -31,7 +30,6 @@ export const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
-  const { hasDigitalID } = useDigitalID();
   const { simulation, setSimulation } = useSim();
   const chaosVaultButtonRef = useRef<HTMLAnchorElement>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -164,25 +162,6 @@ export const Navigation = () => {
       toast.error("Failed to export settings");
     }
   };
-
-  // Admin address from backend-loaded addresses (localStorage) or env fallback
-  let adminAddress: string | undefined = (import.meta as any).env?.VITE_ADMIN_ADDRESS as string | undefined;
-  try {
-    const stored = localStorage.getItem("contract_addresses");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed?.adminAddress && typeof parsed.adminAddress === "string") {
-        adminAddress = parsed.adminAddress;
-      }
-    }
-  } catch { }
-  const isAdmin = Boolean(
-    isConnected &&
-    hasDigitalID &&
-    adminAddress &&
-    address &&
-    adminAddress.toLowerCase() === address.toLowerCase()
-  );
 
   const navItems: Array<{ path: string; label: string; icon: any }> = [];
 

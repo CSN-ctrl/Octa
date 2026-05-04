@@ -2,7 +2,7 @@
  * Test setup file
  * Configures testing environment and global mocks
  */
-import { expect, afterEach, vi } from 'vitest';
+import { afterEach, afterAll, beforeAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
 

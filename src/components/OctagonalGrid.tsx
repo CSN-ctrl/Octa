@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
-  MapPin, Building2, Home, Factory, FileText, Search, Download, 
+  MapPin, Building2, Home, FileText, Search, Download, 
   Edit, Calendar, Shield, Scale, FileCheck, AlertCircle, CheckCircle2,
-  XCircle, Clock, User, Hash, Globe, Layers, Archive, Filter, Droplets, Mountain
+  XCircle, Clock, User, Hash, Globe, Layers, Archive, Filter
 } from "lucide-react";
 import { ethers } from "ethers";
 import { toast } from "sonner";
@@ -51,11 +51,11 @@ export function OctagonalGrid({
   totalPlots, // No default limit - use plots.length or dynamic value
   onPlotClick, 
   onPlotSelect,
-  onPurchase,
+  onPurchase: _onPurchase,
   plotPrice,
   ownedPlotIds = [],
   isConnected = false,
-  isLoading = false
+  isLoading: _isLoading = false
 }: OctagonalGridProps) {
   // Use plots length if totalPlots not provided, or a reasonable default for visualization
   const effectiveTotalPlots = totalPlots || plots.length || 1000;
@@ -63,7 +63,6 @@ export function OctagonalGrid({
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [hoveredPlot, setHoveredPlot] = useState<Plot | null>(null);
   const [selectedPlotIds, setSelectedPlotIds] = useState<Set<number>>(new Set());
-  const [purchasing, setPurchasing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("map");
   const [filterType, setFilterType] = useState<string>("all");
@@ -75,8 +74,6 @@ export function OctagonalGrid({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
-  const lastPanRef = useRef({ x: 0, y: 0 });
-
 
   // Generate a circular grid layout for plots with town center in the middle (old style - concentric rings)
   const generateCircularLayout = useMemo(() => {
@@ -147,7 +144,7 @@ export function OctagonalGrid({
     return { grid, centerX, centerY, plotSpacing, maxRadius, gridSize, gridHeight };
   }, [totalPlots]);
 
-  const { grid: gridPositions, centerX, centerY, plotSpacing, gridSize, gridHeight } = generateCircularLayout;
+  const { grid: gridPositions, centerX, centerY, plotSpacing: _plotSpacing, gridSize, gridHeight } = generateCircularLayout;
   const plotSize = 35;
   const townCenterSize = 80; // Larger size for town center
 
@@ -214,8 +211,8 @@ export function OctagonalGrid({
     onPlotSelect?.(plot);
     
     // Zoom to selected plot
-    if (plot && gridPositions[plot.id - 1]) {
-      const plotPos = gridPositions[plot.id - 1];
+    const plotPos = gridPositions[plot.id - 1];
+    if (plot && plotPos) {
       const containerWidth = svgContainerRef.current?.clientWidth || gridSize;
       const containerHeight = svgContainerRef.current?.clientHeight || gridHeight;
       
@@ -277,14 +274,14 @@ export function OctagonalGrid({
 
   // Zoom to selected plot when it changes - debounced
   useEffect(() => {
-    if (selectedPlot && gridPositions[selectedPlot.id - 1]) {
+    const plotPosSel = selectedPlot ? gridPositions[selectedPlot.id - 1] : undefined;
+    if (selectedPlot && plotPosSel) {
       const timeout = setTimeout(() => {
-        const plotPos = gridPositions[selectedPlot.id - 1];
         const containerWidth = svgContainerRef.current?.clientWidth || gridSize;
         const containerHeight = svgContainerRef.current?.clientHeight || gridHeight;
         
-        const targetX = containerWidth / 2 - plotPos.x * zoom;
-        const targetY = containerHeight / 2 - plotPos.y * zoom;
+        const targetX = containerWidth / 2 - plotPosSel.x * zoom;
+        const targetY = containerHeight / 2 - plotPosSel.y * zoom;
         
         setPan({ x: targetX, y: targetY });
         if (zoom < 1.5) setZoom(1.5);
@@ -351,7 +348,7 @@ export function OctagonalGrid({
     };
   }, []);
 
-  const handleRequestDocument = async (plot: Plot, format: "pdf" | "docx") => {
+  const handleRequestDocument = async (plot: Plot, _format: "pdf" | "docx") => {
     if (!plot.owner || !plot.transactionHash) {
       toast.error("Insufficient information to generate document");
       return;
@@ -427,35 +424,6 @@ export function OctagonalGrid({
     
     return filtered;
   }, [plots, searchQuery, filterType]);
-
-  const handlePurchase = async () => {
-    if (!selectedPlot) return;
-    if (!onPurchase) {
-      toast.error("Purchase function not available");
-      return;
-    }
-    if (!isConnected) {
-      toast.error("Please connect your wallet to purchase plots");
-      return;
-    }
-    if (selectedPlot.owner) {
-      toast.error("This plot is already owned");
-      return;
-    }
-
-    setPurchasing(true);
-    try {
-      await onPurchase(selectedPlot.id);
-      toast.success(`Plot #${selectedPlot.id} purchase initiated!`);
-      // Optionally clear selection after purchase
-      // setSelectedPlot(null);
-    } catch (error: any) {
-      console.error("Purchase error:", error);
-      // Error toast is handled by the purchase function
-    } finally {
-      setPurchasing(false);
-    }
-  };
 
   const formatPrice = (price: bigint | string | undefined): string => {
     if (!price) return "N/A";

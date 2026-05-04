@@ -166,10 +166,10 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
       const spinAngle = radius * parameters.spin;
       const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
 
-      const negPos = [1, -1];
-      const randomX = Math.pow(Math.random(), parameters.randomnessPower) * negPos[Math.floor(Math.random() * negPos.length)];
-      const randomY = Math.pow(Math.random(), parameters.randomnessPower) * negPos[Math.floor(Math.random() * negPos.length)];
-      const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * negPos[Math.floor(Math.random() * negPos.length)];
+      const sign = () => (Math.random() < 0.5 ? 1 : -1);
+      const randomX = Math.pow(Math.random(), parameters.randomnessPower) * sign();
+      const randomY = Math.pow(Math.random(), parameters.randomnessPower) * sign();
+      const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * sign();
 
       positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
       positions[i3 + 1] = randomY;
@@ -380,8 +380,9 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
       pointerRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycasterRef.current.setFromCamera(pointerRef.current, cameraRef.current);
       const intersects = raycasterRef.current.intersectObjects(clickable.map(c => c.obj), true);
-      if (intersects.length > 0) {
-        const hit = intersects[0].object;
+      const firstHit = intersects[0];
+      if (firstHit) {
+        const hit = firstHit.object;
         const match = clickable.find(c => c.obj === hit || hit.parent === c.obj);
         if (match) {
           const t = match.target();
@@ -523,12 +524,6 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
         // Update renderer with autoscale pixel ratio
         renderer.setSize(width, height, false); // false = don't update style
         renderer.setPixelRatio(getPixelRatioRef.current());
-        
-        // Update antialiasing based on screen size
-        if (renderer.domElement) {
-          const newAntialias = !shouldReduceQualityRef.current();
-          // Note: Can't change antialiasing after creation, but pixel ratio helps
-        }
         
         resizeTimeout = null;
       }, 150);

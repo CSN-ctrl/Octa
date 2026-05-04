@@ -164,7 +164,7 @@ export function NetworkTopology({
                   Connected Subnets ({otherStarSystems.length})
                 </div>
                 
-                {otherStarSystems.map((system, idx) => {
+                {otherStarSystems.map((system) => {
                   const systemPlanets = planetsBySystem.get(system.id) || [];
                   
                   return (

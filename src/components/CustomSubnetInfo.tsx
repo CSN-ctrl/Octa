@@ -5,7 +5,7 @@ import { Network, Server, Globe, Link2, RefreshCw, Loader2, Copy, Users, Setting
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import * as accountApi from "@/lib/api";
 import { toast } from "sonner";
 
@@ -33,7 +33,8 @@ export function CustomSubnetInfo() {
     try {
       const result = await accountApi.getCustomSubnetInfo();
       if (result.success) {
-        setSubnetInfo(result);
+        const { success: _s, error: _e, ...info } = result;
+        setSubnetInfo(info);
       } else {
         console.debug("Failed to load custom subnet info:", result.error);
         setSubnetInfo(null);
@@ -52,9 +53,7 @@ export function CustomSubnetInfo() {
     setLoadingBlockchain(true);
     try {
       const result = await accountApi.describeAvalancheSubnet(subnetInfo.subnet_name);
-      if (result.success && result.parsed) {
-        setBlockchainInfo(result.parsed);
-      }
+      setBlockchainInfo(result);
     } catch (error) {
       console.error("Error loading blockchain info:", error);
     } finally {

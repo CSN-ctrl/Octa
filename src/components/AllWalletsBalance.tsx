@@ -11,7 +11,6 @@ import {
   Database, 
   KeyRound,
   Copy,
-  ExternalLink
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import * as accountApi from "@/lib/api";

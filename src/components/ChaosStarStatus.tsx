@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Loader2, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 
 export function ChaosStarStatus() {
   // Use useContext directly to avoid throwing error if provider not available
@@ -28,7 +28,7 @@ export function ChaosStarStatus() {
     return null;
   }
   
-  const { isConnected, isLoading, error, health, refresh, reconnect } = contextValue;
+  const { isConnected, isLoading, health, refresh } = contextValue;
 
   if (isLoading) {
     return (

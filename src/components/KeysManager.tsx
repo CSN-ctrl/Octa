@@ -14,13 +14,11 @@ import {
   Copy, 
   Check,
   Wallet,
-  ExternalLink,
   Eye,
   EyeOff,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import * as api from "@/lib/api";
 
 interface KeyInfo {
   name: string;
@@ -40,7 +38,6 @@ export function KeysManager({ onKeySelect }: KeysManagerProps) {
   const [loading, setLoading] = useState(true);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [showPrivateKey, setShowPrivateKey] = useState<string | null>(null);
-  const [privateKeys, setPrivateKeys] = useState<Record<string, string>>({});
 
   const loadKeys = useCallback(async () => {
     // CLI integration removed - not needed at the moment
@@ -66,8 +63,7 @@ export function KeysManager({ onKeySelect }: KeysManagerProps) {
   };
 
   const loadPrivateKey = async (keyName: string) => {
-    // CLI integration removed - not needed at the moment
-    toast.error("CLI integration removed - private keys not available");
+    toast.error(`CLI integration removed - private key not available for "${keyName}"`);
   };
 
   return (
@@ -168,7 +164,10 @@ export function KeysManager({ onKeySelect }: KeysManagerProps) {
                         variant="ghost"
                         size="sm"
                         className="text-xs"
-                        onClick={() => loadPrivateKey(key.name)}
+                        onClick={() => {
+                          setShowPrivateKey((prev) => (prev === key.name ? null : key.name));
+                          void loadPrivateKey(key.name);
+                        }}
                       >
                         {showPrivateKey === key.name ? (
                           <EyeOff className="h-3 w-3 mr-1" />
@@ -179,12 +178,9 @@ export function KeysManager({ onKeySelect }: KeysManagerProps) {
                       </Button>
                     </div>
                     
-                    {showPrivateKey === key.name && privateKeys[key.name] && (
+                    {showPrivateKey === key.name && (
                       <div className="p-2 bg-red-500/10 border border-red-500/30 rounded">
-                        <p className="text-xs text-red-500 mb-1">⚠️ Never share your private key!</p>
-                        <code className="text-xs break-all">
-                          {privateKeys[key.name]}
-                        </code>
+                        <p className="text-xs text-red-500 mb-1">⚠️ Private keys are not exposed in this build.</p>
                       </div>
                     )}
                   </div>

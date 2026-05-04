@@ -1,27 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Skull, Sprout, Building2, Zap, Mountain, Globe, Lock, Users, MapPin, Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, Flame, Droplets, Wind, TreePine, Hammer, Book, Loader2, Network, Wallet, Rocket, Orbit, Cpu, TrendingUp, ShoppingCart, Briefcase, Settings, Trash2, X, AlertCircle, RefreshCw, Landmark, Banknote, Store, Wrench, FileText, PieChart } from "lucide-react";
+import { Skull, Sprout, Building2, Zap, Mountain, Globe, Users, MapPin, Coins, Factory, Home, ArrowRight, ChevronLeft, Sparkles, Shield, Droplets, TreePine, Book, Network, Orbit, Cpu, TrendingUp, ShoppingCart, Briefcase, Settings, Trash2, AlertCircle, Landmark, Banknote, Store, Wrench, FileText, PieChart } from "lucide-react";
 import heroImage from "@/assets/hero-space.jpg";
 import { useLandPlots } from "@/hooks/useLandPlots";
 import { useTreasury } from "@/hooks/useTreasury";
 import { useCelestialForge } from "@/hooks/useCelestialForge";
 import { useRealPlanetStats } from "@/hooks/useRealPlanetStats";
 import { useWallet } from "@/contexts/WalletContext";
-import { ethers } from "ethers";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { GalaxyVisualization } from "@/components/GalaxyVisualization";
-import { Card as UICard } from "@/components/ui/card";
 import { fetchPlots, type BackendPlot } from "@/lib/api";
 import * as supabaseService from "@/lib/supabase-service";
 import { OctagonalGrid } from "@/components/OctagonalGrid";
@@ -37,32 +30,25 @@ export default function UnifiedUniverse() {
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [cityView, setCityView] = useState<"info" | "grid" | "management">("grid");
-  const { plotsSold, totalPlots, plotsRemaining, loading: plotsLoading, priceInAVAX, buyPlotPhase1AVAX, userPlots, refresh: refreshLandPlots } = useLandPlots();
-  const { balances, loading: treasuryLoading } = useTreasury();
-  const { address, signer, isConnected, connect, balance } = useWallet();
+  const { plotsSold, plotsRemaining, priceInAVAX, userPlots } = useLandPlots();
+  const { balances } = useTreasury();
+  const { address, isConnected, balance } = useWallet();
   
   // Use REAL celestial forge data from blockchain/API (NOT mock)
   const {
     starSystems,
-    userStarSystems,
-    loading: forgeLoading,
-    spawnStarSystem,
-    spawnPlanet,
     fetchStarSystems,
     updateStarSystemStatus,
     updatePlanetStatus,
-    deployStarSystem,
-    getStarSystemDetails,
-    getPlanetDetails
   } = useCelestialForge();
   
   // Get real planet stats from blockchain contracts
-  const { planets: realPlanetsData, loading: planetsStatsLoading } = useRealPlanetStats();
+  const { planets: realPlanetsData } = useRealPlanetStats();
   
   // Management state
   const [selectedSystemForManagement, setSelectedSystemForManagement] = useState<string | null>(null);
-  const [selectedPlanetForManagement, setSelectedPlanetForManagement] = useState<string | null>(null);
-  const [manageView, setManageView] = useState<"systems" | "planets" | "details">("systems");
+  const [, setSelectedPlanetForManagement] = useState<string | null>(null);
+  const [, setManageView] = useState<"systems" | "planets" | "details">("systems");
   
   // Star system interaction state (like sarakt prime)
   const [selectedStarSystem, setSelectedStarSystem] = useState<string | null>(null);
@@ -71,7 +57,6 @@ export default function UnifiedUniverse() {
   // Use REAL data for display (from blockchain/API)
   const displayStarSystems = starSystems;
   const [planetsList, setPlanetsList] = useState<any[]>([]);
-  const displayLoading = forgeLoading || planetsStatsLoading;
   
   // Fetch planets from Supabase
   useEffect(() => {
@@ -119,36 +104,19 @@ export default function UnifiedUniverse() {
 
   const displayPlanets = planetsList;
   
-  // Helper function to get planets for a specific star system
-  const getPlanetsForSystem = (systemId: string) => {
-    return displayPlanets.filter((planet: any) => planet.star_system_id === systemId);
-  };
-  
   // Real planet data from blockchain (fallback to calculated stats)
   const planetsData = realPlanetsData;
-  const [starSystemName, setStarSystemName] = useState("");
-  const [tributePercent, setTributePercent] = useState(5);
-  const [planetName, setPlanetName] = useState("");
-  const [selectedStarSystemForPlanet, setSelectedStarSystemForPlanet] = useState<string>("");
-  const [planetType, setPlanetType] = useState<"habitable" | "resource" | "research" | "military">("habitable");
+  const [, setSelectedStarSystemForPlanet] = useState<string>("");
   // selectedBody removed - visualization is detached from functions
   const [backendPlots, setBackendPlots] = useState<BackendPlot[]>([]);
   const [loadingPlots, setLoadingPlots] = useState(false);
   const [managementTab, setManagementTab] = useState<"assets" | "plots" | "income" | "settings">("assets");
   
-  // ChaosStar CLI connection state
-  const [chaosStarSubnets, setChaosStarSubnets] = useState<any[]>([]);
-  const [chaosStarNodes, setAvalancheNodes] = useState<any[]>([]);
-  const [loadingSubnets, setLoadingSubnets] = useState(false);
-  const [loadingNodes, setLoadingNodes] = useState(false);
-  const [showSubnetsList, setShowSubnetsList] = useState(false);
-  const [showNodesList, setShowNodesList] = useState(false);
   const [cityPlots, setCityPlots] = useState<any[]>([]);
   const [loadingCityPlots, setLoadingCityPlots] = useState(false);
   const [cityStats, setCityStats] = useState<any>(null);
   const [loadingCityStats, setLoadingCityStats] = useState(false);
   const [ownedPlotIds, setOwnedPlotIds] = useState<number[]>([]);
-  const [showSpawnSystemDialog, setShowSpawnSystemDialog] = useState(false);
   
   // ILO participant stats (Phase 1: 10,000 participants limit)
   const [iloStatus, setIloStatus] = useState<{
@@ -157,16 +125,6 @@ export default function UnifiedUniverse() {
     maxParticipants: number;
     plotsRemaining: number;
   } | null>(null);
-  const [spawnSystemForm, setSpawnSystemForm] = useState({
-    name: "",
-    tributePercent: 5,
-    ownerWallet: "",
-    tokenName: "",
-    tokenSymbol: "",
-    initialSupply: "",
-    gasPriceGwei: "",
-    validatorCount: 1,
-  });
 
   // Load plots from backend for connected wallet
   useEffect(() => {
@@ -278,7 +236,11 @@ export default function UnifiedUniverse() {
     }
 
     const planet = planetsData?.[selectedPlanet] || planetsData?.["sarakt-prime"];
-    const city = planet.districts?.find((d, idx) => `city-${idx}` === selectedCity);
+    if (!planet) {
+      setCityPlots([]);
+      return;
+    }
+    const city = planet.districts?.find((_d, idx) => `city-${idx}` === selectedCity);
     if (!city) {
       setCityPlots([]);
       return;
@@ -331,7 +293,9 @@ export default function UnifiedUniverse() {
           }));
           
           if (registryPlots.length > 0) {
-            console.log(`✅ Loaded ${registryPlots.length} plots from local registry (${availablePlots.length} available, ${ownedPlots.length} owned)`);
+            const availableCount = registryPlots.filter((p) => !p.owned).length;
+            const ownedCount = registryPlots.filter((p) => p.owned).length;
+            console.log(`✅ Loaded ${registryPlots.length} plots from local registry (${availableCount} available, ${ownedCount} owned)`);
           }
         } catch (dbError: any) {
           console.debug("Failed to load from local registry, trying API:", dbError.message);
@@ -456,7 +420,12 @@ export default function UnifiedUniverse() {
             // Merge registry plots with backend plots (registry takes priority for owned plots)
             // Registry plots have accurate wallet/owner information from the blockchain
             const mergedPlots = [...registryPlots];
-            transformedPlots.forEach(plot => {
+            transformedPlots.forEach((plot: {
+              plotId?: number;
+              id?: number;
+              wallet?: string;
+              owner?: string;
+            }) => {
               const existingPlot = mergedPlots.find(p => p.plotId === plot.plotId);
               if (!existingPlot) {
                 mergedPlots.push(plot);
@@ -953,7 +922,7 @@ export default function UnifiedUniverse() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Status</label>
                     <select
-                      value={system.status}
+                      value={system.status ?? ""}
                       onChange={(e) => updateStarSystemStatus(system.id, e.target.value as "active" | "deploying" | "inactive")}
                       className="w-full px-4 py-2 rounded-lg bg-background border border-accent/30"
                     >
@@ -964,21 +933,21 @@ export default function UnifiedUniverse() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Subnet ID</label>
-                    <Input value={system.subnet_id} disabled className="bg-muted font-mono text-xs" />
+                    <Input value={system.subnet_id ?? ""} disabled className="bg-muted font-mono text-xs" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Chain ID</label>
-                    <Input value={system.chain_id} disabled className="bg-muted font-mono" />
+                    <Input value={system.chain_id ?? ""} disabled className="bg-muted font-mono" />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium">RPC URL</label>
-                    <Input value={system.rpc_url} disabled className="bg-muted font-mono text-xs" />
+                    <Input value={system.rpc_url ?? ""} disabled className="bg-muted font-mono text-xs" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Tribute Percent</label>
                     <Input 
                       type="number" 
-                      value={system.tribute_percent} 
+                      value={system.tribute_percent ?? ""} 
                       disabled
                       min="0"
                       max="20"
@@ -1127,7 +1096,11 @@ export default function UnifiedUniverse() {
   // City view - shows city info, grid, and management
   if (selectedPlanet && selectedCity) {
     const planet = planetsData?.[selectedPlanet] || planetsData?.["sarakt-prime"];
-    const city = planet.districts?.find((d, idx) => `city-${idx}` === selectedCity);
+    if (!planet) {
+      setSelectedCity(null);
+      return null;
+    }
+    const city = planet.districts?.find((_d, idx) => `city-${idx}` === selectedCity);
     if (!city) {
       setSelectedCity(null);
       return null;
@@ -1503,11 +1476,14 @@ export default function UnifiedUniverse() {
   // Planet view - shows cities/districts to select
   if (selectedPlanet) {
     const planet = planetsData?.[selectedPlanet] || planetsData?.["sarakt-prime"];
+    if (!planet) {
+      setSelectedPlanet(null);
+      return null;
+    }
     // Show Octavia Capital City for Sarakt Prime, or Capital city of Zarathis for Zythera
     const octaviaCity = planet.districts?.find(d => d.name === "Octavia Capital City");
     const zarathisCity = planet.districts?.find(d => d.name === "Capital city of Zarathis");
     const octaviaCityIndex = planet.districts?.findIndex(d => d.name === "Octavia Capital City") ?? -1;
-    const zarathisCityIndex = planet.districts?.findIndex(d => d.name === "Capital city of Zarathis") ?? -1;
     const ownedPlotsCount = backendPlots.length;
     
     return (
@@ -1811,7 +1787,7 @@ export default function UnifiedUniverse() {
                             <span className="text-sm text-muted-foreground">Treasury Balance</span>
                           </div>
                           <p className="text-3xl font-bold">
-                            {balances?.AVAX ? parseFloat(balances.AVAX).toFixed(2) : "0.00"} AVAX
+                            {balances?.avax ? parseFloat(balances.avax).toFixed(2) : "0.00"} AVAX
                           </p>
                         </div>
                       </div>
