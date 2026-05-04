@@ -52,7 +52,7 @@ export function DefaultStructuredData() {
         data={{
           name: "Chaos Star Universe",
           url: origin,
-          logo: `${origin}/chaos-star-logo.png`,
+          logo: `${origin}/logo.jpg`,
           description: "Explore star systems, claim land, build your digital identity, and become part of the cosmic economy in Chaos Star Universe",
           sameAs: [
             "https://x.com/OIG_CSN",

@@ -11,8 +11,7 @@ import {
   Zap
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { Cosmic3dShell } from "@/components/cosmic-3d-shell";
-import { ChaosStarLogo3DLink } from "@/components/chaos-star-logo-3d-link";
+import { CHAOS_STAR_LOGO_URL } from "@/lib/brand-logo-url";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -106,13 +105,13 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="relative mt-auto overflow-hidden border-t border-white/[0.06]">
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/30 to-background" />
-      <div className="absolute inset-0 bg-[linear-gradient(hsl(260_22%_100%/0.03)_1px,transparent_1px),linear-gradient(90deg,hsl(260_22%_100%/0.03)_1px,transparent_1px)] bg-[size:72px_72px] opacity-40" />
-      <div className="absolute bottom-0 left-1/4 w-[28rem] h-[28rem] bg-primary/[0.06] rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/[0.05] rounded-full blur-[100px] pointer-events-none" />
+    <footer className="relative mt-auto overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-muted/40 via-muted/30 to-background/50" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.01)_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative z-10">
+      <div className="relative z-10 border-t border-border/50">
         <div className="max-w-7xl mx-auto px-4 py-16">
           {/* Brand Section - Centered Above Columns */}
           <motion.div
@@ -120,41 +119,49 @@ const Footer = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="text-center mb-12 pb-10 border-b border-white/[0.06]"
+            className="text-center mb-12 pb-8 border-b border-border/30"
           >
-            {/* Brand logo + socials share the same 3D tilt / lift interaction */}
-            <Cosmic3dShell className="flex w-full flex-col items-center gap-5 mb-6">
-              <ChaosStarLogo3DLink variant="footer" />
-              <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed tracking-wide text-center">
+            <div className="flex w-full flex-col items-center gap-5 mb-2">
+              <Link
+                to="/"
+                className="rounded-xl ring-2 ring-primary/20 shadow-lg shadow-primary/5 transition hover:ring-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label="Chaos Star Universe home"
+              >
+                <img
+                  src={CHAOS_STAR_LOGO_URL}
+                  alt="Chaos Star Universe"
+                  className="h-16 w-16 rounded-lg object-cover select-none sm:h-20 sm:w-20"
+                  width={80}
+                  height={80}
+                  draggable={false}
+                />
+              </Link>
+              <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed text-center">
                 Build your empire in the Chaos Star Universe. Invest in virtual assets and grow your portfolio across galaxies.
               </p>
-              <div className="parent">
-              {socialLinks.map((social, index) => (
-                  <motion.div
-                  key={social.name}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+              <div className="flex flex-wrap justify-center gap-3">
+                {socialLinks.map((social, index) => (
+                  <motion.a
+                    key={social.name}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    initial={{ opacity: 0, scale: 0.92 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ delay: index * 0.1, duration: 0.35 }}
-                    className="flex"
+                    transition={{ delay: index * 0.08, duration: 0.3 }}
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="w-12 h-12 rounded-xl bg-background/60 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground transition-colors duration-300 hover:text-foreground hover:bg-primary/10 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/75 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    aria-label={social.name}
                   >
-                    <a
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                      className={`child child-${index + 1} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/75 focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
-                  aria-label={social.name}
-                >
-                      <span className={`button btn-${index + 1}`}>
-                        <span className="footer-social-icon scale-125" aria-hidden>
-                          {social.svg}
-                        </span>
-                      </span>
-                    </a>
-                  </motion.div>
-              ))}
+                    <span className="footer-social-icon scale-125" aria-hidden>
+                      {social.svg}
+                    </span>
+                  </motion.a>
+                ))}
+              </div>
             </div>
-            </Cosmic3dShell>
           </motion.div>
 
           {/* Main Footer Content - Multi Column */}
@@ -166,8 +173,8 @@ const Footer = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <h3 className="font-semibold mb-4 text-foreground text-xs uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-primary opacity-90" />
+              <h3 className="font-bold mb-4 text-foreground text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
                 Quick Links
               </h3>
               <ul className="space-y-2">
@@ -195,8 +202,8 @@ const Footer = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <h3 className="font-semibold mb-4 text-foreground text-xs uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-                <BookOpen className="w-3.5 h-3.5 text-primary opacity-90" />
+              <h3 className="font-bold mb-4 text-foreground text-base flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-primary" />
                 Resources
               </h3>
               <ul className="space-y-2">
@@ -231,8 +238,8 @@ const Footer = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <h3 className="font-semibold mb-4 text-foreground text-xs uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5 text-primary opacity-90" />
+              <h3 className="font-bold mb-4 text-foreground text-base flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
                 Legal
               </h3>
               <ul className="space-y-2">
@@ -257,24 +264,30 @@ const Footer = () => {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.5 }}
-            className="pt-8 border-t border-white/[0.06]"
+            className="pt-8 border-t border-border/30"
           >
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-2">
                 <p className="text-sm text-muted-foreground">
-                  © {currentYear} <span className="font-medium text-foreground">Chaos Star Universe</span>. All rights reserved.
+                  © {currentYear} <span className="font-semibold text-foreground">Chaos Star Universe</span>. All rights reserved.
                 </p>
-        </div>
-        
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/[0.08] border border-emerald-500/20">
-                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-emerald-400/95">Secure</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/[0.08] border border-sky-500/20">
-                  <Clock className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-sky-400/95">24/7 Support</span>
-                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20 hover:border-green-500/40 transition-all group"
+                >
+                  <Shield className="w-4 h-4 text-green-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-green-500">Secure Platform</span>
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40 transition-all group"
+                >
+                  <Clock className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-blue-500">24/7 Support</span>
+                </motion.div>
               </div>
             </div>
           </motion.div>
