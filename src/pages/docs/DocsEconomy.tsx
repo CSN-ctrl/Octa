@@ -20,7 +20,7 @@ export default function DocsEconomy() {
           <div>
             <h4 className="font-semibold mb-2 text-sm">Economic Flow</h4>
             <p className="text-sm text-muted-foreground">
-              Land -> Resource Extraction -> Refinement -> Production -> Trade -> Profit.
+              Land to resource extraction to refinement to production to trade to profit.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
               This pipeline is intentionally asymmetric: worlds depend on external inputs, creating durable trade

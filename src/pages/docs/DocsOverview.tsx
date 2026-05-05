@@ -87,10 +87,10 @@ export default function DocsOverview() {
             <h4 className="font-semibold text-foreground mb-3 text-sm">Sarakt structure at a glance</h4>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p><strong className="text-foreground font-medium">World structure:</strong> resources, dominant species, environment, and owner-defined rulesets.</p>
-              <p><strong className="text-foreground font-medium">Economic flow:</strong> land extraction -> refinement -> production -> trade -> profit.</p>
+              <p><strong className="text-foreground font-medium">Economic flow:</strong> land extraction to refinement to production to trade to profit.</p>
               <p><strong className="text-foreground font-medium">Currency model:</strong> `xBGL` as the universe reserve currency, specialized secondary tokens, optional private/shadow layer.</p>
               <p><strong className="text-foreground font-medium">Ownership layers:</strong> land, city, planet, and solar system with increasing governance authority.</p>
-              <p><strong className="text-foreground font-medium">Lifecycle:</strong> creation -> early life -> civilization -> expansion -> maturity.</p>
+              <p><strong className="text-foreground font-medium">Lifecycle:</strong> creation to early life to civilization to expansion to maturity.</p>
             </div>
           </div>
 
