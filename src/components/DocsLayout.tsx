@@ -30,78 +30,79 @@ interface DocSection {
 const docSections: DocSection[] = [
   {
     id: "overview",
-    title: "Overview",
+    title: "Universe Overview",
     icon: BookOpen,
     path: "/docs",
   },
   {
-    id: "paths",
-    title: "Participation Paths",
+    id: "core-concept",
+    title: "Core Concept",
     icon: MapPin,
     path: "/docs/paths",
     subsections: [
-      { id: "landowner", title: "Path 1: Landowner", path: "/docs/paths/landowner" },
-      { id: "worker", title: "Path 2: Worker/Expat", path: "/docs/paths/worker" },
+      { id: "ownership-scale", title: "Ownership Scale", path: "/docs/paths/landowner" },
+      { id: "civilization-evolution", title: "Civilization Evolution", path: "/docs/paths/worker" },
     ],
   },
   {
-    id: "income",
-    title: "Income Methods",
-    icon: Coins,
-    path: "/docs/income",
-    subsections: [
-      { id: "rental", title: "Rental Income", path: "/docs/income/rental" },
-      { id: "wages", title: "Wages", path: "/docs/income/wages" },
-      { id: "business", title: "Business Profits", path: "/docs/income/business" },
-      { id: "supporting", title: "Supporting Roles", path: "/docs/income/supporting" },
-    ],
-  },
-  {
-    id: "structures",
-    title: "Building Structures",
+    id: "world-structure",
+    title: "World Structure",
     icon: Hammer,
     path: "/docs/structures",
-  },
-  {
-    id: "jobs",
-    title: "Job System",
-    icon: Briefcase,
-    path: "/docs/jobs",
-  },
-  {
-    id: "sovereignty",
-    title: "Sovereignty",
-    icon: Crown,
-    path: "/docs/sovereignty",
     subsections: [
-      { id: "city", title: "City Ownership", path: "/docs/sovereignty/city" },
-      { id: "planet", title: "Planet Ownership", path: "/docs/sovereignty/planet" },
-      { id: "star-system", title: "Star System Ownership", path: "/docs/sovereignty/star-system" },
+      { id: "resources", title: "Resources", path: "/docs/structures" },
+      { id: "race", title: "Dominant Species", path: "/docs/structures" },
+      { id: "environment", title: "Environment", path: "/docs/structures" },
+      { id: "ruleset", title: "Ruleset", path: "/docs/structures" },
     ],
-  },
-  {
-    id: "getting-started",
-    title: "Getting Started",
-    icon: Rocket,
-    path: "/docs/getting-started",
   },
   {
     id: "economy",
-    title: "Economic Ecosystem",
+    title: "Economic System",
     icon: TrendingUp,
     path: "/docs/economy",
   },
   {
-    id: "phases",
-    title: "Phase Progression",
+    id: "ai-population",
+    title: "AI Population",
+    icon: Briefcase,
+    path: "/docs/jobs",
+  },
+  {
+    id: "ownership",
+    title: "Ownership Layers",
+    icon: Crown,
+    path: "/docs/sovereignty",
+    subsections: [
+      { id: "land", title: "Land Ownership", path: "/docs/sovereignty/city" },
+      { id: "city", title: "City Ownership", path: "/docs/sovereignty/planet" },
+      { id: "planet", title: "Planet Ownership", path: "/docs/sovereignty/star-system" },
+      { id: "system", title: "Solar System Ownership", path: "/docs/sovereignty" },
+    ],
+  },
+  {
+    id: "lifecycle",
+    title: "World Lifecycle",
     icon: Zap,
     path: "/docs/phases",
   },
   {
-    id: "features",
-    title: "Key Features",
+    id: "waas",
+    title: "WaaS Layer",
     icon: Network,
     path: "/docs/features",
+  },
+  {
+    id: "business-model",
+    title: "Business Model",
+    icon: Coins,
+    path: "/docs/income",
+  },
+  {
+    id: "roadmap",
+    title: "Roadmap",
+    icon: Rocket,
+    path: "/docs/getting-started",
   },
 ];
 
@@ -114,7 +115,7 @@ interface DocsLayoutProps {
 export function DocsLayout({ children, title, description }: DocsLayoutProps) {
   const location = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(["paths", "income", "sovereignty"])
+    new Set(["core-concept", "world-structure", "ownership"])
   );
   const [sidebarOpen, setSidebarOpen] = useState(true);
 

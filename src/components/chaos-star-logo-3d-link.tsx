@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { CHAOS_STAR_LOGO_URL } from "@/lib/brand-logo-url";
 
 const logoInner = (
-  <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-purple-950/98 via-violet-950/98 to-black/92 p-1.5 shadow-lg">
+  <span className="flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-xl bg-gradient-to-br from-purple-950/98 via-violet-950/98 to-black/92 p-1.5 shadow-lg">
     <img
       src={CHAOS_STAR_LOGO_URL}
       alt=""
@@ -15,7 +15,7 @@ const logoInner = (
 
 /** Compact plate for header only — footer keeps {@link logoInner} */
 const logoInnerNav = (
-  <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-purple-950/98 via-violet-950/98 to-black/92 p-1 shadow-lg">
+  <span className="flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-lg bg-gradient-to-br from-purple-950/98 via-violet-950/98 to-black/92 p-1 shadow-lg">
     <img
       src={CHAOS_STAR_LOGO_URL}
       alt=""

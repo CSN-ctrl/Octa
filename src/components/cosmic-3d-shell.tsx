@@ -84,8 +84,8 @@ export const Cosmic3dShell = styled.div`
   }
 
   .child-logo {
-    width: 64px;
-    height: 64px;
+    width: 68px;
+    height: 68px;
     border-radius: 12px;
     margin: 0;
     filter: drop-shadow(0 4px 14px hsl(262 72% 32% / 0.42))
@@ -143,8 +143,8 @@ export const Cosmic3dShell = styled.div`
   .child-logo--nav,
   .child-logo--nav:hover {
     filter: none;
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     border-radius: 10px;
   }
 

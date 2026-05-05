@@ -7,17 +7,17 @@ export default function DocsGettingStarted() {
     {
       step: 1,
       title: "Connect Your Wallet",
-      description: "Use MetaMask, Core Wallet, Coinbase Wallet, or Brave Wallet to connect to ChaosStar Network (Chain ID: 8088)"
+      description: "Use MetaMask, Core Wallet, Coinbase Wallet, or Brave Wallet. Your wallet connects directly to the platform."
     },
     {
       step: 2,
       title: "Register Digital ID",
-      description: "Create your identity on the platform. Choose personal, corporate, or organization ID. Link your wallet to your identity."
+      description: "Digital ID will be introduced in a later phase. Initial access and participation in Phase 1 do not require Digital ID."
     },
     {
       step: 3,
       title: "Choose Your Path",
-      description: "If you want to be a Landowner: Purchase plots (Phase 1: 10,000 participants limit). Each participant can buy multiple plots. Price: 100 xBGL per plot in Phase 1. If you want to be a Worker: Browse job listings, apply for jobs, get hired and start working, rent housing from landowners."
+      description: "If you want to be a Landowner: Purchase plots in Phase 1 (10,000 participants). Each participant can buy multiple plots. Price: 100 EUR equivalent in xBGL per plot (1 EUR = 1.955833 xBGL), paid in USDC. If you want to be a Worker: Browse job listings, apply for jobs, get hired, and rent housing from landowners."
     },
     {
       step: 4,

@@ -3,43 +3,44 @@ import { DocsLayout } from "@/components/DocsLayout";
 
 export default function DocsEconomy() {
   return (
-    <DocsLayout 
-      title="Economic Ecosystem" 
-      description="Citizens sit at the center—demand for homes, goods, and services is what moves money."
+    <DocsLayout
+      title="Economic System"
+      description="Sarakt's economy is built on scarcity, multi-stage production, and interplanetary dependency."
     >
       <Card className="glass-card border-primary/30">
         <CardContent className="pt-6 space-y-4">
           <div>
-            <h4 className="font-semibold mb-2 text-sm">How Income Flows</h4>
+            <h4 className="font-semibold mb-2 text-sm">Core Principles</h4>
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
-              <li>
-                Citizens (players + AI populations) drive sustainable profits through housing, labor, and consumption
-              </li>
-              <li>Landowners earn from rentals</li>
-              <li>Workers earn from wages</li>
-              <li>Business owners earn from profits</li>
-              <li>Material suppliers earn from sales</li>
-              <li>Builders earn from construction</li>
-              <li>Everyone participates in the economy</li>
+              <li>Resources are limited and world-specific.</li>
+              <li>Production requires multiple transformation stages.</li>
+              <li>No single world is fully self-sufficient.</li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-2 text-sm">Circular Economy</h4>
+            <h4 className="font-semibold mb-2 text-sm">Economic Flow</h4>
             <p className="text-sm text-muted-foreground">
-              Citizens need housing → pay rent to landowners. They need goods and services → keep businesses afloat.
-              Workers need housing → rent from landowners. Landowners need structures → buy materials and hire builders. 
-              Businesses need workers → hire from worker pool. Material suppliers need customers → sell to builders and landowners. 
-              Income circulates through all roles because population-driven demand keeps the system moving.
+              Land -> Resource Extraction -> Refinement -> Production -> Trade -> Profit.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              This pipeline is intentionally asymmetric: worlds depend on external inputs, creating durable trade
+              relationships instead of isolated local loops.
             </p>
           </div>
           <div>
-            <h4 className="font-semibold mb-2 text-sm">Realistic Economics</h4>
+            <h4 className="font-semibold mb-2 text-sm">Interplanetary Trade Dynamics</h4>
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
-              <li>Mirrors real-world systems</li>
-              <li>Supply and demand drive prices—demand starts with citizens</li>
-              <li>Competition creates fair markets</li>
-              <li>Multiple paths to success</li>
-              <li>Everyone has opportunities</li>
+              <li>Trade is required between planets.</li>
+              <li>Logistics introduces cost, time, and risk.</li>
+              <li>Route and supply coordination become strategic advantages.</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-2 text-sm">Currency Structure</h4>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+              <li>Universe reserve currency: <strong className="text-foreground font-medium">xBGL</strong></li>
+              <li>Secondary tokens for specialized systems</li>
+              <li>Optional private/shadow transaction layer</li>
             </ul>
           </div>
         </CardContent>
