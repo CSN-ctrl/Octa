@@ -96,8 +96,8 @@ type RouteSeoConfig = {
 };
 
 const DEFAULT_SEO_CONFIG: RouteSeoConfig = {
-  title: "Chaos Star Universe | Reserve Premium Early-Access Plots",
-  description: "Explore the Chaos Star Universe, reserve premium digital land plots, and join early access before public release.",
+  title: "Chaos Star Universe | Sandbox",
+  description: "Discover Chaos Star Universe and enter Sarakt, its Genesis world. Own digital land, build economies, and scale through a World-as-a-Service platform.",
   canonicalPath: "/",
   indexable: true,
 };
@@ -117,8 +117,8 @@ const ROUTE_SEO_CONFIG: Record<string, RouteSeoConfig> = {
     indexable: true,
   },
   "/ilo": {
-    title: "Early Access (ILO) | Reserve High-Demand Plot Positions",
-    description: "Join early access and reserve high-demand digital land positions in limited release phases.",
+    title: "Sarakt Genesis ILO | Initial Land Offering",
+    description: "Join the Sarakt Genesis Initial Land Offering inside Chaos Star Universe and secure early world-level ownership positions.",
     canonicalPath: "/ilo",
     indexable: true,
   },
@@ -141,14 +141,14 @@ const ROUTE_SEO_CONFIG: Record<string, RouteSeoConfig> = {
     indexable: true,
   },
   "/how-it-works": {
-    title: "How Chaos Star Works | Platform Overview",
-    description: "Learn how identity, land, economy, and progression systems connect in Chaos Star Universe.",
+    title: "How Sarakt Works | Genesis World Overview",
+    description: "Learn how Sarakt, the Genesis world of Chaos Star Universe, connects ownership, economy, governance, and progression.",
     canonicalPath: "/docs",
     indexable: false,
   },
   "/docs": {
-    title: "Documentation - Chaos Star Universe",
-    description: "Read official Chaos Star documentation for paths, sovereignty, structures, economy, and onboarding.",
+    title: "Documentation - Chaos Star Universe & Sarakt Genesis",
+    description: "Read official documentation for Chaos Star Universe and Sarakt Genesis: ownership paths, sovereignty, structures, economy, and onboarding.",
     canonicalPath: "/docs",
     indexable: true,
   },
@@ -259,8 +259,8 @@ const ROUTE_SEO_CONFIG: Record<string, RouteSeoConfig> = {
 function resolveSeoConfig(pathname: string): RouteSeoConfig {
   if (pathname.startsWith("/docs/")) {
     return {
-      title: "Documentation - Chaos Star Universe",
-      description: "Read official Chaos Star documentation for paths, sovereignty, structures, economy, and onboarding.",
+      title: "Documentation - Chaos Star Universe & Sarakt Genesis",
+      description: "Read official documentation for Chaos Star Universe and Sarakt Genesis: paths, sovereignty, structures, economy, and onboarding.",
       canonicalPath: pathname,
       indexable: true,
     };
