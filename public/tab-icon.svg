@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Zoomed crop of logo.png so the mark reads larger in the fixed-size tab slot -->
+  <defs>
+    <clipPath id="tabClip">
+      <rect width="64" height="64" rx="14" />
+    </clipPath>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0a0612" />
+  <g clip-path="url(#tabClip)">
+    <image
+      xlink:href="/logo.png"
+      href="/logo.png"
+      x="-10"
+      y="-10"
+      width="84"
+      height="84"
+      preserveAspectRatio="xMidYMid slice"
+    />
+  </g>
+</svg>
