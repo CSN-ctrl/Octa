@@ -39,7 +39,7 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
         name: "Chaos Star Universe",
         description: "Connect your wallet",
         url: origin,
-        icons: [`${origin}/favicon.ico`],
+        icons: [`${origin}/favicon-48.png`],
       },
     });
     await walletConnectProvider.enable();

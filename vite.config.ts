@@ -2,6 +2,16 @@ import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
+/** Figma MCP html-to-design capture — dev only (blocked by production CSP in vercel.json). */
+const figmaCaptureDevOnly = () => ({
+  name: "figma-capture-dev-only",
+  transformIndexHtml(html: string) {
+    const tag =
+      '<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>';
+    return html.replace("</body>", `    ${tag}\n  </body>`);
+  },
+});
+
 // Plugin to bypass host checking in development
 const bypassHostCheck = () => ({
   name: "bypass-host-check",
@@ -43,6 +53,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    mode === "development" && figmaCaptureDevOnly(),
     mode === "development" && bypassHostCheck(),
   ].filter(Boolean),
   resolve: {
