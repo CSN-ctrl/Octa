@@ -10,6 +10,8 @@ import { ethers } from "ethers";
 import { MapPin, RefreshCw, Wallet, Sparkles, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getAvaxRpcUrl, LOCAL_AVAX_NETWORK } from "@/config/avax-network";
+import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
+import { getPaymentDeploymentsPath } from "@/config/blockchain-profile";
 import { getLandMetadataBaseUri } from "@/lib/land-nft-metadata";
 import { GAME_CURRENCY_COPY, GAME_CURRENCY_SYMBOL } from "@/lib/game-currency";
 
@@ -203,7 +205,7 @@ export default function LandTest() {
 
             <p className="text-xs text-center text-muted-foreground">
               Also on <Link to="/quick-actions" className="underline">Quick Actions</Link>.
-              Sandbox: <code className="text-xs">{getPaymentDeploymentsPath().replace(/^\//, "")}</code>
+              Sandbox: <code className="text-xs">sandbox/deployments/1337-latest.json</code>
             </p>
           </>
         )}
