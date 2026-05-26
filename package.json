@@ -17,6 +17,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "sandbox:deploy": "node scripts/sandbox/deploy.mjs",
+    "sandbox:deploy:fuji": "node scripts/sandbox/deploy-fuji.mjs",
     "sandbox:activate": "node scripts/sandbox/activate-game.mjs",
     "sandbox:calc-plot-avax": "node -e \"import('./scripts/sandbox/plot-avax-pricing.mjs').then(m=>m.resolvePlotPrices().then(p=>console.log(JSON.stringify(p,null,2))))\"",
     "sandbox:test": "node scripts/sandbox/test.mjs",
