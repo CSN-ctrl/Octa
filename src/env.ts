@@ -20,10 +20,12 @@ interface EnvVars {
   VITE_ENABLE_TEST_ROUTES?: string;
 }
 
-// Defaults — align with `.env.example`. Set VITE_API_URL to your Go API (local or remote).
+// Defaults — align with `.env.example`. Production must set VITE_AVALANCHE_RPC or VITE_ALCHEMY_API_KEY (Fuji).
 const defaults: Partial<EnvVars> = {
   VITE_API_URL: "http://localhost:5001",
-  VITE_AVALANCHE_RPC: "http://192.168.88.62:9650/ext/bc/C/rpc",
+  VITE_AVALANCHE_RPC: import.meta.env.PROD
+    ? undefined
+    : "http://192.168.88.62:9650/ext/bc/C/rpc",
   VITE_CHAOSSTAR_RPC: undefined,
   VITE_STARGATE_RPC: undefined,
   VITE_CHAIN_ID: "1337",
