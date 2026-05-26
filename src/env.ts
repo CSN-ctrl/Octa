@@ -23,13 +23,13 @@ interface EnvVars {
 // Defaults — align with `.env.example`. Set VITE_API_URL to your Go API (local or remote).
 const defaults: Partial<EnvVars> = {
   VITE_API_URL: "http://localhost:5001",
-  // RPC endpoints disabled - using Supabase instead
-  VITE_CHAOSSTAR_RPC: undefined, // Not used - Supabase acts as network
-  VITE_STARGATE_RPC: undefined, // Not used - Supabase acts as network
-  VITE_CHAIN_ID: '8088',
-  VITE_BLOCKCHAIN_ID: 'ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy',
-  VITE_NETWORK_NAME: 'ChaosStar Network',
-  VITE_NATIVE_TOKEN: 'xBGL',
+  VITE_AVALANCHE_RPC: "http://192.168.88.62:9650/ext/bc/C/rpc",
+  VITE_CHAOSSTAR_RPC: undefined,
+  VITE_STARGATE_RPC: undefined,
+  VITE_CHAIN_ID: "1337",
+  VITE_BLOCKCHAIN_ID: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
+  VITE_NETWORK_NAME: "Avalanche Local C-Chain",
+  VITE_NATIVE_TOKEN: "AVAX",
   VITE_ENABLE_PRIVATE_KEY_CUSTODY: "false",
   VITE_ENABLE_TEST_ROUTES: "false",
 };
@@ -45,9 +45,9 @@ export const env = (() => {
     }
   }
 
-  // Also check legacy env vars (optional)
-  vars.VITE_AVALANCHE_RPC = import.meta.env.VITE_AVALANCHE_RPC || vars.VITE_STARGATE_RPC;
-  vars.VITE_CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || 'native';
+  vars.VITE_AVALANCHE_RPC =
+    import.meta.env.VITE_AVALANCHE_RPC || vars.VITE_AVALANCHE_RPC || vars.VITE_STARGATE_RPC;
+  vars.VITE_CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "";
 
   return vars as EnvVars;
 })();
@@ -56,10 +56,11 @@ export const env = (() => {
 export const getApiUrl = () => env.VITE_API_URL;
 export const getChaosstarRpc = () => env.VITE_CHAOSSTAR_RPC;
 export const getStargateRpc = () => env.VITE_STARGATE_RPC;
-export const getChainId = () => parseInt(env.VITE_CHAIN_ID || '8088');
+export const getChainId = () => parseInt(env.VITE_CHAIN_ID || "1337", 10);
 export const getBlockchainId = () => env.VITE_BLOCKCHAIN_ID;
-export const getNetworkName = () => env.VITE_NETWORK_NAME || 'ChaosStar Network';
-export const getNativeToken = () => env.VITE_NATIVE_TOKEN || 'xBGL';
+export const getNetworkName = () => env.VITE_NETWORK_NAME || "Avalanche Local C-Chain";
+export const getNativeToken = () => env.VITE_NATIVE_TOKEN || "AVAX";
+export const getAvalancheRpc = () => env.VITE_AVALANCHE_RPC;
 
 function envEnabled(value: string | undefined): boolean {
   return String(value || "").toLowerCase() === "true";

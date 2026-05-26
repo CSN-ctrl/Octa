@@ -235,9 +235,10 @@ export default function HowItWorks() {
                 </h1>
               </div>
               <p className="text-lg text-muted-foreground max-w-3xl">
-                A realistic blockchain-based virtual universe where you own, build, work, and profit. Citizens—human
-                players and AI populations—create the demand that makes rentals, wages, and business profits possible.
-                Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots.
+                Sarakt is a World-as-a-Service (WaaS) platform where ownership, AI populations, and economic systems
+                combine into a persistent universe. You can start at land level, scale into city and planetary
+                governance, and ultimately coordinate full solar-system economies. Human players and AI citizens create
+                the demand that powers every revenue stream.
               </p>
             </div>
 
@@ -250,38 +251,40 @@ export default function HowItWorks() {
                     Overview
                   </CardTitle>
                   <CardDescription>
-                    Introduction to the ChaosStar universe
+                    Introduction to the Sarakt platform and WaaS model
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-muted-foreground leading-relaxed">
-                    ChaosStar is a realistic blockchain-based virtual universe where you can own land, build structures, 
-                    work at businesses, create your own businesses, and earn income through multiple methods.{" "}
-                    <strong className="text-foreground font-medium">Citizens are the main driver of profits:</strong> they
-                    need housing, jobs, and goods—without that activity, income streams do not materialize. The system 
-                    mirrors real-world economics with supply and demand, market-driven prices, and a circular economy 
-                    where everyone participates and benefits.
+                    Sarakt is designed as a living economic universe. Ownership exists across four layers - land,
+                    cities, planets, and solar systems - with each layer unlocking greater operational control and
+                    governance scope.{" "}
+                    <strong className="text-foreground font-medium">Citizen activity is the economic engine:</strong>{" "}
+                    players and AI populations create labor markets, consumption demand, and long-term infrastructure
+                    value. The result is a system where supply chains, trade, and policy decisions directly shape
+                    outcomes.
                   </p>
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                    <h4 className="font-semibold mb-2">Why citizens matter</h4>
+                    <h4 className="font-semibold mb-2">Why WaaS changes the model</h4>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Structures and businesses only generate returns when citizens show up as tenants, workers, and
-                      buyers. Serving and growing that population is how you build sustainable profits.
+                      Sarakt is not a static game map. It is infrastructure for world creation and expansion. External
+                      builders can launch new worlds, define resources and species traits, and connect into a shared
+                      interplanetary economy through platform APIs and behavior modules.
                     </p>
                   </div>
                   <div className="grid md:grid-cols-2 gap-4 mt-6">
                     <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                      <h4 className="font-semibold mb-2">Phase 1: Limited Access</h4>
+                      <h4 className="font-semibold mb-2">Ownership at Multiple Scales</h4>
                       <p className="text-sm text-muted-foreground">
-                        Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots. 
-                        This creates an exclusive early adopter community.
+                        Start with land operations, then scale into city policy, planet-level resource control, and
+                        solar-system trade governance.
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                      <h4 className="font-semibold mb-2">Multiple Paths</h4>
+                      <h4 className="font-semibold mb-2">Civilization Progression</h4>
                       <p className="text-sm text-muted-foreground">
-                        Choose to be a landowner, worker, business owner, or pursue sovereignty. Each path offers 
-                        different opportunities and income streams.
+                        Worlds progress from early formation to advanced, space-capable economies. Each stage unlocks
+                        deeper production and governance mechanics.
                       </p>
                     </div>
                   </div>
@@ -297,8 +300,7 @@ export default function HowItWorks() {
                   Participation Paths
                 </h2>
                 <p className="text-muted-foreground">
-                  Choose the path that fits your goals and resources—every path ultimately succeeds when citizens need
-                  what you offer.
+                  Choose the operating model that fits your capital, risk profile, and long-term goals.
                 </p>
               </div>
 
@@ -312,9 +314,9 @@ export default function HowItWorks() {
                       </div>
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">Path 1: Landowner</CardTitle>
-                        <CardDescription>
-                          Own land, build structures, and earn rental income from citizens who need a place to live
-                        </CardDescription>
+                  <CardDescription>
+                    Own productive plots, deploy infrastructure, and monetize usage through rent and trade participation
+                  </CardDescription>
                       </div>
                     </div>
                   </CardHeader>
@@ -366,9 +368,9 @@ export default function HowItWorks() {
                       </div>
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">Path 2: Worker/Expat</CardTitle>
-                        <CardDescription>
-                          Be part of the citizen workforce—earn wages, rent housing, no land ownership required
-                        </CardDescription>
+                  <CardDescription>
+                    Enter as a workforce participant, earn wages, build skills, and graduate into ownership over time
+                  </CardDescription>
                       </div>
                     </div>
                   </CardHeader>
@@ -722,8 +724,8 @@ export default function HowItWorks() {
                   Sovereignty - Create Your Own Rules
                 </h2>
                   <p className="text-muted-foreground">
-                    For advanced players who want control - hierarchical governance over cities and economies where
-                    citizen activity still drives tax bases and growth
+                    Governance scales from cities to planets to solar systems, with policy inheritance and treasury
+                    coordination across each layer.
                   </p>
               </div>
 
@@ -732,7 +734,7 @@ export default function HowItWorks() {
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg">Governance Hierarchy</CardTitle>
+                    <CardTitle className="text-lg">Governance and Policy Inheritance</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -933,7 +935,7 @@ export default function HowItWorks() {
                   Getting Started
                 </h2>
                 <p className="text-muted-foreground">
-                  Follow these steps to begin your journey on ChaosStar—then grow where citizens need you most
+                  Follow this launch path to move from onboarding into active participation in the Sarakt economy.
                 </p>
               </div>
 
@@ -944,7 +946,7 @@ export default function HowItWorks() {
                       {
                         step: 1,
                         title: "Connect Your Wallet",
-                        description: "Use MetaMask, Core Wallet, Coinbase Wallet, or Brave Wallet to connect to ChaosStar Network (Chain ID: 8088)"
+                        description: "Use MetaMask, Core Wallet, Coinbase Wallet, or Brave Wallet to connect to ChaosStar Network (Chain ID: 8888)"
                       },
                       {
                         step: 2,
@@ -953,23 +955,23 @@ export default function HowItWorks() {
                       },
                       {
                         step: 3,
-                        title: "Choose Your Path",
-                        description: "If you want to be a Landowner: Purchase plots (Phase 1: 10,000 participants limit). Each participant can buy multiple plots. Price: 100 xBGL per plot in Phase 1. If you want to be a Worker: Browse job listings, apply for jobs, get hired and start working, rent housing from landowners."
+                        title: "Choose an Operating Model",
+                        description: "Start as a landowner, worker, or business operator. In Phase 1, ownership activation is capped at 10,000 participants, and each participant can hold multiple plots."
                       },
                       {
                         step: 4,
-                        title: "Start Earning",
-                        description: "As a Landowner: Build or buy structures on your plots, list structures for rent, earn rental income when citizens need housing. As a Worker: Work at businesses fueled by citizen demand, earn wages, pay rent from wages, save earnings to buy plots later."
+                        title: "Activate Revenue Flows",
+                        description: "Landowners monetize space and infrastructure. Workers monetize labor. Operators monetize production and services. All flows are strengthened by population demand."
                       },
                       {
                         step: 5,
-                        title: "Expand and Grow",
-                        description: "Buy more plots (landowners), build more structures, create businesses, hire workers, scale your operations—scale follows where citizens concentrate and spend."
+                        title: "Scale Through Coordination",
+                        description: "Expand plots, supply chains, and workforce capacity. Growth compounds where demand concentration, logistics efficiency, and policy execution align."
                       },
                       {
                         step: 6,
-                        title: "Advanced Options",
-                        description: "Consider city ownership (sovereignty), consider planet ownership (complete control), consider star system ownership (ultimate sovereignty), create your own rules and economy."
+                        title: "Move Into Sovereignty and WaaS",
+                        description: "Progress to city, planet, and solar-system governance. Advanced builders can launch custom worlds and integrate them into Sarakt's economic infrastructure."
                       }
                     ].map((item, index) => (
                       <div key={item.step} className="flex items-start gap-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
@@ -1000,45 +1002,38 @@ export default function HowItWorks() {
                   Economic Ecosystem
                 </h2>
                 <p className="text-muted-foreground">
-                  How income flows through the system—citizens sit at the center of every major stream
+                  Value is created through scarcity, production depth, and inter-world dependency.
                 </p>
               </div>
 
               <Card className="glass-card border-primary/30">
                 <CardContent className="pt-6 space-y-4">
                   <div>
-                    <h4 className="font-semibold mb-2 text-sm">How Income Flows</h4>
+                    <h4 className="font-semibold mb-2 text-sm">Economic Flow</h4>
                     <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
                       <li>
-                        Citizens (players + AI populations) create demand—that demand is the main driver of sustainable
-                        profits
+                        Land -> resource extraction -> refinement -> production -> trade -> profit
                       </li>
-                      <li>Landowners earn from rentals</li>
-                      <li>Workers earn from wages</li>
-                      <li>Business owners earn from profits</li>
-                      <li>Material suppliers earn from sales</li>
-                      <li>Builders earn from construction</li>
-                      <li>Everyone participates in the economy</li>
+                      <li>Resources remain world-specific and non-fungible across many production chains</li>
+                      <li>No world is fully self-sufficient at scale</li>
+                      <li>Interplanetary trade introduces cost, time, and risk as strategic variables</li>
+                      <li>Player and AI populations create the demand layer that validates infrastructure decisions</li>
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-2 text-sm">Circular Economy</h4>
+                    <h4 className="font-semibold mb-2 text-sm">Interdependent Economy</h4>
                     <p className="text-sm text-muted-foreground">
-                      At the center are citizens: they need housing → pay rent to landowners. They need goods and
-                      services → keep businesses profitable. Landowners need structures → buy materials and hire builders. 
-                      Businesses need workers → hire from the worker pool. Material suppliers need customers → sell to
-                      builders and landowners. Income circulates through all roles because population-driven demand keeps
-                      the loop turning.
+                      Sarakt is designed so isolated optimization is not enough. Landholders, workers, industrial
+                      operators, and governors rely on one another through shared supply chains. Governance decisions,
+                      labor allocation, and logistics quality directly impact profitability and long-run resilience.
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-2 text-sm">Realistic Economics</h4>
+                    <h4 className="font-semibold mb-2 text-sm">Currency Layers</h4>
                     <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
-                      <li>Mirrors real-world systems</li>
-                      <li>Supply and demand drive prices—demand starts with citizens</li>
-                      <li>Competition creates fair markets</li>
-                      <li>Multiple paths to success</li>
-                      <li>Everyone has opportunities</li>
+                      <li>`xBGL` functions as the primary economic unit</li>
+                      <li>Secondary tokens support specialized systems and services</li>
+                      <li>Optional private/shadow transaction layers can be enabled for advanced use cases</li>
                     </ul>
                   </div>
                 </CardContent>
@@ -1053,7 +1048,7 @@ export default function HowItWorks() {
                   Phase Progression
                 </h2>
                 <p className="text-muted-foreground">
-                  Current and future phases of development
+                  Product rollout from ownership activation to full World-as-a-Service deployment.
                 </p>
               </div>
 
@@ -1062,52 +1057,39 @@ export default function HowItWorks() {
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-3 mb-2">
                       <Zap className="h-6 w-6 text-primary" />
-                      <h4 className="font-semibold text-lg">Phase 1: Tribal Stage (Current)</h4>
+                      <h4 className="font-semibold text-lg">Phase 1: Ownership Activation (Current)</h4>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Buy plots, own land, foundation for future. Phase 1 is limited to 10,000 participants, 
-                      but each participant can purchase multiple plots. This is the initial land acquisition phase.
+                      10,000 participant cap, multi-plot ownership, and the core economic loop foundation.
                     </p>
                   </div>
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-3 mb-2">
                       <Building2 className="h-6 w-6 text-primary" />
-                      <h4 className="font-semibold text-lg">Phase 2: Civilization Stage (Coming)</h4>
+                      <h4 className="font-semibold text-lg">Phase 2: AI Population and City Mechanics</h4>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Build structures, rent out properties, work at businesses, create businesses, full economy active. 
-                      Civic-scale growth—schools, universities, housing, services—with citizen populations as the engine
-                      of who pays whom. Mass industrial output begins in Phase 3.
+                      Dynamic AI population behavior, city-level governance, and stronger workforce, loyalty, and
+                      service loops.
                     </p>
                   </div>
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-3 mb-2">
                       <Factory className="h-6 w-6 text-primary" />
-                      <h4 className="font-semibold text-lg">Phase 3: Industrial Stage (Future)</h4>
+                      <h4 className="font-semibold text-lg">Phase 3: Planet Expansion and Resource Specialization</h4>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Industrial complexes, scaled production, logistics, and heavy infrastructure. Supply chains and
-                      bulk goods align with population-wide demand from human and AI citizens.
+                      Planet-level control, differentiated resource identities, and deeper inter-world dependency.
                     </p>
                   </div>
                   <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-3 mb-2">
                       <Cpu className="h-6 w-6 text-primary" />
-                      <h4 className="font-semibold text-lg">Phase 4: Tech Stage (Future)</h4>
+                      <h4 className="font-semibold text-lg">Phase 4: Solar Systems and Full WaaS</h4>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Automation and advanced systems on top of industry—deeper markets, new mechanics, and richer
-                      strategic choices for players and factions.
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Orbit className="h-6 w-6 text-primary" />
-                      <h4 className="font-semibold text-lg">Phase 5: Cosmic Stage (Future)</h4>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Inter-system trade, sovereignty at stellar scale, and cosmic expansion—long-horizon economy and lore
-                      converging across the universe.
+                      Multi-planet coordination, trade-route governance, and external world creation through WaaS
+                      interfaces.
                     </p>
                   </div>
                 </CardContent>
@@ -1122,7 +1104,7 @@ export default function HowItWorks() {
                   Key Features
                 </h2>
                 <p className="text-muted-foreground">
-                  What makes ChaosStar unique
+                  What differentiates Sarakt as a world infrastructure platform.
                 </p>
               </div>
 
@@ -1132,39 +1114,41 @@ export default function HowItWorks() {
                     <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                       <div className="flex items-center gap-2 mb-2">
                         <Globe className="h-5 w-5 text-primary" />
-                        <h4 className="font-semibold">Realistic Economy</h4>
+                        <h4 className="font-semibold">Persistent World Infrastructure</h4>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Mirrors real-world economics with supply and demand, market-driven prices, and a circular economy
+                        Ownership, production, governance, and trade are designed as a continuous system rather than
+                        isolated gameplay loops.
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                       <div className="flex items-center gap-2 mb-2">
                         <Network className="h-5 w-5 text-primary" />
-                        <h4 className="font-semibold">Multiple Paths</h4>
+                        <h4 className="font-semibold">Multi-Layer Ownership</h4>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Landowner path, worker path, business owner path, supporting roles, and sovereignty options
+                        Land, city, planet, and solar-system control models support different operating strategies and
+                        governance depth.
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                       <div className="flex items-center gap-2 mb-2">
                         <Users className="h-5 w-5 text-primary" />
-                        <h4 className="font-semibold">Player-Driven</h4>
+                        <h4 className="font-semibold">AI + Human Population Dynamics</h4>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Real users have priority, player decisions matter, community-driven, your choices shape the world—
-                        alongside AI populations that keep demand and jobs believable
+                        Human players and adaptive AI populations co-create labor, consumption, and loyalty patterns
+                        that influence market stability.
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="h-5 w-5 text-primary" />
-                        <h4 className="font-semibold">Progression</h4>
+                        <h4 className="font-semibold">WaaS Builder Layer</h4>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Start as worker, become landowner. Start small, grow big. Multiple income streams. Build your
-                        empire by capturing value where citizens concentrate
+                        External builders can launch custom worlds, define resource and species profiles, and integrate
+                        with Sarakt economics through APIs and modules.
                       </p>
                     </div>
                   </div>

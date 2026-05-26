@@ -1,7 +1,8 @@
 /**
- * Multi-Network Configuration for USDC Payments
- * Defines all major networks that support USDC
+ * Multi-Network Configuration for deposits (USDC on mainnets, AVAX on local 1337).
  */
+
+import { LOCAL_AVAX_CHAIN_ID } from "@/config/avax-network";
 
 export interface NetworkConfig {
   id: string;
@@ -15,6 +16,15 @@ export interface NetworkConfig {
 }
 
 export const NETWORKS: NetworkConfig[] = [
+  {
+    id: "avalanche-local",
+    name: "Avalanche Local (1337)",
+    chainId: LOCAL_AVAX_CHAIN_ID,
+    usdcAddress: "0x0000000000000000000000000000000000000000",
+    explorer: "",
+    icon: "AVAX",
+    color: "#E84142",
+  },
   {
     id: 'ethereum',
     name: 'Ethereum',
@@ -95,4 +105,12 @@ export function getNetworkById(id: string): NetworkConfig | undefined {
 
 export function getNetworkByChainId(chainId: number): NetworkConfig | undefined {
   return NETWORKS.find(n => n.chainId === chainId);
+}
+
+export function isAvaxDepositNetwork(networkId: string): boolean {
+  return networkId === "avalanche-local" || networkId === "avalanche-fuji";
+}
+
+export function depositAssetSymbol(networkId: string): "AVAX" | "USDC" {
+  return isAvaxDepositNetwork(networkId) ? "AVAX" : "USDC";
 }

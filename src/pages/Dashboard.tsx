@@ -5,6 +5,9 @@ import { useWallet } from "@/contexts/WalletContext";
 import * as supabaseService from "@/lib/supabase-service";
 import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
+import { loadMergedOwnedPlots } from "@/lib/chain-land-holdings";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { loadUserBalanceForUi, sendNativeTransfer } from "@/lib/onchain-crypto";
 import { TreasuryTransactions } from "@/components/TreasuryTransactions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -141,7 +144,7 @@ interface UserBalanceData {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { address: walletAddress } = useWallet();
+  const { address: walletAddress, signer, refreshBalance: refreshWalletBalance } = useWallet();
   const [address, setAddress] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [ownedPlots, setOwnedPlots] = useState<any[]>([]);
@@ -283,11 +286,7 @@ export default function Dashboard() {
 
       setLoading(true);
       try {
-        // Fetch plots - try by wallet address and email
-        const plots = await supabaseService.getPlots({ 
-          ownerWallet: address,
-          ownerEmail: userEmail || undefined
-        });
+        const plots = await loadMergedOwnedPlots(address, userEmail || undefined);
         setOwnedPlots(plots || []);
 
         // Fetch portfolios
@@ -318,9 +317,15 @@ export default function Dashboard() {
           setTransactions([]); // Set empty array on error
         }
 
-        // Fetch balance - use auth user email for ledger operations
-        // Reconcile with ledger first to ensure accuracy
+        // Fetch balance — on-chain RPC when VITE_ONCHAIN_CRYPTO=true
         try {
+          if (isOnChainCryptoMode()) {
+            const balanceData = await loadUserBalanceForUi(
+              address?.toLowerCase() ?? null,
+              authUserEmail
+            );
+            setBalance(balanceData);
+          } else {
           let balanceData = null;
           if (authUserEmail) {
             // Reconcile balance with ledger before fetching (using auth user email)
@@ -522,6 +527,7 @@ export default function Dashboard() {
           }
           
           setBalance(balanceData);
+          }
         } catch (err) {
           logger.debug("Balance fetch failed:", err);
         }
@@ -582,7 +588,8 @@ export default function Dashboard() {
       }
 
       try {
-        // Subscribe to balance changes (using email or address)
+        // Subscribe to balance changes (Supabase ledger only)
+        if (!isOnChainCryptoMode()) {
         const balanceChannel = supabase
           .channel(`balance-${identifier}`, {
             config: {
@@ -618,6 +625,8 @@ export default function Dashboard() {
             logger.debug("Balance subscription error - falling back to polling");
           }
         });
+        (window as Window & { __balanceChannel?: ReturnType<typeof supabase.channel> }).__balanceChannel = balanceChannel;
+        }
 
         // Subscribe to transaction changes (both from and to addresses for auto-refresh)
         const transactionChannel = supabase
@@ -661,9 +670,8 @@ export default function Dashboard() {
           }
         });
 
-      // Store channels for cleanup
-        (window as Window & { __balanceChannel?: ReturnType<typeof supabase.channel>; __transactionChannel?: ReturnType<typeof supabase.channel> }).__balanceChannel = balanceChannel;
-        (window as Window & { __balanceChannel?: ReturnType<typeof supabase.channel>; __transactionChannel?: ReturnType<typeof supabase.channel> }).__transactionChannel = transactionChannel;
+      // Store transaction channel for cleanup
+        (window as Window & { __transactionChannel?: ReturnType<typeof supabase.channel> }).__transactionChannel = transactionChannel;
       } catch (error: any) {
         // If realtime subscriptions fail, log and continue with polling only
         logger.debug("Realtime subscription setup failed, using polling only:", error);
@@ -682,6 +690,15 @@ export default function Dashboard() {
         const identifier = authUserEmail || address?.toLowerCase();
         
         if (identifier) {
+          if (isOnChainCryptoMode() && address) {
+            const updatedBalance = await loadUserBalanceForUi(
+              address.toLowerCase(),
+              authUserEmail
+            );
+            if (updatedBalance) {
+              setBalance(updatedBalance);
+            }
+          } else {
           // Reconcile balance first to ensure accuracy
           if (authUserEmail) {
             try {
@@ -696,6 +713,7 @@ export default function Dashboard() {
           if (updatedBalance) {
             setBalance(updatedBalance);
             logger.debug("Balance auto-fetched from Supabase:", updatedBalance.xbgl_balance);
+          }
           }
           
           // Auto-refresh transactions
@@ -743,10 +761,16 @@ export default function Dashboard() {
         // Refresh data when plots are purchased
         setLoading(true);
         try {
-          // Fetch balance using auth user email
           let balanceData = null;
-          if (authUserEmail) {
-            // Reconcile balance with ledger first
+          if (isOnChainCryptoMode()) {
+            balanceData = await loadUserBalanceForUi(
+              address?.toLowerCase() ?? null,
+              authUserEmail
+            );
+            if (address) {
+              await refreshWalletBalance(address);
+            }
+          } else if (authUserEmail) {
             try {
               await supabaseService.reconcileBalance(authUserEmail);
             } catch (reconcileError) {
@@ -764,10 +788,7 @@ export default function Dashboard() {
           }
 
           const [plots, portfolioData, txData] = await Promise.all([
-            supabaseService.getPlots({ 
-              ownerWallet: address,
-              ownerEmail: userEmail || undefined
-            }),
+            loadMergedOwnedPlots(address, userEmail || undefined),
             supabaseService.getPortfolios(address),
             authUserEmail ? supabaseService.getTransactionsWithLedger(
               authUserEmail,
@@ -788,8 +809,8 @@ export default function Dashboard() {
           setPortfolios(portfolioData || []);
           setTransactions(txData || []);
           
-          // Auto-correct balance based on plot purchases before setting state
-          if (balanceData && authUserEmail && plots && plots.length > 0) {
+          // Auto-correct balance based on plot purchases before setting state (ledger only)
+          if (!isOnChainCryptoMode() && balanceData && authUserEmail && plots && plots.length > 0) {
             // Calculate total spent on plots (100 xBGL per plot)
             const plotPrice = getPlotPriceInXBGL(); // 100 EUR equivalent in xBGL
             const plotCost = plots.length * plotPrice;
@@ -856,7 +877,14 @@ export default function Dashboard() {
           // Force refresh balance and transactions after a short delay to ensure updates are visible
           setTimeout(async () => {
             try {
-              // Auto-fetch balance from Supabase
+              if (isOnChainCryptoMode() && address) {
+                const refreshed = await loadUserBalanceForUi(
+                  address.toLowerCase(),
+                  authUserEmail
+                );
+                if (refreshed) setBalance(refreshed);
+                return;
+              }
               if (authUserEmail) {
                 // Reconcile first to ensure accuracy
                 try {
@@ -935,6 +963,16 @@ export default function Dashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       const authUserEmail = session?.user?.email?.toLowerCase() || userEmail?.toLowerCase() || null;
       
+      let balanceData = null;
+      if (isOnChainCryptoMode()) {
+        balanceData = await loadUserBalanceForUi(
+          address?.toLowerCase() ?? null,
+          authUserEmail
+        );
+        if (address) {
+          await refreshWalletBalance(address);
+        }
+      } else {
       // Reconcile balance with ledger first (using auth user email)
       if (authUserEmail) {
         try {
@@ -944,8 +982,6 @@ export default function Dashboard() {
         }
       }
       
-      // Fetch balance - use auth user email for ledger operations
-      let balanceData = null;
       if (authUserEmail) {
         balanceData = await supabaseService.getUserBalance(authUserEmail).catch((err: any) => {
           if (err?.status === 406 || err?.code === "PGRST301") {
@@ -954,15 +990,12 @@ export default function Dashboard() {
           throw err;
         });
       } else if (address) {
-        // Fallback to wallet address if no email
         balanceData = await supabaseService.getUserBalance(address.toLowerCase()).catch(() => null);
+      }
       }
 
       const [plots, portfolioData, txData] = await Promise.all([
-        supabaseService.getPlots({ 
-          ownerWallet: address,
-          ownerEmail: userEmail || undefined
-        }),
+        loadMergedOwnedPlots(address, userEmail || undefined),
         supabaseService.getPortfolios(address),
         authUserEmail ? supabaseService.getTransactionsWithLedger(
           authUserEmail,
@@ -1108,6 +1141,24 @@ export default function Dashboard() {
     setTransferring(true);
 
     try {
+      const toAddress = transferRecipient.trim();
+
+      if (isOnChainCryptoMode()) {
+        if (!signer || !address) {
+          throw new Error("Connect your wallet to send on-chain xBGL");
+        }
+        if (!/^0x[a-fA-F0-9]{40}$/.test(toAddress)) {
+          throw new Error("On-chain transfers require a wallet address (not email)");
+        }
+        const transferResult = await sendNativeTransfer(signer, toAddress, amount);
+        if (!transferResult.success) {
+          throw new Error(transferResult.error || "Transfer failed");
+        }
+        await refreshWalletBalance(address);
+        const refreshed = await loadUserBalanceForUi(address.toLowerCase(), userEmail);
+        setBalance(refreshed);
+        toast.success(`Transfer sent: ${transferResult.txHash.slice(0, 10)}...`);
+      } else {
       const { transferTokens, getAuthUserEmail } = await import("@/lib/supabase-service");
       const authUserEmail = await getAuthUserEmail();
       const fromAddress = authUserEmail || address?.toLowerCase() || "";
@@ -1116,13 +1167,9 @@ export default function Dashboard() {
         throw new Error("No sender address available");
       }
 
-      // Normalize recipient (could be email or wallet address)
-      const toAddress = transferRecipient.trim().toLowerCase();
-
-      // Execute transfer
       const transferResult = await transferTokens(
         fromAddress,
-        toAddress,
+        toAddress.toLowerCase(),
         amount,
         "xBGL",
         undefined,
@@ -1135,15 +1182,27 @@ export default function Dashboard() {
       if (!transferResult.success) {
         throw new Error(transferResult.error || "Transfer failed");
       }
-
-      // Add to recent recipients
-      if (!recentRecipients.includes(toAddress)) {
-        const updatedRecipients = [toAddress, ...recentRecipients].slice(0, 5);
-        setRecentRecipients(updatedRecipients);
-        localStorage.setItem(`recent_recipients_${fromAddress}`, JSON.stringify(updatedRecipients));
       }
 
-      toast.success(`Transfer completed! ${amount} xBGL sent to ${toAddress.slice(0, 10)}...`);
+      const recipientKey = toAddress.toLowerCase();
+      let storageFrom = address?.toLowerCase() || "";
+      if (!isOnChainCryptoMode()) {
+        const { getAuthUserEmail } = await import("@/lib/supabase-service");
+        const authUserEmail = await getAuthUserEmail();
+        storageFrom = authUserEmail || storageFrom;
+      }
+      if (storageFrom && !recentRecipients.includes(recipientKey)) {
+        const updatedRecipients = [recipientKey, ...recentRecipients].slice(0, 5);
+        setRecentRecipients(updatedRecipients);
+        localStorage.setItem(
+          `recent_recipients_${storageFrom}`,
+          JSON.stringify(updatedRecipients)
+        );
+      }
+
+      if (!isOnChainCryptoMode()) {
+        toast.success(`Transfer completed! ${amount} xBGL sent to ${toAddress.slice(0, 10)}...`);
+      }
 
       // Clear form
       setTransferAmount("");
@@ -1875,6 +1934,11 @@ export default function Dashboard() {
       return;
     }
 
+    if (isOnChainCryptoMode()) {
+      navigate(`/plot-purchase?plotId=${plotId}`);
+      return;
+    }
+
     setPurchasingItem(`plot-${plotId}`);
     try {
       // Check balance
@@ -2016,6 +2080,11 @@ export default function Dashboard() {
       return;
     }
 
+    if (isOnChainCryptoMode()) {
+      toast.info("Government plot purchases require on-chain settlement (coming soon).");
+      return;
+    }
+
     setPurchasingItem(`plot-${plot.id}`);
     try {
       // Check balance
@@ -2075,6 +2144,11 @@ export default function Dashboard() {
   const handlePurchaseResource = async (resource: any, quantity: number = 1) => {
     if (!address) {
       toast.error("Please connect your wallet");
+      return;
+    }
+
+    if (isOnChainCryptoMode()) {
+      toast.info("Resource purchases use on-chain xBGL (market contracts pending).");
       return;
     }
 
@@ -2159,6 +2233,11 @@ export default function Dashboard() {
   const handlePurchaseFromMarketplace = async (listing: any) => {
     if (!address) {
       toast.error("Please connect your wallet");
+      return;
+    }
+
+    if (isOnChainCryptoMode()) {
+      toast.info("Marketplace settlement is on-chain (escrow contract pending).");
       return;
     }
 

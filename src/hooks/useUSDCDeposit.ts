@@ -6,7 +6,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { convertUSDCToXBGL, getUSDCToXBGLRate } from "@/lib/exchange-rates";
+import {
+  convertAvaxToXBGL,
+  convertUSDCToXBGL,
+  getAvaxToXBGLRate,
+  getUSDCToXBGLRate,
+} from "@/lib/exchange-rates";
+import { isAvaxDepositNetwork } from "@/lib/networks";
 
 export interface DepositRecord {
   id: string;
@@ -67,8 +73,10 @@ export function useUSDCDeposit() {
     };
   }, []);
 
-  const loadExchangeRate = async () => {
-    const rate = await getUSDCToXBGLRate();
+  const loadExchangeRate = async (networkId?: string) => {
+    const rate = networkId && isAvaxDepositNetwork(networkId)
+      ? await getAvaxToXBGLRate()
+      : await getUSDCToXBGLRate();
     setExchangeRate(rate);
   };
 
@@ -132,7 +140,9 @@ export function useUSDCDeposit() {
         .limit(1);
       const primaryWallet = wallets?.[0]?.wallet_address?.toLowerCase() || null;
 
-      const xbglAmount = await convertUSDCToXBGL(usdcAmount);
+      const xbglAmount = isAvaxDepositNetwork(networkId)
+        ? await convertAvaxToXBGL(usdcAmount)
+        : await convertUSDCToXBGL(usdcAmount);
 
       const { data, error } = await supabase
         .from("usdc_deposits")
@@ -203,7 +213,9 @@ export function useUSDCDeposit() {
         throw new Error(result?.error || "Deposit confirmation failed");
       }
 
-      toast.success(`Deposit confirmed! ${deposit.xbgl_amount.toFixed(2)} xBGL credited to your account`);
+      toast.success(
+        `Deposit confirmed! ${deposit.xbgl_amount.toFixed(2)} xBGL credited (payment rail ERC-20 on chain 1337 when on-chain mode is enabled).`
+      );
       await loadDeposits();
       return true;
     } catch (error: any) {
@@ -247,9 +259,10 @@ export function useUSDCDeposit() {
     deposits,
     loading,
     exchangeRate,
+    reloadExchangeRate: loadExchangeRate,
     createDepositRecord,
     verifyAndCreditDeposit,
     submitTransactionHash,
-    refresh: loadDeposits
+    refresh: loadDeposits,
   };
 }

@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-// RPC provider removed - using Supabase only
+import { getJsonRpcProvider } from "./evm-provider";
 
 // Contract addresses - load from deployments or env
 const getContractAddresses = () => {
@@ -60,6 +60,12 @@ export const LAND_CONTRACT_ABI = [
   "function priceInAVAX() view returns (uint256)",
   "function salesActive() view returns (bool)",
   "function plotMinted(uint256) view returns (bool)",
+  "function activatePlot(uint256 plotId, address recipient)",
+  "function setMetadataURI(string calldata newuri)",
+  "function setPlotRegistrar(address registrar)",
+  "function plotRegistrar() view returns (address)",
+  "function owner() view returns (address)",
+  "function uri(uint256 id) view returns (string)",
   // ERC1155 functions
   "function balanceOf(address account, uint256 id) view returns (uint256)",
   "function balanceOfBatch(address[] calldata accounts, uint256[] calldata ids) view returns (uint256[])",
@@ -67,6 +73,7 @@ export const LAND_CONTRACT_ABI = [
   "function safeBatchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts, bytes calldata data)",
   "function setApprovalForAll(address operator, bool approved)",
   "function isApprovedForAll(address account, address operator) view returns (bool)",
+  "event PlotPurchasePending(uint256 indexed plotId, address indexed buyer, uint256 amount, address paymentToken, uint256 timestamp)",
   "event LandMinted(uint256 indexed plotId, address indexed owner, uint256 pricePaid, bool coldWallet, uint256 timestamp)",
   "event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value)",
   "event TransferBatch(address indexed operator, address indexed from, address indexed to, uint256[] ids, uint256[] values)",
@@ -112,16 +119,31 @@ export const TREASURY_ABI = [
   "function balanceAVAX() view returns (uint256)",
   "function balanceERC20(address token) view returns (uint256)",
   "function supportedTokens(address) view returns (bool)",
+  "function xbglToken() view returns (address)",
+  "function xbglPerAvaxE18() view returns (uint256)",
+  "function quoteXbglForAvax(uint256 avaxWei) view returns (uint256)",
+  "function depositAvaxForXbgl(uint256 minXbglOut) payable",
+  "function landContract() view returns (address)",
+  "function isPlotRegistered(uint256 plotId) view returns (bool)",
+  "function getPlotRecord(uint256 plotId) view returns (address buyer, uint256 pricePaid, address paymentToken, uint256 registeredAt, bool registered)",
+  "function plots(uint256 plotId) view returns (address buyer, uint256 pricePaid, address paymentToken, uint256 registeredAt, bool registered)",
   "event DepositAVAX(address indexed from, uint256 amount)",
+  "event AvaxSwappedForXbgl(address indexed buyer, uint256 avaxIn, uint256 xbglOut)",
   "event DepositERC20(address indexed from, address indexed token, uint256 amount)",
+  "event PlotRegistered(uint256 indexed plotId, address indexed buyer, uint256 pricePaid, address indexed paymentToken)",
 ];
 
 export const ERC20_ABI = [
   "function balanceOf(address account) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "function transferFrom(address from, address to, uint256 amount) returns (bool)",
   "function decimals() view returns (uint8)",
   "function symbol() view returns (string)",
   "function name() view returns (string)",
   "function totalSupply() view returns (uint256)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
 
 export const STAR_SYSTEM_ABI = [
@@ -202,20 +224,45 @@ export const ACCOUNT_REGISTRY_ABI = [
   "event SubAccountUnlinked(uint256 indexed parentAccountId, uint256 indexed childAccountId)",
 ];
 
-// Contract instances - DISABLED: Using Supabase only
 export function getLandContract(signer?: ethers.Signer) {
-  console.debug("Contract access disabled - using Supabase for all data");
-  return null;
+  const landAddress = CONTRACT_ADDRESSES.land;
+  if (!landAddress || landAddress.trim() === "" || landAddress === "native") {
+    return null;
+  }
+  try {
+    if (signer) {
+      return new ethers.Contract(landAddress, LAND_CONTRACT_ABI, signer);
+    }
+    return new ethers.Contract(landAddress, LAND_CONTRACT_ABI, getJsonRpcProvider());
+  } catch (e) {
+    console.debug("Land contract unavailable:", e);
+    return null;
+  }
 }
 
 export function hasLandContract(): boolean {
   const landAddress = CONTRACT_ADDRESSES.land;
-  return !!(landAddress && landAddress.trim() !== "");
+  return !!(
+    landAddress &&
+    landAddress.trim() !== "" &&
+    landAddress !== "native" &&
+    /^0x[a-fA-F0-9]{40}$/.test(landAddress)
+  );
 }
 
 export function getDigitalIDContract(signer?: ethers.Signer) {
-  console.debug("Contract access disabled - using Supabase for digital IDs");
-  return null;
+  const addr = CONTRACT_ADDRESSES.digitalID;
+  if (!addr || !ethers.isAddress(addr)) return null;
+  try {
+    const abi = [
+      "function ids(address user) view returns (string,string,uint256,bool)",
+      "function setActive(address user, bool active)",
+    ];
+    if (signer) return new ethers.Contract(addr, abi, signer);
+    return new ethers.Contract(addr, abi, getJsonRpcProvider());
+  } catch {
+    return null;
+  }
 }
 
 export function hasDigitalIDContract(): boolean {
@@ -224,8 +271,14 @@ export function hasDigitalIDContract(): boolean {
 }
 
 export function getTreasuryContract(signer?: ethers.Signer) {
-  console.debug("Contract access disabled - using Supabase for treasury");
-  return null;
+  const addr = CONTRACT_ADDRESSES.treasury;
+  if (!addr || !ethers.isAddress(addr)) return null;
+  try {
+    if (signer) return new ethers.Contract(addr, TREASURY_ABI, signer);
+    return new ethers.Contract(addr, TREASURY_ABI, getJsonRpcProvider());
+  } catch {
+    return null;
+  }
 }
 
 export function hasTreasuryContract(): boolean {
@@ -234,16 +287,25 @@ export function hasTreasuryContract(): boolean {
 }
 
 export function getERC20Contract(address: string, signer?: ethers.Signer) {
-  console.debug("Contract access disabled - using Supabase for token balances");
-  return null;
+  if (!address || !ethers.isAddress(address)) return null;
+  try {
+    if (signer) return new ethers.Contract(address, ERC20_ABI, signer);
+    return new ethers.Contract(address, ERC20_ABI, getJsonRpcProvider());
+  } catch {
+    return null;
+  }
 }
 
-// Note: xBGL is the native coin, not an ERC20 token
-// The xbglToken address in CONTRACT_ADDRESSES is for reference only
-// Native xBGL balance is accessed via provider.getBalance(address)
+export function getXBGLTokenContract(signer?: ethers.Signer) {
+  const addr = CONTRACT_ADDRESSES.xbglToken;
+  if (!addr || !ethers.isAddress(addr)) return null;
+  return getERC20Contract(addr, signer);
+}
+
+/** True when an ERC-20 xBGL deployment exists (sandbox C-Chain). On ChaosStar, xBGL is native. */
 export function hasXBGLTokenContract(): boolean {
-  // xBGL is native, so this always returns true if we have an RPC connection
-  return true;
+  const addr = CONTRACT_ADDRESSES.xbglToken;
+  return !!(addr && ethers.isAddress(addr));
 }
 
 // Alias for backward compatibility
@@ -302,8 +364,22 @@ export async function loadContractAddresses(): Promise<boolean> {
 
       // Try 1: Public JSON file (skip backend API - using Supabase now)
 
-      // Try 2: Public JSON file (from public folder first, then deployments folder, then root)
-      const filePaths = ["/addresses.json", "/deployments/addresses.json"];
+      let chainIdForDeployments: number | null = null;
+      try {
+        const { resolveNetworkFromRpc } = await import("@/lib/chain-network");
+        const net = await resolveNetworkFromRpc();
+        chainIdForDeployments = net.chainId;
+      } catch {
+        /* use static files only */
+      }
+
+      const filePaths = [
+        ...(chainIdForDeployments
+          ? [`/sandbox/deployments/${chainIdForDeployments}-latest.json`]
+          : []),
+        "/addresses.json",
+        "/deployments/addresses.json",
+      ];
       for (const filePath of filePaths) {
         try {
           const response = await fetch(filePath, {
@@ -315,9 +391,31 @@ export async function loadContractAddresses(): Promise<boolean> {
           if (response.ok) {
             const data = await response.json();
             // Accept if it has any contract address (land, accountRegistry, etc.)
-            if (data.land || data.accountRegistry || data.addresses?.land || data.addresses?.accountRegistry) {
-              const addresses = data.addresses || data;
-              Object.assign(CONTRACT_ADDRESSES, addresses);
+            const addresses = data.contracts || data.addresses || data;
+            if (
+              addresses.land ||
+              data.land ||
+              addresses.SaraktLandV2 ||
+              data.accountRegistry ||
+              addresses.accountRegistry
+            ) {
+              Object.assign(CONTRACT_ADDRESSES, {
+                land: addresses.land || data.land || addresses.SaraktLandV2 || "",
+                xbglToken:
+                  addresses.xbglToken ||
+                  data.xbglToken ||
+                  addresses.XBGLToken ||
+                  CONTRACT_ADDRESSES.xbglToken,
+                treasury:
+                  addresses.treasury || data.treasury || addresses.SaraktTreasury || "",
+                plotRegistry:
+                  addresses.treasury || data.treasury || addresses.SaraktTreasury || "",
+                digitalID:
+                  addresses.digitalID ||
+                  data.digitalID ||
+                  addresses.LocalDigitalID ||
+                  "",
+              });
               // localStorage removed - using Supabase only
               addressesLoaded = true;
               console.log(`✓ Contract addresses loaded from ${filePath}:`, addresses);

@@ -9,8 +9,11 @@ import {
   getBestWallet,
   requestProviderAnnouncements,
   isWalletConnectConfigured,
+  addPaymentNetwork,
   type WalletInfo,
 } from "@/lib/wallet";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { formatPaymentXbglBalance, loadPaymentContractAddresses } from "@/lib/payment-contracts";
 import { saveConnectedWallet } from "@/lib/supabase-service";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -73,6 +76,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const addrToCheck = addr || address;
     if (!addrToCheck) return;
 
+    if (isOnChainCryptoMode()) {
+      try {
+        await loadPaymentContractAddresses();
+        const { formatted } = await formatPaymentXbglBalance(addrToCheck);
+        setBalance(formatted);
+        return;
+      } catch (error) {
+        logger.debug("Failed to fetch on-chain xBGL balance:", error);
+        setBalance("0");
+        return;
+      }
+    }
+
     try {
       const { getUserBalance } = await import("@/lib/supabase-service");
       const balanceData = await getUserBalance(addrToCheck).catch((err: any) => {
@@ -127,6 +143,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
     });
     eth.on("chainChanged", () => {
+      if (isOnChainCryptoMode()) {
+        void addPaymentNetwork(eth);
+      }
       void refreshBalance(connectedAddr);
       const web3Provider = new ethers.BrowserProvider(eth);
       web3Provider.getSigner().then(setSigner).catch(() => {});
@@ -146,6 +165,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setSigner(newSigner);
         setAddress(newAddress);
         setWalletProvider(eip1193);
+        if (isOnChainCryptoMode()) {
+          await addPaymentNetwork(eip1193);
+        }
         await refreshBalance(newAddress);
         toast.success("Wallet connected!");
         saveConnectedWallet(newAddress).catch(() => {});
@@ -175,6 +197,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       saveConnectedWallet(newAddress).catch(() => {});
 
       const listenerTarget = eip1193 ?? selectedWallet.provider ?? (window as any).ethereum;
+      if (isOnChainCryptoMode()) {
+        await addPaymentNetwork(listenerTarget);
+      }
       attachEip1193Listeners(listenerTarget, newAddress);
     } catch (error: any) {
       logger.error("Failed to connect wallet:", error);
@@ -245,6 +270,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
 
       ethereum.on("chainChanged", () => {
+        if (isOnChainCryptoMode()) {
+          void (async () => {
+            await addPaymentNetwork(ethereum);
+            if (address) {
+              const web3Provider = new ethers.BrowserProvider(ethereum);
+              web3Provider.getSigner().then(setSigner).catch(() => {});
+              void refreshBalance(address);
+            }
+          })();
+          return;
+        }
         setAddress(null);
         setSigner(null);
         setBalance("0");

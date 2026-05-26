@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { displayTokenSymbol } from "@/lib/game-currency";
 
 interface TransactionItemProps {
   transaction: {
@@ -67,7 +68,9 @@ export const TransactionItem = memo(function TransactionItem({ transaction }: Tr
       </div>
       <div className="text-right">
         <div className={`font-semibold ${isIncoming ? 'text-green-500' : 'text-red-500'}`}>
-          {transaction.amount ? `${isOutgoing ? '-' : isIncoming ? '+' : ''}${Number(transaction.amount).toFixed(2)} ${transaction.token_type || 'xBGL'}` : '-'}
+          {transaction.amount
+            ? `${isOutgoing ? "-" : isIncoming ? "+" : ""}${Number(transaction.amount).toFixed(2)} ${displayTokenSymbol(transaction.token_type)}`
+            : "-"}
         </div>
         <div className="text-xs text-muted-foreground">
           {transaction.created_at

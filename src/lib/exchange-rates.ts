@@ -61,6 +61,23 @@ export async function convertUSDCToXBGL(usdcAmount: number): Promise<number> {
   return xbglAmount;
 }
 
+/** AVAX → EUR (via USD) → xBGL; aligned with plot AVAX price on 1337. */
+export async function convertAvaxToXBGL(avaxAmount: number): Promise<number> {
+  const { convertAvaxAmountToXBGL } = await import("@/lib/xbgl-avax-pricing");
+  return convertAvaxAmountToXBGL(avaxAmount);
+}
+
+export async function getAvaxToXBGLRate(): Promise<number> {
+  return convertAvaxToXBGL(1);
+}
+
+/** Inverse of getAvaxToXBGLRate — AVAX required to receive `xbglAmount`. */
+export async function convertXBGLToAvax(xbglAmount: number): Promise<number> {
+  const rate = await getAvaxToXBGLRate();
+  if (rate <= 0) return 0;
+  return xbglAmount / rate;
+}
+
 /**
  * Get current USDC to xBGL exchange rate (for display)
  */

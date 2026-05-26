@@ -1,0 +1,26 @@
+{
+  "chainId": 1337,
+  "rpc": "http://192.168.88.62:9650/ext/bc/C/rpc",
+  "deployedAt": "2026-05-19",
+  "script": "DeployLocalAvax.s.sol",
+  "deployer": null,
+  "chaosstarXbglReference": null,
+  "chaosstarChainId": 8888,
+  "contracts": {
+    "SaraktLandV2": "0xbef9a18c1989fdda0b20d612e9db707e45fe51ac",
+    "XBGLToken": "0xf75c4c6b67c0025ab8c76a3daf86e1d315f44641",
+    "ReserveMintController": "0x87fdba87da0f2ac43482ceb08dd69316ba9cac35",
+    "SaraktTreasury": "0xab7417c566e38a08d718207de9e0454ab2dddf43",
+    "LocalDigitalID": "0xb430e012816e4c2abf64b07c8e9e488e6d388556"
+  },
+  "params": {
+    "phase1PriceXBGL": "195583300000000000000",
+    "phase1PriceAVAX": "0",
+    "depositAvaxPerPlotEur100": "12061403509000000000",
+    "plotPriceEur": 100,
+    "eurToXbgl": "1.955833",
+    "avaxUsdUsed": 9.12,
+    "eurToUsdcUsed": 1.1,
+    "salesActive": true
+  }
+}

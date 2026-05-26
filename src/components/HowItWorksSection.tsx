@@ -4,20 +4,20 @@ import { Wallet, MapPin, Trophy } from 'lucide-react';
 const steps = [
   {
     icon: Wallet,
-    title: 'Deposit USDC',
-    description: 'Convert USDC to xBGL through our secure deposit system',
+    title: 'Activate Your Account',
+    description: 'Deposit USDC and convert to xBGL to unlock participation across the Sarakt economy',
     step: 1,
   },
   {
     icon: MapPin,
-    title: 'Purchase Plot',
-    description: 'Get your plot for 100 EUR (~196 xBGL)',
+    title: 'Secure Your First Asset',
+    description: 'Acquire land and choose your path: operate property, join the workforce, or launch production',
     step: 2,
   },
   {
     icon: Trophy,
-    title: 'Win Prizes',
-    description: 'Chance to win 1 BTC or receive income structure',
+    title: 'Scale Into Governance',
+    description: 'Expand from local operations to city, planet, and solar-system coordination as the world evolves',
     step: 3,
   },
 ];
@@ -34,10 +34,10 @@ const HowItWorksSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="section-title mb-4">Three Simple Steps</h2>
+          <h2 className="section-title mb-4">How Sarakt Works</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Join thousands of pioneers in the Chaos Star Universe—where citizen demand powers the economy and your
-            future profits.
+            Sarakt is the Genesis world of Chaos Star Universe - a World-as-a-Service platform where ownership, AI
+            populations, and interdependent economies work together.
           </p>
         </motion.div>
 

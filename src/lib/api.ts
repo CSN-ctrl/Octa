@@ -282,7 +282,7 @@ export async function describeAvalancheSubnet(subnetName: string): Promise<Avala
     name: subnetName,
     blockchain_id: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
     rpc_url: "http://127.0.0.1:24362/ext/bc/ChaosStar/rpc",
-    chain_id: 8088,
+    chain_id: 8888,
   };
 }
 

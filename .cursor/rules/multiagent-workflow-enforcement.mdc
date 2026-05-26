@@ -1,0 +1,58 @@
+---
+description: Enforce the project multi-agent execution workflow for analysis, planning, parallel implementation, testing, and review.
+globs:
+alwaysApply: true
+---
+
+# Multi-agent workflow enforcement
+
+Use subagents as a coordinated engineering team, not as a single generalist.
+
+## Required execution order
+
+For non-trivial implementation tasks, follow this sequence:
+
+1. `@analyst` first
+   - Produce requirements, risks, missing information, and delegation map.
+2. `@planner` second
+   - Produce phased plan, dependencies, and parallelization map.
+3. `/multitask` implementation
+   - Delegate to `@backend`, `@frontend`, and/or `@database` in parallel when scopes do not overlap.
+4. Quality gates
+   - Run `@security-auditor` for auth, API, DB, input-handling, or integration changes.
+   - Run `@tester` after implementation to add and run tests.
+   - Run `@reviewer` before final handoff.
+
+## Parallelization rules
+
+- Do not run parallel agents against the same files.
+- Define file ownership before multitask fan-out.
+- Prefer bounded domains per agent:
+  - backend: API/business logic
+  - frontend: UI/client behavior
+  - database: schema/SQL/migrations
+
+## Multitask trigger
+
+When `@planner` output (or equivalent planning step) identifies 2 or more independent workstreams:
+
+1. Recommend `/multitask` explicitly before implementation starts.
+2. Name the proposed agent split (for example: backend/frontend/database).
+3. Require a quick ownership check to avoid overlap conflicts.
+
+If workstreams are tightly coupled or likely to touch the same files:
+- Do not force `/multitask`.
+- Recommend sequential execution with a short rationale.
+
+## Safety defaults
+
+- Keep `security-auditor` and `reviewer` read-only.
+- Start with 2-3 agents unless broader parallelization is clearly justified.
+- If requirements are ambiguous, block implementation and ask focused questions.
+
+## Output expectations
+
+- Every phase reports:
+  - what changed
+  - verification evidence
+  - risks or open assumptions

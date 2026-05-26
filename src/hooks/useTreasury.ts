@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
+import { ethers } from "ethers";
 import * as supabaseService from "@/lib/supabase-service";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { getPaymentRpcUrl } from "@/config/payment-network";
+import { formatPaymentXbglBalance } from "@/lib/payment-balance";
+import { getNativeBalanceWei } from "@/lib/chain-network";
 
 export interface TreasuryBalances {
   avax: string;
@@ -21,6 +26,22 @@ export function useTreasury(treasuryAddress?: string) {
 
     setLoading(true);
     try {
+      if (isOnChainCryptoMode()) {
+        const [{ formatted }, nativeWei] = await Promise.all([
+          formatPaymentXbglBalance(treasuryAddress),
+          getNativeBalanceWei(treasuryAddress, getPaymentRpcUrl()),
+        ]);
+        const avaxHuman = ethers.formatEther(nativeWei);
+        setBalances({
+          avax: formatted,
+          tokens: {
+            xBGL: { balance: formatted, symbol: "xBGL", decimals: 18 },
+            AVAX: { balance: avaxHuman, symbol: "AVAX", decimals: 18 },
+          },
+        });
+        return;
+      }
+
       // Fetch treasury balance from Supabase
       const balanceData = await supabaseService.getUserBalance(treasuryAddress);
       
@@ -72,6 +93,11 @@ export function useTreasury(treasuryAddress?: string) {
 
   useEffect(() => {
     fetchBalances();
+
+    if (isOnChainCryptoMode()) {
+      const interval = setInterval(() => void fetchBalances(), 30_000);
+      return () => clearInterval(interval);
+    }
     
     // Subscribe to real-time updates if address provided
     if (treasuryAddress) {

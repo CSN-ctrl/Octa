@@ -762,6 +762,19 @@ domains:
       - "video production"
     path_triggers:
       - ".cursor/skills/video/**"
+  circle_use_arc:
+    required_skills:
+      - use-arc
+    intent_triggers:
+      - "arc"
+      - "arc testnet"
+      - "use arc"
+      - "usdc gas"
+      - "deploy to arc"
+      - "cctp to arc"
+      - "bridge usdc to arc"
+    path_triggers:
+      - ".cursor/skills/use-arc/**"
   # awesome-cursor-skills - https://github.com/spencerpauly/awesome-cursor-skills (local copy: .cursor/skills/acs-*)
   # Regenerate: node scripts/governance/generate-acs-skill-routing.cjs
   awesome_accessibility_auditing:
@@ -1440,6 +1453,7 @@ skill_catalog:
     - acs-writing-commit-messages
     - acs-writing-copy
     - acs-writing-tests
+    - use-arc
     - figma-code-connect
     - figma-create-design-system-rules
     - figma-create-new-file

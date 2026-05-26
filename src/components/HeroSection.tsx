@@ -40,7 +40,7 @@ const HeroSection = () => {
           className="badge-primary mb-8 inline-flex items-center gap-2"
         >
           <Zap className="w-3 h-3" />
-          Genesis Phase • Limited to 10,000 Pioneers
+          Chaos Star Universe • Sarakt Genesis • Limited to 10,000 Early Participants
         </motion.div>
 
         {/* Title */}
@@ -60,7 +60,9 @@ const HeroSection = () => {
           transition={{ delay: 0.5 }}
           className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed text-balance font-medium"
         >
-          Own digital land. Build your empire. <span className="text-gold font-semibold">Win 1 BTC.</span>
+          Sarakt is the Genesis world of Chaos Star Universe - a professional World-as-a-Service platform where you
+          own digital land, build economic infrastructure, and scale toward planetary governance.{" "}
+          <span className="text-gold font-semibold">Genesis rewards are live.</span>
         </motion.p>
 
         {/* Live Stats */}
@@ -118,10 +120,10 @@ const HeroSection = () => {
           className="flex flex-col items-center gap-4"
         >
           <button className="btn-primary-glow text-lg animate-pulse-glow">
-            Join Genesis Phase
+            Enter Sarakt Genesis
           </button>
           <p className="text-sm text-muted-foreground">
-            Starting at <span className="text-foreground font-medium">100 EUR</span> (~196 xBGL) per plot
+            Initial Land Offering from <span className="text-foreground font-medium">100 EUR</span> (~196 xBGL) per plot
           </p>
         </motion.div>
       </motion.div>

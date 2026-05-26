@@ -22,6 +22,13 @@ import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { logger } from "@/lib/logger";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { displayTokenSymbol, isXbglTokenType } from "@/lib/game-currency";
+import {
+  getOnChainExplorerTxUrl,
+  loadOnChainTransactionHistory,
+  type OnChainHistoryRow,
+} from "@/lib/onchain-transaction-history";
 import React from "react";
 
 type TransactionDB = Tables<"transactions">;
@@ -67,6 +74,25 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
     setError(null);
     
     try {
+      if (isOnChainCryptoMode() && address) {
+        const onChain = await loadOnChainTransactionHistory(address, limit);
+        const formatted: Transaction[] = onChain.map((tx: OnChainHistoryRow) => ({
+          id: tx.id,
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          value: tx.value,
+          timestamp: tx.timestamp,
+          status: tx.status,
+          type: tx.type,
+          token_type: tx.token_type,
+          plot_ids: tx.plot_ids,
+          metadata: tx.metadata,
+        }));
+        setTransactions(formatted);
+        return;
+      }
+
       let data: TransactionDB[] = [];
       
       // Use email-based lookup if available (for ledger-aware queries)
@@ -158,6 +184,10 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
 
   useEffect(() => {
     loadTransactions();
+
+    if (isOnChainCryptoMode()) {
+      return;
+    }
 
     // Subscribe to real-time updates
     if (!address && !userEmail) return;
@@ -260,6 +290,9 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
     if (!hash || hash.startsWith("treasury_") || hash.startsWith("plot_") || hash.startsWith("gov_")) {
       return null;
     }
+    if (isOnChainCryptoMode()) {
+      return getOnChainExplorerTxUrl(hash);
+    }
     const rpcUrl = import.meta.env.VITE_AVALANCHE_RPC || "";
     if (rpcUrl.includes("api.avax.network")) {
       return `https://snowtrace.io/tx/${hash}`;
@@ -275,7 +308,7 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
     if (isNaN(numValue)) return "0";
     
     // For xBGL, show as-is (already in correct units)
-    if (tokenType === "xBGL" || tokenType === "XBGL") {
+    if (isXbglTokenType(tokenType)) {
       return numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     
@@ -495,7 +528,8 @@ export const TransactionHistory = React.memo<TransactionHistoryProps>(({
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Amount:</span>
                           <span className={`text-lg font-bold ${isIncoming ? "text-green-400" : "text-red-400"}`}>
-                            {isIncoming ? "+" : "-"}{formatValue(tx.value, tx.token_type)} {tx.token_type || "xBGL"}
+                            {isIncoming ? "+" : "-"}{formatValue(tx.value, tx.token_type)}{" "}
+                            {displayTokenSymbol(tx.token_type)}
                           </span>
                         </div>
                         

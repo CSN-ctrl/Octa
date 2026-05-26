@@ -1,6 +1,7 @@
 import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { landMetadataDevPlugin } from "./plugins/land-metadata-dev";
 
 /** Figma MCP html-to-design capture — dev only (blocked by production CSP in vercel.json). */
 const figmaCaptureDevOnly = () => ({
@@ -19,9 +20,12 @@ const bypassHostCheck = () => ({
     // Insert middleware before host check to always allow requests
     server.middlewares.stack.unshift({
       route: "",
-      handle: (req: any, res: any, next: any) => {
-        // Set a valid host header to bypass check
-        if (req.headers.host) {
+      handle: (req: any, _res: any, next: any) => {
+        const path = (req.url as string | undefined)?.split("?")[0] ?? "";
+        // NFT metadata/image must keep the real Host so MetaMask gets reachable URLs
+        const preserveHost =
+          path.startsWith("/metadata/") || path.startsWith("/plot-preview");
+        if (req.headers.host && !preserveHost) {
           req.headers.host = "localhost:8080";
         }
         next();
@@ -36,6 +40,19 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0", // Expose on local network
     port: 8080,
     strictPort: false,
+    // Browser CSP blocks cross-origin LAN RPC; proxy through Vite in dev.
+    proxy: {
+      "/avax-rpc": {
+        target: "http://192.168.88.62:9650",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/avax-rpc/, "/ext/bc/C/rpc"),
+      },
+      "/chaosstar-rpc": {
+        target: "http://127.0.0.1:24362",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/chaosstar-rpc/, "/ext/bc/ChaosStar/rpc"),
+      },
+    },
     hmr: {
       protocol: "ws",
       host: "localhost",
@@ -53,6 +70,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    landMetadataDevPlugin(),
     mode === "development" && figmaCaptureDevOnly(),
     mode === "development" && bypassHostCheck(),
   ].filter(Boolean),

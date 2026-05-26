@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
+import { displayTokenSymbol } from "@/lib/game-currency";
 
 type AdminTreasuryTransactionsPanelProps = {
   loadingTreasuryTransactions: boolean;
@@ -151,7 +152,7 @@ export function AdminTreasuryTransactionsPanel({
                         </TableCell>
                         <TableCell className="px-2 py-2">
                           <Badge variant={isUSDC ? "default" : "outline"} className={isUSDC ? "bg-blue-500/20 text-blue-300" : ""}>
-                            {tx.token_type || "xBGL"}
+                            {displayTokenSymbol(tx.token_type)}
                           </Badge>
                         </TableCell>
                         <TableCell className="px-2 py-2 text-xs whitespace-nowrap">{new Date(tx.created_at).toLocaleString()}</TableCell>

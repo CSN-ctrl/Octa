@@ -1,0 +1,8 @@
+{
+  "chainId": 8888,
+  "network": "ChaosStar",
+  "symbol": "xBGL",
+  "decimals": 18,
+  "address": "0x0000000000000000000000000000000000000000",
+  "note": "Serve as /chaosstar/deployments/xbgl-address.json when the canonical ChaosStar xBGL ERC-20 address is known."
+}

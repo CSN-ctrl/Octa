@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { History, Loader2, RefreshCw, Send, Shield, Wallet } from "lucide-react";
+import { displayTokenSymbol } from "@/lib/game-currency";
 
 type TransactionFilter = "all" | "treasury" | "admin" | "user";
 
@@ -155,7 +156,7 @@ export function AdminTransactionsPanel({
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{tx.token_type || "xBGL"}</Badge>
+                          <Badge variant="outline">{displayTokenSymbol(tx.token_type)}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge

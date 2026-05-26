@@ -1,0 +1,8 @@
+{
+  "chainId": 8888,
+  "network": "ChaosStar",
+  "symbol": "xBGL",
+  "decimals": 18,
+  "address": "0x0000000000000000000000000000000000000000",
+  "note": "Copy to xbgl-address.json after the xBGL ERC-20 is registered on ChaosStar. Native-only xBGL on 8888 has no address — deploy XBGLToken on 1337 without a reference."
+}

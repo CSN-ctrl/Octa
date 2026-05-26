@@ -22,6 +22,8 @@ import { NetworkTopology } from "@/components/NetworkTopology";
 import { useNavigate } from "react-router-dom";
 import { LazyImage } from "@/components/ui/LazyImage";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { GAME_CURRENCY_SYMBOL } from "@/lib/game-currency";
 
 // Real planet data is now fetched from blockchain contracts via useRealPlanetStats hook
 
@@ -30,10 +32,11 @@ export default function UnifiedUniverse() {
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [cityView, setCityView] = useState<"info" | "grid" | "management">("grid");
-  const { plotsSold, plotsRemaining, priceInAVAX, userPlots } = useLandPlots();
+  const { plotsSold, plotsRemaining, priceInXBGL, userPlots } = useLandPlots();
   const { balances } = useTreasury();
   const { address, isConnected, balance } = useWallet();
-  
+  const gameSymbol = isOnChainCryptoMode() ? GAME_CURRENCY_SYMBOL : "AVAX";
+
   // Use REAL celestial forge data from blockchain/API (NOT mock)
   const {
     starSystems,
@@ -615,7 +618,7 @@ export default function UnifiedUniverse() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground">Treasury</span>
-                        <span className="font-bold">{balances.avax || "0"} AVAX</span>
+                        <span className="font-bold">{balances.avax || "0"} {gameSymbol}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -734,7 +737,7 @@ export default function UnifiedUniverse() {
                     Tribute: {system.tribute_percent}%
                   </Badge>
                   <Badge variant="outline" className="text-sm">
-                    Treasury: {balances.avax || "0"} AVAX
+                    Treasury: {balances.avax || "0"} {gameSymbol}
                   </Badge>
                 </div>
               </div>
@@ -956,7 +959,7 @@ export default function UnifiedUniverse() {
                     <p className="text-xs text-muted-foreground">Tribute percent from subnet configuration</p>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Treasury Balance (AVAX)</label>
+                    <label className="text-sm font-medium">Treasury Balance ({gameSymbol})</label>
                     <Input 
                       type="text" 
                       value={balances.avax || "0"} 
@@ -1142,7 +1145,7 @@ export default function UnifiedUniverse() {
                   totalPlots={cityPlots.length || undefined}
                   isConnected={isConnected}
                   isLoading={loadingCityPlots}
-                  plotPrice={priceInAVAX}
+                  plotPrice={priceInXBGL}
                   ownedPlotIds={ownedPlotIds}
                   onPlotClick={(plot) => {
                     // Navigate to purchase page with the clicked plot ID
@@ -1779,7 +1782,7 @@ export default function UnifiedUniverse() {
                             <Coins className="h-5 w-5 text-accent" />
                             <span className="text-sm text-muted-foreground">Wallet Balance</span>
                           </div>
-                          <p className="text-3xl font-bold">{parseFloat(balance || "0").toFixed(4)} AVAX</p>
+                          <p className="text-3xl font-bold">{parseFloat(balance || "0").toFixed(4)} {gameSymbol}</p>
                         </div>
                         <div className="glass p-4 rounded-lg">
                           <div className="flex items-center gap-2 mb-2">
@@ -1787,7 +1790,7 @@ export default function UnifiedUniverse() {
                             <span className="text-sm text-muted-foreground">Treasury Balance</span>
                           </div>
                           <p className="text-3xl font-bold">
-                            {balances?.avax ? parseFloat(balances.avax).toFixed(2) : "0.00"} AVAX
+                            {balances?.avax ? parseFloat(balances.avax).toFixed(2) : "0.00"} {gameSymbol}
                           </p>
                         </div>
                       </div>

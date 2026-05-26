@@ -4,7 +4,10 @@
 
 import { ethers } from "ethers";
 import { getLandContract, hasLandContract } from "./contracts";
-// RPC provider removed - using Supabase only
+import {
+  CHAIN_LAND_SCAN_MAX_PLOT_ID,
+  fetchChainLandHoldings,
+} from "./chain-land-holdings";
 
 export interface OwnedPlot {
   plotId: number;
@@ -32,81 +35,9 @@ export async function fetchOwnedPlots(
   }
 
   try {
-    // RPC provider removed - using Supabase only
-    console.debug("RPC provider removed - using Supabase only");
-    return [];
-    
-    const contract = getLandContract();
-    if (!contract) {
-      console.debug("Contract instance is null");
-      return [];
-    }
-
-    // First, try to get total plots to know the range
-    let totalPlots = maxPlots;
-    try {
-      const total = await contract.TOTAL_PLOTS();
-      totalPlots = Math.min(Number(total), maxPlots);
-    } catch (error) {
-      console.debug("Could not get TOTAL_PLOTS, using default:", error);
-    }
-
-    const ownedPlots: number[] = [];
-    const batchSize = 100;
-
-    // Check ownership in batches
-    for (let i = 1; i <= totalPlots; i += batchSize) {
-      const ids = Array.from(
-        { length: Math.min(batchSize, totalPlots - i + 1) },
-        (_, idx) => i + idx
-      );
-      const accounts = new Array(ids.length).fill(address);
-
-      try {
-        const balances = await contract.balanceOfBatch(accounts, ids);
-        balances.forEach((balance: bigint, index: number) => {
-          if (balance > 0n) {
-            ownedPlots.push(ids[index]);
-          }
-        });
-      } catch (error: any) {
-        // Check if this is an RPC connection error (expected when node isn't running)
-        const isRpcError = error?.message?.includes('404') || 
-                          error?.message?.includes('Not Found') ||
-                          error?.code === 'NETWORK_ERROR' ||
-                          error?.code === 'SERVER_ERROR' ||
-                          error?.status === 404;
-        
-        if (isRpcError) {
-          // RPC node not available - this is expected if local node isn't running
-          console.debug("RPC node not available, skipping plot checks");
-          return [];
-        }
-        
-        // If batch fails, try individual checks
-        console.debug(`Batch check failed for plots ${i}-${i + batchSize - 1}, trying individual:`, error.message);
-        for (const plotId of ids) {
-          try {
-            const balance = await contract.balanceOf(address, plotId);
-            if (balance > 0n) {
-              ownedPlots.push(plotId);
-            }
-          } catch (individualError: any) {
-            // Check if individual call also failed due to RPC
-            const isIndividualRpcError = individualError?.message?.includes('404') || 
-                                         individualError?.message?.includes('Not Found') ||
-                                         individualError?.code === 'NETWORK_ERROR';
-            if (isIndividualRpcError) {
-              // RPC not available, stop trying
-              return [];
-            }
-            // Skip this plot for other errors
-          }
-        }
-      }
-    }
-
-    return ownedPlots.sort((a, b) => a - b);
+    const scanMax = Math.min(maxPlots, CHAIN_LAND_SCAN_MAX_PLOT_ID);
+    const holdings = await fetchChainLandHoldings(address);
+    return holdings.mintedPlotIds.filter((id) => id <= scanMax).sort((a, b) => a - b);
   } catch (error) {
     console.error("Failed to fetch owned plots:", error);
     return [];
@@ -133,62 +64,28 @@ export async function fetchOwnedPlotsDetailed(
   }
 
   try {
+    const scanMax = Math.min(maxPlots, CHAIN_LAND_SCAN_MAX_PLOT_ID);
+    const holdings = await fetchChainLandHoldings(address);
     const contract = getLandContract();
-    if (!contract) {
-      return [];
-    }
+    if (!contract) return [];
 
-    const ownedPlots: OwnedPlot[] = [];
-    const batchSize = 100;
+    const plotIds = [
+      ...new Set([
+        ...holdings.mintedPlotIds,
+        ...holdings.pendingPlotIds,
+      ]),
+    ].filter((id) => id <= scanMax);
 
-    // Check ownership in batches
-    for (let i = 1; i <= maxPlots; i += batchSize) {
-      const ids = Array.from(
-        { length: Math.min(batchSize, maxPlots - i + 1) },
-        (_, idx) => i + idx
-      );
-      const accounts = new Array(ids.length).fill(address);
-
-      try {
-        const balances = await contract.balanceOfBatch(accounts, ids);
-        balances.forEach((balance: bigint, index: number) => {
-          if (balance > 0n) {
-            ownedPlots.push({
-              plotId: ids[index],
-              balance,
-            });
-          }
-        });
-      } catch (error: any) {
-        // Check if this is an RPC connection error
-        const isRpcError = error?.message?.includes('404') || 
-                          error?.message?.includes('Not Found') ||
-                          error?.code === 'NETWORK_ERROR' ||
-                          error?.status === 404;
-        
-        if (isRpcError) {
-          // RPC node not available - return what we have so far
-          console.debug("RPC node not available, returning partial results");
-          return ownedPlots.sort((a, b) => a.plotId - b.plotId);
-        }
-        
-        console.debug(`Failed to check plots ${i}-${i + batchSize - 1}:`, error);
-        // Continue with next batch
-      }
-    }
-
-    // Check for pending purchases
-    for (const plot of ownedPlots) {
-      try {
-        const pendingBuyer = await contract.pendingBuyer(plot.plotId);
-        const isMinted = await contract.plotMinted(plot.plotId);
-        if (pendingBuyer && pendingBuyer.toLowerCase() === address.toLowerCase() && !isMinted) {
-          plot.pending = true;
-        }
-      } catch (error) {
-        // Skip if check fails
-      }
-    }
+    const ownedPlots: OwnedPlot[] = await Promise.all(
+      plotIds.map(async (plotId) => {
+        const balance = await contract.balanceOf(address, plotId).catch(() => 0n);
+        return {
+          plotId,
+          balance,
+          pending: holdings.pendingPlotIds.includes(plotId),
+        };
+      })
+    );
 
     return ownedPlots.sort((a, b) => a.plotId - b.plotId);
   } catch (error) {
@@ -216,11 +113,6 @@ export async function checkPlotOwnership(
   }
 
   try {
-    // RPC provider removed - using Supabase only
-    // Contract interactions disabled
-    console.debug("RPC provider removed - using Supabase only");
-    return 0n;
-    
     const contract = getLandContract();
     if (!contract) {
       return 0n;

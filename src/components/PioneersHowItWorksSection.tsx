@@ -4,24 +4,24 @@ import { Wallet, MapPin, Trophy, ArrowRight } from 'lucide-react';
 const steps = [
   {
     icon: Wallet,
-    title: 'Deposit USDC',
-    description: 'Simply deposit USDC and automatically receive xBGL credited to your account',
+    title: 'Activate Capital',
+    description: 'Deposit USDC and receive xBGL to operate inside the Sarakt economic layer',
     step: 1,
     gradient: 'from-blue-500 to-cyan-400',
     glow: 'blue-500',
   },
   {
     icon: MapPin,
-    title: 'Purchase Plot',
-    description: 'Get your plot for 110 USDC (~196 xBGL)',
+    title: 'Enter at Land Level',
+    description: 'Secure your first plot and choose your strategy across ownership, labor, or production',
     step: 2,
     gradient: 'from-purple-500 to-pink-500',
     glow: 'purple-500',
   },
   {
     icon: Trophy,
-    title: 'Win Prizes',
-    description: 'Chance to win 1 BTC or receive income structure',
+    title: 'Build and Scale',
+    description: 'Grow into city, planet, and solar-system governance as world complexity increases',
     step: 3,
     gradient: 'from-amber-500 to-orange-500',
     glow: 'amber-500',
@@ -46,10 +46,11 @@ const PioneersHowItWorksSection = () => {
           <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
             How It Works
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Three Simple Steps</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">How the Platform Scales</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Join thousands of pioneers in the Chaos Star Universe—where a growing population of players and AI
-            citizens fuels demand, jobs, and long-term returns.
+            From first-plot ownership to multi-world coordination, Sarakt - the Genesis world in Chaos Star Universe -
+            combines AI population dynamics, scarce resources, and governance layers into a professional
+            World-as-a-Service model.
           </p>
         </motion.div>
 

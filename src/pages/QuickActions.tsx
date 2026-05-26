@@ -5,8 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ArrowDownRight, ArrowUpRight, ShoppingCart, Star, Trophy, TrendingUp, Zap, Shield, ArrowLeft } from "lucide-react";
+import { ethers } from "ethers";
 import { useLandPlots } from "@/hooks/useLandPlots";
+import { useChainLand } from "@/hooks/useChainLand";
 import { useTreasury } from "@/hooks/useTreasury";
+import { useGameBalance } from "@/hooks/useGameBalance";
+import { isOnChainLandMode } from "@/lib/chain-land-holdings";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
+import { GAME_CURRENCY_SYMBOL } from "@/lib/game-currency";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useWallet } from "@/contexts/WalletContext";
 import { usePortfolioManagers } from "@/hooks/usePortfolioManagers";
@@ -17,7 +23,10 @@ import { toast } from "sonner";
 
 export default function QuickActionsPage() {
   const { address, signer } = useWallet();
+  const onChainLand = isOnChainLandMode();
   const { buyPlotPhase1AVAX, buyPlotPhase1USDC } = useLandPlots();
+  const { buyPlotWithXbgl, phase1PriceWei, salesActive } = useChainLand();
+  const { formattedXbgl, refreshBalance } = useGameBalance();
   const { balances } = useTreasury();
   const { portfolios } = usePortfolio(address);
   const { managers, loading: managersLoading, applyAsManager } = usePortfolioManagers();
@@ -99,14 +108,35 @@ export default function QuickActionsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Phase 1 Plot Purchase</CardTitle>
-              <CardDescription>Pay AVAX or USDC; admin activates and mints</CardDescription>
+              <CardDescription>
+                {onChainLand
+                  ? `Pay ${GAME_CURRENCY_SYMBOL} on chain ${import.meta.env.VITE_CHAIN_ID || "1337"} — deposit AVAX on /deposit first`
+                  : "Prices in xBGL — deposit AVAX on /deposit first"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
+                {onChainLand && (
+                  <p className="text-sm text-muted-foreground">
+                    Balance:{" "}
+                    <span className="font-semibold text-primary">
+                      {formattedXbgl} {GAME_CURRENCY_SYMBOL}
+                    </span>
+                    {phase1PriceWei > 0n && (
+                      <>
+                        {" "}
+                        · Plot: {ethers.formatEther(phase1PriceWei)} {GAME_CURRENCY_SYMBOL}
+                      </>
+                    )}
+                    {!salesActive && (
+                      <span className="text-amber-500"> · Sales inactive on-chain</span>
+                    )}
+                  </p>
+                )}
                 <div className="flex items-end gap-2">
                   <Input value={plotId} onChange={(e) => setPlotId(e.target.value)} placeholder="Plot ID" />
                   <Button
-                    disabled={purchasing || !plotId}
+                    disabled={purchasing || !plotId || (onChainLand && !salesActive)}
                     onClick={async () => {
                       const id = parseInt(plotId);
                       if (!id || id <= 0) {
@@ -119,7 +149,7 @@ export default function QuickActionsPage() {
                       if (!hasDigitalID) {
                         toast.error("Digital ID required. Redirecting to create one...");
                         setTimeout(() => {
-                          navigate(`/digital-id?redirect=/quick-actions&plotId=${id}&paymentMethod=AVAX`);
+                          navigate(`/digital-id?redirect=/quick-actions&plotId=${id}&paymentMethod=xBGL`);
                         }, 1500);
                         return;
                       }
@@ -130,6 +160,22 @@ export default function QuickActionsPage() {
                           toast.error("Wallet not connected");
                           return;
                         }
+
+                        if (onChainLand) {
+                          const txHash = await buyPlotWithXbgl(id);
+                          await refreshBalance();
+                          if (txHash) {
+                            const priceWei =
+                              phase1PriceWei > 0n
+                                ? phase1PriceWei
+                                : ethers.parseEther(getPlotPriceInXBGL().toString());
+                            navigate(
+                              `/purchase-confirmation?plotId=${id}&txHash=${txHash}&price=${priceWei.toString()}&currency=${GAME_CURRENCY_SYMBOL}`,
+                            );
+                          }
+                          return;
+                        }
+
                         const { getLandContract, hasLandContract } = await import("@/lib/contracts");
                         if (!hasLandContract()) {
                           toast.error("Land contract address not set");
@@ -198,8 +244,9 @@ export default function QuickActionsPage() {
                       }
                     }}
                   >
-                    {purchasing ? "Processing..." : "Pay AVAX"}
+                    {purchasing ? "Processing..." : onChainLand ? `Pay ${GAME_CURRENCY_SYMBOL}` : "Pay AVAX"}
                   </Button>
+                  {!onChainLand && (
                   <Button
                     variant="outline"
                     disabled={purchasing || !plotId}
@@ -296,6 +343,7 @@ export default function QuickActionsPage() {
                   >
                     {purchasing ? "Processing..." : "Pay USDC"}
                   </Button>
+                  )}
                 </div>
                 {!hasDigitalID && (
                   <p className="text-xs text-yellow-600 dark:text-yellow-400">

@@ -1,8 +1,7 @@
 {
-  "digitalID": "0xEAfD0377278C1db8fe6c63F799AE2d480D79a714",
-  "treasury": "0x9e5F34C9f9F202672d397babccDdF31cB8a88701",
-  "land": "0xcFEc4784876fa1298f98EC74f11EB5251B1f246B",
-  "dummyToken": "0x994c04ebEA9aB0fc73Dd2E9dB15552eb08EB4a8f",
-  "plotRegistry": "0x33824Ffbedc411cce85293CeF95042F7fa03217a",
-  "accountRegistry": "0x9cb949697Bac69276166A0f52afd9A888790f422"
+  "land": "0x14CCfe8a9250F7ac89626Cc316cC6b0713307cb9",
+  "xbglToken": "0x367B8041e791DA4B95bda7310a971E3Dd09F7319",
+  "treasury": "0x2d9Ec1dAb319489a18A36175898EaC279726FFDd",
+  "digitalID": "0x70f198A2d70763BcaD23bD006fF91Ab858F7d706",
+  "metadataBaseUri": "http://192.168.88.218:8081/metadata/land/{id}.json"
 }

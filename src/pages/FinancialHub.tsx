@@ -3,8 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useEffect, useState } from "react";
 import * as supabaseService from "@/lib/supabase-service";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Wallet, Mail, Grid3x3 } from "lucide-react";
+import { MapPin, Wallet, Mail, Grid3x3, Coins } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { loadMergedOwnedPlots } from "@/lib/chain-land-holdings";
+import { useGameBalance } from "@/hooks/useGameBalance";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
+import { GAME_CURRENCY_SYMBOL } from "@/lib/game-currency";
 
 /**
  * Financial Hub - Asset Ownership Display
@@ -12,6 +16,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
  */
 export default function FinancialHub() {
   const { address } = useWallet();
+  const { formattedXbgl, onChain } = useGameBalance();
   const [ownedPlots, setOwnedPlots] = useState<any[]>([]);
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,13 +33,11 @@ export default function FinancialHub() {
 
       setLoading(true);
       try {
-        // Get owned plots
-        const plots = await supabaseService.getPlots({ ownerWallet: address });
-        setOwnedPlots(plots || []);
-
-        // Get owner email from registry
         const ownership = await supabaseService.getOwnershipByWallet(address);
         setOwnerEmail(ownership?.email || null);
+
+        const plots = await loadMergedOwnedPlots(address, ownership?.email || undefined);
+        setOwnedPlots(plots || []);
       } catch (error: any) {
         console.error("Failed to fetch ownership:", error);
         setOwnedPlots([]);
@@ -49,7 +52,8 @@ export default function FinancialHub() {
   }, [address]);
 
   const totalPlots = ownedPlots.length;
-  const totalValue = totalPlots * 100; // 100 xBGL per plot
+  const plotUnitPrice = getPlotPriceInXBGL();
+  const totalValue = totalPlots * plotUnitPrice;
 
   if (!address) {
     return (
@@ -77,6 +81,12 @@ export default function FinancialHub() {
           </CardTitle>
           <CardDescription>
             Your registered plots and ownership information
+            {onChain && (
+              <span className="mt-2 flex items-center gap-1.5 text-primary">
+                <Coins className="h-3.5 w-3.5" />
+                Balance: {formattedXbgl} {GAME_CURRENCY_SYMBOL}
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>

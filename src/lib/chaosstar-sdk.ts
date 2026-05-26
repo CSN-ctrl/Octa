@@ -5,16 +5,13 @@
  */
 
 import { ethers } from "ethers";
-import { CHAOSSTAR_NETWORK } from "./wallet";
-// RPC provider removed - using Supabase only
+import { LOCAL_AVAX_NETWORK } from "@/config/avax-network";
+import { getJsonRpcProvider } from "./evm-provider";
 import * as api from "./api";
 
-/**
- * Get ChaosStar RPC Provider (disabled - using Supabase only)
- */
-export function getProvider(): ethers.JsonRpcProvider | null {
-  // RPC provider removed - using Supabase only
-  return null;
+/** JSON-RPC provider for local Avalanche C-Chain (native AVAX). */
+export function getProvider(): ethers.JsonRpcProvider {
+  return getJsonRpcProvider();
 }
 
 /**
@@ -23,16 +20,18 @@ export function getProvider(): ethers.JsonRpcProvider | null {
  */
 export async function getEnhancedBalances(address: string) {
   try {
-    // RPC provider removed - using Supabase only
     let nativeBalance = "0";
-    
-    // Get balance from Supabase
     try {
-      const { getUserBalance } = await import("./supabase-service");
-      const balance = await getUserBalance(address);
-      nativeBalance = (balance?.xbgl_balance || 0).toString();
-    } catch (err: any) {
-      console.debug("Error fetching balance from Supabase:", err);
+      nativeBalance = (await getProvider().getBalance(address)).toString();
+    } catch (err: unknown) {
+      console.debug("Error fetching AVAX balance from RPC:", err);
+      try {
+        const { getUserBalance } = await import("./supabase-service");
+        const balance = await getUserBalance(address);
+        nativeBalance = (balance?.xbgl_balance || 0).toString();
+      } catch (supabaseErr: unknown) {
+        console.debug("Error fetching balance from Supabase:", supabaseErr);
+      }
     }
     
     // Try to get token balances from backend
@@ -62,7 +61,7 @@ export async function getEnhancedBalances(address: string) {
       native: {
         value: nativeBalance,
         formatted: (Number(nativeBalance) / 1e18).toFixed(6),
-        symbol: CHAOSSTAR_NETWORK.symbol,
+        symbol: LOCAL_AVAX_NETWORK.symbol,
       },
       tokens,
     };
@@ -169,8 +168,8 @@ export async function getNetworkMetrics() {
       return {
         status: "healthy",
         health: "healthy",
-        chainId: CHAOSSTAR_NETWORK.chainId,
-        blockchainId: "ChaosStarNetwork",
+        chainId: LOCAL_AVAX_NETWORK.chainId,
+        blockchainId: "AvalancheLocalCChain",
         stargateConnected: true,
         vmConnected: true,
       };
@@ -179,8 +178,8 @@ export async function getNetworkMetrics() {
     return {
       status: "degraded",
       health: "degraded",
-      chainId: CHAOSSTAR_NETWORK.chainId,
-      blockchainId: "ChaosStarNetwork",
+      chainId: LOCAL_AVAX_NETWORK.chainId,
+      blockchainId: "AvalancheLocalCChain",
       stargateConnected: false,
       vmConnected: false,
     };
@@ -189,7 +188,7 @@ export async function getNetworkMetrics() {
     return {
       status: "offline",
       health: "offline",
-      chainId: CHAOSSTAR_NETWORK.chainId,
+      chainId: LOCAL_AVAX_NETWORK.chainId,
       blockchainId: "",
       stargateConnected: false,
       vmConnected: false,

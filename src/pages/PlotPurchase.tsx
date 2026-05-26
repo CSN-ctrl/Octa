@@ -30,6 +30,11 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { getAndStoreAffiliateCode, recordAffiliateReferral } from "@/lib/affiliate-service";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
+import { isOnChainLandMode } from "@/lib/chain-land-holdings";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { formatPaymentXbglBalance } from "@/lib/payment-balance";
+import { useChainLand } from "@/hooks/useChainLand";
+import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
 import {
   Dialog,
   DialogContent,
@@ -54,10 +59,14 @@ function getZoneType(x: number, y: number): string {
 export default function PlotPurchase() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { address, isConnected, signer } = useWallet();
-  
-  // Plot price is fixed at 100 EUR equivalent in xBGL
-  const PLOT_PRICE_xBGL = getPlotPriceInXBGL(); // 100 EUR = 195.5833 xBGL
+  const { address, isConnected, signer, balance: walletBalance, refreshBalance } = useWallet();
+  const onChainLand = isOnChainLandMode();
+  const { buyPlotWithXbgl, phase1PriceWei, salesActive } = useChainLand();
+
+  const PLOT_PRICE_xBGL = getPlotPriceInXBGL();
+  const plotPriceXbgl = phase1PriceWei
+    ? ethers.formatEther(phase1PriceWei)
+    : PLOT_PRICE_xBGL.toFixed(4);
   
   // Loading state for general operations
   const [loading, setLoading] = useState(false);
@@ -103,8 +112,25 @@ export default function PlotPurchase() {
     getUserEmail();
   }, []);
 
-  // Load balance from Supabase (works with or without wallet)
   useEffect(() => {
+    if (isOnChainCryptoMode()) {
+      const load = async () => {
+        if (!address) {
+          setPurchaseBalance("0");
+          return;
+        }
+        try {
+          const { formatted } = await formatPaymentXbglBalance(address);
+          setPurchaseBalance(formatted);
+        } catch {
+          setPurchaseBalance(walletBalance || "0");
+        }
+      };
+      void load();
+      if (address) void refreshBalance();
+      return;
+    }
+
     const loadBalance = async () => {
       try {
         const { getUserBalance } = await import("@/lib/supabase-service");
@@ -141,7 +167,7 @@ export default function PlotPurchase() {
       }
     };
     loadBalance();
-  }, [address, userEmail, buyerEmail]);
+  }, [address, userEmail, buyerEmail, onChainLand, walletBalance, refreshBalance]);
 
   // Load and store affiliate code from URL or Supabase
   useEffect(() => {
@@ -155,8 +181,39 @@ export default function PlotPurchase() {
     loadAffiliateCode();
   }, [address]);
 
-  // Check if a plot is owned using Supabase
   const checkPlotOwnership = async (plotId: number, checkAddress?: string): Promise<{ isOwned: boolean; owner: string | null }> => {
+    if (onChainLand) {
+      try {
+        const { getPaymentLandContract, hasPaymentLandContract, loadPaymentContractAddresses } =
+          await import("@/lib/payment-contracts");
+        await loadPaymentContractAddresses();
+        if (hasPaymentLandContract()) {
+          const contract = getPaymentLandContract();
+          if (contract) {
+            const [minted, buyer] = await Promise.all([
+              contract.plotMinted(plotId).catch(() => false),
+              contract.pendingBuyer(plotId).catch(() => ethers.ZeroAddress),
+            ]);
+            if (minted) {
+              return { isOwned: true, owner: "minted" };
+            }
+            if (buyer && buyer !== ethers.ZeroAddress) {
+              return { isOwned: true, owner: buyer };
+            }
+            if (checkAddress) {
+              const bal = await contract.balanceOf(checkAddress, plotId).catch(() => 0n);
+              if (bal > 0n) {
+                return { isOwned: true, owner: checkAddress };
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.debug("On-chain plot ownership check failed:", error);
+      }
+      return { isOwned: false, owner: null };
+    }
+
     try {
       const { getPlotById } = await import("@/lib/supabase-service");
       const plot = await getPlotById(plotId);
@@ -223,6 +280,50 @@ export default function PlotPurchase() {
     }
 
     const plotIdsArray = Array.from(selectedPlotIds).sort((a, b) => a - b);
+
+    if (onChainLand) {
+      if (!signer || !address) {
+        toast.error(
+          `Connect your wallet. Plot payment uses Avalanche local chain ${PAYMENT_CHAIN_ID} with xBGL (get xBGL via Deposit with AVAX first).`
+        );
+        return;
+      }
+      const totalXbgl = parseFloat(plotPriceXbgl) * plotIdsArray.length;
+      if (parseFloat(purchaseBalance) < totalXbgl) {
+        toast.error(
+          `Insufficient xBGL on payment network. Need ${totalXbgl.toFixed(2)} xBGL — deposit AVAX on /deposit first.`
+        );
+        return;
+      }
+      if (!salesActive) {
+        toast.error("On-chain land sales are not active.");
+        return;
+      }
+      setPurchasing(true);
+      try {
+        for (const plotId of plotIdsArray) {
+          await buyPlotWithXbgl(plotId);
+        }
+        toast.success("Plots purchased on-chain", {
+          description: "xBGL paid on chain 1337 — NFT minted and import requested in your wallet.",
+        });
+        setSelectedPlotIds(new Set());
+        navigate("/dashboard");
+      } catch (error: unknown) {
+        const err = error as { reason?: string; message?: string };
+        console.error("On-chain purchase error:", error);
+        toast.error(err.reason || err.message || "On-chain purchase failed");
+      } finally {
+        setPurchasing(false);
+      }
+      return;
+    }
+
+    if (isOnChainCryptoMode()) {
+      toast.error("Plot purchase uses on-chain payment only. Connect a wallet and ensure land contracts are deployed.");
+      return;
+    }
+
     const totalCost = PLOT_PRICE_xBGL * plotIdsArray.length;
     
     setPurchasing(true);
@@ -607,15 +708,20 @@ export default function PlotPurchase() {
 
   const totalPrice = useMemo(() => {
     try {
+      if (onChainLand) {
+        return (parseFloat(plotPriceXbgl) * selectedPlotIds.size).toFixed(4);
+      }
       const totalxBGL = PLOT_PRICE_xBGL * selectedPlotIds.size;
       return totalxBGL.toFixed(2);
     } catch {
       return "0";
     }
-  }, [selectedPlotIds.size]);
+  }, [selectedPlotIds.size, onChainLand, plotPriceXbgl, PLOT_PRICE_xBGL]);
 
   const sortedPlotIds = Array.from(selectedPlotIds).sort((a, b) => a - b);
-  const hasEnoughBalance = parseFloat(purchaseBalance) >= parseFloat(totalPrice);
+  const hasEnoughBalance = onChainLand
+    ? isConnected && !!signer && parseFloat(purchaseBalance) >= parseFloat(totalPrice)
+    : parseFloat(purchaseBalance) >= parseFloat(totalPrice);
 
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
@@ -637,6 +743,11 @@ export default function PlotPurchase() {
                 <p className="text-muted-foreground">
                   Select and purchase land plots in the ChaosStar universe
                 </p>
+                {onChainLand && (
+                  <Badge variant="secondary" className="mt-2">
+                    Pay with xBGL on chain {PAYMENT_CHAIN_ID} (fund via AVAX on Deposit)
+                  </Badge>
+                )}
               </div>
             </div>
             <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
@@ -771,7 +882,11 @@ export default function PlotPurchase() {
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Price per Plot</span>
-                        <span className="font-medium">{PLOT_PRICE_xBGL.toFixed(2)} xBGL</span>
+                        <span className="font-medium">
+                          {onChainLand
+                            ? `${plotPriceXbgl} xBGL`
+                            : `${PLOT_PRICE_xBGL.toFixed(2)} xBGL`}
+                        </span>
                       </div>
                     </div>
 
@@ -781,7 +896,9 @@ export default function PlotPurchase() {
                         <span className="text-base font-semibold">Total Amount</span>
                         <div className="text-right">
                           <span className="text-3xl font-bold tracking-tight">{totalPrice}</span>
-                          <span className="text-lg text-muted-foreground ml-1">xBGL</span>
+                          <span className="text-lg text-muted-foreground ml-1">
+                            xBGL
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -802,7 +919,9 @@ export default function PlotPurchase() {
                           <div className="flex-1">
                             <p className="text-sm font-medium text-destructive mb-1">Insufficient Balance</p>
                             <p className="text-xs text-muted-foreground">
-                              You need {(parseFloat(totalPrice) - parseFloat(purchaseBalance)).toFixed(2)} more xBGL
+                              {onChainLand
+                                ? `Deposit AVAX on /deposit to receive xBGL, or add ${(parseFloat(totalPrice) - parseFloat(purchaseBalance)).toFixed(2)} more xBGL`
+                                : `You need ${(parseFloat(totalPrice) - parseFloat(purchaseBalance)).toFixed(2)} more xBGL`}
                             </p>
                           </div>
                         </div>
@@ -823,7 +942,13 @@ export default function PlotPurchase() {
                       variant="default"
                       className="w-full h-12 mt-6 font-semibold text-base bg-gradient-to-r from-primary via-primary/95 to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary/95 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handlePurchase}
-                      disabled={purchasing || loading || selectedPlotIds.size === 0 || !hasEnoughBalance || (!buyerEmail && !userEmail)}
+                      disabled={
+                        purchasing ||
+                        loading ||
+                        selectedPlotIds.size === 0 ||
+                        !hasEnoughBalance ||
+                        (!onChainLand && !buyerEmail && !userEmail)
+                      }
                     >
                       {purchasing ? (
                         <>

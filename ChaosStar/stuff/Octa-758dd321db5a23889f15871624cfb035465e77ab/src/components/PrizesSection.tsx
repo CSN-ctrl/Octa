@@ -13,9 +13,9 @@ const PrizesSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="section-title mb-4">Genesis Phase Prizes</h2>
+          <h2 className="section-title mb-4">Genesis Participation Incentives</h2>
           <p className="text-lg text-muted-foreground">
-            Be among the first and win incredible rewards
+            Early participants receive campaign incentives on top of platform access
           </p>
         </motion.div>
 
@@ -46,7 +46,7 @@ const PrizesSection = () => {
 
               <h3 className="text-3xl font-bold text-gold mb-2">1 BTC</h3>
               <p className="text-muted-foreground mb-6">
-                Random draw from eligible participants
+                Campaign draw for eligible Genesis participants
               </p>
 
               <div className="space-y-3 mb-6">
@@ -100,7 +100,7 @@ const PrizesSection = () => {
 
               <h3 className="text-3xl font-bold text-success mb-2">Income Structure</h3>
               <p className="text-muted-foreground mb-6">
-                Free for first 5,000 participants
+                Included for the first 5,000 participants
               </p>
 
               <div className="space-y-3 mb-6">

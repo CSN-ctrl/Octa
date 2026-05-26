@@ -1,4 +1,15 @@
 import { ethers } from "ethers";
+import { getWalletRpcUrl } from "@/config/avax-network";
+import {
+  getPaymentChainId,
+  getPaymentChainIdHex,
+  getPaymentNativeSymbol,
+  getPaymentNetworkName,
+} from "@/config/blockchain-profile";
+import {
+  CHAOSSTAR_NETWORK_DEFAULTS,
+  getChaosstarWalletRpcUrl,
+} from "@/config/chaosstar-network";
 import {
   detectWallets,
   getWalletProvider,
@@ -7,15 +18,8 @@ import {
   type WalletInfo,
 } from "./wallet-detection";
 
-// ChaosStar Network configuration (for wallet connection only - no RPC)
-export const CHAOSSTAR_NETWORK = {
-  chainId: 8088,
-  chainIdHex: "0x1F98",
-  name: "ChaosStar Network",
-  symbol: "xBGL",
-  decimals: 18,
-  blockExplorer: "", // No explorer yet
-};
+export { LOCAL_AVAX_NETWORK } from "@/config/avax-network";
+export { CHAOSSTAR_NETWORK_DEFAULTS as CHAOSSTAR_NETWORK } from "@/config/chaosstar-network";
 
 let walletConnectProvider: any = null;
 
@@ -33,7 +37,7 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
     walletConnectProvider = await EthereumProvider.init({
       projectId,
       chains: [1],
-      optionalChains: [137, 42161, 8453, 43114, 56, 84532],
+      optionalChains: [137, 42161, 8453, 43114, 43113, 56, 84532, getPaymentChainId()],
       showQrModal: true,
       metadata: {
         name: "Chaos Star Universe",
@@ -118,11 +122,8 @@ export async function connectWallet(useWalletConnect = false, walletId?: string)
       throw new Error("No accounts found. Please unlock your wallet and try again.");
     }
 
-    // Network switching disabled - using Supabase only, not ChaosStar network
-    // Wallet connection works for signing regardless of network
-    // No need to switch networks since we're using Supabase as backend
+    await addPaymentNetwork(provider);
 
-    // Use the wallet's provider for signing only (no RPC needed - using Supabase)
     const web3Provider = new ethers.BrowserProvider(provider);
     const signer = await web3Provider.getSigner();
     const address = await signer.getAddress();
@@ -171,20 +172,90 @@ export async function connectWithPrivateKey(privateKey: string) {
   // Ensure private key has 0x prefix
   const formattedKey = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
   
-  // Create a wallet from the private key (no RPC provider needed)
-  const wallet = new ethers.Wallet(formattedKey);
+  const { getJsonRpcProvider } = await import("./evm-provider");
+  const provider = getJsonRpcProvider();
+  const wallet = new ethers.Wallet(formattedKey, provider);
   const address = await wallet.getAddress();
-  
-  return { signer: wallet, address, provider: null };
+
+  return { signer: wallet, address, provider };
 }
 
-// Network switching disabled - using Supabase only, not ChaosStar network
-// This function is kept for backward compatibility but does nothing
+/** Prompt MetaMask to add/switch to ChaosStar Network (native xBGL, chain 8888). */
 export async function addChaosStarNetwork(provider?: any): Promise<boolean> {
-  // Network switching disabled - using Supabase as backend only
-  // Wallet can stay on any network, signing will work regardless
-  return false;
+  const walletProvider = provider || (window as any).ethereum;
+  if (!walletProvider?.request) return false;
+
+  const net = CHAOSSTAR_NETWORK_DEFAULTS;
+  const params = {
+    chainId: net.chainIdHex,
+    chainName: net.name,
+    nativeCurrency: { name: net.symbol, symbol: net.symbol, decimals: net.decimals },
+    rpcUrls: [getChaosstarWalletRpcUrl()],
+    blockExplorerUrls: net.blockExplorer ? [net.blockExplorer] : [],
+  };
+
+  try {
+    await walletProvider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: net.chainIdHex }],
+    });
+    return true;
+  } catch (switchErr: any) {
+    if (switchErr?.code === 4902) {
+      try {
+        await walletProvider.request({
+          method: "wallet_addEthereumChain",
+          params: [params],
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
 }
+
+/** Prompt MetaMask to add/switch to the payment rail (1337 or Fuji from env). */
+export async function addPaymentNetwork(provider?: any): Promise<boolean> {
+  const walletProvider = provider || (window as any).ethereum;
+  if (!walletProvider?.request) return false;
+
+  const chainIdHex = getPaymentChainIdHex();
+  const symbol = getPaymentNativeSymbol();
+  const params = {
+    chainId: chainIdHex,
+    chainName: getPaymentNetworkName(),
+    nativeCurrency: { name: symbol, symbol, decimals: 18 },
+    rpcUrls: [getWalletRpcUrl()],
+    blockExplorerUrls: [] as string[],
+  };
+
+  try {
+    await walletProvider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: chainIdHex }],
+    });
+    return true;
+  } catch (switchErr: any) {
+    if (switchErr?.code === 4902) {
+      try {
+        await walletProvider.request({
+          method: "wallet_addEthereumChain",
+          params: [params],
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+/** @deprecated Use addPaymentNetwork */
+export const addLocalAvaxNetwork = addPaymentNetwork;
+
 
 // Get current chain ID from wallet
 export async function getCurrentChainId(provider?: any): Promise<number | null> {
@@ -213,12 +284,11 @@ export {
 } from "./wallet-detection";
 export type { WalletInfo } from "./wallet-detection";
 
-// Check if connected to ChaosStar network - DISABLED
-// Always returns false since we're using Supabase only
 export async function isConnectedToChaosStar(): Promise<boolean> {
-  // ChaosStar network connections have been removed
-  // All operations now use Supabase
-  return false;
+  const chainId = await getCurrentChainId();
+  if (chainId == null) return false;
+  const { isChaosStarChainId } = await import("@/config/chaosstar-network");
+  return isChaosStarChainId(chainId);
 }
 
 // RPC functions removed - using Supabase only

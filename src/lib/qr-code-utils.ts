@@ -202,9 +202,9 @@ export function getNetworkLogoUrl(networkId: string): string {
     'avalanche': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png',
     'polygon': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png',
     'bsc': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png',
-    'arbitrum': 'https://assets.coingecko.com/coins/images/16547/small/photo_2023-03-29_21.47.00.jpeg',
-    'optimism': 'https://assets.coingecko.com/coins/images/25244/small/Optimism.png',
-    'base': 'https://assets.coingecko.com/coins/images/27509/small/base.png',
+    'arbitrum': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
+    'optimism': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/optimism/info/logo.png',
+    'base': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png',
     'avalanche-fuji': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png'
   };
 

@@ -4,33 +4,16 @@
  * for enhanced blockchain interactions and indexed data access
  */
 
-import { createAvalancheClient } from '@avalanche-sdk/client';
-import { avalanche, avalancheFuji } from '@avalanche-sdk/client/chains';
 import { Avalanche as ChainKit } from '@avalanche-sdk/chainkit';
+import { getAvaxRpcUrl, isLocalAvaxRpc, resolveEvmChainIdFromRpc } from '@/config/avax-network';
+import { getJsonRpcProvider } from './evm-provider';
 
-// Determine which chain to use based on environment
-// ChaosStar Network: Chain ID 8088, RPC on port 24362
 const getChainId = (): string => {
-  const rpcUrl = import.meta.env.VITE_AVALANCHE_RPC || import.meta.env.VITE_CHAOSSTAR_RPC || '';
-  
-  // Check if it's ChaosStar network (port 24362, blockchain name "ChaosStar", or blockchain ID)
-  if (rpcUrl.includes('24362') || 
-      rpcUrl.includes('ChaosStar') || 
-      rpcUrl.includes('ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy') ||
-      rpcUrl.includes('4q1KP4TH6tiJSwX3xrx9Qx7qsSa9HpqyyC7fWMt2kcJBmWXUZ')) {
-    return '8088'; // ChaosStar Network
-  }
-  
-  // Check if it's mainnet or testnet
-  if (rpcUrl.includes('api.avax.network') || rpcUrl.includes('43114') || rpcUrl.includes('localhost:8545')) {
-    return '43114'; // Mainnet (or ChaosStar local)
-  }
-  if (rpcUrl.includes('api.avax-test.network') || rpcUrl.includes('43113')) {
-    return '43113'; // Fuji Testnet
-  }
-  
-  // Default to ChaosStar for local development
-  return '8088';
+  const rpcUrl = getAvaxRpcUrl();
+  if (isLocalAvaxRpc(rpcUrl)) return String(resolveEvmChainIdFromRpc(rpcUrl));
+  if (rpcUrl.includes('api.avax.network') || rpcUrl.includes('43114')) return '43114';
+  if (rpcUrl.includes('api.avax-test.network') || rpcUrl.includes('43113')) return '43113';
+  return String(resolveEvmChainIdFromRpc(rpcUrl));
 };
 
 const chainId = getChainId();
@@ -41,10 +24,7 @@ const isMainnet = chainId === '43114';
  * Note: The client is built on viem, so it has viem's public client methods
  */
 export function createClient() {
-  // RPC connections disabled - using Supabase as backend only
-  // If RPC is needed, use: http://151.237.142.106
-  // For now, always return null to disable RPC connections
-  return null as any;
+  return getJsonRpcProvider();
 }
 
 /**
@@ -78,15 +58,11 @@ export async function getEnhancedBalances(address: string) {
       // Continue with empty tokens array
     }
     
-    // RPC provider removed - using Supabase only
-    // Native balance now fetched from Supabase
     let nativeBalance = "0";
     try {
-      const { getUserBalance } = await import("./supabase-service");
-      const balance = await getUserBalance(address);
-      nativeBalance = (balance?.xbgl_balance || 0).toString();
+      nativeBalance = (await getJsonRpcProvider().getBalance(address)).toString();
     } catch (e) {
-      console.debug("Could not fetch balance from Supabase:", e);
+      console.debug("Could not fetch AVAX balance from RPC:", e);
     }
     
     return {

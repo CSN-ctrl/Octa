@@ -21,7 +21,8 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useLandPlots } from "@/hooks/useLandPlots";
 import { ethers } from "ethers";
 import { toast } from "sonner";
-// RPC provider removed - using Supabase only
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { sendXbglTransfer, getXbglSymbol } from "@/lib/onchain-crypto";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshCw } from "lucide-react";
 
@@ -42,6 +43,7 @@ export default function PersonalVault() {
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
   const [gasPrice, setGasPrice] = useState<string>("");
   const [gasLimit, setGasLimit] = useState<string>("21000");
+  const xbglSymbol = getXbglSymbol();
 
   // Load recent transfers from localStorage
   useEffect(() => {
@@ -66,13 +68,16 @@ export default function PersonalVault() {
     if (isConnected) {
       loadGasPrice();
     }
-  }, [isConnected]);
+  }, [isConnected, signer]);
 
   const loadGasPrice = async () => {
     try {
-      // RPC provider removed - using Supabase only
-      // Gas price not needed - using Supabase for transactions
-      setGasPrice("0"); // Default gas price
+      if (signer?.provider) {
+        const fee = await signer.provider.getFeeData();
+        setGasPrice(fee.gasPrice ? ethers.formatUnits(fee.gasPrice, "gwei") : "0");
+      } else {
+        setGasPrice("0");
+      }
     } catch (error) {
       console.error("Failed to load gas price:", error);
     }
@@ -122,46 +127,50 @@ export default function PersonalVault() {
     setTransferring(true);
 
     try {
-      // RPC provider removed - using Supabase only
-      // Transfer uses Supabase service for token transfers
-      const { transferTokens } = await import("@/lib/supabase-service");
-      
-      // Use Supabase to transfer tokens (simulated blockchain transaction)
-      const transferResult = await transferTokens(
-        address,
-        recipientAddress,
-        parseFloat(transferAmount),
-        "xBGL"
-      );
+      let txHash: string;
 
-      if (!transferResult.success) {
-        throw new Error(transferResult.error || "Transfer failed");
+      if (isOnChainCryptoMode()) {
+        const transferResult = await sendXbglTransfer(
+          signer,
+          recipientAddress,
+          transferAmount
+        );
+        if (!transferResult.success) {
+          throw new Error(transferResult.error || "Transfer failed");
+        }
+        txHash = transferResult.txHash;
+      } else {
+        const { transferTokens } = await import("@/lib/supabase-service");
+        const transferResult = await transferTokens(
+          address,
+          recipientAddress,
+          parseFloat(transferAmount),
+          "xBGL"
+        );
+        if (!transferResult.success) {
+          throw new Error(transferResult.error || "Transfer failed");
+        }
+        txHash =
+          transferResult.tx_hash ||
+          `0x${Array.from({ length: 64 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+          ).join("")}`;
       }
 
-      // Show pending transfer
       const pendingTransfer: Transfer = {
-        hash: transferResult.tx_hash || "pending",
+        hash: "pending",
         to: recipientAddress,
         amount: transferAmount,
         timestamp: new Date(),
         status: "pending",
       };
-      setRecentTransfers(prev => [pendingTransfer, ...prev]);
+      setRecentTransfers((prev) => [pendingTransfer, ...prev]);
 
-      // Update transfer status
-      const txHash = transferResult.tx_hash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-      
-      // Update pending transfer with actual hash
-      setRecentTransfers(prev => prev.map(t => 
-        t.hash === "pending" 
-          ? { ...t, hash: txHash, status: "success" }
-          : t
-      ));
-
-      toast.success(`Transfer completed! Hash: ${txHash.slice(0, 10)}...`);
-
-      // Supabase transfers are atomic, so always successful
-      const success = true;
+      setRecentTransfers((prev) =>
+        prev.map((t) =>
+          t.hash === "pending" ? { ...t, hash: txHash, status: "success" } : t
+        )
+      );
 
       // Save to localStorage
       if (address) {
@@ -275,7 +284,7 @@ export default function PersonalVault() {
             <div className="space-y-2">
               <Label>Balance</Label>
               <div className="text-3xl font-bold text-primary">
-                {parseFloat(balance).toFixed(6)} AVAX
+                {parseFloat(balance).toFixed(6)} {xbglSymbol}
               </div>
             </div>
             <div className="space-y-2 pt-2 border-t border-primary/20">
@@ -545,7 +554,7 @@ export default function PersonalVault() {
                                 </span>
                               </p>
                               <p className="text-lg font-semibold text-primary">
-                                {transfer.amount} AVAX
+                                {transfer.amount} {xbglSymbol}
                               </p>
                             </div>
                             {transfer.hash !== "pending" && (

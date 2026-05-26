@@ -1,6 +1,8 @@
 # ChaosStar
 
-A complete frontend application for the ChaosStar blockchain ecosystem, including wallet connection, financial hub, digital ID, and universe visualization features.
+ChaosStar is the application layer for Sarakt, a World-as-a-Service (WaaS) platform where users own and evolve digital worlds across land, city, planet, and solar-system scales.
+
+For the latest product narrative and system model, see `docs/sarakt-waas.md`.
 
 ## Features
 
@@ -14,7 +16,7 @@ A complete frontend application for the ChaosStar blockchain ecosystem, includin
 ## Network Configuration
 
 ChaosStar Network:
-- Chain ID: 8088 (0x1F98)
+- Chain ID: 8888 (0x22B8)
 - RPC URL: http://127.0.0.1:24362/ext/bc/ChaosStar/rpc
 - Native Token: xBGL
 - Blockchain ID: ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy

@@ -53,16 +53,16 @@ const CTASection = () => {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 badge-primary mb-8">
             <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            Genesis Phase is Live
+            Genesis Access Is Live
           </div>
 
           {/* Heading */}
           <h2 className="section-title mb-6">
-            Ready to Become a Pioneer?
+            Ready to Enter Sarakt Genesis?
           </h2>
 
           <p className="text-lg text-muted-foreground mb-10">
-            Join <span className="text-foreground font-semibold"><AnimatedCounter target={joined} duration={1.5} /></span> others who've already secured their place in the Chaos Star Universe
+            Join <span className="text-foreground font-semibold"><AnimatedCounter target={joined} duration={1.5} /></span> participants who have already secured early access to Sarakt, the Genesis world of Chaos Star Universe.
           </p>
 
           {/* Buttons */}
@@ -73,14 +73,14 @@ const CTASection = () => {
               onClick={handleStartClick}
               className="btn-primary-glow text-lg w-full sm:w-auto"
             >
-              Start Now
+              Start Participation
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
               className="btn-secondary-glow text-lg w-full sm:w-auto"
             >
-              Learn More
+              Review Platform Docs
             </motion.button>
           </div>
 

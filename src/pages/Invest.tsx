@@ -1,20 +1,16 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { 
-  Wallet, 
-  Users, 
-  Shield, 
-  TrendingUp, 
-  Building2, 
-  Factory, 
-  Globe2, 
+import {
+  Wallet,
+  Users,
+  Shield,
+  TrendingUp,
+  Building2,
   Sparkles,
   ArrowRight,
-  Lock,
-  Unlock,
   UserCheck,
   Coins,
-  Star
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,35 +18,6 @@ import { Badge } from "@/components/ui/badge";
 
 const Invest = () => {
   const navigate = useNavigate();
-
-  const assetTypes = [
-    { icon: "🏠", name: "Land Plots" },
-    { icon: "🏭", name: "Houses/Factories" },
-    { icon: "🌆", name: "Cities" },
-    { icon: "🪐", name: "Planets" },
-    { icon: "⭐", name: "Star Systems" },
-  ];
-
-  const fundFeatures = [
-    {
-      icon: Lock,
-      title: "20% Reserve Rule",
-      description: "Minimum locked per asset for security",
-      color: "text-yellow-500",
-    },
-    {
-      icon: Unlock,
-      title: "free funds",
-      description: "Redeemable or use for more acquisitions",
-      color: "text-green-500",
-    },
-    {
-      icon: Shield,
-      title: "Full Liquidation",
-      description: "Required to exit completely",
-      color: "text-blue-500",
-    },
-  ];
 
   return (
     <div className="app-page-canvas relative overflow-hidden">
@@ -61,7 +28,6 @@ const Invest = () => {
       </div>
 
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16 relative z-10">
-        {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -82,60 +48,13 @@ const Invest = () => {
           </p>
         </motion.div>
 
-        {/* Fund Features */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto mb-16"
-        >
-          {fundFeatures.map((feature, index) => (
-            <div
-              key={feature.title}
-              className="flex items-center gap-3 p-4 bg-card/30 backdrop-blur-sm border border-border/30 rounded-xl"
-            >
-              <div className={`p-2 rounded-lg bg-background/50 ${feature.color}`}>
-                <feature.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">{feature.title}</h3>
-                <p className="text-xs text-muted-foreground">{feature.description}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Asset Types Showcase */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="flex flex-wrap justify-center gap-3 mb-12"
-        >
-          {assetTypes.map((asset, index) => (
-            <motion.div
-              key={asset.name}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.25 + index * 0.05 }}
-              className="flex items-center gap-2 px-4 py-2 bg-card/50 backdrop-blur-sm border border-border/50 rounded-full"
-            >
-              <span className="text-xl">{asset.icon}</span>
-              <span className="text-sm font-medium">{asset.name}</span>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Two Options */}
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Self Management Option */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
             <Card className="relative h-full overflow-hidden border-2 border-border/50 bg-card hover:border-accent/50 transition-all duration-300 group">
-              {/* Glow Effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
               <CardContent className="p-8 relative z-10 h-full flex flex-col">
@@ -189,17 +108,14 @@ const Invest = () => {
             </Card>
           </motion.div>
 
-          {/* Expert Management Option */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
           >
             <Card className="relative h-full overflow-hidden border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card hover:border-primary/50 transition-all duration-300 group">
-              {/* Glow Effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              {/* Recommended Badge */}
+
               <div className="absolute top-4 right-4">
                 <Badge className="bg-primary text-primary-foreground">
                   <Star className="w-3 h-3 mr-1" />
@@ -258,7 +174,6 @@ const Invest = () => {
           </motion.div>
         </div>
 
-        {/* Bottom Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -266,7 +181,7 @@ const Invest = () => {
           className="text-center mt-16 max-w-2xl mx-auto"
         >
           <p className="text-sm text-muted-foreground">
-            Both options build your Personal Fund. The 20% reserve rule applies to all asset acquisitions.
+            Both options build your Personal Fund.
             <br />
             <span className="text-foreground font-medium">Your fund, your universe.</span>
           </p>

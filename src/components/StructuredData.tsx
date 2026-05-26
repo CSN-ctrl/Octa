@@ -53,7 +53,7 @@ export function DefaultStructuredData() {
           name: "Chaos Star Universe",
           url: origin,
           logo: `${origin}/chaos-star-logo.png`,
-          description: "Explore star systems, claim land, build your digital identity, and become part of the cosmic economy in Chaos Star Universe",
+          description: "Chaos Star Universe is the overarching universe. Sarakt is its Genesis world where users own land, build infrastructure, and scale through a World-as-a-Service economy.",
           sameAs: [
             "https://x.com/OIG_CSN",
           ],
@@ -65,7 +65,7 @@ export function DefaultStructuredData() {
         data={{
           name: "Chaos Star Universe",
           url: origin,
-          description: "Explore star systems, claim land, build your digital identity, and become part of the cosmic economy in Chaos Star Universe",
+          description: "Enter Sarakt, the Genesis world of Chaos Star Universe, and participate in a persistent World-as-a-Service platform.",
         }}
       />
     </>
@@ -81,17 +81,17 @@ type RouteSchemaConfig = {
 };
 
 const ROUTE_SCHEMA_CONFIG: RouteSchemaConfig[] = [
-  { path: "/", name: "Chaos Star Universe", description: "Explore star systems, claim land, build your digital identity, and participate in the Chaos Star economy.", indexable: true },
+  { path: "/", name: "Chaos Star Universe", description: "Explore Chaos Star Universe and enter Sarakt, its Genesis world for ownership, governance, and economy participation.", indexable: true },
   { path: "/universe", name: "Unified Universe", description: "Navigate planets, cities, and systems in the interactive Chaos Star universe map.", indexable: true },
   { path: "/business", name: "Business", description: "Review business opportunities and governance mechanics in the Chaos Star universe.", indexable: true },
   { path: "/ilo", name: "Pioneers ILO", description: "Discover the Initial Land Offering and pioneer participation details.", indexable: true },
   { path: "/invest", name: "Invest", description: "Learn investment pathways and growth opportunities in Chaos Star.", indexable: true },
   { path: "/apply-expert", name: "Apply As Expert", description: "Apply to become a verified expert contributor in the Chaos Star ecosystem.", indexable: true },
   { path: "/nanofiber-research", name: "Nanofiber Research", description: "Review nanofiber research pathways and strategic ecosystem utility in Chaos Star Universe.", indexable: true },
-  { path: "/docs", name: "Documentation", description: "Read Chaos Star product guides, economics, sovereignty, and onboarding docs.", indexable: true, schemaType: "Article" },
-  { path: "/docs/getting-started", name: "Getting Started", description: "Start your Chaos Star journey with step-by-step onboarding.", indexable: true, schemaType: "Article" },
-  { path: "/docs/features", name: "Features", description: "Explore core Chaos Star platform features and gameplay systems.", indexable: true, schemaType: "Article" },
-  { path: "/docs/economy", name: "Economy", description: "Understand token flows, sinks, and economic systems in Chaos Star.", indexable: true, schemaType: "Article" },
+  { path: "/docs", name: "Documentation", description: "Read Chaos Star Universe and Sarakt Genesis guides for economics, sovereignty, and onboarding.", indexable: true, schemaType: "Article" },
+  { path: "/docs/getting-started", name: "Getting Started", description: "Start in Sarakt, the Genesis world of Chaos Star Universe, with step-by-step onboarding.", indexable: true, schemaType: "Article" },
+  { path: "/docs/features", name: "Features", description: "Explore core platform features across Chaos Star Universe and Sarakt Genesis systems.", indexable: true, schemaType: "Article" },
+  { path: "/docs/economy", name: "Economy", description: "Understand token flows, sinks, and interdependent economy systems in Sarakt Genesis.", indexable: true, schemaType: "Article" },
   { path: "/how-it-works", name: "How It Works", description: "Legacy path redirected to documentation.", indexable: false },
   { path: "/lore", name: "Lore", description: "Discover the worldbuilding and narrative foundations of Chaos Star Universe.", indexable: true },
   { path: "/support", name: "Support Center", description: "Get support for account, transaction, and platform usage questions.", indexable: true, schemaType: "WebPage" },
@@ -115,7 +115,7 @@ function getRouteSchemaConfig(pathname: string): RouteSchemaConfig {
     return {
       path: pathname,
       name: "Documentation",
-      description: "Read Chaos Star guides, paths, sovereignty, and economy documentation.",
+      description: "Read Chaos Star Universe and Sarakt Genesis guides for paths, sovereignty, and economy documentation.",
       indexable: true,
       schemaType: "Article",
     };
@@ -124,7 +124,7 @@ function getRouteSchemaConfig(pathname: string): RouteSchemaConfig {
   return {
     path: pathname,
     name: "Chaos Star Universe",
-    description: "Explore Chaos Star Universe features, worlds, and economy tools.",
+    description: "Explore Chaos Star Universe features and Sarakt Genesis world tools.",
     indexable: false,
   };
 }
@@ -189,10 +189,10 @@ export function RouteStructuredData() {
             mainEntity: [
               {
                 "@type": "Question",
-                name: "What is Chaos Star Universe?",
+                name: "What is Chaos Star Universe and Sarakt?",
                 acceptedAnswer: {
                   "@type": "Answer",
-                  text: "Chaos Star Universe is a sandbox platform where users explore star systems, manage digital identity, and participate in a tokenized economy.",
+                  text: "Chaos Star Universe is the overarching platform. Sarakt is its Genesis world where users explore ownership, governance, and tokenized economy systems.",
                 },
               },
               {

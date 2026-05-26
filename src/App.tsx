@@ -14,6 +14,7 @@ import { LoadingSpinner } from "./components/LoadingSpinner";
 import { RouteStructuredData } from "./components/StructuredData";
 import Footer from "./components/Footer";
 import { loadContractAddresses } from "@/lib/contracts";
+import { loadPaymentContractAddresses } from "@/lib/payment-contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
 import { getAppOrigin } from "@/lib/app-origin";
@@ -33,6 +34,7 @@ const FinancialHub = lazy(() => import("./pages/FinancialHub"));
 const NanofiberResearch = lazy(() => import("./pages/NanofiberResearch"));
 const DigitalID = lazy(() => import("./pages/DigitalID"));
 const QuickActions = lazy(() => import("./pages/QuickActions"));
+const LandTest = lazy(() => import("./pages/LandTest"));
 const PurchaseConfirmation = lazy(() => import("./pages/PurchaseConfirmation"));
 const Lore = lazy(() => import("./pages/Lore"));
 const EmailVerified = lazy(() => import("./pages/EmailVerified"));
@@ -330,13 +332,7 @@ export function RouteMetadata() {
 const App = () => {
   // Load contract addresses on app startup
   useEffect(() => {
-    loadContractAddresses().then((loaded) => {
-      if (loaded) {
-        // Contract addresses loaded successfully
-      } else {
-        // Contract addresses not loaded, some features may not work
-      }
-    });
+    void Promise.all([loadContractAddresses(), loadPaymentContractAddresses()]);
   }, []);
 
   // Global scroll-to-top for all button clicks
@@ -486,6 +482,11 @@ function AppContent() {
                       <Route path="/nanofiber-research" element={<NanofiberResearch />} />
                       <Route path="/digital-id" element={<DigitalID />} />
                       <Route path="/quick-actions" element={<QuickActions />} />
+                      <Route path="/land-test" element={
+                        <RouteErrorBoundary routeName="Land Test">
+                          <LandTest />
+                        </RouteErrorBoundary>
+                      } />
                       <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
                       <Route path="/lore" element={<Lore />} />
                       <Route path="/support" element={<Support />} />

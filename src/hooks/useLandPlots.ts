@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ethers } from "ethers";
 import { getLandContract, hasLandContract } from "@/lib/contracts";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { loadPaymentContractAddresses } from "@/lib/payment-contracts";
 import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "sonner";
 
@@ -97,13 +100,16 @@ export function useLandPlots() {
 
     setLoading(true);
     try {
-      // RPC provider removed - using Supabase only
-      // Contract interactions disabled - using Supabase for data
-      console.debug("Contract fetch disabled - using Supabase only");
+      const { fetchChainLandHoldings } = await import("@/lib/chain-land-holdings");
+      const holdings = await fetchChainLandHoldings(address);
+      setSalesActive(holdings.salesActive);
+      setPriceInNative(holdings.phase1PriceWei);
+      setUserPlots(holdings.mintedPlotIds);
+      setPendingPlots(holdings.pendingPlotIds);
       setLoading(false);
       return;
-      
-      /* Unreachable code - commented out to fix linting error
+
+      /* Legacy batch scan — kept for reference
       // All contract interaction code below is disabled since we're using Supabase only
       const contract = getLandContract();
 
@@ -174,9 +180,12 @@ export function useLandPlots() {
       }
 
       try {
+        const priceCall = isOnChainCryptoMode()
+          ? withTimeout(contract.phase1PriceUSDC(), 10000)
+          : withTimeout(contract.priceInAVAX(), 10000);
         const [soldResult, priceResult, activeResult] = await Promise.all([
           withTimeout(contract.plotsSold(), 10000),
-          withTimeout(contract.priceInAVAX(), 10000), // Contract uses AVAX naming but this is xBGL on ChaosStar
+          priceCall,
           withTimeout(contract.salesActive(), 10000),
         ]);
         sold = soldResult;
@@ -313,6 +322,10 @@ export function useLandPlots() {
   };
 
   const buyPlotPhase1AVAX = async (plotId: number) => {
+    if (isOnChainCryptoMode()) {
+      await loadPaymentContractAddresses();
+      return buyPlotPhase1USDC(plotId);
+    }
     if (!signer) throw new Error("Wallet not connected");
     if (!hasLandContract()) {
       throw new Error("Land contract address not set");
@@ -322,7 +335,7 @@ export function useLandPlots() {
       const contract = getLandContract(signer);
       const price = await contract.phase1PriceAVAX();
       const tx = await contract.buyPlotWithAVAX(plotId, { value: price });
-      const receipt = await tx.wait();
+      await tx.wait();
       toast.success(`Payment received for plot ${plotId}. Pending activation.`);
       // Wait a bit for the transaction to be fully processed, then refresh
       setTimeout(async () => {
@@ -360,7 +373,7 @@ export function useLandPlots() {
       }
       const tx = await contract.buyPlotWithUSDC(plotId, amount);
       const receipt = await tx.wait();
-      toast.success(`Payment received (USDC) for plot ${plotId}. Pending activation.`);
+      toast.success(`Payment received (${getPlotPriceInXBGL().toFixed(2)} xBGL) for plot ${plotId}. Pending activation.`);
       // Wait a bit for the transaction to be fully processed, then refresh
       setTimeout(async () => {
         await fetchLandData();
@@ -515,8 +528,16 @@ export function useLandPlots() {
     plotsSold: Number(plotsSold),
     totalPlots: Number(totalPlots),
     plotsRemaining: Number(totalPlots) - Number(plotsSold),
-    priceInAVAX: ethers.formatEther(priceInNative),
-    priceInXBGL: getCurrentPriceInXBGL(), // Current price in xBGL
+    priceInAVAX: isOnChainCryptoMode()
+      ? (priceInNative > 0n
+          ? ethers.formatEther(priceInNative)
+          : getPlotPriceInXBGL().toFixed(4))
+      : ethers.formatEther(priceInNative),
+    priceInXBGL: isOnChainCryptoMode()
+      ? priceInNative > 0n
+        ? ethers.formatEther(priceInNative)
+        : getPlotPriceInXBGL().toFixed(4)
+      : getCurrentPriceInXBGL(),
     getPriceInXBGL, // Function to get price for specific plot
     salesActive,
     loading,

@@ -49,7 +49,7 @@ const PioneersHeroSection = () => {
           className="badge-primary mb-8 inline-flex items-center gap-2"
         >
           <Zap className="w-3 h-3" />
-          Genesis Phase • Limited to {totalSpots.toLocaleString()} Pioneers
+          Chaos Star Universe • Sarakt Genesis • Limited to {totalSpots.toLocaleString()} Early Participants
         </motion.div>
 
         {/* Title */}
@@ -77,7 +77,8 @@ const PioneersHeroSection = () => {
           transition={{ delay: 0.5 }}
           className="text-xl md:text-2xl text-muted-foreground mb-12"
         >
-          Own digital land. Build your empire. <span className="text-gold font-semibold">Win 1 BTC.</span>
+          Enter Sarakt, the Genesis world of Chaos Star Universe, through the Initial Land Offering and establish your
+          position in a scalable World-as-a-Service economy.
         </motion.p>
 
         {/* Progress Bar - Enhanced */}
@@ -120,7 +121,7 @@ const PioneersHeroSection = () => {
             onClick={handleJoinClick}
             className="btn-primary-glow text-lg animate-pulse-glow"
           >
-            Join Genesis Phase
+            Continue to Deposit
           </button>
         </motion.div>
       </motion.div>

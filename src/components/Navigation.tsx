@@ -23,6 +23,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isDashboardAdmin } from "@/lib/dashboard-admin";
+import { isOnChainCryptoMode } from "@/lib/chain-network";
 import { Cosmic3dShell } from "@/components/cosmic-3d-shell";
 import { ChaosStarLogo3DLink } from "@/components/chaos-star-logo-3d-link";
 
@@ -164,6 +165,9 @@ export const Navigation = () => {
   };
 
   const navItems: Array<{ path: string; label: string; icon: any }> = [];
+  const onChainCrypto = isOnChainCryptoMode();
+  const showDepositNav = !location.pathname.startsWith("/admin");
+  const depositNavConnected = onChainCrypto ? isConnected : isAuthenticated;
 
   return (
     <nav
@@ -346,13 +350,26 @@ export const Navigation = () => {
               );
             })}
 
-            {/* Deposit Button - hide on admin pages */}
-            {!location.pathname.startsWith("/admin") && (
+            {/* Deposit / Connect wallet — hide on admin pages */}
+            {showDepositNav && (
               <Button
                 variant="deposit"
                 onClick={() => {
+                  if (onChainCrypto) {
+                    if (isConnected) {
+                      navigate("/deposit");
+                      return;
+                    }
+                    if (!isAuthenticated) {
+                      toast.info("Please login to access deposit features");
+                      navigate("/register");
+                      return;
+                    }
+                    void handleConnectWallet();
+                    return;
+                  }
                   if (isAuthenticated) {
-                    navigate("/invest");
+                    navigate("/deposit");
                   } else {
                     toast.info("Please login to access deposit features");
                     navigate("/register");
@@ -360,9 +377,25 @@ export const Navigation = () => {
                 }}
                 className="ml-2 sm:ml-4 gap-2 rounded-full px-5 h-10 text-[11px] sm:text-xs"
                 size="default"
+                aria-label={
+                  depositNavConnected
+                    ? "Go to deposit page"
+                    : onChainCrypto
+                      ? "Connect wallet"
+                      : "Login to deposit"
+                }
               >
-                <Coins className="h-4 w-4 shrink-0 opacity-95 drop-shadow-[0_0_10px_hsl(152_55%_55%_/_0.4)]" />
-                <span className="text-[10px] sm:text-xs">Deposit</span>
+                {depositNavConnected ? (
+                  <>
+                    <Coins className="h-4 w-4 shrink-0 opacity-95 drop-shadow-[0_0_10px_hsl(152_55%_55%_/_0.4)]" />
+                    <span className="text-[10px] sm:text-xs">Deposit</span>
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="h-4 w-4 shrink-0 opacity-95" />
+                    <span className="text-[10px] sm:text-xs">Connect wallet</span>
+                  </>
+                )}
               </Button>
             )}
 

@@ -39,7 +39,7 @@ interface OctagonalGridProps {
   onPlotClick?: (plot: Plot) => void;
   onPlotSelect?: (plot: Plot) => void;
   onPurchase?: (plotId: number) => Promise<void>;
-  plotPrice?: bigint | string; // Price in AVAX (wei or formatted string)
+  plotPrice?: bigint | string; // Price in xBGL (wei or formatted string)
   ownedPlotIds?: number[];
   isConnected?: boolean;
   isLoading?: boolean;
@@ -429,7 +429,7 @@ export function OctagonalGrid({
     if (!price) return "N/A";
     if (typeof price === "string") return price;
     try {
-      return ethers.formatEther(price) + " AVAX";
+      return `${ethers.formatEther(price)} xBGL`;
     } catch {
       return price.toString();
     }

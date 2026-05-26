@@ -11,6 +11,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Box, File, FolderOpen, Grid3x3, History, Loader2, Send, UserPlus, Users } from "lucide-react";
+import { displayTokenSymbol } from "@/lib/game-currency";
 
 type AdminUserDetailsDialogProps = {
   open: boolean;
@@ -317,7 +318,7 @@ export function AdminUserDetailsDialog({
                             <TableCell className="font-mono text-xs">{tx.from_address?.slice(0, 8)}...{tx.from_address?.slice(-6)}</TableCell>
                             <TableCell className="font-mono text-xs">{tx.to_address?.slice(0, 8)}...{tx.to_address?.slice(-6) || "N/A"}</TableCell>
                             <TableCell className="font-semibold">{Number(tx.amount || 0).toFixed(2)}</TableCell>
-                            <TableCell>{tx.token_type || "xBGL"}</TableCell>
+                            <TableCell>{displayTokenSymbol(tx.token_type)}</TableCell>
                             <TableCell className="text-xs">{new Date(tx.created_at).toLocaleDateString()}</TableCell>
                             <TableCell>
                               <Badge variant={tx.status === "completed" ? "default" : "secondary"}>{tx.status || "pending"}</Badge>

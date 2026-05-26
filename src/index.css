@@ -104,6 +104,17 @@ All colors MUST be HSL.
     box-shadow: var(--glow-card);
   }
 
+  /* Deposit page panels — visible purple border glow on all sides */
+  .deposit-panel-glow {
+    border-color: hsl(262 72% 58% / 0.38) !important;
+    box-shadow:
+      0 0 0 1px hsl(262 72% 58% / 0.28),
+      0 0 20px hsl(262 72% 58% / 0.22),
+      0 0 40px hsl(262 72% 58% / 0.14),
+      0 0 64px hsl(262 72% 58% / 0.08),
+      inset 0 1px 0 hsl(260 25% 98% / 0.06) !important;
+  }
+
   /* Glass morphism */
   .glass {
     background: hsl(260 24% 7% / 0.72);

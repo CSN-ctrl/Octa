@@ -22,6 +22,7 @@ const EXCHANGE_RATES_TO_USD: Record<string, number> = {
   // Native tokens (approximate rates - should be fetched from API)
   'ETH': 3000.0,   // 1 ETH ≈ 3000 USD (update with real rate)
   'MATIC': 0.85,   // 1 MATIC ≈ 0.85 USD (update with real rate)
+  'AVAX': 25.0,    // override via updateExchangeRate / API
   
   // Default fallback
   'DEFAULT': 1.0,
