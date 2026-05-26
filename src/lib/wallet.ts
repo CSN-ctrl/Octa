@@ -1,10 +1,11 @@
 import { ethers } from "ethers";
-import { getWalletRpcUrl } from "@/config/avax-network";
+import { getWalletRpcUrl, getPaymentWalletRpcUrls } from "@/config/avax-network";
 import {
   getPaymentChainId,
   getPaymentChainIdHex,
   getPaymentNativeSymbol,
   getPaymentNetworkName,
+  getPaymentBlockExplorerUrl,
 } from "@/config/blockchain-profile";
 import {
   CHAOSSTAR_NETWORK_DEFAULTS,

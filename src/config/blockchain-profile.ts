@@ -43,3 +43,10 @@ export function getPaymentNativeSymbol(): string {
 export function getPaymentDeploymentsPath(): string {
   return `/sandbox/deployments/${getPaymentChainId()}-latest.json`;
 }
+
+export function getPaymentBlockExplorerUrl(): string {
+  if (getPaymentRailProfile() === "fuji-43113") {
+    return "https://testnet.snowtrace.io";
+  }
+  return "";
+}

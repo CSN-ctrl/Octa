@@ -203,7 +203,7 @@ export default function LandTest() {
 
             <p className="text-xs text-center text-muted-foreground">
               Also on <Link to="/quick-actions" className="underline">Quick Actions</Link>.
-              Sandbox: <code className="text-xs">sandbox/deployments/1337-latest.json</code>
+              Sandbox: <code className="text-xs">{getPaymentDeploymentsPath().replace(/^\//, "")}</code>
             </p>
           </>
         )}

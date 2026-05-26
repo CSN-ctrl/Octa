@@ -284,7 +284,7 @@ export default function PlotPurchase() {
     if (onChainLand) {
       if (!signer || !address) {
         toast.error(
-          `Connect your wallet. Plot payment uses Avalanche local chain ${PAYMENT_CHAIN_ID} with xBGL (get xBGL via Deposit with AVAX first).`
+          `Connect your wallet. Plot payment uses ${getPaymentNetworkName()} (chain ${PAYMENT_CHAIN_ID}) with xBGL (get xBGL via Deposit with AVAX first).`
         );
         return;
       }

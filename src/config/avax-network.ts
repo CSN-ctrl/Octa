@@ -7,7 +7,10 @@ export const DEFAULT_AVAX_C_CHAIN_RPC =
   "http://192.168.88.62:9650/ext/bc/C/rpc";
 
 export const PUBLIC_FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
+/** Alternate Fuji host from Avalanche subnet docs; set VITE_AVALANCHE_RPC to use as primary. */
+export const FUJI_SUBNETS_TEST_RPC = "https://subnets-test.avax.network/c-chain";
 export const FUJI_CHAIN_ID = 43113;
+export const FUJI_CHAIN_ID_HEX = "0xa869";
 
 /** Local avalanchego C-Chain from eth_chainId on the LAN node. */
 export const LOCAL_AVAX_CHAIN_ID = 1337;
@@ -121,19 +124,32 @@ export function getWalletRpcUrl(): string {
   return DEFAULT_AVAX_C_CHAIN_RPC;
 }
 
+/** MetaMask `wallet_addEthereumChain` — primary + fallback RPC URLs for Fuji. */
+export function getPaymentWalletRpcUrls(): string[] {
+  const primary = getWalletRpcUrl();
+  const urls = [primary];
+  if (paymentChainIdFromEnv() === FUJI_CHAIN_ID) {
+    for (const alt of [alchemyFujiRpcFromEnv(), PUBLIC_FUJI_RPC, FUJI_SUBNETS_TEST_RPC]) {
+      if (alt && alt !== primary && !urls.includes(alt)) urls.push(alt);
+    }
+  }
+  return urls;
+}
+
 /** Resolve RPC URL for ethers/browser fetch (respects dev /avax-rpc proxy). */
 export function getAvaxRpcUrl(): string {
   return resolveAvaxRpcUrl();
 }
 
 export function isLocalAvaxRpc(url: string = getAvaxRpcUrl()): boolean {
-  if (url.includes("g.alchemy.com") || url.includes("api.avax-test.network")) {
+  if (
+    url.includes("g.alchemy.com") ||
+    url.includes("api.avax-test.network") ||
+    url.includes("subnets-test.avax.network")
+  ) {
     return false;
   }
-  return (
-    isPrivateLanRpc(url) ||
-    url.includes("/avax-rpc")
-  );
+  return isPrivateLanRpc(url) || url.includes("/avax-rpc");
 }
 
 export function resolveEvmChainIdFromRpc(url: string = getAvaxRpcUrl()): number {
@@ -142,6 +158,7 @@ export function resolveEvmChainIdFromRpc(url: string = getAvaxRpcUrl()): number 
   if (
     url.includes("api.avax-test.network") ||
     url.includes("avax-fuji.g.alchemy.com") ||
+    url.includes("subnets-test.avax.network") ||
     url.includes("43113")
   ) {
     return FUJI_CHAIN_ID;

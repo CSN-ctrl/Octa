@@ -2,7 +2,7 @@
  * Multi-Network Configuration for deposits (USDC on mainnets, AVAX on local 1337).
  */
 
-import { LOCAL_AVAX_CHAIN_ID } from "@/config/avax-network";
+import { LOCAL_AVAX_CHAIN_ID, PUBLIC_FUJI_RPC } from "@/config/avax-network";
 
 export interface NetworkConfig {
   id: string;

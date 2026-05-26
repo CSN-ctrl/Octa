@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { NETWORKS, depositAssetSymbol, isAvaxDepositNetwork } from "@/lib/networks";
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
-import { getDepositNetworkId } from "@/config/blockchain-profile";
+import { getDepositNetworkId, getPaymentNetworkName } from "@/config/blockchain-profile";
 import { addPaymentNetwork } from "@/lib/wallet";
 import { getAllHotWallets } from "@/lib/hot-wallet";
 import { generateEnhancedQRCode, getNetworkLogoUrl } from "@/lib/qr-code-utils";
