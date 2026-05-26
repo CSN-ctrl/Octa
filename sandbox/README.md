@@ -40,6 +40,17 @@ Writes:
 
 Then copy printed `VITE_*` lines into `.env.local`.
 
+## Fuji (43113)
+
+```powershell
+copy sandbox\.env.example sandbox\.env
+# ALCHEMY_API_KEY=...  (Avalanche Fuji app at dashboard.alchemy.com)
+# FUJI_PRIVATE_KEY=0x...  (deployer — fund from https://faucet.avax.network/)
+npm run sandbox:deploy:fuji
+```
+
+Writes `sandbox/deployments/43113-latest.json` and prints frontend env lines.
+
 ## Commands
 
 | Command | What it does |
