@@ -511,8 +511,7 @@ export default function Deposit() {
     selectedDepositAsset.supportsWalletDeposit &&
     isConnected &&
     !!signer &&
-    avaxRequired != null &&
-    !isWrongNetwork;
+    avaxRequired != null;
 
   const isWorking = submittingDeposit || onChainDepositLoading;
 

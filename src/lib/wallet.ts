@@ -223,12 +223,13 @@ export async function addPaymentNetwork(provider?: any): Promise<boolean> {
 
   const chainIdHex = getPaymentChainIdHex();
   const symbol = getPaymentNativeSymbol();
+  const explorer = getPaymentBlockExplorerUrl();
   const params = {
     chainId: chainIdHex,
     chainName: getPaymentNetworkName(),
     nativeCurrency: { name: symbol, symbol, decimals: 18 },
-    rpcUrls: [getWalletRpcUrl()],
-    blockExplorerUrls: [] as string[],
+    rpcUrls: getPaymentWalletRpcUrls(),
+    blockExplorerUrls: explorer ? [explorer] : ([] as string[]),
   };
 
   try {
