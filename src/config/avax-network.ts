@@ -1,41 +1,42 @@
 /**
- * Avalanche C-Chain RPC — local 1337 (LAN/proxy) or Fuji 43113 (Alchemy / public).
- * Override with VITE_AVALANCHE_RPC and VITE_WALLET_RPC in `.env.local` / Vercel env.
+ * Avalanche C-Chain — Fuji testnet (43113) by default.
+ * Override with VITE_AVALANCHE_RPC / VITE_WALLET_RPC in `.env.local` or Vercel.
  */
 
-export const DEFAULT_AVAX_C_CHAIN_RPC =
-  "http://192.168.88.62:9650/ext/bc/C/rpc";
-
 export const PUBLIC_FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
-/** Alternate Fuji host from Avalanche subnet docs; set VITE_AVALANCHE_RPC to use as primary. */
+/** Alternate Fuji host; set VITE_AVALANCHE_RPC to use as primary. */
 export const FUJI_SUBNETS_TEST_RPC = "https://subnets-test.avax.network/c-chain";
 export const FUJI_CHAIN_ID = 43113;
 export const FUJI_CHAIN_ID_HEX = "0xa869";
 
-/** Local avalanchego C-Chain from eth_chainId on the LAN node. */
-export const LOCAL_AVAX_CHAIN_ID = 1337;
-export const LOCAL_AVAX_CHAIN_ID_HEX = "0x539";
+/** @deprecated LAN node — not used by the app; kept for legacy deploy scripts only. */
+export const DEFAULT_AVAX_C_CHAIN_RPC = PUBLIC_FUJI_RPC;
 
-export const LOCAL_AVAX_NETWORK = {
-  chainId: LOCAL_AVAX_CHAIN_ID,
-  chainIdHex: LOCAL_AVAX_CHAIN_ID_HEX,
-  name: "Avalanche Local C-Chain",
+export const FUJI_AVAX_NETWORK = {
+  chainId: FUJI_CHAIN_ID,
+  chainIdHex: FUJI_CHAIN_ID_HEX,
+  name: "Avalanche Fuji C-Chain",
   symbol: "AVAX",
   decimals: 18,
-  rpcUrl: DEFAULT_AVAX_C_CHAIN_RPC,
-  blockExplorer: "",
+  rpcUrl: PUBLIC_FUJI_RPC,
+  blockExplorer: "https://testnet.snowtrace.io",
 } as const;
+
+/** @deprecated Use FUJI_AVAX_NETWORK / FUJI_CHAIN_ID */
+export const LOCAL_AVAX_CHAIN_ID = FUJI_CHAIN_ID;
+export const LOCAL_AVAX_CHAIN_ID_HEX = FUJI_CHAIN_ID_HEX;
+export const LOCAL_AVAX_NETWORK = FUJI_AVAX_NETWORK;
 
 function trimEnv(key: string): string | undefined {
   const v = import.meta.env[key]?.toString().trim();
   return v || undefined;
 }
 
-function paymentChainIdFromEnv(): number | null {
+function paymentChainIdFromEnv(): number {
   const raw = trimEnv("VITE_CHAIN_ID");
-  if (!raw) return null;
+  if (!raw) return FUJI_CHAIN_ID;
   const n = parseInt(raw, 10);
-  return Number.isNaN(n) ? null : n;
+  return Number.isNaN(n) ? FUJI_CHAIN_ID : n;
 }
 
 /** Alchemy Fuji RPC when VITE_ALCHEMY_API_KEY is set at build time. */
@@ -54,16 +55,16 @@ function isPrivateLanRpc(url: string): boolean {
   );
 }
 
-/** Production-safe default when VITE_AVALANCHE_RPC is missing (never LAN). */
+function defaultFujiRpc(): string {
+  return alchemyFujiRpcFromEnv() ?? PUBLIC_FUJI_RPC;
+}
+
 function resolveProductionAvaxRpc(): string {
   const chainId = paymentChainIdFromEnv();
-  if (chainId === FUJI_CHAIN_ID) {
-    return alchemyFujiRpcFromEnv() ?? PUBLIC_FUJI_RPC;
-  }
   if (chainId === 43114) {
     return "https://api.avax.network/ext/bc/C/rpc";
   }
-  return alchemyFujiRpcFromEnv() ?? PUBLIC_FUJI_RPC;
+  return defaultFujiRpc();
 }
 
 function resolveExplicitRpc(fromEnv: string): string {
@@ -75,7 +76,7 @@ function resolveExplicitRpc(fromEnv: string): string {
   }
   if (import.meta.env.PROD && isPrivateLanRpc(fromEnv)) {
     console.warn(
-      "[avax-network] VITE_AVALANCHE_RPC points at a private LAN host; using public Fuji RPC in production instead.",
+      "[avax-network] VITE_AVALANCHE_RPC points at a private LAN host; using Fuji RPC instead.",
     );
     return resolveProductionAvaxRpc();
   }
@@ -93,35 +94,22 @@ function resolveAvaxRpcUrl(): string {
     return `${window.location.origin}/avax-rpc`;
   }
 
-  if (import.meta.env.PROD) {
-    return resolveProductionAvaxRpc();
-  }
-
-  return DEFAULT_AVAX_C_CHAIN_RPC;
+  return defaultFujiRpc();
 }
 
-/**
- * RPC URL for MetaMask / WalletConnect (must reach the node directly — no dev proxy).
- */
+/** RPC URL for MetaMask / WalletConnect (direct — no dev proxy). */
 export function getWalletRpcUrl(): string {
   const fromEnv = trimEnv("VITE_WALLET_RPC");
   if (fromEnv) {
-    if (import.meta.env.PROD && isPrivateLanRpc(fromEnv)) {
-      return resolveProductionAvaxRpc();
-    }
+    if (isPrivateLanRpc(fromEnv)) return defaultFujiRpc();
     return fromEnv;
   }
   const avax = trimEnv("VITE_AVALANCHE_RPC");
   if (avax && !avax.startsWith("/")) {
-    if (import.meta.env.PROD && isPrivateLanRpc(avax)) {
-      return resolveProductionAvaxRpc();
-    }
+    if (isPrivateLanRpc(avax)) return defaultFujiRpc();
     return avax;
   }
-  if (import.meta.env.PROD) {
-    return resolveProductionAvaxRpc();
-  }
-  return DEFAULT_AVAX_C_CHAIN_RPC;
+  return defaultFujiRpc();
 }
 
 /** MetaMask `wallet_addEthereumChain` — primary + fallback RPC URLs for Fuji. */
@@ -145,7 +133,8 @@ export function isLocalAvaxRpc(url: string = getAvaxRpcUrl()): boolean {
   if (
     url.includes("g.alchemy.com") ||
     url.includes("api.avax-test.network") ||
-    url.includes("subnets-test.avax.network")
+    url.includes("subnets-test.avax.network") ||
+    url.includes("api.avax.network")
   ) {
     return false;
   }
@@ -153,7 +142,7 @@ export function isLocalAvaxRpc(url: string = getAvaxRpcUrl()): boolean {
 }
 
 export function resolveEvmChainIdFromRpc(url: string = getAvaxRpcUrl()): number {
-  if (isLocalAvaxRpc(url)) return LOCAL_AVAX_CHAIN_ID;
+  if (isLocalAvaxRpc(url)) return FUJI_CHAIN_ID;
   if (url.includes("api.avax.network") || url.includes("43114")) return 43114;
   if (
     url.includes("api.avax-test.network") ||
@@ -163,12 +152,9 @@ export function resolveEvmChainIdFromRpc(url: string = getAvaxRpcUrl()): number 
   ) {
     return FUJI_CHAIN_ID;
   }
-  const fromEnv = paymentChainIdFromEnv();
-  if (fromEnv != null) return fromEnv;
-  return LOCAL_AVAX_CHAIN_ID;
+  return paymentChainIdFromEnv();
 }
 
-/** Chain ID for the configured AVAX / EVM RPC (env or local default). */
 export function getAvaxChainId(): number {
   return resolveEvmChainIdFromRpc();
 }

@@ -8,7 +8,7 @@ import {
   getPaymentTreasuryContract,
   loadPaymentContractAddresses,
 } from "@/lib/payment-contracts";
-import { convertAvaxAmountToXBGL } from "@/lib/xbgl-avax-pricing";
+import { convertAvaxAmountToXBGL, estimateXbglPerAvax } from "@/lib/xbgl-avax-pricing";
 
 const TREASURY_DEPOSIT_ABI = [
   "function xbglPerAvaxE18() view returns (uint256)",
@@ -66,7 +66,7 @@ export async function getOnChainDepositQuote(avaxHuman: number): Promise<OnChain
 export async function getOnChainXbglPerAvaxRate(): Promise<number> {
   await loadPaymentContractAddresses();
   const treasury = getPaymentTreasuryContract();
-  if (!treasury) return estimateXbglPerAvax();
+  if (!treasury) return convertAvaxAmountToXBGL(1);
   try {
     const c = new ethers.Contract(
       await treasury.getAddress(),
@@ -78,7 +78,7 @@ export async function getOnChainXbglPerAvaxRate(): Promise<number> {
   } catch {
     /* fallback */
   }
-  return estimateXbglPerAvax();
+  return convertAvaxAmountToXBGL(1);
 }
 
 export async function depositAvaxForXbgl(

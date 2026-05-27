@@ -1,11 +1,11 @@
 /**
- * Plot + deposit pricing: EUR → xBGL (1.955833) and EUR → AVAX via USD bridge.
+ * Plot + deposit pricing: EUR → xBGL (1:1) and EUR → AVAX via USD bridge.
  */
 
 import { getEURToUSDCRate, getEURToXBGLRate, getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 export const PLOT_PRICE_EUR = 100;
-export const DEFAULT_AVAX_USD = 25;
+export const DEFAULT_AVAX_USD = 9.4;
 
 let cachedAvaxUsd: { value: number; at: number } | null = null;
 const CACHE_MS = 60_000;
@@ -17,11 +17,9 @@ function avaxUsdFromEnv(): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Sync xBGL/AVAX estimate when contract rate and CoinGecko are unavailable. */
+/** Sync xBGL/AVAX when treasury rate and CoinGecko are unavailable (1 EUR = 1 xBGL). */
 export function estimateXbglPerAvax(avaxUsd = avaxUsdFromEnv() ?? DEFAULT_AVAX_USD): number {
-  const eurToUsdc = 1.08;
-  const eur = (1 * avaxUsd) / eurToUsdc;
-  return eur * getEURToXBGLRate();
+  return avaxUsd * getEURToXBGLRate();
 }
 
 export async function fetchAvaxUsdPrice(): Promise<number> {
@@ -36,7 +34,6 @@ export async function fetchAvaxUsdPrice(): Promise<number> {
     return envPrice;
   }
 
-  // Production CSP blocks api.coingecko.com — use env or static default.
   if (import.meta.env.PROD) {
     cachedAvaxUsd = { value: DEFAULT_AVAX_USD, at: now };
     return DEFAULT_AVAX_USD;
@@ -72,7 +69,7 @@ export async function getPlotPriceInAVAXWei(plotEur = PLOT_PRICE_EUR): Promise<b
   return ethers.parseEther(avax.toFixed(9));
 }
 
-/** xBGL credited for `avaxAmount` at the same EUR bridge as plot pricing. */
+/** xBGL credited for `avaxAmount` — 1 EUR = 1 xBGL via USD bridge. */
 export async function convertAvaxAmountToXBGL(avaxAmount: number): Promise<number> {
   const avaxUsd = await fetchAvaxUsdPrice();
   const eurToUsdc = await getEURToUSDCRate();
@@ -93,7 +90,6 @@ export async function getPlotPricingBreakdown(plotEur = PLOT_PRICE_EUR) {
     avaxUsd,
     xbgl,
     avax,
-    /** 1 AVAX → xBGL at same bridge */
     xbglPerAvax: await convertAvaxAmountToXBGL(1),
   };
 }

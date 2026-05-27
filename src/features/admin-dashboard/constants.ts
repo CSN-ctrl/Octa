@@ -1,6 +1,7 @@
 import type { AdminTabDescriptor } from "./types";
+import { PROJECT_WALLET } from "@/config/project-wallet";
 
-export const TREASURY_WALLET = "0x96DDab023A0e95E61A976B1A2fC98d7aB4901C33";
+export const TREASURY_WALLET = PROJECT_WALLET;
 export const TREASURY_DEFAULT_BALANCE = 1_000_000;
 export const TREASURY_TX_PAGE_SIZE = 10;
 

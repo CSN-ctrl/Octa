@@ -1,5 +1,5 @@
 /**
- * Payment rail — Avalanche 1337 (local) or Fuji 43113 via VITE_CHAIN_ID.
+ * Payment rail — Avalanche Fuji 43113 via VITE_CHAIN_ID.
  * AVAX in → xBGL ERC-20 → land purchases in xBGL.
  */
 

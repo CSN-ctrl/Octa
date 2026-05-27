@@ -16,7 +16,7 @@ export const XBGL_PROTOCOL = {
   reserveMultiplierMax: 3,
   defaultReserveMultiplier: 2,
   /** 1 EUR issuance reference (not a peg). */
-  eurToXbglRate: 1.955833,
+  eurToXbglRate: 1,
   isStablecoin: false,
   isRedeemable: false,
   isFiatPegged: false,

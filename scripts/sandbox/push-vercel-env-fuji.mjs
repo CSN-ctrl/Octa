@@ -58,16 +58,18 @@ const alchemyKey =
 
 const vars = {
   VITE_CHAIN_ID: "43113",
-  VITE_NETWORK_NAME: "Avalanche Fuji",
+  VITE_NETWORK_NAME: "Avalanche Fuji C-Chain",
   VITE_AVALANCHE_RPC: alchemyKey
     ? `https://avax-fuji.g.alchemy.com/v2/${alchemyKey}`
-    : "https://avax-fuji.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
+    : "https://api.avax-test.network/ext/bc/C/rpc",
   VITE_ALCHEMY_API_KEY: alchemyKey || "<ALCHEMY_API_KEY>",
   VITE_ONCHAIN_CRYPTO: "true",
   VITE_XBGL_TOKEN_ADDRESS: c.XBGLToken,
   VITE_CONTRACT_ADDRESS: c.SaraktLandV2,
   VITE_TREASURY_ADDRESS: c.SaraktTreasury,
   VITE_DIGITAL_ID_ADDRESS: c.LocalDigitalID,
+  VITE_AVAX_USD_PRICE: "9.4",
+  VITE_NATIVE_TOKEN: "AVAX",
 };
 
 console.log(`# Vercel project: ${VERCEL_SCOPE}/${VERCEL_PROJECT}`);

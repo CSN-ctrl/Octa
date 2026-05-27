@@ -66,8 +66,8 @@ export default function LandTest() {
             <CardContent className="pt-6 flex flex-col items-center gap-4">
               <Wallet className="h-10 w-10 text-muted-foreground" />
               <p className="text-sm text-muted-foreground text-center">
-                Connect MetaMask on network <strong>{LOCAL_AVAX_NETWORK.chainName}</strong> (chain{" "}
-                {LOCAL_AVAX_NETWORK.chainId}).
+                Connect MetaMask on <strong>{getPaymentNetworkName()}</strong> (chain{" "}
+                {getPaymentChainId()}).
               </p>
               <Button onClick={() => connect()}>Connect wallet</Button>
             </CardContent>
@@ -203,7 +203,7 @@ export default function LandTest() {
 
             <p className="text-xs text-center text-muted-foreground">
               Also on <Link to="/quick-actions" className="underline">Quick Actions</Link>.
-              Sandbox: <code className="text-xs">{getPaymentDeploymentsPath().slice(1)}</code>
+              Sandbox: <code className="text-xs">sandbox/deployments/1337-latest.json</code>
             </p>
           </>
         )}

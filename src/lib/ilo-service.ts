@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import * as supabaseService from "@/lib/supabase-service";
 
-// Price conversion: 1 EUR = 1.955833 xBGL (initial price, not pegged)
+// Price conversion: 1 EUR = 1 xBGL (initial price, not pegged)
 export const EUR_TO_XBGL = 1.955833;
 export const PLOT_PRICE_EUR = 100;
 export const PLOT_PRICE_XBGL = PLOT_PRICE_EUR * EUR_TO_XBGL; // ~195.58 xBGL
