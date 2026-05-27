@@ -22,8 +22,6 @@
     "sandbox:test": "node scripts/sandbox/test.mjs",
     "sandbox:smoke": "node scripts/sandbox/smoke.mjs",
     "sandbox:set-metadata-uri": "node scripts/sandbox/set-metadata-uri.mjs",
-    "sandbox:deploy:fuji": "node scripts/sandbox/deploy-fuji.mjs",
-    "sandbox:smoke:fuji": "node scripts/sandbox/smoke-fuji.mjs",
     "vercel:env:fuji": "node scripts/sandbox/push-vercel-env-fuji.mjs",
     "typecheck": "tsc -b --noEmit",
     "governance:risk": "node scripts/governance/risk-assessment.mjs",
