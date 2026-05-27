@@ -3,6 +3,8 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { PROJECT_WALLET } from "@/config/project-wallet";
+import { getDepositNetworkId } from "@/config/blockchain-profile";
 import { NETWORKS, NetworkConfig } from "./networks";
 
 export interface HotWallet {
@@ -48,7 +50,7 @@ export async function getAllHotWallets(): Promise<Record<string, string>> {
       .eq("is_active", true);
 
     if (error || !data) {
-      return {};
+      return { [getDepositNetworkId()]: PROJECT_WALLET };
     }
 
     const wallets: Record<string, string> = {};
@@ -56,6 +58,7 @@ export async function getAllHotWallets(): Promise<Record<string, string>> {
       wallets[wallet.network_id] = wallet.address;
     });
 
+    // Ensure the active deposit network always has a wallet (Fuji).
     const depositNetworkId = getDepositNetworkId();
     if (!wallets[depositNetworkId]) {
       wallets[depositNetworkId] = PROJECT_WALLET;
@@ -64,7 +67,7 @@ export async function getAllHotWallets(): Promise<Record<string, string>> {
     return wallets;
   } catch (error) {
     console.error("Failed to fetch hot wallets:", error);
-    return {};
+    return { [getDepositNetworkId()]: PROJECT_WALLET };
   }
 }
 
