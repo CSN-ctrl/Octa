@@ -10,11 +10,38 @@ export const DEFAULT_AVAX_USD = 25;
 let cachedAvaxUsd: { value: number; at: number } | null = null;
 const CACHE_MS = 60_000;
 
+function avaxUsdFromEnv(): number | null {
+  const raw = import.meta.env.VITE_AVAX_USD_PRICE?.toString().trim();
+  if (!raw) return null;
+  const n = parseFloat(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Sync xBGL/AVAX estimate when contract rate and CoinGecko are unavailable. */
+export function estimateXbglPerAvax(avaxUsd = avaxUsdFromEnv() ?? DEFAULT_AVAX_USD): number {
+  const eurToUsdc = 1.08;
+  const eur = (1 * avaxUsd) / eurToUsdc;
+  return eur * getEURToXBGLRate();
+}
+
 export async function fetchAvaxUsdPrice(): Promise<number> {
   const now = Date.now();
   if (cachedAvaxUsd && now - cachedAvaxUsd.at < CACHE_MS) {
     return cachedAvaxUsd.value;
   }
+
+  const envPrice = avaxUsdFromEnv();
+  if (envPrice) {
+    cachedAvaxUsd = { value: envPrice, at: now };
+    return envPrice;
+  }
+
+  // Production CSP blocks api.coingecko.com — use env or static default.
+  if (import.meta.env.PROD) {
+    cachedAvaxUsd = { value: DEFAULT_AVAX_USD, at: now };
+    return DEFAULT_AVAX_USD;
+  }
+
   try {
     const res = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=avalanche-2&vs_currencies=usd",
@@ -28,6 +55,7 @@ export async function fetchAvaxUsdPrice(): Promise<number> {
   } catch {
     /* use fallback */
   }
+  cachedAvaxUsd = { value: DEFAULT_AVAX_USD, at: now };
   return DEFAULT_AVAX_USD;
 }
 

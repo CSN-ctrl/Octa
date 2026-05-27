@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { NETWORKS, depositAssetSymbol, isAvaxDepositNetwork } from "@/lib/networks";
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
-import { getDepositNetworkId, getPaymentNetworkName } from "@/config/blockchain-profile";
+import { getDepositNetworkId } from "@/config/blockchain-profile";
 import { addPaymentNetwork } from "@/lib/wallet";
 import { getAllHotWallets } from "@/lib/hot-wallet";
 import { generateEnhancedQRCode, getNetworkLogoUrl } from "@/lib/qr-code-utils";
@@ -511,8 +511,7 @@ export default function Deposit() {
     selectedDepositAsset.supportsWalletDeposit &&
     isConnected &&
     !!signer &&
-    avaxRequired != null &&
-    !isWrongNetwork;
+    avaxRequired != null;
 
   const isWorking = submittingDeposit || onChainDepositLoading;
 
