@@ -11,9 +11,8 @@ export interface ExchangeRate {
   updated_at: string;
 }
 
-// Exchange rates
-// 1 EUR = 1.955833 xBGL (fixed rate)
-const EUR_TO_XBGL_RATE = 1.955833;
+// Exchange rates — 1 EUR = 1 xBGL (fixed peg)
+const EUR_TO_XBGL_RATE = 1;
 // Default EUR/USDC equivalent. Can be updated by admin in exchange_rates table.
 const DEFAULT_EUR_TO_USDC_RATE = 1.0;
 

@@ -1,5 +1,5 @@
 /**
- * Contract addresses on the payment rail (Avalanche 1337) — land, xBGL token, treasury.
+ * Contract addresses on the payment rail (Avalanche Fuji 43113) — land, xBGL token, treasury.
  */
 
 import { ethers } from "ethers";

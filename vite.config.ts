@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
     // Browser CSP blocks cross-origin LAN RPC; proxy through Vite in dev.
     proxy: {
       "/avax-rpc": {
-        target: "http://192.168.88.62:9650",
+        target: "https://api.avax-test.network",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/avax-rpc/, "/ext/bc/C/rpc"),
       },

@@ -1,6 +1,6 @@
 /**
  * ChaosStar (8888): app wallet / branding RPC only.
- * In-game xBGL + all smart contracts: Avalanche 1337 — see payment-network.ts + payment-contracts.ts.
+ * In-game xBGL + all smart contracts: Avalanche Fuji 43113 — see payment-network.ts + payment-contracts.ts.
  */
 
 import { ethers } from "ethers";

@@ -20,17 +20,15 @@ interface EnvVars {
   VITE_ENABLE_TEST_ROUTES?: string;
 }
 
-// Defaults — align with `.env.example`. Production must set VITE_AVALANCHE_RPC or VITE_ALCHEMY_API_KEY (Fuji).
+// Defaults — align with `.env.example`. Set VITE_API_URL to your Go API (local or remote).
 const defaults: Partial<EnvVars> = {
   VITE_API_URL: "http://localhost:5001",
-  VITE_AVALANCHE_RPC: import.meta.env.PROD
-    ? undefined
-    : "http://192.168.88.62:9650/ext/bc/C/rpc",
+  VITE_AVALANCHE_RPC: "https://api.avax-test.network/ext/bc/C/rpc",
   VITE_CHAOSSTAR_RPC: undefined,
   VITE_STARGATE_RPC: undefined,
-  VITE_CHAIN_ID: "1337",
+  VITE_CHAIN_ID: "43113",
   VITE_BLOCKCHAIN_ID: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
-  VITE_NETWORK_NAME: "Avalanche Local C-Chain",
+  VITE_NETWORK_NAME: "Avalanche Fuji C-Chain",
   VITE_NATIVE_TOKEN: "AVAX",
   VITE_ENABLE_PRIVATE_KEY_CUSTODY: "false",
   VITE_ENABLE_TEST_ROUTES: "false",

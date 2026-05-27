@@ -29,7 +29,7 @@ const EXCHANGE_RATES_TO_USD: Record<string, number> = {
 };
 
 // xBGL conversion rate
-const EUR_TO_XBGL = 1.955833; // 1 EUR = 1.955833 xBGL
+const EUR_TO_XBGL = 1;
 
 /**
  * Get exchange rate for a token to USD

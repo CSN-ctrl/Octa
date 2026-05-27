@@ -1,17 +1,16 @@
 /**
- * Single switch for payment rail: local 1337 now, Fuji 43113 later.
- * Set VITE_CHAIN_ID + RPC URLs in .env.local — no code changes required to migrate.
+ * Payment rail — Avalanche Fuji testnet (43113).
+ * Set VITE_CHAIN_ID + RPC URLs in .env.local to override.
  */
 
-export type PaymentRailProfile = "local-1337" | "fuji-43113";
+export type PaymentRailProfile = "fuji-43113";
 
 const FUJI_CHAIN_ID = 43113;
-const LOCAL_CHAIN_ID = 1337;
 
 export function getPaymentChainId(): number {
   const raw = import.meta.env.VITE_CHAIN_ID?.toString().trim();
-  const parsed = raw ? parseInt(raw, 10) : LOCAL_CHAIN_ID;
-  if (Number.isNaN(parsed)) return LOCAL_CHAIN_ID;
+  const parsed = raw ? parseInt(raw, 10) : FUJI_CHAIN_ID;
+  if (Number.isNaN(parsed)) return FUJI_CHAIN_ID;
   return parsed;
 }
 
@@ -20,20 +19,18 @@ export function getPaymentChainIdHex(): string {
 }
 
 export function getPaymentRailProfile(): PaymentRailProfile {
-  return getPaymentChainId() === FUJI_CHAIN_ID ? "fuji-43113" : "local-1337";
+  return "fuji-43113";
 }
 
 /** Deposit UI network id (see src/lib/networks.ts). */
 export function getDepositNetworkId(): string {
-  return getPaymentRailProfile() === "fuji-43113" ? "avalanche-fuji" : "avalanche-local";
+  return "avalanche-fuji";
 }
 
 export function getPaymentNetworkName(): string {
   const fromEnv = import.meta.env.VITE_NETWORK_NAME?.toString().trim();
   if (fromEnv) return fromEnv;
-  return getPaymentRailProfile() === "fuji-43113"
-    ? "Avalanche Fuji"
-    : "Avalanche Local C-Chain";
+  return "Avalanche Fuji C-Chain";
 }
 
 export function getPaymentNativeSymbol(): string {
@@ -45,8 +42,5 @@ export function getPaymentDeploymentsPath(): string {
 }
 
 export function getPaymentBlockExplorerUrl(): string {
-  if (getPaymentRailProfile() === "fuji-43113") {
-    return "https://testnet.snowtrace.io";
-  }
-  return "";
+  return "https://testnet.snowtrace.io";
 }
