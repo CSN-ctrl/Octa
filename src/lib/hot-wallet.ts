@@ -56,6 +56,11 @@ export async function getAllHotWallets(): Promise<Record<string, string>> {
       wallets[wallet.network_id] = wallet.address;
     });
 
+    const depositNetworkId = getDepositNetworkId();
+    if (!wallets[depositNetworkId]) {
+      wallets[depositNetworkId] = PROJECT_WALLET;
+    }
+
     return wallets;
   } catch (error) {
     console.error("Failed to fetch hot wallets:", error);

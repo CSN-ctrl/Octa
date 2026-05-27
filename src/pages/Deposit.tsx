@@ -511,7 +511,8 @@ export default function Deposit() {
     selectedDepositAsset.supportsWalletDeposit &&
     isConnected &&
     !!signer &&
-    avaxRequired != null;
+    avaxRequired != null &&
+    !isWrongNetwork;
 
   const isWorking = submittingDeposit || onChainDepositLoading;
 
@@ -905,11 +906,9 @@ export default function Deposit() {
             </CardContent>
           </Card>
 
-          {(!onChainCrypto || isConnected) && (
-            <div className={cn("rounded-xl p-5 shrink-0", depositPanelGlow)}>
-              {walletPanel}
-            </div>
-          )}
+          <div className={cn("rounded-xl p-5 shrink-0", depositPanelGlow)}>
+            {walletPanel}
+          </div>
 
         </section>
 
