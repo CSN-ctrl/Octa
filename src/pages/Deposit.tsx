@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { NETWORKS, depositAssetSymbol, isAvaxDepositNetwork } from "@/lib/networks";
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
-import { getDepositNetworkId } from "@/config/blockchain-profile";
+import { getDepositNetworkId, getPaymentNetworkName } from "@/config/blockchain-profile";
 import { addPaymentNetwork } from "@/lib/wallet";
 import { getAllHotWallets } from "@/lib/hot-wallet";
 import { generateEnhancedQRCode, getNetworkLogoUrl } from "@/lib/qr-code-utils";
@@ -52,7 +52,7 @@ import {
 function middleTruncate(value: string, head = 8, tail = 8): string {
   if (!value) return "";
   if (value.length <= head + tail + 1) return value;
-  return `${value.slice(0, head)}?${value.slice(-tail)}`;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
 
 /** Purple border glow shared by deposit page cards and panels */
@@ -361,7 +361,7 @@ export default function Deposit() {
     }
     try {
       await addPaymentNetwork(target);
-      toast.success(`Switched to Avalanche local (chain ${PAYMENT_CHAIN_ID})`);
+      toast.success(`Switched to ${getPaymentNetworkName()} (chain ${PAYMENT_CHAIN_ID})`);
       const chainId = await target.request({ method: "eth_chainId" });
       if (typeof chainId === "string") setWalletChainId(parseInt(chainId, 16));
     } catch (e: unknown) {

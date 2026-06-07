@@ -10,7 +10,7 @@ import { usePlotPurchases } from "@/hooks/usePlotPurchases";
 import { useWallet } from "@/contexts/WalletContext";
 import { ExternalLink, Calendar, Coins, Hash, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-// RPC provider removed - using Supabase only
+import { getOnChainExplorerTxUrl } from "@/lib/onchain-transaction-history";
 
 export function PurchaseHistory() {
   const { address } = useWallet();
@@ -58,11 +58,7 @@ export function PurchaseHistory() {
     );
   }
 
-  const getExplorerUrl = (txHash: string) => {
-    // For Chaos Star Network, we'd need to configure the explorer URL
-    // For now, return a placeholder
-    return `#`; // TODO: Configure explorer URL
-  };
+  const getExplorerUrl = (txHash: string) => getOnChainExplorerTxUrl(txHash) ?? "#";
 
   return (
     <Card className="glass border-primary/20">

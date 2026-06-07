@@ -43,7 +43,7 @@ describe("RouteMetadata SEO policy", () => {
   it("keeps docs subroutes indexable with per-route canonical", () => {
     renderRoute("/docs/features");
 
-    expect(document.title).toBe("Documentation - Chaos Star Universe");
+    expect(document.title).toBe("Documentation - Chaos Star Universe & Sarakt Genesis");
     expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toContain("index");
     expect(document.head.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://www.sarakt.com/docs/features");
   });

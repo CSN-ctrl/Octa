@@ -121,6 +121,16 @@ export function getWalletRpcUrl(): string {
   return DEFAULT_AVAX_C_CHAIN_RPC;
 }
 
+/** RPC URL list for MetaMask wallet_addEthereumChain (primary + public fallbacks on Fuji). */
+export function getPaymentWalletRpcUrls(): string[] {
+  const primary = getWalletRpcUrl();
+  const urls = [primary];
+  if (paymentChainIdFromEnv() === FUJI_CHAIN_ID || primary.includes("avax-fuji") || primary.includes("avax-test")) {
+    if (!urls.includes(PUBLIC_FUJI_RPC)) urls.push(PUBLIC_FUJI_RPC);
+  }
+  return urls;
+}
+
 /** Resolve RPC URL for ethers/browser fetch (respects dev /avax-rpc proxy). */
 export function getAvaxRpcUrl(): string {
   return resolveAvaxRpcUrl();

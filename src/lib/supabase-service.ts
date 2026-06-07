@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
+export { recordOnChainDeposit, fetchOnChainDepositsForUser } from "./deposits";
+
 // Type aliases for easier use
 type Plot = Tables<"plots">;
 type Planet = Tables<"planets">;

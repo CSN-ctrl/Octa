@@ -479,14 +479,20 @@ function AppContent() {
                         </RouteErrorBoundary>
                       } />
                       <Route path="/financial-hub" element={<FinancialHub />} />
-                      <Route path="/nanofiber-research" element={<NanofiberResearch />} />
+                      {testRoutesEnabled ? (
+                        <Route path="/nanofiber-research" element={<NanofiberResearch />} />
+                      ) : (
+                        <Route path="/nanofiber-research" element={<Navigate to="/docs" replace />} />
+                      )}
                       <Route path="/digital-id" element={<DigitalID />} />
                       <Route path="/quick-actions" element={<QuickActions />} />
-                      <Route path="/land-test" element={
-                        <RouteErrorBoundary routeName="Land Test">
-                          <LandTest />
-                        </RouteErrorBoundary>
-                      } />
+                      {testRoutesEnabled ? (
+                        <Route path="/land-test" element={
+                          <RouteErrorBoundary routeName="Land Test">
+                            <LandTest />
+                          </RouteErrorBoundary>
+                        } />
+                      ) : null}
                       <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
                       <Route path="/lore" element={<Lore />} />
                       <Route path="/support" element={<Support />} />

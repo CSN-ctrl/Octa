@@ -2,11 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { toast } from "sonner";
 import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { getPaymentChainId } from "@/config/blockchain-profile";
 import {
   depositAvaxForXbgl,
   getOnChainDepositQuote,
   getOnChainXbglPerAvaxRate,
 } from "@/lib/onchain-deposit";
+import {
+  fetchOnChainDepositsForUser,
+  recordOnChainDeposit,
+} from "@/lib/deposits";
 
 export type OnChainDepositHistoryRow = {
   txHash: string;
@@ -45,11 +50,33 @@ export function useOnChainDeposit() {
     setExchangeRate(rate);
   }, []);
 
+  const loadHistory = useCallback(async () => {
+    const local = readHistory();
+    const remote = await fetchOnChainDepositsForUser();
+    const byHash = new Map<string, OnChainDepositHistoryRow>();
+    for (const row of remote) {
+      byHash.set(row.tx_hash.toLowerCase(), {
+        txHash: row.tx_hash,
+        avaxAmount: row.avax_amount,
+        xbglAmount: row.xbgl_amount,
+        at: row.created_at,
+      });
+    }
+    for (const row of local) {
+      if (!byHash.has(row.txHash.toLowerCase())) {
+        byHash.set(row.txHash.toLowerCase(), row);
+      }
+    }
+    setHistory(
+      [...byHash.values()].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 30),
+    );
+  }, []);
+
   useEffect(() => {
     if (!isOnChainCryptoMode()) return;
-    setHistory(readHistory());
+    void loadHistory();
     void reloadExchangeRate();
-  }, [reloadExchangeRate]);
+  }, [loadHistory, reloadExchangeRate]);
 
   const quoteAvaxForXbgl = useCallback(async (xbglHuman: number) => {
     const rate = exchangeRate > 0 ? exchangeRate : await getOnChainXbglPerAvaxRate();
@@ -70,6 +97,14 @@ export function useOnChainDeposit() {
           at: new Date().toISOString(),
         };
         appendHistory(row);
+        const signerAddr = await signer.getAddress();
+        void recordOnChainDeposit({
+          tx_hash: txHash,
+          wallet_address: signerAddr,
+          chain_id: getPaymentChainId(),
+          avax_amount: avaxHuman,
+          xbgl_amount: row.xbglAmount,
+        }).then(() => loadHistory());
         setHistory(readHistory());
         toast.success(
           `Received ${row.xbglAmount.toFixed(4)} xBGL on-chain`,
@@ -84,7 +119,7 @@ export function useOnChainDeposit() {
         setLoading(false);
       }
     },
-    [],
+    [loadHistory],
   );
 
   return {
@@ -94,6 +129,6 @@ export function useOnChainDeposit() {
     reloadExchangeRate,
     quoteAvaxForXbgl,
     depositWithWallet,
-    refresh: () => setHistory(readHistory()),
+    refresh: () => void loadHistory(),
   };
 }

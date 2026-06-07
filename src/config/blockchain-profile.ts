@@ -8,10 +8,13 @@ export type PaymentRailProfile = "local-1337" | "fuji-43113";
 const FUJI_CHAIN_ID = 43113;
 const LOCAL_CHAIN_ID = 1337;
 
+const defaultPaymentChainId = (): number =>
+  import.meta.env.PROD ? FUJI_CHAIN_ID : LOCAL_CHAIN_ID;
+
 export function getPaymentChainId(): number {
   const raw = import.meta.env.VITE_CHAIN_ID?.toString().trim();
-  const parsed = raw ? parseInt(raw, 10) : LOCAL_CHAIN_ID;
-  if (Number.isNaN(parsed)) return LOCAL_CHAIN_ID;
+  const parsed = raw ? parseInt(raw, 10) : defaultPaymentChainId();
+  if (Number.isNaN(parsed)) return defaultPaymentChainId();
   return parsed;
 }
 
@@ -42,4 +45,15 @@ export function getPaymentNativeSymbol(): string {
 
 export function getPaymentDeploymentsPath(): string {
   return `/sandbox/deployments/${getPaymentChainId()}-latest.json`;
+}
+
+/** Block explorer base URL for wallet_addEthereumChain (empty on private local chains). */
+export function getPaymentBlockExplorerUrl(): string {
+  if (getPaymentRailProfile() === "fuji-43113") {
+    return "https://testnet.snowtrace.io";
+  }
+  if (getPaymentChainId() === 43114) {
+    return "https://snowtrace.io";
+  }
+  return "";
 }
