@@ -42,6 +42,7 @@ import { FujiTestnetBanner } from "@/components/FujiTestnetBanner";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PlotPickerGrid } from "@/components/plot/PlotPickerGrid";
+import { Empty } from "@/components/ui/empty";
 import { trackProductEvent } from "@/lib/product-analytics";
 import {
   Dialog,
@@ -904,7 +905,7 @@ export default function PlotPurchase() {
         </CardHeader>
         <CardContent>
           <PlotPickerGrid
-            maxPlotId={64}
+            maxPlotId={200}
             selectedPlotIds={selectedPlotIds}
             onTogglePlot={togglePlot}
           />
@@ -1083,39 +1084,18 @@ export default function PlotPurchase() {
               {/* Right Column: Selected Plots Grid */}
               <div className="lg:col-span-8">
                 {selectedPlotIds.size === 0 ? (
-                  <div className="text-center py-24">
-                    <div className="relative inline-block mb-8">
-                      <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-                      <div className="relative p-10 rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20">
-                        <MapPin className="h-32 w-32 mx-auto text-primary/40" />
-                      </div>
-                    </div>
-                    <h3 className="text-2xl font-bold mb-3 text-foreground">Start Building Your Portfolio</h3>
-                    <p className="text-base text-muted-foreground mb-8 max-w-lg mx-auto leading-relaxed">
-                      Add plots to your selection to begin your purchase. Each plot represents a unique piece of land in the ChaosStar universe.
-                    </p>
-                    <div className="flex items-center justify-center gap-4">
-                      {initialPlotId && (
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          className="gap-2 h-12 px-6"
-                          onClick={() => addPlot(parseInt(initialPlotId))}
-                        >
-                          <Plus className="h-5 w-5" />
-                          Add Plot #{initialPlotId}
-                        </Button>
-                      )}
-                      <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
-                        <DialogTrigger asChild>
-                          <Button size="lg" className="gap-2 h-12 px-6 bg-gradient-to-r from-primary to-primary/90">
-                            <Plus className="h-5 w-5" />
-                            Browse Plots
-                          </Button>
-                        </DialogTrigger>
-                      </Dialog>
-                    </div>
-                  </div>
+                  <Empty
+                    icon={<MapPin className="h-10 w-10" />}
+                    title="No plots selected"
+                    description="Tap the map above or Add Plot"
+                    action={
+                      <Button className="gap-2" onClick={() => setShowAddPlotDialog(true)}>
+                        <Plus className="h-4 w-4" />
+                        Add Plot
+                      </Button>
+                    }
+                    className="py-24"
+                  />
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-[700px] overflow-y-auto custom-scrollbar pr-2">
                     {sortedPlotIds.map((plotId) => (

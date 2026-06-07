@@ -58,7 +58,8 @@ export async function trackProductEvent(
       data: { session },
     } = await supabase.auth.getSession();
 
-    await supabase.from("product_analytics_events").insert({
+    // Table is optional in some environments; not in generated Database types yet.
+    await (supabase as any).from("product_analytics_events").insert({
       user_id: session?.user?.id ?? null,
       event_name: event,
       properties: payload.properties,

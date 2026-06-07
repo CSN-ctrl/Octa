@@ -16,7 +16,7 @@ export async function requestImportLandNftToWallet(
 ): Promise<boolean> {
   const land = PAYMENT_CONTRACT_ADDRESSES.land;
   const ethereum = (typeof window !== "undefined"
-    ? (window as Window & { ethereum?: EthereumProvider }).ethereum
+    ? (window as unknown as Window & { ethereum?: EthereumProvider }).ethereum
     : undefined) as EthereumProvider | undefined;
 
   if (!land || !ethereum) {

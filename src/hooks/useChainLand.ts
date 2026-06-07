@@ -17,7 +17,7 @@ import {
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
 
 export function useChainLand() {
-  const { address, signer, isConnected, walletProvider } = useWallet();
+  const { address, signer, isConnected, provider } = useWallet();
   const [loading, setLoading] = useState(false);
   const [salesActive, setSalesActive] = useState(false);
   const [phase1PriceWei, setPhase1PriceWei] = useState<bigint>(0n);
@@ -70,11 +70,11 @@ export function useChainLand() {
 
   const ensurePaymentNetwork = useCallback(async () => {
     const target =
-      walletProvider || (typeof window !== "undefined" ? (window as any).ethereum : null);
+      provider || (typeof window !== "undefined" ? (window as any).ethereum : null);
     if (target) {
       await addLocalAvaxNetwork(target);
     }
-  }, [walletProvider]);
+  }, [provider]);
 
   /** Land is priced and paid in xBGL only (phase1PriceUSDC slot). */
   const resolvePlotPriceWei = useCallback(async (contract: ethers.Contract) => {

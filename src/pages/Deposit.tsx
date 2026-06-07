@@ -70,7 +70,6 @@ export default function Deposit() {
     provider,
     address,
     refreshBalance,
-    walletProvider,
     signer,
     balance,
   } = useWallet();
@@ -363,7 +362,7 @@ export default function Deposit() {
   };
 
   const switchToPaymentNetwork = async () => {
-    const target = walletProvider || (typeof window !== "undefined" ? (window as any).ethereum : null);
+    const target = provider || (typeof window !== "undefined" ? (window as any).ethereum : null);
     if (!target) {
       toast.error("Connect MetaMask first");
       return;

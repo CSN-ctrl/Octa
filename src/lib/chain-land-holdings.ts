@@ -196,7 +196,15 @@ export async function loadMergedOwnedPlots(
         })) || [];
 
   if (!ownerWallet || !isOnChainLandMode()) {
-    return supabasePlots as ReturnType<typeof chainPlotIdToDashboardRow>[];
+    return supabasePlots.map((p) => ({
+      id: p.id,
+      coord_x: p.coord_x,
+      coord_y: p.coord_y,
+      zone_type: p.zone_type,
+      booking_status: p.booking_status,
+      owner_wallet: p.owner_wallet,
+      source: "chain" as const,
+    }));
   }
 
   const chain = await fetchChainLandHoldings(ownerWallet);

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "r3f-mcp": {
+      "command": "npx",
+      "args": ["-y", "r3f-mcp"],
+      "env": {}
+    }
+  }
+}

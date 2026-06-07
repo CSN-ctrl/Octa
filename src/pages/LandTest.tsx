@@ -10,6 +10,7 @@ import { ethers } from "ethers";
 import { MapPin, RefreshCw, Wallet, Sparkles, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getAvaxRpcUrl, LOCAL_AVAX_NETWORK } from "@/config/avax-network";
+import { getPaymentChainId, getPaymentNetworkName } from "@/config/blockchain-profile";
 import { getLandMetadataBaseUri } from "@/lib/land-nft-metadata";
 import { GAME_CURRENCY_COPY, GAME_CURRENCY_SYMBOL } from "@/lib/game-currency";
 

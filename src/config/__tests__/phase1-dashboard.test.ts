@@ -7,7 +7,7 @@ describe("isPhase1DashboardOnly", () => {
   });
 
   it("defaults to true in production when unset", async () => {
-    vi.stubEnv("PROD", "true");
+    vi.stubEnv("PROD", true);
     vi.stubEnv("VITE_PHASE1_DASHBOARD_ONLY", "");
     const { isPhase1DashboardOnly } = await import("@/config/phase1-dashboard");
     expect(isPhase1DashboardOnly()).toBe(true);

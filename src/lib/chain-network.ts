@@ -189,7 +189,8 @@ export async function formatXbglBalance(
 ): Promise<{ formatted: string; symbol: string; wei: bigint }> {
   if (isOnChainCryptoMode()) {
     const { formatPaymentXbglBalance } = await import("@/lib/payment-balance");
-    return formatPaymentXbglBalance(walletAddress);
+    const { formatted, wei } = await formatPaymentXbglBalance(walletAddress);
+    return { formatted, symbol: "xBGL", wei };
   }
 
   const net = await resolveNetworkFromRpc();

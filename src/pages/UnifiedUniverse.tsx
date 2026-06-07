@@ -17,9 +17,10 @@ import { logger } from "@/lib/logger";
 import { UniverseVisualization } from "@/components/UniverseVisualization";
 import { fetchPlots, type BackendPlot } from "@/lib/api";
 import * as supabaseService from "@/lib/supabase-service";
-import { OctagonalGrid } from "@/components/OctagonalGrid";
+import { Empty } from "@/components/ui/empty";
+import { UniverseCityGridPanel } from "@/components/unified-universe/UniverseCityGridPanel";
 import { NetworkTopology } from "@/components/NetworkTopology";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { LazyImage } from "@/components/ui/LazyImage";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { isOnChainCryptoMode } from "@/lib/chain-network";
@@ -41,10 +42,18 @@ import { cn } from "@/lib/utils";
 
 export default function UnifiedUniverse() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [cityView, setCityView] = useState<"info" | "grid" | "management">("grid");
   const { plotsSold, plotsRemaining, priceInXBGL, userPlots } = useLandPlots();
+  const [resolvedPlotPrice, setResolvedPlotPrice] = useState<string>(() => getPlotPriceInXBGL().toFixed(4));
+
+  useEffect(() => {
+    setResolvedPlotPrice(
+      typeof priceInXBGL === "string" ? priceInXBGL : getPlotPriceInXBGL().toFixed(4)
+    );
+  }, [priceInXBGL]);
   const { balances } = useTreasury();
   const { address, isConnected, balance } = useWallet();
   const gameSymbol = isOnChainCryptoMode() ? GAME_CURRENCY_SYMBOL : "AVAX";
@@ -187,7 +196,7 @@ export default function UnifiedUniverse() {
 
     // Priority 2: Try useLandPlots hook data (already loaded)
     if (userPlots && userPlots.length > 0) {
-      console.log(`✅ Using ${userPlots.length} plots from useLandPlots hook`);
+      logger.debug(`Using ${userPlots.length} plots from useLandPlots hook`);
       setOwnedPlotIds(userPlots);
       return;
     }
@@ -197,12 +206,12 @@ export default function UnifiedUniverse() {
       const { fetchOwnedPlots: fetchPlotsFromContract } = await import("@/lib/plotUtils");
       const plotIds = await fetchPlotsFromContract(address, 1000);
       if (plotIds && plotIds.length > 0) {
-        console.log(`✅ Fetched ${plotIds.length} plots from contract for ${address}`);
+        logger.debug(`Fetched ${plotIds.length} plots from contract for ${address}`);
         setOwnedPlotIds(plotIds);
         return;
       }
     } catch (error: any) {
-      console.debug("Failed to fetch plots from contract:", error.message);
+      logger.debug("Failed to fetch plots from contract:", error.message);
     }
     
     // Fallback to Supabase (if available)
@@ -211,14 +220,12 @@ export default function UnifiedUniverse() {
       
       if (plots && plots.length > 0) {
         const plotIds = plots.map(plot => plot.id);
-        console.log("Plots from Supabase:", plotIds);
         setOwnedPlotIds(plotIds);
       } else {
-        console.log("No plots found in Supabase");
         setOwnedPlotIds([]);
       }
     } catch (error) {
-      console.debug("Failed to fetch owned plots from Supabase:", error);
+      logger.debug("Failed to fetch owned plots from Supabase:", error);
       setOwnedPlotIds([]);
     }
   };
@@ -265,8 +272,6 @@ export default function UnifiedUniverse() {
     const fetchPlots = async () => {
       setLoadingCityPlots(true);
       try {
-        console.log("Fetching plots for city:", city.name);
-        
         // Fetch plots from Supabase
         let registryPlots: any[] = [];
         try {
@@ -307,13 +312,8 @@ export default function UnifiedUniverse() {
             },
           }));
           
-          if (registryPlots.length > 0) {
-            const availableCount = registryPlots.filter((p) => !p.owned).length;
-            const ownedCount = registryPlots.filter((p) => p.owned).length;
-            console.log(`✅ Loaded ${registryPlots.length} plots from local registry (${availableCount} available, ${ownedCount} owned)`);
-          }
         } catch (dbError: any) {
-          console.debug("Failed to load from local registry, trying API:", dbError.message);
+          logger.debug("Failed to load from local registry, trying API:", dbError.message);
         }
         
         // Priority 2: Fetch all plots from Registry API with owner/wallet information
@@ -333,8 +333,6 @@ export default function UnifiedUniverse() {
             const plotsWithOwners = await getRegistryPlotsWithOwners(200, 0, addressesToCheck.length > 0 ? addressesToCheck : undefined);
             
             if (plotsWithOwners && plotsWithOwners.length > 0) {
-              console.log(`✅ Fetched ${plotsWithOwners.length} plots with owner info from Registry API`);
-              
               // Transform plots with owners to match grid component format
               registryPlots = plotsWithOwners.map((plot) => ({
                 id: plot.plotId,
@@ -357,7 +355,7 @@ export default function UnifiedUniverse() {
               }));
             }
           } catch (plotsWithOwnersError: any) {
-            console.debug("Failed to fetch plots with owners, trying individual fetch:", plotsWithOwnersError.message);
+            logger.debug("Failed to fetch plots with owners, trying individual fetch:", plotsWithOwnersError.message);
             
             // Fallback: Fetch owned plots for current user
             if (address) {
@@ -396,15 +394,14 @@ export default function UnifiedUniverse() {
                   );
                   
                   registryPlots = plotDetails.filter(p => p !== null);
-                  console.log(`✅ Fetched ${registryPlots.length} owned plots from Registry API`);
                 }
               } catch (fallbackError: any) {
-                console.debug("Failed to fetch owned plots:", fallbackError.message);
+                logger.debug("Failed to fetch owned plots:", fallbackError.message);
               }
             }
           }
         } catch (error: any) {
-          console.debug("Registry API not available for city plots:", error.message);
+          logger.debug("Registry API not available for city plots:", error.message);
         }
         }
         
@@ -414,8 +411,6 @@ export default function UnifiedUniverse() {
           const result = await listCityPlots();
           
           if (result?.plots && Array.isArray(result.plots)) {
-            console.log(`Fetched ${result.plots.length} plots from backend API`);
-            
             // Transform API plots to match grid component format
             const transformedPlots = result.plots.map((plot: any) => ({
               id: plot.id || plot.plotId,
@@ -463,27 +458,24 @@ export default function UnifiedUniverse() {
             const stats = await getCityStats(city.name);
             if (stats) {
               setCityStats(stats);
-              console.log("City stats loaded from Chaos Star Network:", stats);
             } else {
-              console.debug("City stats not available (backend may not be running)");
               setCityStats(null);
             }
           } catch (statsError: any) {
             // Only log if it's not a network/timeout error (already handled in API)
             if (statsError.message && !statsError.message.includes("not available")) {
-              console.debug("Could not fetch city stats:", statsError);
+              logger.debug("Could not fetch city stats:", statsError);
             }
             setCityStats(null);
           } finally {
             setLoadingCityStats(false);
           }
         } catch (apiError) {
-          console.debug("Error fetching plots from city API (this is normal if backend is not running):", apiError);
+          logger.debug("Error fetching plots from city API (this is normal if backend is not running):", apiError);
         }
         
         // Final fallback: try using data from useLandPlots hook (already loaded at component level)
         if (registryPlots.length === 0 && userPlots && userPlots.length > 0) {
-          console.log(`Found ${userPlots.length} user plots from contract`);
           // Transform user plots to match format
           const userPlotData = userPlots.map((plotId: number) => ({
             id: plotId,
@@ -501,16 +493,9 @@ export default function UnifiedUniverse() {
           registryPlots = userPlotData;
         }
         
-        // Always set plots (even if empty - grid will generate default plots based on totalPlots)
         setCityPlots(registryPlots);
-        
-        if (registryPlots.length === 0) {
-          console.log("No plots found from any source - grid will render with default empty plots");
-        } else {
-          console.log(`✅ Set ${registryPlots.length} plots for grid display`);
-        }
       } catch (error) {
-        console.debug("Error fetching plots from blockchain (this is normal if RPC is not available):", error);
+        logger.debug("Error fetching plots from blockchain (this is normal if RPC is not available):", error);
         // Set empty plots on error so grid can still render
         setCityPlots([]);
       } finally {
@@ -531,6 +516,24 @@ export default function UnifiedUniverse() {
     }
   };
 
+  const clearUniverseDeepLinkParams = () => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("planet");
+        next.delete("city");
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const handleBackToGalaxy = () => {
+    setSelectedPlanet(null);
+    setSelectedCity(null);
+    clearUniverseDeepLinkParams();
+  };
+
   const handleEnterOctaviaCapital = () => {
     const planet = planetsData?.["sarakt-prime"];
     if (!planet || planet.locked) return;
@@ -538,8 +541,35 @@ export default function UnifiedUniverse() {
       planet.districts?.findIndex((d) => d.name === "Octavia Capital City") ?? 0;
     setSelectedPlanet("sarakt-prime");
     setSelectedCity(`city-${Math.max(octaviaCityIndex, 0)}`);
+    setSearchParams(
+      { planet: "sarakt-prime", city: "octavia" },
+      { replace: true }
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const planetParam = searchParams.get("planet");
+    const cityParam = searchParams.get("city");
+    if (planetParam !== "sarakt-prime" || !cityParam || selectedPlanet) return;
+
+    const planet = planetsData?.["sarakt-prime"];
+    if (!planet || planet.locked) return;
+
+    const octaviaCityIndex =
+      planet.districts?.findIndex((d) => d.name === "Octavia Capital City") ?? 0;
+    const resolvedCityIndex = Math.max(octaviaCityIndex, 0);
+    const isOctaviaDeepLink =
+      cityParam === "octavia" ||
+      cityParam === String(resolvedCityIndex) ||
+      cityParam === `city-${resolvedCityIndex}`;
+
+    if (!isOctaviaDeepLink) return;
+
+    setSelectedPlanet("sarakt-prime");
+    setSelectedCity(`city-${resolvedCityIndex}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [planetsData, searchParams, selectedPlanet]);
 
   // Mock hook automatically loads data from localStorage on mount
   // No need to fetch from backend or database
@@ -1141,10 +1171,7 @@ export default function UnifiedUniverse() {
                   <button
                     type="button"
                     className="cursor-pointer"
-                    onClick={() => {
-                      setSelectedPlanet(null);
-                      setSelectedCity(null);
-                    }}
+                    onClick={handleBackToGalaxy}
                   >
                     Universe
                   </button>
@@ -1188,25 +1215,29 @@ export default function UnifiedUniverse() {
             <TabsContent value="grid">
               {loadingCityPlots ? (
                 <UniverseCityPlotsSkeleton />
+              ) : cityPlots.length === 0 ? (
+                <Empty
+                  icon={<MapPin className="h-10 w-10" />}
+                  title="No plots in this city yet"
+                  description="Be the first to claim land in this district and start building your empire."
+                  action={
+                    <Button onClick={() => navigate("/plot-purchase")}>
+                      Browse Plots
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  }
+                />
               ) : (
-                <OctagonalGrid
+                <UniverseCityGridPanel
                   cityName={city.name}
-                  plots={cityPlots}
-                  totalPlots={cityPlots.length || undefined}
+                  cityPlots={cityPlots}
                   isConnected={isConnected}
-                  isLoading={loadingCityPlots}
-                  plotPrice={priceInXBGL}
+                  plotPrice={resolvedPlotPrice}
                   ownedPlotIds={ownedPlotIds}
                   onPlotClick={(plot) => {
-                    // Navigate to purchase page with the clicked plot ID
                     navigate(`/plot-purchase?plotId=${plot.id}`);
                   }}
-                  onPlotSelect={(plot) => {
-                    // Can be used for multi-select in future
-                    console.log("Plot selected:", plot);
-                  }}
                   onPurchase={async (plotId: number) => {
-                    // Direct purchase from grid - navigate to purchase page instead
                     navigate(`/plot-purchase?plotId=${plotId}`);
                   }}
                 />
@@ -1530,7 +1561,7 @@ export default function UnifiedUniverse() {
   if (selectedPlanet) {
     const planet = planetsData?.[selectedPlanet] || planetsData?.["sarakt-prime"];
     if (!planet) {
-      setSelectedPlanet(null);
+      handleBackToGalaxy();
       return null;
     }
     // Show Octavia Capital City for Sarakt Prime, or Capital city of Zarathis for Zythera
@@ -1551,25 +1582,19 @@ export default function UnifiedUniverse() {
                     <button
                       type="button"
                       className="cursor-pointer"
-                      onClick={() => {
-                        setSelectedPlanet(null);
-                        setSelectedCity(null);
-                      }}
+                      onClick={handleBackToGalaxy}
                     >
                       Universe
                     </button>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>{planet.name}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
-            <Button variant="glass" className="mb-6 gap-2" onClick={() => {
-              setSelectedPlanet(null);
-              setSelectedCity(null);
-            }}>
+            <Button variant="glass" className="mb-6 gap-2" onClick={handleBackToGalaxy}>
               <ChevronLeft className="h-4 w-4" />
               Back
             </Button>

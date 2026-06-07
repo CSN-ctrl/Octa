@@ -537,7 +537,7 @@ export function useLandPlots() {
       ? priceInNative > 0n
         ? ethers.formatEther(priceInNative)
         : getPlotPriceInXBGL().toFixed(4)
-      : getCurrentPriceInXBGL(),
+      : getPlotPriceInXBGL().toFixed(4),
     getPriceInXBGL, // Function to get price for specific plot
     salesActive,
     loading,

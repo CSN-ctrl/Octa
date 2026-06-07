@@ -135,7 +135,7 @@ export default function PersonalVault() {
           recipientAddress,
           transferAmount
         );
-        if (!transferResult.success) {
+        if (transferResult.success === false) {
           throw new Error(transferResult.error || "Transfer failed");
         }
         txHash = transferResult.txHash;
