@@ -33,3 +33,4 @@ key.txt.pub
 *.tmp
 *.temp
 
+.vercel
