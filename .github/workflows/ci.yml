@@ -60,6 +60,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Validate contract manifest parity
+        run: npm run validate:contracts
+
       - name: Validate governance pack
         run: npm run governance:validate-pack
 

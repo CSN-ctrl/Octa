@@ -1,0 +1,26 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "name": "operator", "type": "address" },
+      { "indexed": true,  "name": "from",     "type": "address" },
+      { "indexed": true,  "name": "to",       "type": "address" },
+      { "indexed": false, "name": "id",       "type": "uint256" },
+      { "indexed": false, "name": "value",    "type": "uint256" }
+    ],
+    "name": "TransferSingle",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "name": "plotId",  "type": "uint256" },
+      { "indexed": true,  "name": "owner",   "type": "address" },
+      { "indexed": false, "name": "pricePaid", "type": "uint256" },
+      { "indexed": false, "name": "coldWallet", "type": "bool" },
+      { "indexed": false, "name": "timestamp",  "type": "uint256" }
+    ],
+    "name": "LandMinted",
+    "type": "event"
+  }
+]

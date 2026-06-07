@@ -1,17 +1,28 @@
 {
-  "risk_tier": "L0",
-  "changed_files": [],
+  "risk_tier": "L3",
+  "changed_files": [
+    ".env.example",
+    ".env.production",
+    "cursor-brain/memory/long_term.md",
+    "package.json",
+    "scripts/migrate-auth-users.ts",
+    "scripts/migrate-zfzs-data-to-octa.ts",
+    "scripts/sandbox/push-vercel-env-fuji.mjs",
+    "src/config/supabase-project-defaults.ts",
+    "supabase/migrations/20260414215500_schedule_treasury_ingestion_job.sql",
+    "supabase/migrations/20260608120000_zfzs_to_octa_schema_catchup.sql"
+  ],
   "touched_domains": {
-    "migration": false,
+    "migration": true,
     "deposit_ledger": false,
     "auth_wallet": false,
-    "ops_remote_apply": false,
+    "ops_remote_apply": true,
     "frontend_refactor": false,
-    "docs_architecture": false
+    "docs_architecture": true
   },
   "touches_governance": false,
-  "touches_auth_or_admin": false,
-  "touches_ledger_or_deposit": false,
-  "require_chaos_drill": false,
-  "require_economic_simulation": false
+  "touches_auth_or_admin": true,
+  "touches_ledger_or_deposit": true,
+  "require_chaos_drill": true,
+  "require_economic_simulation": true
 }

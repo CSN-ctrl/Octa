@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isDashboardAdmin } from "@/lib/dashboard-admin";
 import { isOnChainCryptoMode } from "@/lib/chain-network";
+import { isTestRoutesEnabled } from "@/env";
 import { Cosmic3dShell } from "@/components/cosmic-3d-shell";
 import { ChaosStarLogo3DLink } from "@/components/chaos-star-logo-3d-link";
 
@@ -32,6 +33,7 @@ export const Navigation = () => {
   const navigate = useNavigate();
   const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
   const { simulation, setSimulation } = useSim();
+  const testRoutesEnabled = isTestRoutesEnabled();
   const chaosVaultButtonRef = useRef<HTMLAnchorElement>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -429,21 +431,27 @@ export const Navigation = () => {
                     <div className="px-2 py-1.5">
                       <ChaosStarStatus />
                     </div>
-                    <DropdownMenuSeparator />
-                    <div className="px-2 py-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Simulation Mode</span>
-                        <Switch
-                          checked={simulation}
-                          onCheckedChange={(checked) => {
-                            setSimulation(checked);
-                            toast.info("Simulation mode " + (checked ? "enabled" : "disabled") + ". Changes will apply on next navigation.");
-                            // Don't reload immediately - let user continue working
-                            // The simulation mode will be applied on next page navigation
-                          }}
-                        />
-                      </div>
-                    </div>
+                    {testRoutesEnabled ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Simulation Mode</span>
+                            <Switch
+                              checked={simulation}
+                              onCheckedChange={(checked) => {
+                                setSimulation(checked);
+                                toast.info(
+                                  "Simulation mode " +
+                                    (checked ? "enabled" : "disabled") +
+                                    ". Changes will apply on next navigation."
+                                );
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setShowNetworkDialog(true)}>
                       Network Settings

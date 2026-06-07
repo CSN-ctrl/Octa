@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
 import { getAppOrigin, getPasswordResetRedirectUrl, getEmailConfirmationRedirectUrl } from "@/lib/app-origin";
 import { AuthPageShell } from "@/components/AuthPageShell";
+import { resolveGoldenPathRedirectForSession } from "@/lib/golden-path";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -35,12 +36,13 @@ export default function Login() {
   const [activeTab, setActiveTab] = useState<"login" | "signup">(initialTab);
   const [resetLoading, setResetLoading] = useState(false);
 
-  // Check if user is already logged in
+  // Check if user is already logged in — route to Phase 1 golden path
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/dashboard");
+        const path = await resolveGoldenPathRedirectForSession();
+        navigate(path);
       }
     };
     checkSession();
@@ -111,7 +113,8 @@ export default function Login() {
         }
 
         toast.success("Logged in successfully!");
-        navigate("/dashboard");
+        const path = await resolveGoldenPathRedirectForSession();
+        navigate(path);
       }
     } catch (err: any) {
       logger.error("Login error:", err);

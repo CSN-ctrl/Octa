@@ -16,6 +16,7 @@ import {
 import { Loader2, FileText, Printer } from "lucide-react";
 import type { LandTitleCertificateData } from "@/lib/certificate-data";
 import type { Plot } from "@/integrations/supabase/types";
+import { trackProductEvent } from "@/lib/product-analytics";
 
 export default function LandTitleCertificate() {
   const [searchParams] = useSearchParams();
@@ -95,6 +96,11 @@ export default function LandTitleCertificate() {
       .then(setCertData)
       .catch(() => setCertData(null));
   }, [selectedPlotId, plots, address, ownerEmail, ownerName]);
+
+  useEffect(() => {
+    if (!certData || !selectedPlotId) return;
+    void trackProductEvent("certificate_viewed", { plot_id: selectedPlotId });
+  }, [certData, selectedPlotId]);
 
   if (loading) {
     return (

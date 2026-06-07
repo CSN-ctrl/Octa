@@ -19,12 +19,14 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ChaosStarStatus } from "./ChaosStarStatus";
 import { useState } from "react";
+import { isTestRoutesEnabled } from "@/env";
 
 export function SettingsButton() {
   const { address, isConnected, connect, disconnect, availableWallets } = useWallet();
   const { simulation, setSimulation } = useSim();
   const navigate = useNavigate();
   const [showNetworkDialog, setShowNetworkDialog] = useState(false);
+  const testRoutesEnabled = isTestRoutesEnabled();
 
   const handleConnectWallet = async (walletId?: string) => {
     try {
@@ -95,22 +97,27 @@ export function SettingsButton() {
           <ChaosStarStatus />
         </div>
         
-        <DropdownMenuSeparator />
-
-        <div className="px-2 py-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Simulation Mode</span>
-                    <Switch
-                      checked={simulation}
-                      onCheckedChange={(checked) => {
-                        setSimulation(checked);
-                        toast.info("Simulation mode " + (checked ? "enabled" : "disabled") + ". Changes will apply on next navigation.");
-                        // Don't reload immediately - let user continue working
-                        // The simulation mode will be applied on next page navigation
-                      }}
-                    />
-          </div>
-        </div>
+        {testRoutesEnabled ? (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Simulation Mode</span>
+                <Switch
+                  checked={simulation}
+                  onCheckedChange={(checked) => {
+                    setSimulation(checked);
+                    toast.info(
+                      "Simulation mode " +
+                        (checked ? "enabled" : "disabled") +
+                        ". Changes will apply on next navigation."
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
 
         <DropdownMenuSeparator />
 

@@ -11,6 +11,7 @@ import {
 import {
   fetchOnChainDepositsForUser,
   recordOnChainDeposit,
+  type OnChainDepositStatus,
 } from "@/lib/deposits";
 
 export type OnChainDepositHistoryRow = {
@@ -18,6 +19,8 @@ export type OnChainDepositHistoryRow = {
   avaxAmount: number;
   xbglAmount: number;
   at: string;
+  /** undefined when the status column is not yet present in the DB schema. */
+  status: OnChainDepositStatus | undefined;
 };
 
 const HISTORY_KEY = "octa_onchain_deposits_v1";
@@ -43,6 +46,7 @@ export function useOnChainDeposit() {
   const [exchangeRate, setExchangeRate] = useState(1);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<OnChainDepositHistoryRow[]>([]);
+  const [pendingTxHash, setPendingTxHash] = useState<string | null>(null);
 
   const reloadExchangeRate = useCallback(async () => {
     if (!isOnChainCryptoMode()) return;
@@ -60,6 +64,7 @@ export function useOnChainDeposit() {
         avaxAmount: row.avax_amount,
         xbglAmount: row.xbgl_amount,
         at: row.created_at,
+        status: row.status,
       });
     }
     for (const row of local) {
@@ -88,13 +93,20 @@ export function useOnChainDeposit() {
   const depositWithWallet = useCallback(
     async (signer: ethers.Signer, avaxHuman: number) => {
       setLoading(true);
+      setPendingTxHash(null);
       try {
-        const { txHash, xbglOut } = await depositAvaxForXbgl(signer, avaxHuman);
+        const { txHash, xbglOut } = await depositAvaxForXbgl(
+          signer,
+          avaxHuman,
+          undefined,
+          (hash) => setPendingTxHash(hash),
+        );
         const row: OnChainDepositHistoryRow = {
           txHash,
           avaxAmount: avaxHuman,
           xbglAmount: parseFloat(ethers.formatEther(xbglOut)),
           at: new Date().toISOString(),
+          status: "pending",
         };
         appendHistory(row);
         const signerAddr = await signer.getAddress();
@@ -117,6 +129,7 @@ export function useOnChainDeposit() {
         return { ok: false as const };
       } finally {
         setLoading(false);
+        setPendingTxHash(null);
       }
     },
     [loadHistory],
@@ -126,6 +139,7 @@ export function useOnChainDeposit() {
     exchangeRate,
     loading,
     history,
+    pendingTxHash,
     reloadExchangeRate,
     quoteAvaxForXbgl,
     depositWithWallet,

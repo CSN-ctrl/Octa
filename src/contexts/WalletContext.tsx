@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/logger";
 import { isPrivateKeyCustodyEnabled } from "@/env";
+import { trackProductEvent } from "@/lib/product-analytics";
 
 interface WalletContextType {
   address: string | null;
@@ -170,6 +171,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
         await refreshBalance(newAddress);
         toast.success("Wallet connected!");
+        void trackProductEvent("wallet_connected", { rail: "walletconnect" });
         saveConnectedWallet(newAddress).catch(() => {});
         attachEip1193Listeners(eip1193, newAddress);
         return;
@@ -194,6 +196,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setWalletProvider(eip1193 ?? selectedWallet.provider);
       await refreshBalance(newAddress);
       toast.success("Wallet connected!");
+      void trackProductEvent("wallet_connected", { wallet_id: connectId });
       saveConnectedWallet(newAddress).catch(() => {});
 
       const listenerTarget = eip1193 ?? selectedWallet.provider ?? (window as any).ethereum;
