@@ -29,6 +29,9 @@ import { keccak_256 } from "https://esm.sh/@noble/hashes@1/sha3";
 const FUJI_LAND_CHAIN_NAME = "fuji-land";
 const DEFAULT_LAND_ADDRESS = "0xc34a5fcb5621b7755d66db5074069d0bbd68cd42";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+/** SaraktLandV2 Fuji deployment block (Snowtrace 0x35362d7). */
+const DEFAULT_FUJI_LAND_START_BLOCK = 55878103;
+const DEFAULT_FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
 
 /**
  * Maximum blocks per eth_getLogs call. Alchemy Fuji supports up to 2048 before
@@ -233,10 +236,10 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const alchemyApiKey = Deno.env.get("ALCHEMY_API_KEY");
 
-  if (!supabaseUrl || !serviceRoleKey || !alchemyApiKey) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return new Response(
       JSON.stringify({
-        error: "Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or ALCHEMY_API_KEY",
+        error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
@@ -252,10 +255,12 @@ Deno.serve(async (req: Request) => {
    * pre-deployment history on first run.
    */
   const startBlock = Number.parseInt(
-    Deno.env.get("FUJI_LAND_START_BLOCK") ?? "0",
+    Deno.env.get("FUJI_LAND_START_BLOCK") ?? String(DEFAULT_FUJI_LAND_START_BLOCK),
   );
 
-  const fujiRpcUrl = `https://avax-fuji.g.alchemy.com/v2/${alchemyApiKey}`;
+  const fujiRpcUrl = alchemyApiKey
+    ? `https://avax-fuji.g.alchemy.com/v2/${alchemyApiKey}`
+    : DEFAULT_FUJI_RPC;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   // ── load checkpoint ─────────────────────────────────────────────────────────

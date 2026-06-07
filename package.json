@@ -23,6 +23,7 @@
     "sandbox:smoke": "node scripts/sandbox/smoke.mjs",
     "sandbox:set-metadata-uri": "node scripts/sandbox/set-metadata-uri.mjs",
     "vercel:env:fuji": "node scripts/sandbox/push-vercel-env-fuji.mjs",
+    "supabase:secrets:fuji": "node scripts/governance/set-fuji-indexer-secrets.mjs",
     "migrate:auth:zfzs-to-octa": "tsx scripts/migrate-auth-users.ts",
     "migrate:data:zfzs-to-octa": "tsx scripts/migrate-zfzs-data-to-octa.ts",
     "typecheck": "tsc -b --noEmit",

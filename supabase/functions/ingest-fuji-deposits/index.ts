@@ -20,6 +20,9 @@ import { keccak_256 } from "https://esm.sh/@noble/hashes@1/sha3";
 const FUJI_CHAIN_ID = 43113;
 const FUJI_CHAIN_NAME = "fuji";
 const DEFAULT_TREASURY_ADDRESS = "0xee0ba6de15026d00a707a660123c93686c00df58";
+/** SaraktTreasury + SaraktLandV2 Fuji deployment block (Snowtrace 0x35362d7). */
+const DEFAULT_FUJI_START_BLOCK = 55878103;
+const DEFAULT_FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
 
 /**
  * Maximum blocks per eth_getLogs call. Alchemy Fuji supports up to 2048 range
@@ -163,10 +166,10 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const alchemyApiKey = Deno.env.get("ALCHEMY_API_KEY");
 
-  if (!supabaseUrl || !serviceRoleKey || !alchemyApiKey) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return new Response(
       JSON.stringify({
-        error: "Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or ALCHEMY_API_KEY",
+        error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
@@ -181,7 +184,9 @@ Deno.serve(async (req: Request) => {
    * Set this to the SaraktTreasury deployment block to skip scanning
    * pre-deployment history on first run.
    */
-  const startBlock = Number.parseInt(Deno.env.get("FUJI_START_BLOCK") ?? "0");
+  const startBlock = Number.parseInt(
+    Deno.env.get("FUJI_START_BLOCK") ?? String(DEFAULT_FUJI_START_BLOCK),
+  );
 
   /**
    * FUJI_DEPOSIT_CONFIRMATIONS – number of block confirmations required before
@@ -198,7 +203,9 @@ Deno.serve(async (req: Request) => {
     Number.parseInt(Deno.env.get("FUJI_DEPOSIT_CONFIRMATIONS") ?? "3"),
   );
 
-  const fujiRpcUrl = `https://avax-fuji.g.alchemy.com/v2/${alchemyApiKey}`;
+  const fujiRpcUrl = alchemyApiKey
+    ? `https://avax-fuji.g.alchemy.com/v2/${alchemyApiKey}`
+    : DEFAULT_FUJI_RPC;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   // ── load checkpoint ─────────────────────────────────────────────────────────
