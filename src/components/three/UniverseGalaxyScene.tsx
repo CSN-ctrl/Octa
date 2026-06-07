@@ -2,6 +2,7 @@ import { OrbitControls, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import {
   SARAKT_PLANETS,
+  SARAKT_PRIME_FOCUS_POSITION,
   SARAKT_STAR,
   SARAKT_STAR_POSITION,
   type UniversePlanetId,
@@ -14,15 +15,17 @@ type UniverseGalaxySceneProps = {
   particleCount?: number;
   enableBloom?: boolean;
   onSelectPlanet?: (planetId: UniversePlanetId) => void;
+  onSelectCity?: (planetId: UniversePlanetId) => void;
 };
 
 /**
- * Sarakt system — star, two orbiting planets with capital cities (Octavia, Zarathis).
+ * Sarakt system — star, two orbiting planets; Sarakt Prime / Octavia is the Phase 1 hero.
  */
 export function UniverseGalaxyScene({
   particleCount = 6000,
   enableBloom = true,
   onSelectPlanet,
+  onSelectCity,
 }: UniverseGalaxySceneProps) {
   return (
     <>
@@ -57,7 +60,10 @@ export function UniverseGalaxyScene({
             inclinationDeg={planet.inclinationDeg}
             radius={planet.radius}
             buildingCount={planet.buildingCount}
+            priority={planet.priority}
+            dimmed={planet.dimmed}
             onSelect={onSelectPlanet}
+            onSelectCity={onSelectCity}
           />
         ))}
       </group>
@@ -74,7 +80,7 @@ export function UniverseGalaxyScene({
         maxDistance={12}
         autoRotate
         autoRotateSpeed={0.15}
-        target={SARAKT_STAR_POSITION}
+        target={SARAKT_PRIME_FOCUS_POSITION}
       />
 
       {enableBloom && (

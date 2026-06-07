@@ -519,6 +519,16 @@ export default function UnifiedUniverse() {
     }
   };
 
+  const handleEnterOctaviaCapital = () => {
+    const planet = planetsData?.["sarakt-prime"];
+    if (!planet || planet.locked) return;
+    const octaviaCityIndex =
+      planet.districts?.findIndex((d) => d.name === "Octavia Capital City") ?? 0;
+    setSelectedPlanet("sarakt-prime");
+    setSelectedCity(`city-${Math.max(octaviaCityIndex, 0)}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // Mock hook automatically loads data from localStorage on mount
   // No need to fetch from backend or database
 
@@ -2142,7 +2152,14 @@ export default function UnifiedUniverse() {
                 <Card className="glass border-2 border-primary/30 overflow-hidden">
                   <CardContent className="p-0 relative">
                     <div className="bg-black/90 relative" style={{ height: '700px' }}>
-                      <UniverseVisualization onSelectPlanet={handlePlanetSelect} />
+                      <UniverseVisualization
+                        onSelectPlanet={(id) =>
+                          id === "sarakt-prime" ? handleEnterOctaviaCapital() : handlePlanetSelect(id)
+                        }
+                        onSelectCity={(id) =>
+                          id === "sarakt-prime" ? handleEnterOctaviaCapital() : handlePlanetSelect(id)
+                        }
+                      />
                     </div>
 
                   </CardContent>

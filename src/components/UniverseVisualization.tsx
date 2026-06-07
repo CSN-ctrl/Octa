@@ -1,19 +1,20 @@
 import { useAutoscale } from "@/hooks/useAutoscale";
 import { isR3fUniverseEnabled } from "@/config/r3f-universe";
-import type { UniversePlanetId } from "@/config/universe-celestials";
+import { UNIVERSE_CAMERA_POSITION, type UniversePlanetId } from "@/config/universe-celestials";
 import { GalaxyVisualization } from "@/components/GalaxyVisualization";
 import { SceneCanvas } from "@/components/three/SceneCanvas";
 import { UniverseGalaxyScene } from "@/components/three/UniverseGalaxyScene";
 
 type UniverseVisualizationProps = {
   onSelectPlanet?: (planetId: UniversePlanetId) => void;
+  onSelectCity?: (planetId: UniversePlanetId) => void;
 };
 
 /**
  * Universe viewport — R3F procedural scene by default (no Blender).
  * Set VITE_USE_R3F_UNIVERSE=false for legacy imperative Three.js renderer.
  */
-export function UniverseVisualization({ onSelectPlanet }: UniverseVisualizationProps = {}) {
+export function UniverseVisualization({ onSelectPlanet, onSelectCity }: UniverseVisualizationProps = {}) {
   const useR3f = isR3fUniverseEnabled();
 
   const {
@@ -44,12 +45,13 @@ export function UniverseVisualization({ onSelectPlanet }: UniverseVisualizationP
       className="absolute inset-0 h-full w-full"
       fov={getFOV()}
       dpr={[1, getPixelRatio()]}
-      cameraPosition={[3.2, 2.4, 3.2]}
+      cameraPosition={UNIVERSE_CAMERA_POSITION}
     >
       <UniverseGalaxyScene
         particleCount={particleCount}
         enableBloom={!shouldReduceQuality()}
         onSelectPlanet={onSelectPlanet}
+        onSelectCity={onSelectCity}
       />
     </SceneCanvas>
   );

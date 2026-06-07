@@ -18,7 +18,10 @@ type OrbitingPlanetProps = {
   inclinationDeg?: number;
   radius?: number;
   buildingCount?: number;
+  priority?: boolean;
+  dimmed?: boolean;
   onSelect?: (planetId: UniversePlanetId) => void;
+  onSelectCity?: (planetId: UniversePlanetId) => void;
 };
 
 export function OrbitingPlanet({
@@ -34,7 +37,10 @@ export function OrbitingPlanet({
   inclinationDeg = 8,
   radius = 0.07,
   buildingCount = 16,
+  priority = false,
+  dimmed = false,
   onSelect,
+  onSelectCity,
 }: OrbitingPlanetProps) {
   const orbitRef = useRef<THREE.Group>(null);
 
@@ -46,7 +52,7 @@ export function OrbitingPlanet({
 
   return (
     <group rotation={[THREE.MathUtils.degToRad(inclinationDeg), 0, 0]}>
-      <OrbitRing radius={orbitRadius} color={cityColor} />
+      <OrbitRing radius={orbitRadius} color={cityColor} highlighted={priority} />
       <group ref={orbitRef}>
         <group position={[orbitRadius, 0, 0]}>
           <PlanetWithCity
@@ -59,7 +65,10 @@ export function OrbitingPlanet({
             atmosphereColor={atmosphereColor}
             radius={radius}
             buildingCount={buildingCount}
+            priority={priority}
+            dimmed={dimmed}
             onSelect={onSelect}
+            onSelectCity={onSelectCity}
           />
         </group>
       </group>
