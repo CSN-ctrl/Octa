@@ -183,6 +183,21 @@ Deno.serve(async (req: Request) => {
    */
   const startBlock = Number.parseInt(Deno.env.get("FUJI_START_BLOCK") ?? "0");
 
+  /**
+   * FUJI_DEPOSIT_CONFIRMATIONS – number of block confirmations required before
+   * a deposit event is persisted. Defaults to 3.
+   *
+   * By capping the scan range at (latestBlock - confirmations) rather than
+   * filtering individual events, all events within the scanned range are
+   * guaranteed to be confirmed before record_onchain_deposit_service is called.
+   * Unconfirmed events in the trailing N blocks are naturally re-scanned on
+   * the next cron invocation once they reach the required depth.
+   */
+  const depositConfirmations = Math.max(
+    0,
+    Number.parseInt(Deno.env.get("FUJI_DEPOSIT_CONFIRMATIONS") ?? "3"),
+  );
+
   const fujiRpcUrl = `https://avax-fuji.g.alchemy.com/v2/${alchemyApiKey}`;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -234,7 +249,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (fromBlock > latestBlock) {
+  // Only scan blocks that have reached the required confirmation depth.
+  // Unconfirmed events in the trailing `depositConfirmations` blocks will be
+  // picked up on the next cron invocation once they age into the safe window.
+  const safeToBlock = latestBlock - depositConfirmations;
+
+  if (fromBlock > safeToBlock) {
     await supabase.from("treasury_ingest_checkpoints").upsert(
       {
         chain_id: FUJI_CHAIN_NAME,
@@ -250,9 +270,11 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         chain: FUJI_CHAIN_NAME,
-        message: "no new blocks",
+        message: "no confirmed blocks to scan",
         fromBlock,
         latestBlock,
+        safeToBlock,
+        depositConfirmations,
       }),
       { headers: { "Content-Type": "application/json" } },
     );
@@ -268,10 +290,10 @@ Deno.serve(async (req: Request) => {
   let currentFrom = fromBlock;
   let chunksProcessed = 0;
 
-  while (currentFrom <= latestBlock && chunksProcessed < MAX_CHUNKS_PER_RUN) {
+  while (currentFrom <= safeToBlock && chunksProcessed < MAX_CHUNKS_PER_RUN) {
     const currentTo = Math.min(
       currentFrom + MAX_BLOCKS_PER_CHUNK - 1,
-      latestBlock,
+      safeToBlock,
     );
 
     let logs: RpcLog[];
@@ -396,7 +418,9 @@ Deno.serve(async (req: Request) => {
       failures,
       startBlock: fromBlock,
       endBlock: targetBlock,
+      safeToBlock,
       latestBlock,
+      depositConfirmations,
       chunksProcessed,
       errors: errors.slice(0, 5),
     }),
