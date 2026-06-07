@@ -113,21 +113,26 @@ GRANT EXECUTE ON FUNCTION public.record_onchain_deposit(TEXT, TEXT, INTEGER, NUM
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.current_auth_wallet()
 RETURNS TEXT
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT lower(COALESCE(
-    (
-      SELECT o.wallet_address
-      FROM public.ownership_registry o
-      WHERE lower(o.email) = lower(auth.jwt() ->> 'email')
-      ORDER BY o.updated_at DESC NULLS LAST
-      LIMIT 1
-    ),
-    auth.jwt() ->> 'email'
-  ));
+DECLARE
+  v_wallet TEXT;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ownership_registry'
+  ) THEN
+    SELECT lower(o.wallet_address) INTO v_wallet
+    FROM public.ownership_registry o
+    WHERE lower(o.email) = lower(auth.jwt() ->> 'email')
+    ORDER BY o.updated_at DESC NULLS LAST
+    LIMIT 1;
+  END IF;
+  RETURN lower(COALESCE(v_wallet, auth.jwt() ->> 'email'));
+END;
 $$;
 
 -- -----------------------------------------------------------------------------
