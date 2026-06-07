@@ -7,6 +7,41 @@ on:
     branches: [main]
 
 jobs:
+  contract_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      contracts: ${{ steps.filter.outputs.contracts }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect contract/test changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contracts:
+              - 'src/contracts/**'
+              - 'test/**'
+              - 'foundry.toml'
+              - 'lib/**'
+
+  foundry:
+    needs: contract_changes
+    if: needs.contract_changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Forge test
+        run: forge test -vv
+
   risk_assessment:
     runs-on: ubuntu-latest
     outputs:

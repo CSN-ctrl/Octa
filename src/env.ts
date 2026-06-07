@@ -56,9 +56,9 @@ export const env = (() => {
 export const getApiUrl = () => env.VITE_API_URL;
 export const getChaosstarRpc = () => env.VITE_CHAOSSTAR_RPC;
 export const getStargateRpc = () => env.VITE_STARGATE_RPC;
-export const getChainId = () => parseInt(env.VITE_CHAIN_ID || "1337", 10);
+export const getChainId = () => parseInt(env.VITE_CHAIN_ID || "43113", 10);
 export const getBlockchainId = () => env.VITE_BLOCKCHAIN_ID;
-export const getNetworkName = () => env.VITE_NETWORK_NAME || "Avalanche Local C-Chain";
+export const getNetworkName = () => env.VITE_NETWORK_NAME || "Avalanche Fuji C-Chain";
 export const getNativeToken = () => env.VITE_NATIVE_TOKEN || "AVAX";
 export const getAvalancheRpc = () => env.VITE_AVALANCHE_RPC;
 

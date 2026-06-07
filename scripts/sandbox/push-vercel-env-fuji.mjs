@@ -75,6 +75,8 @@ const vars = {
   VITE_TREASURY_ADDRESS: c.SaraktTreasury,
   VITE_DIGITAL_ID_ADDRESS: c.LocalDigitalID,
   VITE_NATIVE_TOKEN: "AVAX",
+  VITE_MAINNET_USDC_RAIL: "false",
+  VITE_PHASE1_DASHBOARD_ONLY: "true",
 };
 
 console.log(`# Vercel project: ${VERCEL_SCOPE}/${VERCEL_PROJECT}`);
@@ -123,4 +125,17 @@ for (const [key, value] of Object.entries(vars)) {
   }
 }
 
-console.log(`\n# Done (${ok} ok, ${fail} issues). Redeploy: npx vercel deploy --prod --scope ${VERCEL_SCOPE}`);
+console.log(`\n# Done (${ok} ok, ${fail} issues).`);
+
+const deploy = runVercel(
+  ["deploy", "--prod", "--yes"],
+  { ...process.env, ...sandboxEnv },
+);
+if (deploy.status === 0) {
+  console.log("# Production deploy succeeded.");
+  console.log((deploy.stdout || "").trim());
+} else {
+  console.log(`# Redeploy manually: npx vercel deploy --prod --scope ${VERCEL_SCOPE}`);
+  const err = (deploy.stderr || deploy.stdout || "").trim();
+  if (err) console.warn(err.slice(0, 400));
+}

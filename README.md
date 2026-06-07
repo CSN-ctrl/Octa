@@ -15,14 +15,18 @@ For the latest product narrative and system model, see `docs/sarakt-waas.md`.
 
 ## Network Configuration
 
-ChaosStar Network:
-- Chain ID: 8888 (0x22B8)
-- RPC URL: http://127.0.0.1:24362/ext/bc/ChaosStar/rpc
-- Native Token: **xBGL** (ChaosStar only — chain 8888)
+**Phase 1 (production default): Avalanche Fuji C-Chain**
+- Chain ID: **43113** (0xA869)
+- RPC URL: `https://api.avax-test.network/ext/bc/C/rpc` (or Alchemy Fuji)
+- Native gas token: **AVAX**
+- In-game currency: **xBGL** ERC-20 on Fuji — deploy with `npm run sandbox:deploy:fuji`, wire addresses from `sandbox/deployments/43113-latest.json`
+- Default env: `VITE_CHAIN_ID=43113`, `VITE_ONCHAIN_CRYPTO=true`
 
-**ChaosStar (8888):** wallet/branding + optional `VITE_CHAOSSTAR_XBGL_ADDRESS` reference only.  
-**Avalanche (1337):** all smart contracts + in-game **xBGL** ERC-20 — deploy with `npm run sandbox:deploy`, wire `VITE_XBGL_TOKEN_ADDRESS` from `1337-latest.json`.
-- Blockchain ID: ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy
+**ChaosStar (8888):** optional wallet/branding RPC only — not the Phase 1 payment rail.
+
+**Local sandbox (1337):** optional Foundry/Hardhat dev chain — use when iterating contracts locally.
+
+Production cutover: `docs/ops/fuji-production-cutover.md`
 
 ## Installation
 

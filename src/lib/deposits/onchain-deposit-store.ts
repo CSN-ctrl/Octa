@@ -4,6 +4,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getPaymentChainId } from "@/config/blockchain-profile";
+import { parseRecordOnchainDepositResponse } from "@/lib/indexer-rpc-contracts";
 
 export type OnChainDepositRecord = {
   tx_hash: string;
@@ -37,10 +38,10 @@ export async function recordOnChainDeposit(
     return { ok: false };
   }
 
-  const payload = data as { success?: boolean; duplicate?: boolean } | null;
+  const payload = parseRecordOnchainDepositResponse(data);
   return {
-    ok: payload?.success === true,
-    duplicate: payload?.duplicate === true,
+    ok: payload.success,
+    duplicate: payload.success ? payload.duplicate === true : undefined,
   };
 }
 

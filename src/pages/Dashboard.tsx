@@ -108,6 +108,7 @@ import {
   OnboardingChecklist,
   isOnboardingChecklistDismissed,
 } from "@/components/dashboard/OnboardingChecklist";
+import { isPhase1DashboardOnly } from "@/config/phase1-dashboard";
 
 // Type definitions for better type safety
 type DashboardSection = 'asset-management' | 'transfers' | 'market-primary' | 'market-speculative' | 'hnwi-purchases';
@@ -174,6 +175,7 @@ export default function Dashboard() {
     return plotsValue + portfolioValue;
   }, [ownedPlots.length, portfolios]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const phase1DashboardOnly = isPhase1DashboardOnly();
   const [activeSection, setActiveSection] = useState<"asset-management" | "transfers" | "market-primary" | "market-speculative" | "hnwi-purchases">("asset-management");
   const [activeTab, setActiveTab] = useState("assets");
   const [governmentPlots, setGovernmentPlots] = useState<any[]>([]);
@@ -1254,6 +1256,17 @@ export default function Dashboard() {
   const handleManagePlot = (plotId: number) => {
     navigate(`/plot-sell?plotId=${plotId}`);
   };
+
+  useEffect(() => {
+    if (
+      phase1DashboardOnly &&
+      (activeSection === "market-primary" ||
+        activeSection === "market-speculative" ||
+        activeSection === "hnwi-purchases")
+    ) {
+      setActiveSection("asset-management");
+    }
+  }, [phase1DashboardOnly, activeSection]);
 
   // Load government market data when Primary Market section is active
   useEffect(() => {
@@ -2598,7 +2611,8 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Explore Section */}
+              {/* Explore Section — hidden in Phase 1 to reduce confusion */}
+              {!phase1DashboardOnly && (
               <div className="mb-2 pb-2 border-b border-primary/10">
                 <div className="flex items-center gap-2 px-2 mb-2">
                   <Globe className="h-4 w-4 text-primary" />
@@ -2641,8 +2655,10 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
+              )}
 
-              {/* Market Section */}
+              {/* Market Section — Phase 2+ */}
+              {!phase1DashboardOnly && (
               <div className="mb-2 pb-2 border-b border-primary/10">
                 <div className="flex items-center gap-2 px-2 mb-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
@@ -2681,8 +2697,10 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
+              )}
 
-              {/* Premium Section */}
+              {/* Premium Section — Phase 2+ */}
+              {!phase1DashboardOnly && (
               <div>
                 <div className="flex items-center gap-2 px-2 mb-2">
                   <Crown className="h-4 w-4 text-primary" />
@@ -2710,6 +2728,7 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
+              )}
             </nav>
           </div>
         </aside>

@@ -11,6 +11,8 @@ Contracts deployed at Fuji block **55878103** (Snowtrace `0x35362d7`).
 | `20260610120000_blockchain_indexer_and_funnel.sql` | N-confirmation columns, `chain_plot_holdings`, funnel views, land-transfer cron |
 | `20260610130000_onchain_deposit_credit_job.sql` | `credit_onchain_deposit`, `user_id` backfill |
 | `20260609140000_fuji_deposit_ingest_schedule.sql` | Deposit ingest pg_cron |
+| `20260611120000_seed_phase1_plots.sql` | Seed plots 1–200 for land indexer |
+| `20260611120100_pause_legacy_usdc_cron.sql` | Pause legacy USDC cron until mainnet rail |
 
 ## 2. Edge functions
 
@@ -41,7 +43,7 @@ VERCEL_TOKEN=... npm run vercel:env:fuji
 npx vercel deploy --prod --scope chaos-projects-54e36297
 ```
 
-Ensures `VITE_ENABLE_TEST_ROUTES=false` and Fuji contract addresses on project `octa-x4en`.
+Ensures `VITE_ENABLE_TEST_ROUTES=false`, `VITE_MAINNET_USDC_RAIL=false`, `VITE_PHASE1_DASHBOARD_ONLY=true`, and Fuji contract addresses on project `octa-x4en`. The script auto-runs `vercel deploy --prod` when `VERCEL_TOKEN` is set.
 
 ## Verification
 

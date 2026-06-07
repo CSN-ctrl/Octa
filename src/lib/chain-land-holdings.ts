@@ -27,7 +27,7 @@ export function isOnChainLandMode(): boolean {
   return isOnChainCryptoMode() && hasPaymentLandContract();
 }
 
-/** Async: land sales on payment rail (1337). */
+/** Async: land sales on payment rail (Fuji 43113 by default). */
 export async function isOnChainLandModeAsync(): Promise<boolean> {
   if (!isOnChainCryptoMode()) return false;
   await loadPaymentContractAddresses();
