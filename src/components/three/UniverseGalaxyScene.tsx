@@ -1,23 +1,28 @@
 import { OrbitControls, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import {
+  SARAKT_PLANETS,
+  SARAKT_STAR,
+  SARAKT_STAR_POSITION,
+  type UniversePlanetId,
+} from "@/config/universe-celestials";
 import { GalaxyParticles } from "./GalaxyParticles";
 import { CelestialBody } from "./CelestialBody";
 import { OrbitingPlanet } from "./OrbitingPlanet";
 
-const SARAKT_POSITION: [number, number, number] = [1.6, 0, 1.6];
-
 type UniverseGalaxySceneProps = {
   particleCount?: number;
   enableBloom?: boolean;
+  onSelectPlanet?: (planetId: UniversePlanetId) => void;
 };
 
 /**
- * Procedural Sarakt galaxy — stars, spiral particles, orbiting planets.
- * No Blender or GLB assets required.
+ * Sarakt system — star, two orbiting planets with capital cities (Octavia, Zarathis).
  */
 export function UniverseGalaxyScene({
   particleCount = 6000,
   enableBloom = true,
+  onSelectPlanet,
 }: UniverseGalaxySceneProps) {
   return (
     <>
@@ -27,29 +32,34 @@ export function UniverseGalaxyScene({
       <Stars radius={80} depth={40} count={3000} factor={3} saturation={0.15} fade speed={0.4} />
       <GalaxyParticles count={particleCount} />
 
-      <group position={SARAKT_POSITION}>
+      <group position={SARAKT_STAR_POSITION}>
         <CelestialBody
-          name="Sarakt Star"
-          color="#9333ea"
-          emissive="#6d28d9"
-          radius={0.1}
-          labelColor="#a78bfa"
+          name={SARAKT_STAR.name}
+          color={SARAKT_STAR.color}
+          emissive={SARAKT_STAR.emissive}
+          radius={SARAKT_STAR.radius}
+          labelColor={SARAKT_STAR.labelColor}
           pulse
         />
-        <OrbitingPlanet
-          name="Sarakt Prime"
-          color="#22c55e"
-          orbitRadius={0.8}
-          orbitSpeed={0.1}
-          inclinationDeg={8}
-        />
-        <OrbitingPlanet
-          name="Zythera"
-          color="#ef4444"
-          orbitRadius={1.1}
-          orbitSpeed={0.08}
-          inclinationDeg={15}
-        />
+
+        {SARAKT_PLANETS.map((planet) => (
+          <OrbitingPlanet
+            key={planet.id}
+            planetId={planet.id}
+            name={planet.name}
+            cityName={planet.cityName}
+            color={planet.color}
+            emissive={planet.emissive}
+            cityColor={planet.cityColor}
+            atmosphereColor={planet.atmosphereColor}
+            orbitRadius={planet.orbitRadius}
+            orbitSpeed={planet.orbitSpeed}
+            inclinationDeg={planet.inclinationDeg}
+            radius={planet.radius}
+            buildingCount={planet.buildingCount}
+            onSelect={onSelectPlanet}
+          />
+        ))}
       </group>
 
       <mesh position={[0, 0, 0]}>
@@ -64,7 +74,7 @@ export function UniverseGalaxyScene({
         maxDistance={12}
         autoRotate
         autoRotateSpeed={0.15}
-        target={SARAKT_POSITION}
+        target={SARAKT_STAR_POSITION}
       />
 
       {enableBloom && (

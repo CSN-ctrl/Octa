@@ -2142,7 +2142,7 @@ export default function UnifiedUniverse() {
                 <Card className="glass border-2 border-primary/30 overflow-hidden">
                   <CardContent className="p-0 relative">
                     <div className="bg-black/90 relative" style={{ height: '700px' }}>
-                      <UniverseVisualization />
+                      <UniverseVisualization onSelectPlanet={handlePlanetSelect} />
                     </div>
 
                   </CardContent>
