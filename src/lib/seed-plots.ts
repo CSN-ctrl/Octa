@@ -1,80 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-
-// Helper function to calculate coordinates based on plot ID
-// Plot 1 is at center (0,0), plots spiral outward in octagonal pattern
-function calculateCoordinates(plotId: number): { x: number; y: number } {
-  if (plotId === 1) return { x: 0, y: 0 };
-  
-  // Calculate distance from center (ring number)
-  // Each ring has 8 * ring plots (except center)
-  let ring = 1;
-  let totalPlots = 1; // Center plot
-  
-  while (totalPlots < plotId) {
-    totalPlots += ring * 8;
-    if (totalPlots >= plotId) break;
-    ring++;
-  }
-  
-  // Position within current ring (0 to ring*8-1)
-  const positionInRing = plotId - (totalPlots - ring * 8) - 1;
-  const side = Math.floor(positionInRing / ring);
-  const posOnSide = positionInRing % ring;
-  
-  // Calculate coordinates based on octagonal pattern
-  let x = 0, y = 0;
-  const baseX = ring;
-  const baseY = ring;
-  
-  switch (side) {
-    case 0: // Top
-      x = -baseX + posOnSide;
-      y = -baseY;
-      break;
-    case 1: // Top-right
-      x = baseX;
-      y = -baseY + posOnSide;
-      break;
-    case 2: // Right
-      x = baseX - posOnSide;
-      y = baseY;
-      break;
-    case 3: // Bottom-right
-      x = -baseX;
-      y = baseY - posOnSide;
-      break;
-    case 4: // Bottom
-      x = -baseX + posOnSide;
-      y = baseY;
-      break;
-    case 5: // Bottom-left
-      x = -baseX;
-      y = baseY - posOnSide;
-      break;
-    case 6: // Left
-      x = -baseX + posOnSide;
-      y = -baseY;
-      break;
-    case 7: // Top-left
-      x = -baseX;
-      y = -baseY + posOnSide;
-      break;
-  }
-  
-  return { x, y };
-}
-
-// Helper function to determine zone type based on distance from center
-function getZoneType(plotId: number): string {
-  const distance = plotId;
-  
-  if (distance <= 100) return "Central District";
-  if (distance <= 1000) return "Inner Ring - Commercial";
-  if (distance <= 3000) return "Residential Zone";
-  if (distance <= 6000) return "Mixed Use";
-  if (distance <= 9000) return "Industrial Zone";
-  return "Outer Frontier";
-}
+import {
+  calculatePlotCoordinates,
+  getPlotZoneType,
+} from "@/lib/plot-coordinates";
 
 /**
  * Seed plots in the database
@@ -112,8 +40,8 @@ export async function seedPlots(
 
       if (existing) continue; // Skip if already exists
 
-      const coords = calculateCoordinates(plotId);
-      const zoneType = getZoneType(plotId);
+      const coords = calculatePlotCoordinates(plotId);
+      const zoneType = getPlotZoneType(plotId);
 
       plotsToCreate.push({
         id: plotId,

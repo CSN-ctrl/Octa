@@ -14,7 +14,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
-import { GalaxyVisualization } from "@/components/GalaxyVisualization";
+import { UniverseVisualization } from "@/components/UniverseVisualization";
 import { fetchPlots, type BackendPlot } from "@/lib/api";
 import * as supabaseService from "@/lib/supabase-service";
 import { OctagonalGrid } from "@/components/OctagonalGrid";
@@ -2142,7 +2142,7 @@ export default function UnifiedUniverse() {
                 <Card className="glass border-2 border-primary/30 overflow-hidden">
                   <CardContent className="p-0 relative">
                     <div className="bg-black/90 relative" style={{ height: '700px' }}>
-                      <GalaxyVisualization />
+                      <UniverseVisualization />
                     </div>
 
                   </CardContent>
