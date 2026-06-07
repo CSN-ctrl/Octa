@@ -465,6 +465,10 @@ function AppContent() {
                       <Route path="/register" element={<Navigate to="/signup" replace />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/universe" element={<UnifiedUniverse />} />
+                      <Route
+                        path="/universe/octavia"
+                        element={<Navigate to="/universe?planet=sarakt-prime&city=octavia" replace />}
+                      />
                       <Route path="/business" element={<Business />} />
                       <Route path="/ilo" element={
                         <RouteErrorBoundary routeName="Pioneers">
