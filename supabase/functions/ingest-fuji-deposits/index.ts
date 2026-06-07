@@ -338,6 +338,8 @@ Deno.serve(async (req: Request) => {
           p_chain_id: FUJI_CHAIN_ID,
           p_avax_amount: avaxAmount,
           p_xbgl_amount: xbglAmount,
+          p_block_number: blockNum,
+          p_confirmations_required: depositConfirmations,
         },
       );
 
@@ -371,6 +373,10 @@ Deno.serve(async (req: Request) => {
         duplicates++;
       } else {
         inserted++;
+        await supabase.rpc("confirm_onchain_deposit", {
+          p_tx_hash: txHash,
+          p_current_confirmations: depositConfirmations,
+        });
         // Resolve any pre-existing open failure row for this tx.
         await supabase
           .from("treasury_ingest_failures")

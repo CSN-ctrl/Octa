@@ -383,6 +383,7 @@ Deno.serve(async (req: Request) => {
           p_plot_id: event.plotId,
           p_owner_wallet: event.ownerWallet,
           p_tx_hash: event.txHash,
+          p_block_number: event.blockNum,
         },
       );
 
