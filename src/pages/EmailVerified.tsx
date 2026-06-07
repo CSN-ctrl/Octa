@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Home, Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { resolveGoldenPathRedirectForSession } from "@/lib/golden-path";
+import { trackProductEvent } from "@/lib/product-analytics";
 
 /**
  * Shown after the user clicks "Confirm your mail" in the signup email ({{ .ConfirmationURL }}).
@@ -69,6 +71,7 @@ export default function EmailVerified() {
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user?.email_confirmed_at) {
+          void trackProductEvent("signup_completed");
           return;
         }
 
@@ -136,9 +139,17 @@ export default function EmailVerified() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={() => navigate("/dashboard")} className="w-full" size="lg">
+          <Button
+            onClick={async () => {
+              void trackProductEvent("signup_completed");
+              const path = await resolveGoldenPathRedirectForSession();
+              navigate(path);
+            }}
+            className="w-full"
+            size="lg"
+          >
             <Home className="h-4 w-4 mr-2" />
-            Go to Dashboard
+            Continue to Phase 1
           </Button>
           <Button onClick={() => navigate("/universe")} variant="outline" className="w-full">
             Explore Universe

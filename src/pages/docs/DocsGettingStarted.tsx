@@ -1,46 +1,84 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { DocsLayout } from "@/components/DocsLayout";
 import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 
 export default function DocsGettingStarted() {
+  const plotPriceXbgl = getPlotPriceInXBGL().toFixed(2);
+
   const steps = [
     {
       step: 1,
-      title: "Connect Your Wallet",
-      description: "Use MetaMask, Core Wallet, Coinbase Wallet, or Brave Wallet. Your wallet connects directly to the platform."
+      title: "Create account & connect wallet",
+      description:
+        "Sign up with email and connect MetaMask, Core Wallet, or another EVM wallet. Phase 1 uses Avalanche Fuji testnet (chain 43113) — not mainnet.",
     },
     {
       step: 2,
-      title: "Register Digital ID",
-      description: "Digital ID will be introduced in a later phase. Initial access and participation in Phase 1 do not require Digital ID."
+      title: "Get test AVAX & deposit",
+      description:
+        "Use the official Avalanche faucet for test AVAX, then deposit on the Deposit page. AVAX is converted to in-game xBGL via the on-chain treasury contract.",
     },
     {
       step: 3,
-      title: "Choose Your Path",
-      description: "If you want to be a Landowner: Purchase plots in Phase 1 (10,000 participants). Each participant can buy multiple plots. Price: 100 EUR equivalent in xBGL per plot (1 EUR = 1.955833 xBGL), paid in USDC. If you want to be a Worker: Browse job listings, apply for jobs, get hired, and rent housing from landowners."
+      title: "Buy your first plot",
+      description: `Open Plot Purchase and pay in xBGL. Phase 1 price is 100 EUR equivalent (~${plotPriceXbgl} xBGL per plot). Ownership is recorded on-chain on Fuji.`,
     },
     {
       step: 4,
-      title: "Start Earning",
-      description: "As a Landowner: Build or buy structures on your plots, list structures for rent, earn rental income when citizens need homes. As a Worker: Work at businesses powered by citizen demand, earn wages, pay rent from wages, save earnings to buy plots later."
+      title: "View your land certificate",
+      description:
+        "After purchase, open your land title certificate from the dashboard. This is your proof of Genesis plot ownership for Phase 1.",
     },
     {
       step: 5,
-      title: "Expand and Grow",
-      description: "Buy more plots (landowners), build more structures, create businesses, hire workers, scale your operations—scale where population and spending are strongest."
+      title: "Grow on your land (later phases)",
+      description:
+        "Structures, rental income, businesses, and worker economies unlock in later phases. Phase 1 focuses on land acquisition and activation.",
     },
     {
       step: 6,
-      title: "Advanced Options",
-      description: "Consider city ownership (sovereignty), consider planet ownership (complete control), consider star system ownership (ultimate sovereignty), create your own rules and economy."
-    }
+      title: "Advanced sovereignty (future)",
+      description:
+        "City, planet, and star-system ownership are long-term goals — not required for Phase 1 onboarding.",
+    },
   ];
 
   return (
-    <DocsLayout 
-      title="Getting Started" 
-      description="Start your journey on ChaosStar—then grow where citizens need what you sell or rent."
+    <DocsLayout
+      title="Getting Started"
+      description="Phase 1 on Avalanche Fuji: connect wallet, deposit test AVAX, buy a Genesis plot, view your certificate."
     >
+      <Card className="glass-card border-primary/30 mb-6">
+        <CardContent className="pt-6 text-sm text-muted-foreground space-y-2">
+          <p>
+            <strong className="text-foreground">Testnet only.</strong> Phase 1 runs on Avalanche Fuji.
+            AVAX and xBGL have no real-world value. Need gas?{" "}
+            <a
+              href="https://faucet.avax.network/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              Get test AVAX from the faucet
+            </a>
+            .
+          </p>
+          <p>
+            Ready to start?{" "}
+            <Link to="/deposit" className="text-primary underline-offset-4 hover:underline">
+              Go to Deposit
+            </Link>{" "}
+            or{" "}
+            <Link to="/plot-purchase" className="text-primary underline-offset-4 hover:underline">
+              Plot Purchase
+            </Link>
+            .
+          </p>
+        </CardContent>
+      </Card>
+
       <Card className="glass-card border-primary/30">
         <CardContent className="pt-6">
           <div className="space-y-4">

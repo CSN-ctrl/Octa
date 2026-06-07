@@ -104,6 +104,10 @@ import {
   type AffiliateReferral,
 } from "@/lib/affiliate-service";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import {
+  OnboardingChecklist,
+  isOnboardingChecklistDismissed,
+} from "@/components/dashboard/OnboardingChecklist";
 
 // Type definitions for better type safety
 type DashboardSection = 'asset-management' | 'transfers' | 'market-primary' | 'market-speculative' | 'hnwi-purchases';
@@ -144,7 +148,12 @@ interface UserBalanceData {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { address: walletAddress, signer, refreshBalance: refreshWalletBalance } = useWallet();
+  const {
+    address: walletAddress,
+    signer,
+    refreshBalance: refreshWalletBalance,
+    isConnected,
+  } = useWallet();
   const [address, setAddress] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [ownedPlots, setOwnedPlots] = useState<any[]>([]);
@@ -210,7 +219,15 @@ export default function Dashboard() {
   const [loadingDocuments, setLoadingDocuments] = useState<Record<number, boolean>>({});
   const [showDocumentUpload, setShowDocumentUpload] = useState<number | null>(null);
   const [showFractionalOwnership, setShowFractionalOwnership] = useState<number | null>(null);
-  
+  const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(
+    () => !isOnboardingChecklistDismissed()
+  );
+
+  const onboardingXbglBalance = useMemo(() => {
+    const raw = balance?.xbgl_balance ?? balance?.xbglBalance ?? 0;
+    return typeof raw === "number" ? raw : parseFloat(String(raw)) || 0;
+  }, [balance]);
+
   // Celestial Forge hook for purchasing
   const {
     starSystems,
@@ -2700,6 +2717,14 @@ export default function Dashboard() {
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
           <div className="app-page-inner">
+          {showOnboardingChecklist && activeSection === "asset-management" && (
+            <OnboardingChecklist
+              walletConnected={isConnected || !!address || !!walletAddress}
+              xbglBalance={onboardingXbglBalance}
+              plotCount={totalPlots}
+              onDismiss={() => setShowOnboardingChecklist(false)}
+            />
+          )}
           {/* Asset Management Section */}
           {activeSection === "asset-management" && (
             <AssetManagementSection

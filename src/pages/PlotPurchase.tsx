@@ -36,6 +36,8 @@ import { formatPaymentXbglBalance } from "@/lib/payment-balance";
 import { useChainLand } from "@/hooks/useChainLand";
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
 import { getPaymentNetworkName } from "@/config/blockchain-profile";
+import { FujiTestnetBanner } from "@/components/FujiTestnetBanner";
+import { trackProductEvent } from "@/lib/product-analytics";
 import {
   Dialog,
   DialogContent,
@@ -306,7 +308,11 @@ export default function PlotPurchase() {
           await buyPlotWithXbgl(plotId);
         }
         toast.success("Plots purchased on-chain", {
-          description: "xBGL paid on chain 1337 — NFT minted and import requested in your wallet.",
+          description: `xBGL paid on chain ${PAYMENT_CHAIN_ID} — NFT minted and import requested in your wallet.`,
+        });
+        void trackProductEvent("plot_purchased", {
+          plot_count: plotIdsArray.length,
+          rail: "on-chain",
         });
         setSelectedPlotIds(new Set());
         navigate("/dashboard");
@@ -688,6 +694,12 @@ export default function PlotPurchase() {
         }
       }));
       
+      void trackProductEvent("plot_purchased", {
+        plot_count: plotIdsArray.length,
+        rail: "supabase",
+        total_xbgl: totalCost,
+      });
+
       // Show success message
       toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL! Redirecting to Asset Management...`);
       
@@ -727,6 +739,7 @@ export default function PlotPurchase() {
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <FujiTestnetBanner className="mb-6" />
         {/* Professional Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">

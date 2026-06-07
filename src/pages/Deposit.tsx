@@ -48,6 +48,8 @@ import {
   getAvalancheDepositAsset,
   type AvalancheDepositAssetId,
 } from "@/lib/deposit-assets";
+import { FujiTestnetBanner } from "@/components/FujiTestnetBanner";
+import { trackProductEvent } from "@/lib/product-analytics";
 
 function middleTruncate(value: string, head = 8, tail = 8): string {
   if (!value) return "";
@@ -384,12 +386,18 @@ export default function Deposit() {
     }
     try {
       setSubmittingDeposit(true);
+      void trackProductEvent("deposit_initiated", { avax: avaxAmount });
       await switchToPaymentNetwork();
       const xbglToCredit = Number(desiredXbgl);
       const result = await depositWithWallet(signer, avaxAmount);
       if (result.ok) {
         setLastTxResult({ txHash: result.txHash, xbgl: xbglToCredit });
         setDepositCompleted(true);
+        void trackProductEvent("deposit_credited", {
+          tx_hash: result.txHash,
+          xbgl: xbglToCredit,
+          avax: avaxAmount,
+        });
         const explorerUrl = currentNetwork?.explorer;
         if (xbglToCredit > 0) {
           toast.success(`+${xbglToCredit.toFixed(4)} xBGL credited`, {
@@ -974,7 +982,7 @@ export default function Deposit() {
       </div>
 
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 relative z-10">
-        <div className="flex items-center gap-3 mb-12 sm:mb-16">
+        <div className="flex items-center gap-3 mb-8 sm:mb-10">
           <Button
             variant="ghost"
             size="sm"
@@ -990,6 +998,8 @@ export default function Deposit() {
           </h1>
           <div className="w-[72px] shrink-0" aria-hidden />
         </div>
+
+        <FujiTestnetBanner />
 
         {currentNetwork && (
           <div className="space-y-6">
