@@ -1,4 +1,4 @@
-import type { Connect, Plugin, ViteDevServer } from "vite";
+import type { Connect, Plugin, PreviewServer, ViteDevServer } from "vite";
 import {
   buildLandPlotMetadata,
   parsePlotIdFromMetadataPath,
@@ -37,7 +37,7 @@ function landMetadataMiddleware(): Connect.NextHandleFunction {
   };
 }
 
-function attach(server: ViteDevServer) {
+function attach(server: ViteDevServer | PreviewServer) {
   server.middlewares.use(landMetadataMiddleware());
 }
 
@@ -45,7 +45,7 @@ function attach(server: ViteDevServer) {
 export function landMetadataDevPlugin(): Plugin {
   return {
     name: "land-metadata-dev",
-    configureServer: attach,
-    configurePreviewServer: attach,
+    configureServer: (server) => attach(server),
+    configurePreviewServer: (server) => attach(server),
   };
 }

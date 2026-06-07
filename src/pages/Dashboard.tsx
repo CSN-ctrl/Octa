@@ -776,7 +776,7 @@ export default function Dashboard() {
               authUserEmail
             );
             if (address) {
-              await refreshWalletBalance(address);
+              await refreshWalletBalance();
             }
           } else if (authUserEmail) {
             try {
@@ -978,7 +978,7 @@ export default function Dashboard() {
           authUserEmail
         );
         if (address) {
-          await refreshWalletBalance(address);
+          await refreshWalletBalance();
         }
       } else {
       // Reconcile balance with ledger first (using auth user email)
@@ -1159,10 +1159,10 @@ export default function Dashboard() {
           throw new Error("On-chain transfers require a wallet address (not email)");
         }
         const transferResult = await sendNativeTransfer(signer, toAddress, amount);
-        if (!transferResult.success) {
+        if (transferResult.success === false) {
           throw new Error(transferResult.error || "Transfer failed");
         }
-        await refreshWalletBalance(address);
+        await refreshWalletBalance();
         const refreshed = await loadUserBalanceForUi(address.toLowerCase(), userEmail);
         setBalance(refreshed);
         toast.success(`Transfer sent: ${transferResult.txHash.slice(0, 10)}...`);

@@ -62,7 +62,11 @@ export function OctaviaCapitalCity({ radius, cityColor }: OctaviaCapitalCityProp
       dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix();
       plots.setMatrixAt(index, dummy.matrix);
-      color.copy(plotId === 1 ? TREASURY_ACCENT : plotId <= 4 ? PLOT_OWNED : PLOT_OPEN);
+      color.copy(
+        new THREE.Color(
+          plotId === 1 ? TREASURY_ACCENT : plotId <= 4 ? PLOT_OWNED : PLOT_OPEN
+        )
+      );
       plots.setColorAt(index, color);
     });
     plots.instanceMatrix.needsUpdate = true;

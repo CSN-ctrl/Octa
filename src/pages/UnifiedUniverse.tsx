@@ -49,28 +49,9 @@ export default function UnifiedUniverse() {
   const [resolvedPlotPrice, setResolvedPlotPrice] = useState<string>(() => getPlotPriceInXBGL().toFixed(4));
 
   useEffect(() => {
-    if (typeof priceInXBGL === "string") {
-      setResolvedPlotPrice(priceInXBGL);
-      return;
-    }
-    if (typeof priceInXBGL === "number") {
-      setResolvedPlotPrice(priceInXBGL.toFixed(4));
-      return;
-    }
-    if (priceInXBGL && typeof (priceInXBGL as Promise<number>).then === "function") {
-      let cancelled = false;
-      (priceInXBGL as Promise<number>)
-        .then((value) => {
-          if (!cancelled) setResolvedPlotPrice(value.toFixed(4));
-        })
-        .catch(() => {
-          if (!cancelled) setResolvedPlotPrice(getPlotPriceInXBGL().toFixed(4));
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-    setResolvedPlotPrice(getPlotPriceInXBGL().toFixed(4));
+    setResolvedPlotPrice(
+      typeof priceInXBGL === "string" ? priceInXBGL : getPlotPriceInXBGL().toFixed(4)
+    );
   }, [priceInXBGL]);
   const { balances } = useTreasury();
   const { address, isConnected, balance } = useWallet();

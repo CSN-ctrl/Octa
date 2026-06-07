@@ -74,6 +74,18 @@ export function UniverseCityGridPanel({
     [cityPlots],
   );
 
+  const gridPlots = useMemo(
+    () =>
+      cityPlots.map((plot, index) => ({
+        id: plot.id ?? plot.plotId ?? index + 1,
+        x: plot.x ?? 0,
+        y: plot.y ?? 0,
+        type: plot.type ?? "unknown",
+        owner: plot.owner,
+      })),
+    [cityPlots],
+  );
+
   return (
     <div>
       {cityPlots.length > 0 && previewPlotIds.length > 0 && (
@@ -81,14 +93,26 @@ export function UniverseCityGridPanel({
       )}
       <OctagonalGrid
         cityName={cityName}
-        plots={cityPlots}
+        plots={gridPlots}
         totalPlots={cityPlots.length || undefined}
         isConnected={isConnected}
         isLoading={false}
         plotPrice={plotPrice}
         ownedPlotIds={ownedPlotIds}
-        onPlotClick={onPlotClick}
-        onPlotSelect={onPlotSelect}
+        onPlotClick={(plot) => {
+          const match = cityPlots.find((p) => (p.id ?? p.plotId) === plot.id);
+          onPlotClick(match ?? ({ id: plot.id, x: plot.x, y: plot.y, type: plot.type } as CityPlot));
+        }}
+        onPlotSelect={
+          onPlotSelect
+            ? (plot) => {
+                const match = cityPlots.find((p) => (p.id ?? p.plotId) === plot.id);
+                onPlotSelect(
+                  match ?? ({ id: plot.id, x: plot.x, y: plot.y, type: plot.type } as CityPlot)
+                );
+              }
+            : undefined
+        }
         onPurchase={onPurchase}
       />
     </div>

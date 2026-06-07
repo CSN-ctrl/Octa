@@ -20,17 +20,18 @@ export function parsePlotIdFromMetadataPath(segment: string): number | null {
   return null;
 }
 
+function defaultMetadataOrigin(): string {
+  const g = globalThis as { location?: { origin?: string } };
+  return g.location?.origin ?? "http://localhost:8080";
+}
+
 export function getLandNftImageUrl(origin?: string): string {
-  const base =
-    origin ??
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
+  const base = origin ?? defaultMetadataOrigin();
   return `${base.replace(/\/$/, "")}${LAND_NFT_IMAGE_PATH}`;
 }
 
 export function getLandMetadataBaseUri(origin?: string): string {
-  const base =
-    origin ??
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
+  const base = origin ?? defaultMetadataOrigin();
   return `${base.replace(/\/$/, "")}/metadata/land/{id}.json`;
 }
 
