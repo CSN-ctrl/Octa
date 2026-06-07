@@ -34,3 +34,6 @@ key.txt.pub
 *.temp
 
 .vercel
+
+# External skills CLI staging (canonical copy lives in .cursor/skills/)
+.agents/

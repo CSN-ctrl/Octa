@@ -80,6 +80,43 @@ domains:
       - "docs/**"
       - "cursor-brain/**"
 
+  r3f_3d:
+    required_skills:
+      - chaosstar-r3f-scene-build
+    optional_skills:
+      - chaosstar-gltf-asset-pipeline
+      - r3f-best-practices
+      - three-best-practices
+      - r3f-fundamentals
+      - r3f-geometry
+      - r3f-loaders
+      - r3f-materials
+      - r3f-lighting
+      - r3f-postprocessing
+      - r3f-interaction
+      - 3d-web-experience
+    intent_triggers:
+      - "3d"
+      - "three.js"
+      - "r3f"
+      - "react-three-fiber"
+      - "galaxy"
+      - "universe"
+      - "gltf"
+      - "glb"
+      - "model"
+      - "mesh"
+      - "blender"
+      - "spline"
+    path_triggers:
+      - "src/components/three/**"
+      - "src/components/UniverseVisualization.tsx"
+      - "src/components/GalaxyVisualization.tsx"
+      - "public/models/**"
+      - "docs/3d/**"
+      - ".cursor/skills/chaosstar-r3f-scene-build/**"
+      - ".cursor/skills/chaosstar-gltf-asset-pipeline/**"
+
   pirate_build_track:
     required_skills:
       - pirate-codex-build
@@ -1349,6 +1386,7 @@ skill_catalog:
     - prompt-execution-governor
     - auth-wallet-identity-linking-playbook
     - ab-test-setup
+    - 3d-web-experience
     - ad-creative
     - ai-seo
     - analytics-tracking
@@ -1379,6 +1417,14 @@ skill_catalog:
     - pricing-strategy
     - product-marketing-context
     - programmatic-seo
+    - r3f-best-practices
+    - r3f-fundamentals
+    - r3f-geometry
+    - r3f-interaction
+    - r3f-lighting
+    - r3f-loaders
+    - r3f-materials
+    - r3f-postprocessing
     - referral-program
     - revops
     - sales-enablement
@@ -1387,6 +1433,7 @@ skill_catalog:
     - signup-flow-cro
     - site-architecture
     - social-content
+    - three-best-practices
     - video
     - acs-accessibility-auditing
     - acs-adding-analytics
@@ -1463,6 +1510,8 @@ skill_catalog:
     - figma-implement-design
     - figma-use
     - figma-use-figjam
+    - chaosstar-gltf-asset-pipeline
+    - chaosstar-r3f-scene-build
     - ci-quality-gates-for-risky-domains
     - deposit-auto-credit-mvp-hardening
     - foundry-sandbox-alignment-and-contract-test-porting

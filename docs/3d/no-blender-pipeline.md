@@ -41,30 +41,31 @@ npx gltfjsx public/models/structure.glb --transform -o src/components/three/Stru
 
 4. Import inside `SceneCanvas` with Suspense
 
-### 3. Spline (browser-based modeling)
+### 3. Cursor agent skills (installed in repo)
 
-1. Design at [spline.design](https://spline.design)
-2. Export **GLB** (geometry) or use **Code export → react-three-fiber**
-3. Wire into `src/components/three/`
+External skills live under `.cursor/skills/` (synced from `npx skills add`):
 
-### 4. Cursor agent skills (optional install)
+- `r3f-best-practices`, `three-best-practices` (emalorenzo/three-agent-skills)
+- `r3f-fundamentals` … `r3f-interaction` (EnzeD/r3f-skills)
+- `3d-web-experience` (antigravity-awesome-skills)
 
-```bash
-npx add-skill three-agent-skills --skill r3f-best-practices
-npx add-skill EnzeD/r3f-skills
-```
+Project skills:
 
-Project skill: `.cursor/skills/chaosstar-r3f-scene-build/SKILL.md`
+- `.cursor/skills/chaosstar-r3f-scene-build/SKILL.md`
+- `.cursor/skills/chaosstar-gltf-asset-pipeline/SKILL.md`
 
-### 5. Live dev MCP (optional)
+Re-sync after upstream updates: `npm run skills:sync-3d`
+
+Free model catalog: `docs/3d/free-model-sources.md`
+
+### 4. Live dev MCP (optional)
 
 [r3f-mcp](https://github.com/r3f-mcp/r3f-mcp) lets Cursor inspect and edit a **running** R3F scene. Add to `.cursor/mcp.json` when iterating.
 
-## When you *would* add Blender later
+## Out of scope (project constraint)
 
-- Custom sculpted hero assets (unique ships, cities)
-- Blender MCP for prompt-driven modeling
-- Not required for Phase 1 universe or plot grid
+- **Blender** — not used; download CC0 GLBs instead
+- **Spline** — not used; same GLB pipeline as above
 
 ## Next steps in code
 

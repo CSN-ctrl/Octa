@@ -46,10 +46,9 @@ owner: octavia-core-team
 3. Optimize: `npx gltfjsx public/models/foo.glb --transform -o src/components/three/Foo.tsx`
 4. Load with `useGLTF` from drei inside `SceneCanvas`
 
-## Spline alternative
+## Free GLB pipeline
 
-- Quick hero objects: [Spline](https://spline.design) → export GLB or use `@splinetool/r3f-spline`
-- GLB export loses interactivity; code export keeps events
+See `chaosstar-gltf-asset-pipeline` and `docs/3d/free-model-sources.md` — download CC0 models (Poly Haven, Kenney, Quaternius); no Blender or Spline.
 
 ## Env flags
 
