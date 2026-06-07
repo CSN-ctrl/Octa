@@ -31,10 +31,15 @@ type UniverseCityGridPanelProps = {
 function CityPlotPreview({
   plotIds,
   ownedPlotIds,
+  totalPlotCount,
 }: {
   plotIds: number[];
   ownedPlotIds: number[];
+  totalPlotCount: number;
 }) {
+  const showingCount = plotIds.length;
+  const showCaption = totalPlotCount > showingCount;
+
   return (
     <Card className="glass mb-4 overflow-hidden border-primary/20">
       <CardHeader className="pb-2">
@@ -44,12 +49,17 @@ function CityPlotPreview({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <SceneCanvas className="relative h-40 w-full" fov={50} cameraPosition={[2.5, 2.5, 2.5]}>
+        <SceneCanvas className="relative h-56 w-full" fov={50} cameraPosition={[2.5, 2.5, 2.5]}>
           <ambientLight intensity={0.35} />
           <directionalLight position={[3, 5, 2]} intensity={0.6} />
           <PlotInstancedGrid plotIds={plotIds} ownedPlotIds={ownedPlotIds} />
           <OrbitControls enablePan={false} enableZoom={false} autoRotate autoRotateSpeed={0.5} />
         </SceneCanvas>
+        {showCaption && (
+          <p className="px-4 py-2 text-center text-xs text-muted-foreground">
+            Showing {showingCount} of {totalPlotCount} plots
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -65,13 +75,15 @@ export function UniverseCityGridPanel({
   onPlotSelect,
   onPurchase,
 }: UniverseCityGridPanelProps) {
+  const previewLimit = Math.min(cityPlots.length, 64);
+
   const previewPlotIds = useMemo(
     () =>
       cityPlots
-        .slice(0, 24)
+        .slice(0, previewLimit)
         .map((plot) => plot.id ?? plot.plotId ?? 0)
         .filter((id) => id > 0),
-    [cityPlots],
+    [cityPlots, previewLimit],
   );
 
   const gridPlots = useMemo(
@@ -89,7 +101,11 @@ export function UniverseCityGridPanel({
   return (
     <div>
       {cityPlots.length > 0 && previewPlotIds.length > 0 && (
-        <CityPlotPreview plotIds={previewPlotIds} ownedPlotIds={ownedPlotIds} />
+        <CityPlotPreview
+          plotIds={previewPlotIds}
+          ownedPlotIds={ownedPlotIds}
+          totalPlotCount={cityPlots.length}
+        />
       )}
       <OctagonalGrid
         cityName={cityName}

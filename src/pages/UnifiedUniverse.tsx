@@ -20,7 +20,7 @@ import * as supabaseService from "@/lib/supabase-service";
 import { Empty } from "@/components/ui/empty";
 import { UniverseCityGridPanel } from "@/components/unified-universe/UniverseCityGridPanel";
 import { NetworkTopology } from "@/components/NetworkTopology";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { LazyImage } from "@/components/ui/LazyImage";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { isOnChainCryptoMode } from "@/lib/chain-network";
@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 
 export default function UnifiedUniverse() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [cityView, setCityView] = useState<"info" | "grid" | "management">("grid");
@@ -515,6 +516,24 @@ export default function UnifiedUniverse() {
     }
   };
 
+  const clearUniverseDeepLinkParams = () => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("planet");
+        next.delete("city");
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const handleBackToGalaxy = () => {
+    setSelectedPlanet(null);
+    setSelectedCity(null);
+    clearUniverseDeepLinkParams();
+  };
+
   const handleEnterOctaviaCapital = () => {
     const planet = planetsData?.["sarakt-prime"];
     if (!planet || planet.locked) return;
@@ -522,8 +541,35 @@ export default function UnifiedUniverse() {
       planet.districts?.findIndex((d) => d.name === "Octavia Capital City") ?? 0;
     setSelectedPlanet("sarakt-prime");
     setSelectedCity(`city-${Math.max(octaviaCityIndex, 0)}`);
+    setSearchParams(
+      { planet: "sarakt-prime", city: "octavia" },
+      { replace: true }
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const planetParam = searchParams.get("planet");
+    const cityParam = searchParams.get("city");
+    if (planetParam !== "sarakt-prime" || !cityParam || selectedPlanet) return;
+
+    const planet = planetsData?.["sarakt-prime"];
+    if (!planet || planet.locked) return;
+
+    const octaviaCityIndex =
+      planet.districts?.findIndex((d) => d.name === "Octavia Capital City") ?? 0;
+    const resolvedCityIndex = Math.max(octaviaCityIndex, 0);
+    const isOctaviaDeepLink =
+      cityParam === "octavia" ||
+      cityParam === String(resolvedCityIndex) ||
+      cityParam === `city-${resolvedCityIndex}`;
+
+    if (!isOctaviaDeepLink) return;
+
+    setSelectedPlanet("sarakt-prime");
+    setSelectedCity(`city-${resolvedCityIndex}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [planetsData, searchParams, selectedPlanet]);
 
   // Mock hook automatically loads data from localStorage on mount
   // No need to fetch from backend or database
@@ -1125,10 +1171,7 @@ export default function UnifiedUniverse() {
                   <button
                     type="button"
                     className="cursor-pointer"
-                    onClick={() => {
-                      setSelectedPlanet(null);
-                      setSelectedCity(null);
-                    }}
+                    onClick={handleBackToGalaxy}
                   >
                     Universe
                   </button>
@@ -1518,7 +1561,7 @@ export default function UnifiedUniverse() {
   if (selectedPlanet) {
     const planet = planetsData?.[selectedPlanet] || planetsData?.["sarakt-prime"];
     if (!planet) {
-      setSelectedPlanet(null);
+      handleBackToGalaxy();
       return null;
     }
     // Show Octavia Capital City for Sarakt Prime, or Capital city of Zarathis for Zythera
@@ -1539,25 +1582,19 @@ export default function UnifiedUniverse() {
                     <button
                       type="button"
                       className="cursor-pointer"
-                      onClick={() => {
-                        setSelectedPlanet(null);
-                        setSelectedCity(null);
-                      }}
+                      onClick={handleBackToGalaxy}
                     >
                       Universe
                     </button>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>{planet.name}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
-            <Button variant="glass" className="mb-6 gap-2" onClick={() => {
-              setSelectedPlanet(null);
-              setSelectedCity(null);
-            }}>
+            <Button variant="glass" className="mb-6 gap-2" onClick={handleBackToGalaxy}>
               <ChevronLeft className="h-4 w-4" />
               Back
             </Button>
