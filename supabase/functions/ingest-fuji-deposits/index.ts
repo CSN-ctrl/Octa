@@ -373,10 +373,16 @@ Deno.serve(async (req: Request) => {
         duplicates++;
       } else {
         inserted++;
-        await supabase.rpc("confirm_onchain_deposit", {
-          p_tx_hash: txHash,
-          p_current_confirmations: depositConfirmations,
-        });
+      }
+
+      // Confirm + credit for both new and duplicate rows (client may have recorded first).
+      await supabase.rpc("confirm_onchain_deposit", {
+        p_tx_hash: txHash,
+        p_current_confirmations: depositConfirmations,
+      });
+      await supabase.rpc("credit_onchain_deposit", { p_tx_hash: txHash });
+
+      if (!result?.duplicate) {
         // Resolve any pre-existing open failure row for this tx.
         await supabase
           .from("treasury_ingest_failures")
@@ -396,6 +402,15 @@ Deno.serve(async (req: Request) => {
     if (currentTo > maxSeenBlock) maxSeenBlock = currentTo;
     currentFrom = currentTo + 1;
     chunksProcessed++;
+  }
+
+  // ── credit any remaining confirmed rows (batch tail) ─────────────────────────
+  let creditBatch: { credited?: number; skipped?: number; failed?: number } | null = null;
+  const { data: creditResult } = await supabase.rpc("credit_confirmed_onchain_deposits", {
+    p_batch_limit: 50,
+  });
+  if (creditResult && typeof creditResult === "object") {
+    creditBatch = creditResult as { credited?: number; skipped?: number; failed?: number };
   }
 
   // ── update checkpoint ────────────────────────────────────────────────────────
@@ -428,6 +443,7 @@ Deno.serve(async (req: Request) => {
       latestBlock,
       depositConfirmations,
       chunksProcessed,
+      creditBatch,
       errors: errors.slice(0, 5),
     }),
     { headers: { "Content-Type": "application/json" } },

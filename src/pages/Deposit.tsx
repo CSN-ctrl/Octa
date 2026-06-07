@@ -560,17 +560,19 @@ export default function Deposit() {
     ? onChainHistory.slice(0, 8).map((deposit) => {
         const status = deposit.status;
         const badgeVariant =
-          status === "confirmed"
+          status === "credited" || status === "confirmed"
             ? "default"
             : status === "failed"
               ? "destructive"
               : "secondary";
         const statusLabel =
-          status === "confirmed"
-            ? "confirmed"
-            : status === "failed"
-              ? "failed"
-              : "pending";
+          status === "credited"
+            ? "credited"
+            : status === "confirmed"
+              ? "confirmed"
+              : status === "failed"
+                ? "failed"
+                : "pending";
         return (
           <div key={deposit.txHash} className="rounded-md border border-border/50 p-2 text-xs">
             <div className="flex items-center justify-between gap-2">

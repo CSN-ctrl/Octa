@@ -44,7 +44,7 @@ export async function recordOnChainDeposit(
   };
 }
 
-export type OnChainDepositStatus = "pending" | "confirmed" | "failed";
+export type OnChainDepositStatus = "pending" | "confirmed" | "credited" | "failed";
 
 export async function fetchOnChainDepositsForUser(limit = 30): Promise<
   Array<{
@@ -85,5 +85,10 @@ export async function fetchOnChainDepositsForUser(limit = 30): Promise<
 }
 
 function isValidDepositStatus(value: unknown): value is OnChainDepositStatus {
-  return value === "pending" || value === "confirmed" || value === "failed";
+  return (
+    value === "pending" ||
+    value === "confirmed" ||
+    value === "credited" ||
+    value === "failed"
+  );
 }
