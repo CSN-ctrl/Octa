@@ -85,6 +85,7 @@ export async function depositAvaxForXbgl(
   signer: ethers.Signer,
   avaxHuman: number,
   slippageBps = 50,
+  onSubmitted?: (txHash: string) => void,
 ): Promise<{ txHash: string; xbglOut: bigint }> {
   const quote = await getOnChainDepositQuote(avaxHuman);
   if (!quote) throw new Error("Treasury not configured");
@@ -109,6 +110,7 @@ export async function depositAvaxForXbgl(
 
   const treasury = new ethers.Contract(treasuryAddr, TREASURY_DEPOSIT_ABI, signer);
   const tx = await treasury.depositAvaxForXbgl(minXbgl, { value: quote.avaxWei });
+  onSubmitted?.(tx.hash);
   const receipt = await tx.wait();
   if (!receipt) throw new Error("No receipt");
 

@@ -43,6 +43,7 @@ export function useOnChainDeposit() {
   const [exchangeRate, setExchangeRate] = useState(1);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<OnChainDepositHistoryRow[]>([]);
+  const [pendingTxHash, setPendingTxHash] = useState<string | null>(null);
 
   const reloadExchangeRate = useCallback(async () => {
     if (!isOnChainCryptoMode()) return;
@@ -88,8 +89,14 @@ export function useOnChainDeposit() {
   const depositWithWallet = useCallback(
     async (signer: ethers.Signer, avaxHuman: number) => {
       setLoading(true);
+      setPendingTxHash(null);
       try {
-        const { txHash, xbglOut } = await depositAvaxForXbgl(signer, avaxHuman);
+        const { txHash, xbglOut } = await depositAvaxForXbgl(
+          signer,
+          avaxHuman,
+          undefined,
+          (hash) => setPendingTxHash(hash),
+        );
         const row: OnChainDepositHistoryRow = {
           txHash,
           avaxAmount: avaxHuman,
@@ -117,6 +124,7 @@ export function useOnChainDeposit() {
         return { ok: false as const };
       } finally {
         setLoading(false);
+        setPendingTxHash(null);
       }
     },
     [loadHistory],
@@ -126,6 +134,7 @@ export function useOnChainDeposit() {
     exchangeRate,
     loading,
     history,
+    pendingTxHash,
     reloadExchangeRate,
     quoteAvaxForXbgl,
     depositWithWallet,

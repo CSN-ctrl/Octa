@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { NETWORKS, depositAssetSymbol, isAvaxDepositNetwork } from "@/lib/networks";
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
-import { getDepositNetworkId, getPaymentNetworkName } from "@/config/blockchain-profile";
+import { getDepositNetworkId, getPaymentNetworkName, getPaymentBlockExplorerUrl } from "@/config/blockchain-profile";
 import { addPaymentNetwork } from "@/lib/wallet";
 import { getAllHotWallets } from "@/lib/hot-wallet";
 import { generateEnhancedQRCode, getNetworkLogoUrl } from "@/lib/qr-code-utils";
@@ -71,6 +71,7 @@ export default function Deposit() {
     refreshBalance,
     walletProvider,
     signer,
+    balance,
   } = useWallet();
   const onChainCrypto = isOnChainCryptoMode();
   const [hotWallets, setHotWallets] = useState<Record<string, string>>({});
@@ -107,6 +108,7 @@ export default function Deposit() {
     history: onChainHistory,
     reloadExchangeRate: reloadOnChainExchangeRate,
     depositWithWallet,
+    pendingTxHash: onChainPendingTxHash,
   } = onChainDeposit;
   const exchangeRate = onChainCrypto ? onChainExchangeRate : legacyExchangeRate;
   const reloadExchangeRate = onChainCrypto ? reloadOnChainExchangeRate : reloadLegacyExchangeRate;
@@ -374,6 +376,15 @@ export default function Deposit() {
 
   const isWrongNetwork = walletChainId !== null && currentNetwork && walletChainId !== currentNetwork.chainId;
 
+  const GAS_BUFFER_AVAX = 0.005;
+  const avaxBalance = Number(balance);
+  const insufficientGas =
+    onChainCrypto &&
+    isConnected &&
+    avaxRequired != null &&
+    avaxBalance < avaxRequired + GAS_BUFFER_AVAX;
+  const explorerBase = getPaymentBlockExplorerUrl();
+
   const submitOnChainDeposit = async () => {
     if (!signer || !address) {
       toast.error("Connect your wallet on chain " + PAYMENT_CHAIN_ID);
@@ -520,7 +531,8 @@ export default function Deposit() {
     isConnected &&
     !!signer &&
     avaxRequired != null &&
-    !isWrongNetwork;
+    !isWrongNetwork &&
+    !insufficientGas;
 
   const isWorking = submittingDeposit || onChainDepositLoading;
 
@@ -580,8 +592,50 @@ export default function Deposit() {
   const walletPanel = (
     <div className="space-y-4">
       {onChainCrypto ? (
-        isConnected ? (
-          selectedDepositAsset.supportsWalletDeposit ? (
+        <>
+          {/* Gas hint: wallet AVAX balance */}
+          {isConnected && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground rounded-lg bg-muted/40 px-3 py-2">
+              <span className="flex items-center gap-1.5">
+                <Wallet className="h-3 w-3" aria-hidden />
+                Wallet AVAX
+              </span>
+              <span
+                className={cn(
+                  "font-mono tabular-nums",
+                  insufficientGas && "text-destructive font-semibold",
+                )}
+                aria-live="polite"
+              >
+                {avaxBalance.toFixed(4)} AVAX
+              </span>
+            </div>
+          )}
+
+          {/* Low gas warning */}
+          {insufficientGas && (
+            <Alert variant="destructive" className="py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Need ≥{(avaxRequired! + GAS_BUFFER_AVAX).toFixed(4)} AVAX (amount +{" "}
+                ~{GAS_BUFFER_AVAX} gas). Top up your wallet first.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Switch network prompt when not connected or wrong chain */}
+          {!isConnected && (
+            <Alert className="py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Connect a wallet on{" "}
+                <strong>{getPaymentNetworkName()}</strong> to use one-click deposit.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Deposit CTA */}
+          {isConnected && selectedDepositAsset.supportsWalletDeposit && (
             <Button
               type="button"
               className="w-full h-12 bg-gradient-cosmic hover:opacity-90 text-white font-semibold"
@@ -589,22 +643,45 @@ export default function Deposit() {
               disabled={isWorking || !canWalletDeposit}
               aria-busy={isWorking}
             >
-              {isWorking ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              {isWorking && !onChainPendingTxHash ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Broadcasting…
+                </>
+              ) : isWorking && onChainPendingTxHash ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Confirming…
+                </>
               ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {avaxRequired != null
+                    ? `Deposit ${avaxRequired.toFixed(6)} AVAX`
+                    : "Enter xBGL amount above"}
+                </>
               )}
-              {avaxRequired != null
-                ? `Deposit ${avaxRequired.toFixed(6)} AVAX`
-                : "Enter xBGL amount above"}
             </Button>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center px-2">
-              One-click deposit is available for AVAX. Send {selectedDepositAsset.symbol} using
-              the manual address on the right (Avalanche network).
-            </p>
-          )
-        ) : null
+          )}
+
+          {/* Deposit status machine: tx link while confirming */}
+          {isWorking && onChainPendingTxHash && explorerBase && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin shrink-0" aria-hidden />
+              <span>Waiting for confirmation</span>
+              <a
+                href={`${explorerBase}/tx/${onChainPendingTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 underline hover:text-primary"
+                aria-label="View transaction on Snowtrace"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Snowtrace
+              </a>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <div className="space-y-1.5">
@@ -801,7 +878,8 @@ export default function Deposit() {
           <AlertTitle>Wrong network</AlertTitle>
           <AlertDescription className="space-y-2">
             <p>
-              Switch to <strong>{currentNetwork.name}</strong> (chain {currentNetwork.chainId}) to deposit.
+              Switch to <strong>{currentNetwork.name}</strong> (chain {currentNetwork.chainId}) to
+              deposit.
             </p>
             <Button
               type="button"
@@ -815,7 +893,14 @@ export default function Deposit() {
         </Alert>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 md:gap-8 items-stretch">
+      <div
+        className={cn(
+          "grid gap-6 items-stretch",
+          onChainCrypto
+            ? "md:grid-cols-1 max-w-2xl mx-auto w-full"
+            : "md:grid-cols-2 md:gap-8",
+        )}
+      >
         <section className="flex flex-col gap-4 h-full" aria-label="Wallet deposit">
           <header className={depositSectionHeader}>
             <div className={depositSectionHeaderInner}>
@@ -920,28 +1005,27 @@ export default function Deposit() {
 
         </section>
 
-        <section className="flex flex-col gap-4 h-full" aria-label="Manual deposit">
-          <header className={depositSectionHeader}>
-            <div className={depositSectionHeaderInner}>
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <QrCode className="h-4 w-4 text-muted-foreground" aria-hidden />
+        {!onChainCrypto && (
+          <section className="flex flex-col gap-4 h-full" aria-label="Manual deposit">
+            <header className={depositSectionHeader}>
+              <div className={depositSectionHeaderInner}>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <QrCode className="h-4 w-4 text-muted-foreground" aria-hidden />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold leading-tight">Send USDC</h3>
+                  <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+                    Send from any wallet
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold leading-tight">
-                  {onChainCrypto ? "Manual deposit" : "Send USDC"}
-                </h3>
-                <p className="text-xs text-muted-foreground leading-tight mt-0.5">
-                  Send from any wallet
-                </p>
-              </div>
+            </header>
+
+            <div className={cn("rounded-xl p-5 flex-1 min-h-0", depositPanelGlow)}>
+              {manualPanel}
             </div>
-          </header>
-
-          <div className={cn("rounded-xl p-5 flex-1 min-h-0", depositPanelGlow)}>
-            {manualPanel}
-          </div>
-
-        </section>
+          </section>
+        )}
       </div>
     </>
   );
@@ -955,8 +1039,20 @@ export default function Deposit() {
         <div className="space-y-1">
           <p className="text-lg font-semibold">Deposit confirmed</p>
           <p className="text-sm text-muted-foreground tabular-nums">
-            +{lastTxResult.xbgl.toFixed(4)} xBGL ? {middleTruncate(lastTxResult.txHash, 6, 6)}
+            +{lastTxResult.xbgl.toFixed(4)} xBGL — {middleTruncate(lastTxResult.txHash, 6, 6)}
           </p>
+          {explorerBase && (
+            <a
+              href={`${explorerBase}/tx/${lastTxResult.txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mt-1"
+              aria-label="View deposit transaction on Snowtrace"
+            >
+              <ExternalLink className="h-3 w-3" />
+              View on Snowtrace
+            </a>
+          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-2 justify-center pt-1">
           <Button variant="outline" onClick={resetDeposit}>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ethers } from "ethers";
+import { addPaymentNetwork } from "@/lib/wallet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
   Wallet,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Trash2,
   Coins,
   Sparkles,
@@ -24,6 +26,7 @@ import {
   Send,
   Shield
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWallet } from "@/contexts/WalletContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -62,7 +65,7 @@ function getZoneType(x: number, y: number): string {
 export default function PlotPurchase() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { address, isConnected, signer, balance: walletBalance, refreshBalance } = useWallet();
+  const { address, isConnected, signer, balance: walletBalance, provider, refreshBalance } = useWallet();
   const onChainLand = isOnChainLandMode();
   const { buyPlotWithXbgl, phase1PriceWei, salesActive } = useChainLand();
 
@@ -73,7 +76,68 @@ export default function PlotPurchase() {
   
   // Loading state for general operations
   const [loading, setLoading] = useState(false);
-  
+
+  // Chain detection for payment network enforcement
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const detect = async () => {
+      if (isConnected && provider) {
+        try {
+          if (typeof provider.getNetwork === "function") {
+            const network = await provider.getNetwork();
+            setWalletChainId(Number(network.chainId));
+            return;
+          }
+          if (typeof provider.request === "function") {
+            const chainId = await provider.request({ method: "eth_chainId" });
+            if (typeof chainId === "string") {
+              setWalletChainId(parseInt(chainId, 16));
+              return;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      const { ethereum } = window as any;
+      if (ethereum) {
+        try {
+          const chainId = await ethereum.request({ method: "eth_chainId" });
+          setWalletChainId(parseInt(chainId, 16));
+        } catch {
+          // ignore
+        }
+      }
+    };
+    void detect();
+    const iv = setInterval(() => void detect(), 5000);
+    return () => clearInterval(iv);
+  }, [isConnected, provider]);
+
+  const isOnWrongPaymentChain =
+    onChainLand &&
+    isConnected &&
+    walletChainId !== null &&
+    walletChainId !== PAYMENT_CHAIN_ID;
+
+  const switchToPaymentChain = async () => {
+    const target = provider ?? (typeof window !== "undefined" ? (window as any).ethereum : null);
+    if (!target) {
+      toast.error("Connect MetaMask first");
+      return;
+    }
+    try {
+      await addPaymentNetwork(target);
+      toast.success(`Switched to ${getPaymentNetworkName()} (chain ${PAYMENT_CHAIN_ID})`);
+      const chainId = await target.request({ method: "eth_chainId" });
+      if (typeof chainId === "string") setWalletChainId(parseInt(chainId, 16));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to switch network";
+      toast.error(msg);
+    }
+  };
+
   // Balance and email for purchase
   const [purchaseBalance, setPurchaseBalance] = useState<string>("0");
   const [buyerEmail, setBuyerEmail] = useState<string>("");
@@ -315,7 +379,7 @@ export default function PlotPurchase() {
           rail: "on-chain",
         });
         setSelectedPlotIds(new Set());
-        navigate("/dashboard");
+        navigate(`/land-title?plotId=${plotIdsArray[0]}`);
       } catch (error: unknown) {
         const err = error as { reason?: string; message?: string };
         console.error("On-chain purchase error:", error);
@@ -700,13 +764,9 @@ export default function PlotPurchase() {
         total_xbgl: totalCost,
       });
 
-      // Show success message
-      toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL! Redirecting to Asset Management...`);
-      
-      // Wait a moment then redirect to dashboard/asset management
-      setTimeout(() => {
-        navigate("/dashboard?section=asset-management&tab=land&refresh=true");
-      }, 1500);
+      // Show success message and redirect to land title
+      toast.success(`Successfully purchased ${plotIdsArray.length} plot(s) for ${totalCost} xBGL!`);
+      navigate(`/land-title?plotId=${plotIdsArray[0]}`);
       
       // Reset purchasing state after redirect
       setPurchasing(false);
@@ -735,6 +795,7 @@ export default function PlotPurchase() {
   const hasEnoughBalance = onChainLand
     ? isConnected && !!signer && parseFloat(purchaseBalance) >= parseFloat(totalPrice)
     : parseFloat(purchaseBalance) >= parseFloat(totalPrice);
+  const purchaseCtaBlocked = isOnWrongPaymentChain;
 
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
@@ -951,6 +1012,26 @@ export default function PlotPurchase() {
                       )}
                     </div>
 
+                    {/* Wrong chain warning + switch button */}
+                    {isOnWrongPaymentChain && (
+                      <Alert variant="destructive" className="mt-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="space-y-2">
+                          <p className="text-xs">
+                            Switch to <strong>{getPaymentNetworkName()}</strong> (chain{" "}
+                            {PAYMENT_CHAIN_ID}) to purchase.
+                          </p>
+                          <button
+                            type="button"
+                            className="text-xs underline font-medium"
+                            onClick={() => void switchToPaymentChain()}
+                          >
+                            Switch network
+                          </button>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {/* Purchase Button - Primary CTA */}
                     <Button
                       variant="default"
@@ -961,6 +1042,7 @@ export default function PlotPurchase() {
                         loading ||
                         selectedPlotIds.size === 0 ||
                         !hasEnoughBalance ||
+                        purchaseCtaBlocked ||
                         (!onChainLand && !buyerEmail && !userEmail)
                       }
                     >
