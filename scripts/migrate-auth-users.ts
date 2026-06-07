@@ -5,13 +5,13 @@
  * password; they should use "Forgot password" on the new app URL to set a new one.
  *
  * Env (after loading .env / .env.local):
- *   MIGRATE_SOURCE_URL              default: https://agqkiwarwxrcemhspxxv.supabase.co
+ *   MIGRATE_SOURCE_URL              default: https://zfzsiykutsgkurmetprw.supabase.co (legacy)
  *   MIGRATE_SOURCE_SERVICE_ROLE_KEY default: SUPABASE_SERVICE_ROLE_KEY
- *   MIGRATE_TARGET_URL              default: DEFAULT_SUPABASE_URL from src/config (zfzs…)
+ *   MIGRATE_TARGET_URL              default: DEFAULT_SUPABASE_URL from src/config (agqki… octa)
  *   MIGRATE_TARGET_SERVICE_ROLE_KEY **required** unless same as source (unlikely across projects)
  *
  * Run:
- *   MIGRATE_TARGET_SERVICE_ROLE_KEY=<zfzs service_role> npx tsx scripts/migrate-auth-users.ts
+ *   MIGRATE_TARGET_SERVICE_ROLE_KEY=<agqki service_role> npx tsx scripts/migrate-auth-users.ts
  */
 import { createClient, type User } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
@@ -37,7 +37,7 @@ for (const f of [join(root, ".env"), join(root, ".env.local")]) {
 }
 
 const sourceUrl =
-  process.env.MIGRATE_SOURCE_URL?.trim() || "https://agqkiwarwxrcemhspxxv.supabase.co";
+  process.env.MIGRATE_SOURCE_URL?.trim() || "https://zfzsiykutsgkurmetprw.supabase.co";
 const sourceKey =
   process.env.MIGRATE_SOURCE_SERVICE_ROLE_KEY?.trim() ||
   process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();

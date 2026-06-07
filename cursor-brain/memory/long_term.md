@@ -6,7 +6,7 @@
 
 - **Frontend:** Vite, React, TypeScript; routes in `src/App.tsx`.
 - **Data:** Supabase (Postgres, Auth, Storage). Primary service layer: `src/lib/supabase-service.ts`.
-- **Wiring:** Supabase project ref **`zfzsiykutsgkurmetprw`** — URLs/anon defaults live in **`src/config/connections.ts`**; keep in sync with Cursor MCP **`user-supabase`** (or Dashboard). Types: **`src/integrations/supabase/types.ts`** (regen via MCP `generate_typescript_types` or Supabase CLI).
+- **Wiring:** Supabase project ref **`agqkiwarwxrcemhspxxv`** (octa) — URLs/anon defaults live in **`src/config/supabase-project-defaults.ts`** / **`src/config/connections.ts`**; keep in sync with Cursor MCP **Supabase** (or [Dashboard](https://supabase.com/dashboard/project/agqkiwarwxrcemhspxxv/)). Legacy ref `zfzsiykutsgkurmetprw` only for auth migration scripts. Types: **`src/integrations/supabase/types.ts`** (regen via MCP `generate_typescript_types` or Supabase CLI).
 
 ## Domain notes
 

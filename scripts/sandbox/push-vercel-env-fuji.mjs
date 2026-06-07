@@ -57,6 +57,9 @@ const alchemyKey =
   "";
 
 const vars = {
+  VITE_SUPABASE_URL: "https://agqkiwarwxrcemhspxxv.supabase.co",
+  VITE_SUPABASE_ANON_KEY:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFncWtpd2Fyd3hyY2VtaHNweHh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MTE5NDEsImV4cCI6MjA4MjM4Nzk0MX0.kaiilK_5cdDPYgFxZRKXAsmepjTpSdAw3ZdY3IW6HxM",
   VITE_CHAIN_ID: "43113",
   VITE_NETWORK_NAME: "Avalanche Fuji C-Chain",
   VITE_AVALANCHE_RPC: alchemyKey
