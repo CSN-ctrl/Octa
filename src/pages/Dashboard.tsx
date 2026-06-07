@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/contexts/WalletContext";
+import { useDashboardSidebar } from "@/contexts/DashboardSidebarContext";
 import * as supabaseService from "@/lib/supabase-service";
 import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
@@ -174,7 +175,7 @@ export default function Dashboard() {
     );
     return plotsValue + portfolioValue;
   }, [ownedPlots.length, portfolios]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { isOpen: isSidebarOpen, setIsOpen: setIsSidebarOpen } = useDashboardSidebar();
   const phase1DashboardOnly = isPhase1DashboardOnly();
   const [activeSection, setActiveSection] = useState<"asset-management" | "transfers" | "market-primary" | "market-speculative" | "hnwi-purchases">("asset-management");
   const [activeTab, setActiveTab] = useState("assets");
@@ -241,19 +242,6 @@ export default function Dashboard() {
     PLANET_COST,
   } = useCelestialForge();
 
-
-  // Sync with Navigation component's sidebar state
-  useEffect(() => {
-    const handleSidebarToggle = (e: CustomEvent) => {
-      setIsSidebarOpen(e.detail.isOpen);
-    };
-    
-    window.addEventListener('userSidebarToggle', handleSidebarToggle as EventListener);
-    
-    return () => {
-      window.removeEventListener('userSidebarToggle', handleSidebarToggle as EventListener);
-    };
-  }, []);
 
   // Handle URL params for section/tab navigation and refresh
   useEffect(() => {

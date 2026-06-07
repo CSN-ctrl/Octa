@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useWallet } from "@/contexts/WalletContext";
 import { useSim } from "@/contexts/SimContext";
+import { useDashboardSidebar } from "@/contexts/DashboardSidebarContext";
 import { ChaosStarStatus } from "./ChaosStarStatus";
 import { useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
@@ -39,7 +40,7 @@ export const Navigation = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showNetworkDialog, setShowNetworkDialog] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
-  const [isUserSidebarOpen, setIsUserSidebarOpen] = useState(false);
+  const { isOpen: isDashboardSidebarOpen, toggle: toggleDashboardSidebar } = useDashboardSidebar();
   const [treasuryBalance, setTreasuryBalance] = useState<number>(1_000_000);
   const [canOpenAdminDashboard, setCanOpenAdminDashboard] = useState(false);
   
@@ -188,20 +189,12 @@ export const Navigation = () => {
                   if (location.pathname === "/admin-dashboard") {
                     setIsAdminSidebarOpen(!isAdminSidebarOpen);
                   } else {
-                    setIsUserSidebarOpen(!isUserSidebarOpen);
-                    // Expose to window for Dashboard to access
-                    (window as any).userSidebarState = {
-                      isOpen: !isUserSidebarOpen,
-                      setIsOpen: setIsUserSidebarOpen,
-                    };
-                    window.dispatchEvent(new CustomEvent('userSidebarToggle', { 
-                      detail: { isOpen: !isUserSidebarOpen } 
-                    }));
+                    toggleDashboardSidebar();
                   }
                 }}
                 className="hover:bg-primary/10 border border-primary/20"
               >
-                {(location.pathname === "/admin-dashboard" ? isAdminSidebarOpen : isUserSidebarOpen) ? (
+                {(location.pathname === "/admin-dashboard" ? isAdminSidebarOpen : isDashboardSidebarOpen) ? (
                   <X className="h-5 w-5 text-primary" />
                 ) : (
                   <Menu className="h-5 w-5 text-primary" />

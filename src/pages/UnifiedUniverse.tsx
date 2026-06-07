@@ -24,6 +24,18 @@ import { LazyImage } from "@/components/ui/LazyImage";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { isOnChainCryptoMode } from "@/lib/chain-network";
 import { GAME_CURRENCY_SYMBOL } from "@/lib/game-currency";
+import { AppPageShell } from "@/components/layout/AppPageShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { UniverseGalaxySkeleton, UniverseCityPlotsSkeleton } from "@/components/unified-universe/UniverseLoadingSkeleton";
+import { cn } from "@/lib/utils";
 
 // Real planet data is now fetched from blockchain contracts via useRealPlanetStats hook
 
@@ -46,7 +58,7 @@ export default function UnifiedUniverse() {
   } = useCelestialForge();
   
   // Get real planet stats from blockchain contracts
-  const { planets: realPlanetsData } = useRealPlanetStats();
+  const { planets: realPlanetsData, loading: loadingPlanets } = useRealPlanetStats();
   
   // Management state
   const [selectedSystemForManagement, setSelectedSystemForManagement] = useState<string | null>(null);
@@ -1122,6 +1134,36 @@ export default function UnifiedUniverse() {
     return (
       <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
         <div className="container mx-auto px-4 py-12 max-w-7xl">
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <button
+                    type="button"
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setSelectedPlanet(null);
+                      setSelectedCity(null);
+                    }}
+                  >
+                    Universe
+                  </button>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <button type="button" className="cursor-pointer" onClick={() => setSelectedCity(null)}>
+                    {planet.name}
+                  </button>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{city.name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="flex items-center gap-4 mb-6">
             <Button variant="glass" className="gap-2" onClick={() => setSelectedCity(null)}>
               <ChevronLeft className="h-4 w-4" />
@@ -1145,9 +1187,7 @@ export default function UnifiedUniverse() {
             {/* City Grid Tab - Show first by default */}
             <TabsContent value="grid">
               {loadingCityPlots ? (
-                <Card className="glass border-primary/20 p-12 text-center">
-                  <p className="text-muted-foreground">Loading city grid...</p>
-                </Card>
+                <UniverseCityPlotsSkeleton />
               ) : (
                 <OctagonalGrid
                   cityName={city.name}
@@ -1504,6 +1544,28 @@ export default function UnifiedUniverse() {
         {/* Planet Info at Top */}
         <div className="pt-20 bg-gradient-to-b from-background via-background/95 to-background/80 border-b border-primary/20">
           <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <Breadcrumb className="mb-4">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <button
+                      type="button"
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedPlanet(null);
+                        setSelectedCity(null);
+                      }}
+                    >
+                      Universe
+                    </button>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{planet.name}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
             <Button variant="glass" className="mb-6 gap-2" onClick={() => {
               setSelectedPlanet(null);
               setSelectedCity(null);
@@ -2109,7 +2171,7 @@ export default function UnifiedUniverse() {
               <Sparkles className="w-5 h-5 mr-2" />
               Genesis Phase Active
             </Badge>
-            <h1 className="font-bold mb-6 bg-gradient-cosmic bg-clip-text text-transparent text-7xl">Chaos Star Universe</h1>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-cosmic bg-clip-text text-transparent">Chaos Star Universe</h1>
             <p className="text-2xl text-muted-foreground mb-8">
               From ashes to empire: explore the story, seize the land, and command human and AI populations that define your era.
             </p>
@@ -2142,7 +2204,7 @@ export default function UnifiedUniverse() {
           </div>
         </div>
       </div>
-      <div className="container mx-auto px-4 pb-16 max-w-7xl">
+      <AppPageShell className="min-h-0 pt-0 bg-transparent" innerClassName="max-w-7xl pb-16">
         {/* UNIFIED UNIVERSE - Galaxy View + Star Map */}
         <div className="space-y-8">
             {/* Galaxy Visualization with Sarakt System Panel */}
@@ -2151,15 +2213,19 @@ export default function UnifiedUniverse() {
               <div className="lg:col-span-2">
                 <Card className="glass border-2 border-primary/30 overflow-hidden">
                   <CardContent className="p-0 relative">
-                    <div className="bg-black/90 relative" style={{ height: '700px' }}>
-                      <UniverseVisualization
-                        onSelectPlanet={(id) =>
-                          id === "sarakt-prime" ? handleEnterOctaviaCapital() : handlePlanetSelect(id)
-                        }
-                        onSelectCity={(id) =>
-                          id === "sarakt-prime" ? handleEnterOctaviaCapital() : handlePlanetSelect(id)
-                        }
-                      />
+                    <div className="bg-black/90 relative h-[min(700px,60vh)] min-h-[320px]">
+                      {loadingPlanets ? (
+                        <UniverseGalaxySkeleton />
+                      ) : (
+                        <UniverseVisualization
+                          onSelectPlanet={(id) =>
+                            id === "sarakt-prime" ? handleEnterOctaviaCapital() : handlePlanetSelect(id)
+                          }
+                          onSelectCity={(id) =>
+                            id === "sarakt-prime" ? handleEnterOctaviaCapital() : handlePlanetSelect(id)
+                          }
+                        />
+                      )}
                     </div>
 
                   </CardContent>
@@ -2168,7 +2234,7 @@ export default function UnifiedUniverse() {
 
               {/* Sarakt System Panel - Takes 1/3 width on right */}
               <div className="lg:col-span-1">
-                <Card className="border-primary/20 bg-card/50 backdrop-blur overflow-hidden flex flex-col" style={{ height: '700px' }}>
+                <Card className="border-primary/20 bg-card/50 backdrop-blur overflow-hidden flex flex-col h-[min(700px,60vh)] min-h-[320px]">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
                   <CardHeader className="pb-3 flex-shrink-0">
                     <div className="flex flex-col gap-2">
@@ -2197,7 +2263,10 @@ export default function UnifiedUniverse() {
                       return (
                         <Card
                           key={id}
-                          className="border-primary/10 hover:border-primary hover:shadow-glow-accent transition-all cursor-pointer group"
+                          className={cn(
+                            "border-primary/10 hover:border-primary hover:shadow-glow-accent transition-all cursor-pointer group",
+                            id === "sarakt-prime" && "border-primary/40 ring-1 ring-primary/20",
+                          )}
                           onClick={() => handlePlanetSelect(id)}
                         >
                           <CardHeader className="pb-2 pt-3 px-3">
@@ -2282,8 +2351,8 @@ export default function UnifiedUniverse() {
             )}
 
 
-                </div>
-                  </div>
-                  </div>
+        </div>
+      </AppPageShell>
+    </div>
   );
 }

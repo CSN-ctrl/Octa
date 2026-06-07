@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { SimProvider } from "@/contexts/SimContext";
+import { DashboardSidebarProvider } from "@/contexts/DashboardSidebarContext";
 import { Navigation } from "./components/Navigation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
@@ -370,9 +371,11 @@ const App = () => {
                 v7_relativeSplatPath: true,
               }}
             >
-              <RouteStructuredData />
-              {/* SkipNavigation component removed */}
-              <AppContent />
+              <DashboardSidebarProvider>
+                <RouteStructuredData />
+                {/* SkipNavigation component removed */}
+                <AppContent />
+              </DashboardSidebarProvider>
             </BrowserRouter>
           </TooltipProvider>
         </WalletProvider>

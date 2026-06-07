@@ -32,7 +32,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [signupError, setSignupError] = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"login" | "signup">(initialTab);
   const [resetLoading, setResetLoading] = useState(false);
 
@@ -53,21 +55,23 @@ export default function Login() {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
-    setError(null);
+    setLoginError(null);
+    setSignupError(null);
+    setSignupSuccess(null);
   }, [activeTab]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setLoginError(null);
 
     // Validation - only check if email is provided
     if (!email) {
-      setError("Please enter an email address");
+      setLoginError("Please enter an email address");
       return;
     }
 
     if (!password) {
-      setError("Please enter your password");
+      setLoginError("Please enter your password");
       return;
     }
 
@@ -118,7 +122,7 @@ export default function Login() {
       }
     } catch (err: any) {
       logger.error("Login error:", err);
-      setError(err.message || "Invalid email or password. Please try again.");
+      setLoginError(err.message || "Invalid email or password. Please try again.");
       toast.error(err.message || "Login failed");
     } finally {
       setLoading(false);
@@ -127,27 +131,28 @@ export default function Login() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setSignupError(null);
+    setSignupSuccess(null);
 
     // Validation
     if (!isConnected || !address) {
-      setError("Please connect your wallet first");
+      setSignupError("Please connect your wallet first");
       return;
     }
 
     // Validation - only check if email is provided
     if (!email) {
-      setError("Please enter an email address");
+      setSignupError("Please enter an email address");
       return;
     }
 
     if (!password || password.length < 8) {
-      setError("Password must be at least 8 characters long");
+      setSignupError("Password must be at least 8 characters long");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setSignupError("Passwords do not match");
       return;
     }
 
@@ -211,6 +216,7 @@ export default function Login() {
       }
 
       toast.success("Account created successfully! Please check your email to verify your account.");
+      setSignupSuccess("Check your email to confirm your account");
       
       // Switch to login tab after successful signup
       setTimeout(() => {
@@ -220,7 +226,7 @@ export default function Login() {
       }, 2000);
     } catch (err: any) {
       logger.error("Sign up error:", err);
-      setError(err.message || "Failed to create account. Please try again.");
+      setSignupError(err.message || "Failed to create account. Please try again.");
       toast.error(err.message || "Failed to create account");
     } finally {
       setLoading(false);
@@ -228,9 +234,9 @@ export default function Login() {
   };
 
   const handleForgotPassword = async () => {
-    setError(null);
+    setLoginError(null);
     if (!email) {
-      setError("Please enter your email to reset password.");
+      setLoginError("Please enter your email to reset password.");
       return;
     }
 
@@ -243,7 +249,7 @@ export default function Login() {
       toast.success("Password reset link sent.");
     } catch (err: any) {
       logger.error("Reset password error:", err);
-      setError(err.message || "Failed to send reset email.");
+      setLoginError(err.message || "Failed to send reset email.");
       toast.error(err.message || "Password reset failed.");
     } finally {
       setResetLoading(false);
@@ -316,8 +322,8 @@ export default function Login() {
                     </Label>
                     <Input
                       id="login-email"
-                      type="text"
-                      placeholder="any@email.format"
+                      type="email"
+                      placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -359,10 +365,10 @@ export default function Login() {
                   </div>
 
                   {/* Error Alert */}
-                  {error && (
+                  {loginError && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{error}</AlertDescription>
+                      <AlertDescription>{loginError}</AlertDescription>
                     </Alert>
                   )}
 
@@ -389,6 +395,16 @@ export default function Login() {
               {/* Sign Up Tab */}
               <TabsContent value="signup" className="space-y-4 mt-4">
                 <form onSubmit={handleSignUp} className="space-y-4">
+                  {/* Wallet required notice */}
+                  {(!isConnected || !address) && (
+                    <Alert>
+                      <Wallet className="h-4 w-4" />
+                      <AlertDescription>
+                        Connect your wallet before creating an account. Your wallet address is linked to your account for on-chain features.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {/* Wallet Connection (Required for signup) */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-sm">
@@ -419,8 +435,8 @@ export default function Login() {
                     </Label>
                     <Input
                       id="signup-email"
-                      type="text"
-                      placeholder="any@email.format"
+                      type="email"
+                      placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -495,11 +511,19 @@ export default function Login() {
                     </div>
                   </div>
 
+                  {/* Success Alert */}
+                  {signupSuccess && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{signupSuccess}</AlertDescription>
+                    </Alert>
+                  )}
+
                   {/* Error Alert */}
-                  {error && (
+                  {signupError && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{error}</AlertDescription>
+                      <AlertDescription>{signupError}</AlertDescription>
                     </Alert>
                   )}
 

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
-  ArrowLeft, 
   ShoppingCart, 
   Plus, 
   X, 
@@ -40,6 +39,9 @@ import { useChainLand } from "@/hooks/useChainLand";
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
 import { getPaymentNetworkName } from "@/config/blockchain-profile";
 import { FujiTestnetBanner } from "@/components/FujiTestnetBanner";
+import { AppPageShell } from "@/components/layout/AppPageShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PlotPickerGrid } from "@/components/plot/PlotPickerGrid";
 import { trackProductEvent } from "@/lib/product-analytics";
 import {
   Dialog,
@@ -325,6 +327,14 @@ export default function PlotPurchase() {
       return next;
     });
     toast.info(`Plot #${plotId} removed`);
+  };
+
+  const togglePlot = (plotId: number) => {
+    if (selectedPlotIds.has(plotId)) {
+      removePlot(plotId);
+    } else {
+      void addPlot(plotId);
+    }
   };
 
   const handleAddCustomPlot = async () => {
@@ -797,117 +807,117 @@ export default function PlotPurchase() {
     : parseFloat(purchaseBalance) >= parseFloat(totalPrice);
   const purchaseCtaBlocked = isOnWrongPaymentChain;
 
-  return (
-    <div className="min-h-screen pt-20 bg-gradient-to-br from-background via-background/95 to-background/90">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <FujiTestnetBanner className="mb-6" />
-        {/* Professional Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate(-1)} 
-              className="gap-2 hover:bg-accent/5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <div className="flex-1 flex justify-center">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold tracking-tight mb-2">Plot Purchase</h1>
-                <p className="text-muted-foreground">
-                  Select and purchase land plots in the ChaosStar universe
-                </p>
-                {onChainLand && (
-                  <Badge variant="secondary" className="mt-2">
-                    Pay with xBGL on chain {PAYMENT_CHAIN_ID} (fund via AVAX on Deposit)
-                  </Badge>
+  const addPlotDialog = (
+    <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
+      <DialogTrigger asChild>
+        <Button className="gap-2 shadow-md shrink-0">
+          <Plus className="h-4 w-4" />
+          Add Plot
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="border-border/50 bg-card/95 backdrop-blur-sm">
+        <DialogHeader>
+          <DialogTitle className="text-xl">Add Plot to Purchase</DialogTitle>
+          <DialogDescription>
+            Enter a plot ID (any positive integer). Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="plot-id-input">Plot ID</Label>
+            <Input
+              id="plot-id-input"
+              type="number"
+              placeholder="Enter plot ID"
+              value={customPlotId}
+              onChange={(e) => setCustomPlotId(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleAddCustomPlot();
+                }
+              }}
+              min={1}
+              className="bg-background/50 border-border/50"
+            />
+          </div>
+          {initialPlotId && (
+            <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Plot #{initialPlotId} from grid</span>
+                </div>
+                {!selectedPlotIds.has(parseInt(initialPlotId)) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addPlot(parseInt(initialPlotId))}
+                    className="h-8 text-xs"
+                  >
+                    Add
+                  </Button>
                 )}
               </div>
             </div>
-            <Dialog open={showAddPlotDialog} onOpenChange={setShowAddPlotDialog}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 shadow-md shrink-0">
-                  <Plus className="h-4 w-4" />
-                  Add Plot
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="border-border/50 bg-card/95 backdrop-blur-sm">
-                <DialogHeader>
-                  <DialogTitle className="text-xl">Add Plot to Purchase</DialogTitle>
-                  <DialogDescription>
-                    Enter a plot ID (any positive integer). Phase 1 is limited to 10,000 participants, but each participant can purchase multiple plots.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="plot-id-input">Plot ID</Label>
-                    <Input
-                      id="plot-id-input"
-                      type="number"
-                      placeholder="Enter plot ID"
-                      value={customPlotId}
-                      onChange={(e) => setCustomPlotId(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleAddCustomPlot();
-                        }
-                      }}
-                      min={1}
-                      className="bg-background/50 border-border/50"
-                    />
-                  </div>
-                  {initialPlotId && (
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          <span className="font-medium">Plot #{initialPlotId} from grid</span>
-                        </div>
-                        {!selectedPlotIds.has(parseInt(initialPlotId)) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => addPlot(parseInt(initialPlotId))}
-                            className="h-8 text-xs"
-                          >
-                            Add
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowAddPlotDialog(false)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleAddCustomPlot}
-                      disabled={!customPlotId || isNaN(parseInt(customPlotId))}
-                      className="flex-1"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Plot
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+          )}
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowAddPlotDialog(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddCustomPlot}
+              disabled={!customPlotId || isNaN(parseInt(customPlotId))}
+              className="flex-1"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Plot
+            </Button>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
 
-        {/* Main Content - Two Column Layout */}
+  return (
+    <AppPageShell banner={<FujiTestnetBanner className="mb-6" />}>
+      <PageHeader
+        title="Plot Purchase"
+        description="Select and purchase land plots in Octavia Capital City"
+        onBack={() => navigate(-1)}
+        badge={
+          onChainLand ? (
+            <Badge variant="secondary">
+              Pay with xBGL on chain {PAYMENT_CHAIN_ID} (fund via AVAX on Deposit)
+            </Badge>
+          ) : undefined
+        }
+        action={addPlotDialog}
+      />
+
+      <Card className="mb-6 border-border/50 bg-card/80 backdrop-blur-sm shadow-xl">
+        <CardHeader>
+          <CardTitle>Pick plots on the map</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PlotPickerGrid
+            maxPlotId={64}
+            selectedPlotIds={selectedPlotIds}
+            onTogglePlot={togglePlot}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Main Content - Two Column Layout */}
         <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-xl overflow-hidden">
           <CardContent className="p-0">
             {/* Header */}
             <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold mb-1">Plot Purchase</h2>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <MapPin className="h-4 w-4" />
@@ -1133,7 +1143,7 @@ export default function PlotPurchase() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/20 hover:text-destructive absolute top-2 right-2 z-20 rounded-full bg-background/90 backdrop-blur-sm shadow-md"
+                          className="h-11 w-11 min-h-[44px] min-w-[44px] opacity-100 sm:opacity-90 transition-all hover:bg-destructive/20 hover:text-destructive absolute top-2 right-2 z-20 rounded-full bg-background/90 backdrop-blur-sm shadow-md"
                           onClick={(e) => {
                             e.stopPropagation();
                             removePlot(plotId);
@@ -1153,7 +1163,6 @@ export default function PlotPurchase() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </AppPageShell>
   );
 }
