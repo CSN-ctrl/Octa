@@ -9,10 +9,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
       '**/ChaosStar/**',
+      '**/lib/**',
     ],
     coverage: {
       provider: 'v8',

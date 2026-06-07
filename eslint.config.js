@@ -14,6 +14,7 @@ export default tseslint.config(
       "node_modules/**",
       "coverage/**",
       "ChaosStar/**",
+      "lib/**",
       ".cursor/**",
       "docs/references/**",
       "supabase/**",

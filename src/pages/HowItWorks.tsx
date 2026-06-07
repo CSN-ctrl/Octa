@@ -1012,7 +1012,7 @@ export default function HowItWorks() {
                     <h4 className="font-semibold mb-2 text-sm">Economic Flow</h4>
                     <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
                       <li>
-                        Land -> resource extraction -> refinement -> production -> trade -> profit
+                        Land {'->'} resource extraction {'->'} refinement {'->'} production {'->'} trade {'->'} profit
                       </li>
                       <li>Resources remain world-specific and non-fungible across many production chains</li>
                       <li>No world is fully self-sufficient at scale</li>
