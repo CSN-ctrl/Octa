@@ -73,7 +73,16 @@ const hexToBigInt = (value: string | null | undefined): bigint => {
   }
 };
 
-function parseAmount(t: AlchemyTransfer): number {
+type AlchemyTransfersResponse = {
+  transfers: AlchemyTransfer[];
+  pageKey?: string;
+};
+
+type IngestRequestBody = {
+  replay_source_tx_hash?: string;
+  chain_id?: string;
+};
+
 type CheckpointRow = {
   last_ingested_block: number | null;
   total_ingested_count: number | null;
