@@ -14,7 +14,7 @@ type PlotPickerGridProps = {
 };
 
 export function PlotPickerGrid({
-  maxPlotId = 64,
+  maxPlotId = 200,
   selectedPlotIds,
   onTogglePlot,
   className,
@@ -43,6 +43,8 @@ export function PlotPickerGrid({
           const { x, y } = calculatePlotCoordinates(plotId);
           const selected = selectedPlotIds.has(plotId);
           const isCenter = plotId === 1;
+          const isCompact = maxPlotId > 64 && plotId > 64;
+          const buttonSize = isCompact ? 14 : 16;
           return (
             <Button
               key={plotId}
@@ -51,17 +53,24 @@ export function PlotPickerGrid({
               size="icon"
               title={`Plot #${plotId} — ${getPlotZoneType(plotId)}`}
               className={cn(
-                "absolute h-8 w-8 min-h-8 min-w-8 rounded-md text-[10px] font-semibold shadow-sm transition-transform motion-safe:hover:scale-105",
+                "absolute rounded-md font-semibold shadow-sm transition-transform motion-safe:hover:scale-105",
+                isCompact
+                  ? "h-7 w-7 min-h-7 min-w-7 text-[9px]"
+                  : "h-8 w-8 min-h-8 min-w-8 text-[10px]",
                 isCenter && "ring-2 ring-amber-400/60",
                 selected && "bg-primary text-primary-foreground",
               )}
               style={{
-                left: (x + bounds) * 18 - 16,
-                top: (y + bounds) * 18 - 16,
+                left: (x + bounds) * 18 - buttonSize,
+                top: (y + bounds) * 18 - buttonSize,
               }}
               onClick={() => onTogglePlot(plotId)}
             >
-              {selected ? <Check className="h-3 w-3" /> : plotId}
+              {selected ? (
+                <Check className={cn(isCompact ? "h-2.5 w-2.5" : "h-3 w-3")} />
+              ) : (
+                plotId
+              )}
             </Button>
           );
         })}
