@@ -24,7 +24,7 @@ SELECT cron.schedule(
   '* * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://zfzsiykutsgkurmetprw.supabase.co/functions/v1/ingest-treasury-deposits',
+    url := 'https://agqkiwarwxrcemhspxxv.supabase.co/functions/v1/ingest-treasury-deposits',
     headers := '{"Content-Type":"application/json"}'::jsonb,
     body := '{}'::jsonb
   );
