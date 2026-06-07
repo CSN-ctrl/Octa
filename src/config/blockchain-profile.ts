@@ -41,6 +41,10 @@ export function getPaymentDeploymentsPath(): string {
   return `/sandbox/deployments/${getPaymentChainId()}-latest.json`;
 }
 
+/** Block explorer base URL for wallet_addEthereumChain. */
 export function getPaymentBlockExplorerUrl(): string {
-  return "https://testnet.snowtrace.io";
+  const chainId = getPaymentChainId();
+  if (chainId === 43113) return "https://testnet.snowtrace.io";
+  if (chainId === 43114) return "https://snowtrace.io";
+  return "";
 }

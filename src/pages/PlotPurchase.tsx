@@ -35,6 +35,7 @@ import { isOnChainCryptoMode } from "@/lib/chain-network";
 import { formatPaymentXbglBalance } from "@/lib/payment-balance";
 import { useChainLand } from "@/hooks/useChainLand";
 import { PAYMENT_CHAIN_ID } from "@/config/payment-network";
+import { getPaymentNetworkName } from "@/config/blockchain-profile";
 import {
   Dialog,
   DialogContent,
@@ -284,7 +285,7 @@ export default function PlotPurchase() {
     if (onChainLand) {
       if (!signer || !address) {
         toast.error(
-          `Connect your wallet. Plot payment uses ${getPaymentNetworkName()} (chain ${PAYMENT_CHAIN_ID}) with xBGL (get xBGL via Deposit with AVAX first).`
+          `Connect your wallet. Plot payment uses ${getPaymentNetworkName()} (chain ${PAYMENT_CHAIN_ID}) with xBGL — get xBGL via /deposit with AVAX first.`
         );
         return;
       }

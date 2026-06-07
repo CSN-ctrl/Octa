@@ -1328,6 +1328,42 @@ export type Database = {
         }
         Relationships: []
       }
+      onchain_deposits: {
+        Row: {
+          avax_amount: number
+          chain_id: number
+          created_at: string
+          id: string
+          tx_hash: string
+          user_email: string
+          user_id: string | null
+          wallet_address: string
+          xbgl_amount: number
+        }
+        Insert: {
+          avax_amount: number
+          chain_id: number
+          created_at?: string
+          id?: string
+          tx_hash: string
+          user_email: string
+          user_id?: string | null
+          wallet_address: string
+          xbgl_amount: number
+        }
+        Update: {
+          avax_amount?: number
+          chain_id?: number
+          created_at?: string
+          id?: string
+          tx_hash?: string
+          user_email?: string
+          user_id?: string | null
+          wallet_address?: string
+          xbgl_amount?: number
+        }
+        Relationships: []
+      }
       user_affiliate_codes: {
         Row: {
           affiliate_code: string
@@ -1521,6 +1557,17 @@ export type Database = {
           p_currency?: string
           p_plot_id: number
           p_price: number
+        }
+        Returns: Json
+      }
+      record_onchain_deposit: {
+        Args: {
+          p_avax_amount: number
+          p_chain_id: number
+          p_tx_hash: string
+          p_user_email?: string
+          p_wallet_address: string
+          p_xbgl_amount: number
         }
         Returns: Json
       }
