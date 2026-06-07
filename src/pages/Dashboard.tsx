@@ -89,6 +89,7 @@ import { PlotFractionalOwnership } from "@/components/plots/PlotFractionalOwners
 import { TransactionHistory } from "@/components/TransactionHistory";
 import { LazyImage } from "@/components/ui/LazyImage";
 import { AssetManagementSection } from "@/components/dashboard/AssetManagementSection";
+import { DashboardMobileNav } from "@/components/dashboard/DashboardMobileNav";
 import { TransferSection } from "@/components/dashboard/TransferSection";
 import { MarketplaceSection } from "@/components/dashboard/MarketplaceSection";
 import { useCelestialForge } from "@/hooks/useCelestialForge";
@@ -2550,7 +2551,7 @@ export default function Dashboard() {
     <div className="app-page-canvas">
       <div className="flex min-h-[calc(100vh-5rem)] items-stretch">
         {/* Sidebar Navigation - Full Height, Toggleable */}
-        <aside className={`self-stretch h-auto shrink-0 overflow-hidden bg-background/80 backdrop-blur-xl transition-[width] duration-300 ease-in-out ${
+        <aside className={`hidden lg:block self-stretch h-auto shrink-0 overflow-hidden bg-background/80 backdrop-blur-xl transition-[width] duration-300 ease-in-out ${
           isSidebarOpen ? "w-72 border-r border-white/[0.06]" : "w-0 border-r-0"
         }`}>
           {/* Background gradient overlay - matching app style */}
@@ -2720,6 +2721,15 @@ export default function Dashboard() {
             </nav>
           </div>
         </aside>
+
+        <DashboardMobileNav
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          phase1Only={phase1DashboardOnly}
+          onNavigateUniverse={() => navigate("/universe")}
+          onNavigateDeposit={() => navigate("/deposit")}
+          onNavigatePlotPurchase={() => navigate("/plot-purchase")}
+        />
 
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
