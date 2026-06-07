@@ -1,0 +1,58 @@
+"""
+PlotTransfer — emitted by SaraktLandV2 (ERC-1155) whenever a land plot
+token moves between addresses (mint = from 0x0, transfer, or burn = to 0x0).
+"""
+type PlotTransfer @entity {
+  "tx_hash-log_index"
+  id: ID!
+
+  "ERC-1155 token id (= plotId in game terms)"
+  plotId: BigInt!
+
+  "Address that authorised the transfer (operator)"
+  operator: Bytes!
+
+  "Sender — zero address on mint"
+  from: Bytes!
+
+  "Recipient — zero address on burn"
+  to: Bytes!
+
+  "Token quantity moved (always 1 for unique land plots)"
+  value: BigInt!
+
+  "Block timestamp"
+  timestamp: BigInt!
+
+  "Block number"
+  blockNumber: BigInt!
+
+  "Transaction hash"
+  transactionHash: Bytes!
+}
+
+"""
+AvaxDeposit — emitted by SaraktTreasury when a user swaps AVAX for xBGL.
+"""
+type AvaxDeposit @entity {
+  "tx_hash-log_index"
+  id: ID!
+
+  "Address that deposited AVAX and received xBGL"
+  buyer: Bytes!
+
+  "AVAX sent (wei, 18 decimals)"
+  avaxIn: BigInt!
+
+  "xBGL credited (18 decimals)"
+  xbglOut: BigInt!
+
+  "Block timestamp"
+  timestamp: BigInt!
+
+  "Block number"
+  blockNumber: BigInt!
+
+  "Transaction hash"
+  transactionHash: Bytes!
+}

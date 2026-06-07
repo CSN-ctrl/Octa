@@ -35,6 +35,7 @@
     "governance:lineage": "node scripts/governance/lineage-telemetry.mjs",
     "chaos:drill": "node scripts/governance/chaos-drill.mjs",
     "economy:simulate": "node scripts/governance/economic-safety-sim.mjs",
+    "validate:contracts": "node scripts/governance/validate-contract-manifest.cjs",
     "governance:hooks": "node scripts/governance/chaos-and-economy-hooks.mjs",
     "governance:promote-pack": "node scripts/governance/promote-governance-pack.mjs",
     "cursor:publish-global": "node scripts/governance/publish-cursor-global.cjs",

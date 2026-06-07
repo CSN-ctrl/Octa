@@ -1,0 +1,61 @@
+specVersion: 0.0.5
+description: >
+  ChaosStar / Sarakt — indexes SaraktLandV2 plot transfers and
+  SaraktTreasury AVAX→xBGL deposit events on Avalanche Fuji (43113).
+repository: https://github.com/your-org/chaosStar
+
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  # ────────────────────────────────────────────────────────────
+  # SaraktLandV2  (ERC-1155 land plots)
+  # ────────────────────────────────────────────────────────────
+  - kind: ethereum/contract
+    name: SaraktLandV2
+    network: avalanche-fuji
+    source:
+      address: "0xc34a5fcb5621b7755d66db5074069d0bbd68cd42"
+      abi: SaraktLandV2
+      # Index from the deployment block to avoid scanning from genesis.
+      # Run: cast block --rpc-url $VITE_AVALANCHE_RPC `cast tx <deploy_tx> .blockNumber`
+      # Update this value with the actual deployment block number before deploying.
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - PlotTransfer
+      abis:
+        - name: SaraktLandV2
+          file: ./abis/SaraktLandV2.json
+      eventHandlers:
+        - event: TransferSingle(indexed address,indexed address,indexed address,uint256,uint256)
+          handler: handleTransferSingle
+      file: ./src/saraktLandV2.ts
+
+  # ────────────────────────────────────────────────────────────
+  # SaraktTreasury  (AVAX→xBGL swap deposits)
+  # ────────────────────────────────────────────────────────────
+  - kind: ethereum/contract
+    name: SaraktTreasury
+    network: avalanche-fuji
+    source:
+      address: "0xee0ba6de15026d00a707a660123c93686c00df58"
+      abi: SaraktTreasury
+      # Same deployment block as SaraktLandV2 — update before deploying.
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AvaxDeposit
+      abis:
+        - name: SaraktTreasury
+          file: ./abis/SaraktTreasury.json
+      eventHandlers:
+        - event: AvaxSwappedForXbgl(indexed address,uint256,uint256)
+          handler: handleAvaxSwappedForXbgl
+      file: ./src/saraktTreasury.ts

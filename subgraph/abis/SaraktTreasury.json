@@ -1,0 +1,32 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "name": "buyer",   "type": "address" },
+      { "indexed": false, "name": "avaxIn",  "type": "uint256" },
+      { "indexed": false, "name": "xbglOut", "type": "uint256" }
+    ],
+    "name": "AvaxSwappedForXbgl",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "name": "from",   "type": "address" },
+      { "indexed": false, "name": "amount", "type": "uint256" }
+    ],
+    "name": "DepositAVAX",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "name": "plotId",       "type": "uint256" },
+      { "indexed": true,  "name": "buyer",         "type": "address" },
+      { "indexed": false, "name": "pricePaid",     "type": "uint256" },
+      { "indexed": true,  "name": "paymentToken",  "type": "address" }
+    ],
+    "name": "PlotRegistered",
+    "type": "event"
+  }
+]
