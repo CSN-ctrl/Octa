@@ -7,6 +7,10 @@ import {
   loadPaymentContractAddresses,
 } from "@/lib/payment-contracts";
 import * as supabaseService from "@/lib/supabase-service";
+import {
+  fetchChainPlotHoldingsFromDB,
+  isChainPlotScanForced,
+} from "@/lib/chain-plot-holdings-store";
 
 export const CHAIN_LAND_SCAN_MAX_PLOT_ID = 200;
 
@@ -75,6 +79,17 @@ export function mergeDashboardPlots<T extends { id: number }>(
   return Array.from(byId.values()).sort((a, b) => a.id - b.id);
 }
 
+/**
+ * Fetch chain land holdings for a wallet.
+ *
+ * Primary path: query `chain_plot_holdings` table in Supabase (O(1) DB call).
+ * Fallback to 200-plot contract scan when:
+ *  - the table is unavailable (returns null from the store), OR
+ *  - `VITE_FORCE_CHAIN_PLOT_SCAN=true` env flag is set.
+ *
+ * Contract calls for `salesActive` / `phase1PriceUSDC` / `owner` are always
+ * made — they are lightweight and needed regardless.
+ */
 export async function fetchChainLandHoldings(
   walletAddress: string
 ): Promise<ChainLandHoldings> {
@@ -99,10 +114,31 @@ export async function fetchChainLandHoldings(
   const price =
     priceUsdc > 0n ? priceUsdc : ethers.parseEther(getPlotPriceInXBGL().toString());
 
-  const addr = walletAddress.toLowerCase();
   const minted: number[] = [];
   const pending: number[] = [];
 
+  const forceFullScan = isChainPlotScanForced();
+
+  if (!forceFullScan) {
+    const indexed = await fetchChainPlotHoldingsFromDB(walletAddress);
+    if (indexed !== null) {
+      for (const row of indexed) {
+        if (row.status === "minted") minted.push(row.plot_id);
+        else pending.push(row.plot_id);
+      }
+      return {
+        mintedPlotIds: minted,
+        pendingPlotIds: pending,
+        salesActive: active,
+        phase1PriceWei: price,
+        contractOwner: owner,
+      };
+    }
+    // null → table unavailable, fall through to contract scan
+  }
+
+  // Full 200-plot contract scan (fallback / forced)
+  const addr = walletAddress.toLowerCase();
   const checks = await Promise.all(
     Array.from({ length: CHAIN_LAND_SCAN_MAX_PLOT_ID }, (_, i) => i + 1).map(async (plotId) => {
       const [bal, buyer, mintedFlag] = await Promise.all([

@@ -14,7 +14,6 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/ChaosStar/**',
-      '**/lib/**',
     ],
     coverage: {
       provider: 'v8',

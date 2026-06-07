@@ -50,6 +50,7 @@ import {
 } from "@/lib/deposit-assets";
 import { FujiTestnetBanner } from "@/components/FujiTestnetBanner";
 import { trackProductEvent } from "@/lib/product-analytics";
+import { isMainnetUsdcRailEnabled } from "@/config/payment-rails";
 
 function middleTruncate(value: string, head = 8, tail = 8): string {
   if (!value) return "";
@@ -119,6 +120,10 @@ export default function Deposit() {
     if (onChainCrypto) {
       const local = withWallet.filter((n) => n.id === depositNetworkId);
       if (local.length > 0) return local;
+      return withWallet.filter((n) => isAvaxDepositNetwork(n.id));
+    }
+    // When fuji rail is active (mainnet USDC rail disabled), hide non-fuji USDC networks
+    if (!isMainnetUsdcRailEnabled()) {
       return withWallet.filter((n) => isAvaxDepositNetwork(n.id));
     }
     return withWallet;
@@ -552,22 +557,44 @@ export default function Deposit() {
   };
 
   const recentActivityList = onChainCrypto
-    ? onChainHistory.slice(0, 8).map((deposit) => (
-        <div key={deposit.txHash} className="rounded-md border border-border/50 p-2 text-xs">
-          <div className="flex items-center justify-between gap-2">
-            <span className="tabular-nums">
-              {deposit.avaxAmount.toFixed(6)} AVAX{" ? "}
-              {deposit.xbglAmount.toFixed(4)} xBGL
-            </span>
-            <Badge variant="default">on-chain</Badge>
+    ? onChainHistory.slice(0, 8).map((deposit) => {
+        const status = deposit.status;
+        const badgeVariant =
+          status === "confirmed"
+            ? "default"
+            : status === "failed"
+              ? "destructive"
+              : "secondary";
+        const statusLabel =
+          status === "confirmed"
+            ? "confirmed"
+            : status === "failed"
+              ? "failed"
+              : "pending";
+        return (
+          <div key={deposit.txHash} className="rounded-md border border-border/50 p-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="tabular-nums">
+                {deposit.avaxAmount.toFixed(6)} AVAX{" → "}
+                {deposit.xbglAmount.toFixed(4)} xBGL
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                {status !== undefined && (
+                  <Badge variant={badgeVariant} className="capitalize">
+                    {statusLabel}
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-[10px]">on-chain</Badge>
+              </div>
+            </div>
+            <p className="text-muted-foreground mt-1 truncate">
+              {new Date(deposit.at).toLocaleString()}
+              {" · "}
+              {deposit.txHash.slice(0, 14)}…
+            </p>
           </div>
-          <p className="text-muted-foreground mt-1 truncate">
-            {new Date(deposit.at).toLocaleString()}
-            {" ? "}
-            {deposit.txHash.slice(0, 14)}?
-          </p>
-        </div>
-      ))
+        );
+      })
     : deposits.slice(0, 8).map((deposit) => (
         <div key={deposit.id} className="rounded-md border border-border/50 p-2 text-xs">
           <div className="flex items-center justify-between gap-2">

@@ -11,6 +11,7 @@ import {
 import {
   fetchOnChainDepositsForUser,
   recordOnChainDeposit,
+  type OnChainDepositStatus,
 } from "@/lib/deposits";
 
 export type OnChainDepositHistoryRow = {
@@ -18,6 +19,8 @@ export type OnChainDepositHistoryRow = {
   avaxAmount: number;
   xbglAmount: number;
   at: string;
+  /** undefined when the status column is not yet present in the DB schema. */
+  status: OnChainDepositStatus | undefined;
 };
 
 const HISTORY_KEY = "octa_onchain_deposits_v1";
@@ -61,6 +64,7 @@ export function useOnChainDeposit() {
         avaxAmount: row.avax_amount,
         xbglAmount: row.xbgl_amount,
         at: row.created_at,
+        status: row.status,
       });
     }
     for (const row of local) {
@@ -102,6 +106,7 @@ export function useOnChainDeposit() {
           avaxAmount: avaxHuman,
           xbglAmount: parseFloat(ethers.formatEther(xbglOut)),
           at: new Date().toISOString(),
+          status: "pending",
         };
         appendHistory(row);
         const signerAddr = await signer.getAddress();

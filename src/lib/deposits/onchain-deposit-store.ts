@@ -44,6 +44,8 @@ export async function recordOnChainDeposit(
   };
 }
 
+export type OnChainDepositStatus = "pending" | "confirmed" | "failed";
+
 export async function fetchOnChainDepositsForUser(limit = 30): Promise<
   Array<{
     tx_hash: string;
@@ -51,6 +53,8 @@ export async function fetchOnChainDepositsForUser(limit = 30): Promise<
     avax_amount: number;
     xbgl_amount: number;
     created_at: string;
+    /** undefined when the status column is not yet present in the DB schema. */
+    status: OnChainDepositStatus | undefined;
   }>
 > {
   const {
@@ -58,9 +62,9 @@ export async function fetchOnChainDepositsForUser(limit = 30): Promise<
   } = await supabase.auth.getSession();
   if (!session?.user?.email) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("onchain_deposits")
-    .select("tx_hash, wallet_address, avax_amount, xbgl_amount, created_at")
+    .select("tx_hash, wallet_address, avax_amount, xbgl_amount, created_at, status")
     .eq("user_email", session.user.email.toLowerCase())
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -70,11 +74,16 @@ export async function fetchOnChainDepositsForUser(limit = 30): Promise<
     return [];
   }
 
-  return (data ?? []).map((row) => ({
-    tx_hash: row.tx_hash,
-    wallet_address: row.wallet_address,
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    tx_hash: String(row.tx_hash),
+    wallet_address: String(row.wallet_address),
     avax_amount: Number(row.avax_amount),
     xbgl_amount: Number(row.xbgl_amount),
-    created_at: row.created_at,
+    created_at: String(row.created_at),
+    status: isValidDepositStatus(row.status) ? row.status : undefined,
   }));
+}
+
+function isValidDepositStatus(value: unknown): value is OnChainDepositStatus {
+  return value === "pending" || value === "confirmed" || value === "failed";
 }
