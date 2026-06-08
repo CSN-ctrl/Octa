@@ -486,39 +486,9 @@ export function useLandPlots() {
 
     initialize();
 
-    // No auto-refresh - manual refresh only
-
-    // Set up event listeners for real-time updates
-    let cleanup: (() => void) | undefined;
-    try {
-      if (!hasLandContract()) {
-        return () => {
-          // No interval to clean up
-        };
-      }
-      const contract = getLandContract();
-
-      const handleLandMinted = (plotId: bigint, owner: string) => {
-        console.log("New plot minted:", Number(plotId), owner);
-        // Refresh data when new plot is minted (if it's for our address)
-        if (address) {
-          fetchLandData();
-        }
-      };
-
-      contract.on("LandMinted", handleLandMinted);
-
-      cleanup = () => {
-        contract.removeAllListeners("LandMinted");
-      };
-    } catch (error) {
-      // Contract not available, skip event listeners
-    }
-
-    return () => {
-      // No interval to clean up
-      if (cleanup) cleanup();
-    };
+    // HTTP JSON-RPC providers (Alchemy, Fuji) do not persist eth_newFilter — skip contract.on
+    // to avoid noisy "filter not found" errors in production. Call fetchLandData() after txs.
+    return () => {};
   }, [fetchLandData, address]);
 
   return {

@@ -18,6 +18,7 @@ import { loadContractAddresses } from "@/lib/contracts";
 import { loadPaymentContractAddresses } from "@/lib/payment-contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
+import { initSupabaseAuthRecovery, isStaleSupabaseRefreshError } from "@/lib/supabase-auth-recovery";
 import { getAppOrigin } from "@/lib/app-origin";
 import { isTestRoutesEnabled } from "@/env";
 
@@ -336,6 +337,9 @@ const App = () => {
     void Promise.all([loadContractAddresses(), loadPaymentContractAddresses()]);
   }, []);
 
+  // Drop stale Supabase refresh tokens (avoids AuthApiError spam in console)
+  useEffect(() => initSupabaseAuthRecovery(), []);
+
   // Global scroll-to-top for all button clicks
   useEffect(() => {
     const handleButtonClick = (e: MouseEvent) => {
@@ -426,12 +430,18 @@ function AppContent() {
     const getIdentifier = async () => {
       try {
         // Try to get authenticated user email
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error && isStaleSupabaseRefreshError(error)) {
+          return null;
+        }
         if (session?.user?.email) {
           return session.user.email.toLowerCase();
         }
         return null;
-      } catch {
+      } catch (error) {
+        if (isStaleSupabaseRefreshError(error)) {
+          return null;
+        }
         return null;
       }
     };

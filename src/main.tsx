@@ -2,6 +2,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initSentry } from "./lib/sentry";
+import {
+  clearStaleSupabaseSession,
+  isStaleSupabaseRefreshError,
+} from "./lib/supabase-auth-recovery";
 
 // Initialize Sentry error tracking
 const sentry = initSentry();
@@ -221,9 +225,26 @@ window.addEventListener('error', (event) => {
   });
 });
 
+const isBenignRuntimeNoise = (reason: unknown): boolean => {
+  const msg = (reason instanceof Error ? reason.message : String(reason ?? "")).toLowerCase();
+  return (
+    isStaleSupabaseRefreshError(reason) ||
+    msg.includes("filter not found") ||
+    msg.includes("eth_getfilterchanges")
+  );
+};
+
 window.addEventListener('unhandledrejection', (event) => {
   if (isChunkLoadError(event.reason) && recoverFromStaleChunk()) {
     event.preventDefault();
+    return;
+  }
+
+  if (isBenignRuntimeNoise(event.reason)) {
+    event.preventDefault();
+    if (isStaleSupabaseRefreshError(event.reason)) {
+      void clearStaleSupabaseSession();
+    }
     return;
   }
 
