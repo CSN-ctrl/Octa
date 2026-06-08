@@ -1069,12 +1069,12 @@ export default function UnifiedUniverse() {
         {/* UNIFIED UNIVERSE - Galaxy View + Star Map */}
         <div className="space-y-8">
             {/* Galaxy Visualization with Sarakt System Panel */}
-            <div className="grid lg:grid-cols-3 gap-6 items-end">
+            <div className="grid lg:grid-cols-3 gap-6 items-stretch">
               {/* Galaxy Visualization - Takes 2/3 width */}
-              <div className="lg:col-span-2">
-                <Card className="glass border-2 border-primary/30 overflow-hidden">
-                  <CardContent className="p-0 relative">
-                    <div className="bg-black/90 relative h-[min(700px,60vh)] min-h-[320px]">
+              <div className="lg:col-span-2 flex min-h-0">
+                <Card className="glass flex h-[min(700px,65vh)] min-h-[360px] w-full flex-1 flex-col overflow-hidden border-2 border-primary/30 sm:min-h-[420px] lg:min-h-[480px]">
+                  <CardContent className="relative h-full min-h-0 flex-1 p-0">
+                    <div className="absolute inset-0 overflow-hidden bg-black/90">
                       {loadingPlanets ? (
                         <UniverseGalaxySkeleton />
                       ) : (
@@ -1094,8 +1094,8 @@ export default function UnifiedUniverse() {
               </div>
 
               {/* Sarakt System Panel - Takes 1/3 width on right */}
-              <div className="lg:col-span-1">
-                <Card className="border-primary/20 bg-card/50 backdrop-blur overflow-hidden flex flex-col h-[min(700px,60vh)] min-h-[320px]">
+              <div className="lg:col-span-1 flex min-h-0">
+                <Card className="flex h-[min(700px,65vh)] min-h-[360px] w-full flex-col overflow-hidden border-primary/20 bg-card/50 backdrop-blur sm:min-h-[420px] lg:min-h-[480px]">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
                   <CardHeader className="pb-3 flex-shrink-0">
                     <div className="flex flex-col gap-2">
