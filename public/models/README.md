@@ -16,6 +16,8 @@ public/models/
 | File | Source | License | Used in |
 |------|--------|---------|---------|
 | `landmarks/octavia-gate.glb` | [Kenney Starter Kit City Builder — building-small-a](https://github.com/KenneyNL/Starter-Kit-City-Builder/blob/main/models/building-small-a.glb) | CC0 1.0 | `OctaviaLandmark` in `OctaviaCapitalCity` |
+| `landmarks/octavia-tower.glb` | [Kenney Starter Kit City Builder — building-small-b](https://github.com/KenneyNL/Starter-Kit-City-Builder/blob/main/models/building-small-b.glb) | CC0 1.0 | `OctaviaTower` in `OctaviaCapitalCity` |
+| `landmarks/octavia-prop.glb` | [Kenney Starter Kit City Builder — grass-trees](https://github.com/KenneyNL/Starter-Kit-City-Builder/blob/main/models/grass-trees.glb) | CC0 1.0 | `OctaviaProp` in `OctaviaCapitalCity`, preview in `UniverseCityGridPanel` |
 
 ## Add a model
 

@@ -3,6 +3,7 @@ import { OrbitControls } from "@react-three/drei";
 import { Box } from "lucide-react";
 import { OctagonalGrid } from "@/components/OctagonalGrid";
 import { SceneCanvas } from "@/components/three/SceneCanvas";
+import { OctaviaProp } from "@/components/three/landmarks/OctaviaProp";
 import { PlotInstancedGrid } from "@/components/three/PlotInstancedGrid";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -53,6 +54,7 @@ function CityPlotPreview({
           <ambientLight intensity={0.35} />
           <directionalLight position={[3, 5, 2]} intensity={0.6} />
           <PlotInstancedGrid plotIds={plotIds} ownedPlotIds={ownedPlotIds} />
+          <OctaviaProp radius={0.14} />
           <OrbitControls enablePan={false} enableZoom={false} autoRotate autoRotateSpeed={0.5} />
         </SceneCanvas>
         {showCaption && (
