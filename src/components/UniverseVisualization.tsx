@@ -11,8 +11,8 @@ type UniverseVisualizationProps = {
 };
 
 /**
- * Universe viewport — R3F procedural scene by default (no Blender).
- * Set VITE_USE_R3F_UNIVERSE=false for legacy imperative Three.js renderer.
+ * Landing galaxy viewport — legacy GalaxyVisualization by default (original spiral).
+ * Set VITE_USE_R3F_UNIVERSE=true for the R3F Sarakt system scene on this view only.
  */
 export function UniverseVisualization({ onSelectPlanet, onSelectCity }: UniverseVisualizationProps = {}) {
   const useR3f = isR3fUniverseEnabled();
