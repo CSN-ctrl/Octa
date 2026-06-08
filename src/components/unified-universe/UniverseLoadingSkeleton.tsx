@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export function UniverseGalaxySkeleton() {
   return (
-    <div className="h-[min(700px,60vh)] min-h-[320px] w-full bg-black/90">
+    <div className="absolute inset-0 bg-black/90">
       <Skeleton className="h-full w-full rounded-none bg-primary/10" />
     </div>
   );

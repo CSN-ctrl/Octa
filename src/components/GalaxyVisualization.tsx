@@ -17,10 +17,10 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
     getParticleMultiplier,
     shouldReduceQuality,
   } = useAutoscale({
-    baseFOV: 75,
-    mobileFOV: 70,
-    tabletFOV: 72,
-    desktopFOV: 75,
+    baseFOV: 78,
+    mobileFOV: 72,
+    tabletFOV: 75,
+    desktopFOV: 78,
     mobileDistance: 1.2,
     tabletDistance: 1.0,
     desktopDistance: 1.0,
@@ -83,29 +83,39 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
       0.1,
       100
     );
-    // Adjust initial camera position based on screen size - centered on galaxy (0,0,0)
     const distanceMultiplier = getDistanceMultiplierRef.current();
     const galaxyCenter = new THREE.Vector3(0, 0, 0);
-    camera.position.set(3 * distanceMultiplier, 2 * distanceMultiplier, 3 * distanceMultiplier);
-    camera.lookAt(galaxyCenter);
+    const starPos = new THREE.Vector3(1.6, 0, 1.6);
+    const viewTarget = starPos.clone();
+    camera.position.set(
+      starPos.x + 3.6 * distanceMultiplier,
+      2.4 * distanceMultiplier,
+      starPos.z + 3.6 * distanceMultiplier,
+    );
+    camera.lookAt(viewTarget);
     cameraRef.current = camera;
 
-    // Renderer - Optimized settings with autoscale
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: !shouldReduceQualityRef.current(), // Disable antialiasing on mobile for performance
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !shouldReduceQualityRef.current(),
       alpha: true,
-      powerPreference: "high-performance"
+      powerPreference: "high-performance",
     });
+    const canvas = renderer.domElement;
+    canvas.style.display = "block";
+    canvas.style.position = "absolute";
+    canvas.style.inset = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.touchAction = "none";
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(Math.min(getPixelRatioRef.current(), 2)); // Cap pixel ratio to prevent glitches
+    renderer.setPixelRatio(Math.min(getPixelRatioRef.current(), 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
-    // Enable smooth rendering
-    renderer.setAnimationLoop(null); // We'll use requestAnimationFrame manually
-    renderer.shadowMap.enabled = false; // Disable shadows for better performance
-    renderer.sortObjects = false; // Disable sorting for better performance
-    containerRef.current.appendChild(renderer.domElement);
+    renderer.setAnimationLoop(null);
+    renderer.shadowMap.enabled = false;
+    renderer.sortObjects = false;
+    containerRef.current.appendChild(canvas);
     rendererRef.current = renderer;
     raycasterRef.current = new THREE.Raycaster();
     pointerRef.current = new THREE.Vector2();
@@ -116,7 +126,9 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
     controls.dampingFactor = 0.05;
     controls.enablePan = true;
     controls.enableZoom = true;
-    controls.target.set(0, 0, 0); // Center on galaxy
+    controls.target.copy(viewTarget);
+    controls.minDistance = 0.8;
+    controls.maxDistance = 12;
     controls.touches = {
       ONE: THREE.TOUCH.ROTATE,
       TWO: THREE.TOUCH.DOLLY_PAN
@@ -210,9 +222,7 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
     blackHole.position.set(0, 0, 0);
     scene.add(blackHole);
 
-    // Sarakt Star (emissive core with point light)
-    const starPos = new THREE.Vector3(1.6, 0, 1.6); // move further off-center
-    const saraktGeometry = new THREE.SphereGeometry(0.10, 16, 16); // Reduced from 32
+    const saraktGeometry = new THREE.SphereGeometry(0.12, 20, 20);
     const saraktMaterial = new THREE.MeshStandardMaterial({
       color: 0x9333ea,
       emissive: 0x6d28d9,
@@ -241,7 +251,7 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
     saraktStar.add(glow);
 
     // Octavia (within galaxy arms) - Reduced complexity
-    const octaviaGeometry = new THREE.SphereGeometry(0.04, 12, 12); // Reduced from 24
+    const octaviaGeometry = new THREE.SphereGeometry(0.085, 16, 16);
     const octaviaMaterial = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.6, metalness: 0.05 });
     const octavia = new THREE.Mesh(octaviaGeometry, octaviaMaterial);
     // Create orbital parent to achieve inclined circular orbit
@@ -250,7 +260,7 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
     // Slight inclination (in radians)
     octaviaOrbit.rotation.x = THREE.MathUtils.degToRad(8);
     // Place planet on x-axis at radius
-    const octaviaRadius = 0.8;
+    const octaviaRadius = 0.95;
     octavia.position.set(octaviaRadius, 0, 0);
     octaviaOrbit.add(octavia);
     scene.add(octaviaOrbit);
@@ -271,13 +281,13 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
     scene.add(ringMesh);
 
     // Zythera (within galaxy arms) - Reduced complexity
-    const zytheraGeometry = new THREE.SphereGeometry(0.04, 12, 12); // Reduced from 24
+    const zytheraGeometry = new THREE.SphereGeometry(0.085, 16, 16);
     const zytheraMaterial = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6, metalness: 0.05 });
     const zythera = new THREE.Mesh(zytheraGeometry, zytheraMaterial);
     const zytheraOrbit = new THREE.Object3D();
     zytheraOrbit.position.copy(saraktStar.position);
     zytheraOrbit.rotation.x = THREE.MathUtils.degToRad(15);
-    const zytheraRadius = 1.1;
+    const zytheraRadius = 1.25;
     zythera.position.set(zytheraRadius, 0, 0);
     zytheraOrbit.add(zythera);
     scene.add(zytheraOrbit);
@@ -479,20 +489,18 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
         }
         // Smooth interpolation back to auto-orbit - centered on galaxy (0,0,0)
         const lerpFactor = Math.min(1, timeSinceInteraction / AUTO_ORBIT_RESUME_DELAY);
-        const orbitRadius = 4 * getDistanceMultiplierRef.current();
-        const galaxyCenter = new THREE.Vector3(0, 0, 0);
-        // Use accumulated rotation for smooth camera orbit around galaxy center
-        const orbitAngle = elapsedTime * 0.05; // Slower camera orbit to match galaxy rotation
-        const autoX = galaxyCenter.x + Math.cos(orbitAngle) * orbitRadius;
-        const autoZ = galaxyCenter.z + Math.sin(orbitAngle) * orbitRadius;
-        const autoY = galaxyCenter.y + 2 * getDistanceMultiplierRef.current(); // Slight elevation
-        // Use higher lerp factor for smoother interpolation
+        const orbitRadius = 3.8 * getDistanceMultiplierRef.current();
+        const orbitAngle = elapsedTime * 0.04;
+        const autoX = viewTarget.x + Math.cos(orbitAngle) * orbitRadius;
+        const autoZ = viewTarget.z + Math.sin(orbitAngle) * orbitRadius;
+        const autoY = viewTarget.y + 2.2 * getDistanceMultiplierRef.current();
         const smoothLerp = 0.05 * (1 + lerpFactor);
         camera.position.x = THREE.MathUtils.lerp(camera.position.x, autoX, smoothLerp);
         camera.position.y = THREE.MathUtils.lerp(camera.position.y, autoY, smoothLerp);
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, autoZ, smoothLerp);
         if (lerpFactor > 0.3) {
-          camera.lookAt(galaxyCenter);
+          controls.target.lerp(viewTarget, smoothLerp);
+          camera.lookAt(controls.target);
         }
       }
 
@@ -531,8 +539,15 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
 
     window.addEventListener('resize', handleResize);
 
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => handleResize())
+        : null;
+    resizeObserver?.observe(containerRef.current);
+
     // Cleanup
     return () => {
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', handleResize);
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
@@ -578,13 +593,10 @@ export const GalaxyVisualization = ({}: GalaxyVisualizationProps = {}) => {
   }, [screenCategory]);
 
   return (
-    <div 
-      ref={containerRef} 
-      className="w-full h-full"
-      style={{ 
-        minHeight: screenSize.isMobile ? '400px' : screenSize.isTablet ? '500px' : '600px',
-        touchAction: 'none' // Prevent default touch behaviors for better mobile interaction
-      }}
+    <div
+      ref={containerRef}
+      className="absolute inset-0 h-full w-full overflow-hidden"
+      style={{ touchAction: "none" }}
     />
   );
 };

@@ -32,7 +32,11 @@ export function UniverseVisualization({ onSelectPlanet, onSelectCity }: Universe
   });
 
   if (!useR3f) {
-    return <GalaxyVisualization />;
+    return (
+      <div className="absolute inset-0 h-full w-full">
+        <GalaxyVisualization />
+      </div>
+    );
   }
 
   const baseParticles = 6000;
