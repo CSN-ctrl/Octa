@@ -12,6 +12,7 @@ interface PlanetViewProps {
     balances: any;
     starSystems: any[];
     planets: any[];
+    gameSymbol?: string;
     cityView: "info" | "grid" | "management";
     onCityViewChange: (view: "info" | "grid" | "management") => void;
     onBack: () => void;
@@ -24,6 +25,7 @@ export function PlanetView({
     balances,
     starSystems,
     planets,
+    gameSymbol = "AVAX",
     cityView,
     onCityViewChange,
     onBack,
@@ -112,7 +114,7 @@ export function PlanetView({
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-sm text-muted-foreground">Treasury</span>
-                                            <span className="font-bold">{balances.avax || "0"} AVAX</span>
+                                            <span className="font-bold">{balances.avax || "0"} {gameSymbol}</span>
                                         </div>
                                     </div>
                                 </CardContent>

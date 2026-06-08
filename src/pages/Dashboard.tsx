@@ -44,10 +44,8 @@ import {
   Plus,
   Loader2,
   Mail,
-  BarChart3,
   Landmark,
   Package,
-  Send,
   History,
   DollarSign,
   ArrowUpRight,
@@ -57,7 +55,6 @@ import {
   X,
   ShoppingBag,
   TrendingDown,
-  AlertCircle,
   Zap,
   CheckCircle2,
   Globe,
@@ -75,11 +72,7 @@ import {
   UserPlus,
   Search,
   ArrowRight,
-  BookOpen,
-  HelpCircle,
   Briefcase,
-  Rocket,
-  Sparkles,
   MessageCircle,
   UserCheck,
 } from "lucide-react";
@@ -89,9 +82,12 @@ import { PlotFractionalOwnership } from "@/components/plots/PlotFractionalOwners
 import { TransactionHistory } from "@/components/TransactionHistory";
 import { LazyImage } from "@/components/ui/LazyImage";
 import { AssetManagementSection } from "@/components/dashboard/AssetManagementSection";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { DashboardMobileNav } from "@/components/dashboard/DashboardMobileNav";
+import { DashboardSidebarNav } from "@/components/dashboard/DashboardSidebarNav";
+import { PrimaryMarketSection } from "@/components/dashboard/PrimaryMarketSection";
+import { SpeculativeMarketSection } from "@/components/dashboard/SpeculativeMarketSection";
 import { TransferSection } from "@/components/dashboard/TransferSection";
-import { MarketplaceSection } from "@/components/dashboard/MarketplaceSection";
 import { useCelestialForge } from "@/hooks/useCelestialForge";
 import { ethers } from "ethers";
 import { logger } from "@/lib/logger";
@@ -2549,190 +2545,28 @@ export default function Dashboard() {
 
   return (
     <div className="app-page-canvas">
-      <div className="flex min-h-[calc(100vh-5rem)] items-stretch">
-        {/* Sidebar Navigation - Full Height, Toggleable */}
-        <aside className={`hidden lg:block self-stretch h-auto shrink-0 overflow-hidden bg-background/80 backdrop-blur-xl transition-[width] duration-300 ease-in-out ${
-          isSidebarOpen ? "w-72 border-r border-white/[0.06]" : "w-0 border-r-0"
-        }`}>
-          {/* Background gradient overlay - matching app style */}
-          <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-background/90 pointer-events-none" />
-          
-          {/* Content */}
-          <div className="relative z-10 h-full pt-4">
-            <nav className="space-y-2 px-4">
-              {/* Dashboard Section - Moved to top */}
-              <div className="mb-2 pb-2 border-b border-primary/10">
-                <div className="flex items-center gap-2 px-2 mb-2">
-                  <BarChart3 className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Dashboard
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => {
-                      setActiveSection("asset-management");
-                    }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
-                      activeSection === "asset-management"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
-                        : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                    }`}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "asset-management" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
-                    <BarChart3 className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "asset-management" ? "scale-110" : "group-hover:scale-110"}`} />
-                    <span className="relative z-10">Asset Management</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveSection("transfers");
-                    }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
-                      activeSection === "transfers"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
-                        : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                    }`}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "transfers" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
-                    <Send className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "transfers" ? "scale-110" : "group-hover:scale-110"}`} />
-                    <span className="relative z-10">Transfers</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Explore Section — hidden in Phase 1 to reduce confusion */}
-              {!phase1DashboardOnly && (
-              <div className="mb-2 pb-2 border-b border-primary/10">
-                <div className="flex items-center gap-2 px-2 mb-2">
-                  <Globe className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Explore
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => navigate("/ilo")}
-                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 bg-gradient-cosmic/20 hover:bg-gradient-cosmic hover:text-primary-foreground hover:scale-[1.02] text-primary relative overflow-hidden border border-primary/30 hover:border-primary/60 shadow-lg hover:shadow-primary/20"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                    <Rocket className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-12" />
-                    <span className="relative z-10 font-semibold">ILO</span>
-                  </button>
-                  <button
-                    onClick={() => navigate("/lore")}
-                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-[1.02] text-muted-foreground relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <BookOpen className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110" />
-                    <span className="relative z-10">Lore</span>
-                  </button>
-                  <button
-                    onClick={() => navigate("/how-it-works")}
-                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-[1.02] text-muted-foreground relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <HelpCircle className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110" />
-                    <span className="relative z-10">How It Works</span>
-                  </button>
-                  <button
-                    onClick={() => navigate("/business")}
-                    className="group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-[1.02] text-muted-foreground relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <Briefcase className="h-4 w-4 relative z-10 transition-transform group-hover:scale-110" />
-                    <span className="relative z-10">Business</span>
-                  </button>
-                </div>
-              </div>
-              )}
-
-              {/* Market Section — Phase 2+ */}
-              {!phase1DashboardOnly && (
-              <div className="mb-2 pb-2 border-b border-primary/10">
-                <div className="flex items-center gap-2 px-2 mb-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Market
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => {
-                      setActiveSection("market-primary");
-                    }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
-                      activeSection === "market-primary"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
-                        : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                    }`}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "market-primary" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
-                    <Sparkles className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "market-primary" ? "scale-110 rotate-12" : "group-hover:scale-110 group-hover:rotate-12"}`} />
-                    <span className="relative z-10">Primary</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveSection("market-speculative");
-                    }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
-                      activeSection === "market-speculative"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
-                        : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                    }`}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "market-speculative" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
-                    <Zap className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "market-speculative" ? "scale-110 rotate-12" : "group-hover:scale-110 group-hover:rotate-12"}`} />
-                    <span className="relative z-10">Speculative</span>
-                  </button>
-                </div>
-              </div>
-              )}
-
-              {/* Premium Section — Phase 2+ */}
-              {!phase1DashboardOnly && (
-              <div>
-                <div className="flex items-center gap-2 px-2 mb-2">
-                  <Crown className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Celestial Assets
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => {
-                      setActiveSection("hnwi-purchases");
-                      loadHNWIAssets();
-                    }}
-                    className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 relative overflow-hidden ${
-                      activeSection === "hnwi-purchases"
-                        ? "bg-gradient-cosmic text-primary-foreground shadow-glow-primary scale-[1.02] border border-primary/50"
-                        : "hover:bg-primary/10 hover:text-primary hover:scale-[1.01] text-muted-foreground"
-                    }`}
-                    aria-label="Premium Assets section"
-                    aria-pressed={activeSection === "hnwi-purchases"}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 transition-opacity duration-300 ${activeSection === "hnwi-purchases" ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
-                    <Crown className={`h-4 w-4 relative z-10 transition-transform ${activeSection === "hnwi-purchases" ? "scale-110" : "group-hover:scale-110"}`} aria-hidden="true" />
-                    <span className="relative z-10">Premium Assets</span>
-                  </button>
-                </div>
-              </div>
-              )}
-            </nav>
-          </div>
-        </aside>
-
-        <DashboardMobileNav
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-          phase1Only={phase1DashboardOnly}
-          onNavigateUniverse={() => navigate("/universe")}
-          onNavigateDeposit={() => navigate("/deposit")}
-          onNavigatePlotPurchase={() => navigate("/plot-purchase")}
-        />
-
-        {/* Main Content Area */}
-        <main className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
+      <DashboardLayout
+        sidebarOpen={isSidebarOpen}
+        onSidebarOpenChange={setIsSidebarOpen}
+        sidebarNav={
+          <DashboardSidebarNav
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            phase1Only={phase1DashboardOnly}
+            onLoadHNWIAssets={loadHNWIAssets}
+          />
+        }
+        mobileNav={
+          <DashboardMobileNav
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            phase1Only={phase1DashboardOnly}
+            onNavigateUniverse={() => navigate("/universe")}
+            onNavigateDeposit={() => navigate("/deposit")}
+            onNavigatePlotPurchase={() => navigate("/plot-purchase")}
+          />
+        }
+      >
           <div className="app-page-inner">
           {showOnboardingChecklist && activeSection === "asset-management" && (
             <OnboardingChecklist
@@ -2827,7 +2661,7 @@ export default function Dashboard() {
 
           {/* Market - Primary Section */}
           {activeSection === "market-primary" && (
-            <MarketplaceSection
+            <PrimaryMarketSection
               address={address}
               ownedPlots={ownedPlots}
               governmentPlots={governmentPlots}
@@ -2907,95 +2741,10 @@ export default function Dashboard() {
 
           {/* Market - Speculative Section */}
           {activeSection === "market-speculative" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight select-none">Speculative Market</h1>
-                  <p className="text-muted-foreground mt-1 select-none">
-                    High-risk, high-reward trading opportunities and futures contracts
-                  </p>
-                </div>
-                <Button variant="outline" onClick={loadSpeculativeMarket} disabled={loadingSpeculative}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loadingSpeculative ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </div>
-
-              {/* Warning Banner */}
-              <Card className="border-yellow-500/50 bg-yellow-500/10">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
-                    <div>
-                      <h3 className="font-semibold text-yellow-500 select-none">High Risk Warning</h3>
-                      <p className="text-sm text-muted-foreground mt-1 select-none">
-                        The Speculative Market involves high-risk trading. Prices can be volatile and you may lose your entire investment. 
-                        Only trade with funds you can afford to lose.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Futures Contracts */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <TrendingDown className="h-5 w-5 text-primary" />
-                    <CardTitle className="select-none">Futures Contracts</CardTitle>
-                  </div>
-                  <CardDescription className="select-none">
-                    Trade futures contracts on land plots, resources, and market indices
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground select-none">
-                    <TrendingDown className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-semibold">Coming Soon</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Options Trading */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-primary" />
-                    <CardTitle className="select-none">Options Trading</CardTitle>
-                  </div>
-                  <CardDescription className="select-none">
-                    High-risk options contracts with potential for significant returns
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground select-none">
-                    <Zap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Options trading coming soon</p>
-                    <p className="text-xs mt-2">Advanced options contracts will be available in a future update</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Trading Pairs */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Coins className="h-5 w-5 text-primary" />
-                    <CardTitle className="select-none">Trading Pairs</CardTitle>
-                  </div>
-                  <CardDescription className="select-none">
-                    Trade token pairs with leverage
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground select-none">
-                    <Coins className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Trading pairs coming soon</p>
-                    <p className="text-xs mt-2">Token pair trading will be available in a future update</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <SpeculativeMarketSection
+              loadingSpeculative={loadingSpeculative}
+              onRefresh={loadSpeculativeMarket}
+            />
           )}
 
           {/* HNWI Purchases Section */}
@@ -3429,8 +3178,7 @@ export default function Dashboard() {
           </Dialog>
           </div>
 
-        </main>
-      </div>
+      </DashboardLayout>
     </div>
   );
 }

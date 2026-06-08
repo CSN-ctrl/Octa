@@ -20,7 +20,11 @@ import * as supabaseService from "@/lib/supabase-service";
 import { Empty } from "@/components/ui/empty";
 import { UniverseCityGridPanel } from "@/components/unified-universe/UniverseCityGridPanel";
 import { NetworkTopology } from "@/components/NetworkTopology";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { StarSystemView } from "@/components/unified-universe/StarSystemView";
+import { PlanetView } from "@/components/unified-universe/PlanetView";
+import { useUniverseRoutes } from "@/hooks/useUniverseRoutes";
+import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
 import { LazyImage } from "@/components/ui/LazyImage";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { isOnChainCryptoMode } from "@/lib/chain-network";
@@ -42,6 +46,8 @@ import { cn } from "@/lib/utils";
 
 export default function UnifiedUniverse() {
   const navigate = useNavigate();
+  const { systemId, planetId } = useParams<{ systemId?: string; planetId?: string }>();
+  const { goToUniverse, goToSystem, goToPlanet } = useUniverseRoutes();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -74,9 +80,6 @@ export default function UnifiedUniverse() {
   const [, setSelectedPlanetForManagement] = useState<string | null>(null);
   const [, setManageView] = useState<"systems" | "planets" | "details">("systems");
   
-  // Star system interaction state (like sarakt prime)
-  const [selectedStarSystem, setSelectedStarSystem] = useState<string | null>(null);
-  const [selectedPlanetInSystem, setSelectedPlanetInSystem] = useState<string | null>(null);
   
   // Use REAL data for display (from blockchain/API)
   const displayStarSystems = starSystems;
@@ -532,6 +535,7 @@ export default function UnifiedUniverse() {
     setSelectedPlanet(null);
     setSelectedCity(null);
     clearUniverseDeepLinkParams();
+    goToUniverse({ replace: true });
   };
 
   const handleEnterOctaviaCapital = () => {
@@ -549,6 +553,8 @@ export default function UnifiedUniverse() {
   };
 
   useEffect(() => {
+    if (systemId || planetId) return;
+
     const planetParam = searchParams.get("planet");
     const cityParam = searchParams.get("city");
     if (planetParam !== "sarakt-prime" || !cityParam || selectedPlanet) return;
@@ -569,7 +575,23 @@ export default function UnifiedUniverse() {
     setSelectedPlanet("sarakt-prime");
     setSelectedCity(`city-${resolvedCityIndex}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [planetsData, searchParams, selectedPlanet]);
+  }, [planetsData, searchParams, selectedPlanet, systemId, planetId]);
+
+  useEffect(() => {
+    if (!systemId || starSystems.length === 0) return;
+    if (!starSystems.some((s) => s.id === systemId)) {
+      goToUniverse({ replace: true });
+    }
+  }, [systemId, starSystems, goToUniverse]);
+
+  useEffect(() => {
+    if (!planetId || (displayPlanets.length === 0 && planetsList.length === 0)) return;
+    const planet = displayPlanets.find((p: any) => p.id === planetId);
+    const system = planet ? starSystems.find((s) => s.id === planet.star_system_id) : undefined;
+    if (!planet || !system) {
+      goToUniverse({ replace: true });
+    }
+  }, [planetId, displayPlanets, planetsList.length, starSystems, goToUniverse]);
 
   // Mock hook automatically loads data from localStorage on mount
   // No need to fetch from backend or database
@@ -579,344 +601,61 @@ export default function UnifiedUniverse() {
     fetchStarSystems();
   }, [fetchStarSystems]);
 
-  // Star System Planet view - shows planet details (like city view)
-  if (selectedStarSystem && selectedPlanetInSystem) {
-    const system = starSystems.find(s => s.id === selectedStarSystem);
-    const planet = displayPlanets.find((p: any) => p.id === selectedPlanetInSystem);
-    
-    if (!system || !planet) {
-      setSelectedPlanetInSystem(null);
+  // Route: /universe/planet/:planetId — celestial forge planet detail
+  if (planetId) {
+    const planet = displayPlanets.find((p: any) => p.id === planetId);
+    const system = planet ? starSystems.find((s) => s.id === planet.star_system_id) : undefined;
+
+    if (!planet || !system) {
       return null;
     }
 
     return (
-      <div className="min-h-screen pt-20 bg-gradient-to-b from-background via-background to-background/80">
-        <div className="container mx-auto px-4 py-12 max-w-7xl">
-          <div className="flex items-center gap-4 mb-6">
-            <Button variant="glass" className="gap-2" onClick={() => setSelectedPlanetInSystem(null)}>
-              <ChevronLeft className="h-4 w-4" />
-              Back to {system.name}
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
-                {planet.name}
-              </h1>
-              <p className="text-muted-foreground">{system.name} • {planet.planet_type}</p>
-            </div>
-          </div>
-
-          {/* Planet View Tabs */}
-          <Tabs value={cityView} onValueChange={(v) => setCityView(v as any)} className="mb-6">
-            <TabsList>
-              <TabsTrigger value="info">Planet Info</TabsTrigger>
-              <TabsTrigger value="grid">Planet Grid</TabsTrigger>
-              <TabsTrigger value="management">Management</TabsTrigger>
-            </TabsList>
-
-            {/* Planet Info Tab */}
-            <TabsContent value="info" className="space-y-6">
-              <div className="grid md:grid-cols-3 gap-6">
-                <Card className="glass border-primary/20 md:col-span-2">
-                  <CardHeader>
-                    <CardTitle className="text-2xl">{planet.name} Overview</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-muted-foreground">
-                      A {planet.planet_type} planet in the {system.name} star system. 
-                      {planet.status === 'active' ? ' Currently active and operational.' : 
-                       planet.status === 'deploying' ? ' Currently being deployed.' : 
-                       ' Currently inactive.'}
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="glass p-4 rounded-lg">
-                        <div className="text-sm text-muted-foreground mb-1">Planet Type</div>
-                        <Badge variant="outline" className="capitalize">{planet.planet_type}</Badge>
-                      </div>
-                      <div className="glass p-4 rounded-lg">
-                        <div className="text-sm text-muted-foreground mb-1">Status</div>
-                        <Badge variant={planet.status === 'active' ? 'default' : 'outline'} className="capitalize">
-                          {planet.status}
-                        </Badge>
-                      </div>
-                      <div className="glass p-4 rounded-lg">
-                        <div className="text-sm text-muted-foreground mb-1">Node Type</div>
-                        <div className="text-lg font-bold capitalize">{planet.node_type}</div>
-                      </div>
-                      <div className="glass p-4 rounded-lg">
-                        <div className="text-sm text-muted-foreground mb-1">IP Address</div>
-                        <div className="text-sm font-mono">{planet.ip_address}</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="glass border-primary/20">
-                  <CardHeader>
-                    <CardTitle>Quick Stats</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">System Status</span>
-                        <span className="font-bold capitalize">{system.status}</span>
-                      </div>
-                      <Progress value={system.status === 'active' ? 100 : system.status === 'deploying' ? 50 : 0} className="h-2" />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Chain ID</span>
-                        <span className="font-bold font-mono">#{system.chain_id}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-muted-foreground">Treasury</span>
-                        <span className="font-bold">{balances.avax || "0"} {gameSymbol}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* Planet Grid Tab */}
-            <TabsContent value="grid">
-              <Card className="glass border-primary/20 p-12 text-center">
-                <Mountain className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-bold mb-2">Planet Grid</h3>
-                <p className="text-muted-foreground mb-4">
-                  Planet grid visualization coming soon
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Planet: {planet.name} • System: {system.name}
-                </p>
-              </Card>
-            </TabsContent>
-
-            {/* Management Tab */}
-            <TabsContent value="management" className="space-y-6">
-              {/* Network Topology - Show blockchain node connections */}
-              <NetworkTopology
-                starSystems={displayStarSystems}
-                planets={displayPlanets}
-              />
-              
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="glass border-primary/20 hover:border-primary transition-all cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings className="w-5 h-5" />
-                      Planet Settings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">Configure planet settings and parameters</p>
-                    <Button 
-                      variant="cosmic" 
-                      className="w-full"
-                      onClick={() => {
-                        setSelectedPlanetForManagement(planet.id);
-                        setSelectedPlanetInSystem(null);
-                        setSelectedStarSystem(null);
-                      }}
-                    >
-                      Manage Planet
-                    </Button>
-                  </CardContent>
-                </Card>
-                <Card className="glass border-primary/20 hover:border-primary transition-all cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Coins className="w-5 h-5" />
-                      Resources
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">Manage planet resources and economy</p>
-                    <Button variant="cosmic" className="w-full">View Resources</Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+      <PlanetView
+        system={system}
+        planet={planet}
+        balances={balances}
+        starSystems={displayStarSystems}
+        planets={displayPlanets}
+        gameSymbol={gameSymbol}
+        cityView={cityView}
+        onCityViewChange={(view) => setCityView(view)}
+        onBack={() => goToSystem(system.id)}
+        onManagePlanet={(id) => {
+          setSelectedPlanetForManagement(id);
+          goToUniverse();
+        }}
+      />
     );
   }
 
-  // Star System view - shows planets to select (like planet view shows cities)
-  if (selectedStarSystem) {
-    const system = starSystems.find(s => s.id === selectedStarSystem);
+  // Route: /universe/system/:systemId — star system with planet grid
+  if (systemId) {
+    const system = starSystems.find((s) => s.id === systemId);
     if (!system) {
-      setSelectedStarSystem(null);
       return null;
     }
-    
-    const systemPlanets = displayPlanets.filter((p: any) => p.star_system_id === system.id);
-    
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-background/80">
-        {/* Star System Info at Top */}
-        <div className="pt-20 bg-gradient-to-b from-background via-background/95 to-background/80 border-b border-primary/20">
-          <div className="container mx-auto px-4 py-8 max-w-7xl">
-            <Button variant="glass" className="mb-6 gap-2" onClick={() => {
-              setSelectedStarSystem(null);
-              setSelectedPlanetInSystem(null);
-            }}>
-              <ChevronLeft className="h-4 w-4" />
-              Back to Star Map
-            </Button>
-            <div className="grid lg:grid-cols-3 gap-8 mb-8">
-              <div className="lg:col-span-3">
-                <div className="flex items-center gap-4 mb-4">
-                  <h1 className="text-6xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
-                    {system.name}
-                  </h1>
-                  <Badge variant={system.status === 'active' ? 'default' : 'outline'} className="text-lg px-4 py-1 capitalize">
-                    {system.status}
-                  </Badge>
-                </div>
-                <p className="text-xl text-muted-foreground mb-6">
-                  Star system with subnet ID: <span className="font-mono text-sm">{system.subnet_id}</span>
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-sm">
-                    Chain ID: {system.chain_id}
-                  </Badge>
-                  <Badge variant="outline" className="text-sm">
-                    {systemPlanets.length} Planet{systemPlanets.length !== 1 ? 's' : ''}
-                  </Badge>
-                  <Badge variant="outline" className="text-sm">
-                    Tribute: {system.tribute_percent}%
-                  </Badge>
-                  <Badge variant="outline" className="text-sm">
-                    Treasury: {balances.avax || "0"} {gameSymbol}
-                  </Badge>
-                </div>
-              </div>
-              <Card className="glass border-primary/20">
-                <CardHeader>
-                  <CardTitle>System Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">RPC URL</div>
-                    <div className="text-xs font-mono break-all bg-muted/50 p-2 rounded">
-                      {system.rpc_url}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Owner</div>
-                    <div className="text-xs font-mono break-all">
-                      {system.owner_wallet.substring(0, 10)}...{system.owner_wallet.substring(32)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Created</div>
-                    <div className="text-sm">
-                      {new Date(system.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <Button
-                    variant="cosmic"
-                    className="w-full"
-                    onClick={() => {
-                      setSelectedSystemForManagement(system.id);
-                      setSelectedStarSystem(null);
-                    }}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Manage System
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
 
-        {/* Planets Grid */}
-        <div className="container mx-auto px-4 py-12 max-w-7xl">
-          {systemPlanets.length === 0 ? (
-            <Card className="glass border-primary/20 p-12 text-center">
-              <Mountain className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-2xl font-bold mb-2">No Planets Yet</h3>
-              <p className="text-muted-foreground mb-6">
-                This star system doesn't have any planets yet. Create your first planet!
-              </p>
-              <Button
-                variant="cosmic"
-                onClick={() => {
-                  setSelectedStarSystem(null);
-                  setSelectedStarSystemForPlanet(system.id);
-                  document.getElementById("planet-spawner")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Create First Planet
-              </Button>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 p-4 sm:p-6 lg:p-0">
-              {systemPlanets.map((planet) => (
-                <Card
-                  key={planet.id}
-                  className="relative glass border-2 border-primary/30 hover:border-primary/80 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] active:border-primary/60 active:scale-[0.98] transition-all duration-500 cursor-pointer group overflow-hidden backdrop-blur-xl bg-gradient-to-br from-background/80 via-background/60 to-background/40 before:absolute before:inset-0 before:bg-gradient-to-br before:from-primary/10 before:via-transparent before:to-accent/10 before:opacity-0 hover:before:opacity-100 active:before:opacity-100 before:transition-opacity before:duration-500 w-full min-h-[280px] sm:min-h-[320px] lg:min-h-[360px]"
-                  onClick={() => {
-                    setSelectedPlanetInSystem(planet.id);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                >
-                  {/* Animated gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/0 via-primary/5 to-accent/0 group-hover:from-primary/10 group-hover:via-primary/20 group-hover:to-accent/10 transition-all duration-700 -z-10" />
-                  
-                  {/* Glow effect */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-accent to-primary opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 -z-20" />
-                  
-                  <CardHeader className="relative z-10 p-4 sm:p-6">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
-                      <Badge 
-                        variant={planet.status === 'active' ? 'default' : 'outline'}
-                        className="text-xs sm:text-sm capitalize font-semibold px-2 sm:px-3 py-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-400 shadow-lg shadow-green-500/10"
-                      >
-                        {planet.status}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs sm:text-sm capitalize font-semibold px-2 sm:px-3 py-1 border-primary/40 text-primary/90 bg-primary/5">
-                        {planet.planet_type}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary via-white to-accent bg-clip-text text-transparent group-hover:scale-105 group-active:scale-100 transition-transform duration-300 break-words leading-tight">
-                      {planet.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-5 relative z-10 p-4 sm:p-6 pt-0">
-                    <div className="space-y-2 p-3 sm:p-4 rounded-lg bg-gradient-to-br from-muted/30 to-muted/10 border border-primary/10">
-                      <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2 break-all">
-                        <Network className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary/60 flex-shrink-0" />
-                        <span className="font-mono text-primary/80 text-[10px] sm:text-xs">{planet.ip_address}</span>
-                      </div>
-                      <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
-                        <Globe className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent/60 flex-shrink-0" />
-                        <span className="capitalize">{planet.node_type}</span>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="cosmic" 
-                      className="w-full gap-2 text-sm sm:text-base py-4 sm:py-6 font-semibold bg-gradient-to-r from-primary via-primary to-accent hover:from-primary/90 hover:via-primary/90 hover:to-accent/90 active:from-primary/80 active:via-primary/80 active:to-accent/80 shadow-lg shadow-primary/20 group-hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] transition-all duration-300 group-hover:scale-[1.02] group-active:scale-[0.98] min-h-[48px] sm:min-h-[56px] touch-manipulation"
-                    >
-                      <span className="hidden sm:inline">Explore Planet</span>
-                      <span className="sm:hidden">Explore</span>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </CardContent>
-                  
-                  {/* Decorative corner accents */}
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-bl-full" />
-                  <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-tr-full" />
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+    const systemPlanets = displayPlanets.filter((p: any) => p.star_system_id === system.id);
+
+    return (
+      <StarSystemView
+        system={system}
+        systemPlanets={systemPlanets}
+        balances={balances}
+        gameSymbol={gameSymbol}
+        onBack={() => goToUniverse()}
+        onManageSystem={(id) => {
+          setSelectedSystemForManagement(id);
+          goToUniverse();
+        }}
+        onSelectPlanet={(id) => goToPlanet(id)}
+        onCreatePlanet={(id) => {
+          setSelectedStarSystemForPlanet(id);
+          goToUniverse();
+          document.getElementById("planet-spawner")?.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
     );
   }
 
@@ -2272,7 +2011,17 @@ export default function UnifiedUniverse() {
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">Humanity's stronghold. Advanced infrastructure, vertical cities, hybrid companions.</p>
-                      <Badge className="bg-gradient-cosmic text-white text-sm px-3 py-1 w-fit">2 Planets</Badge>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className="bg-gradient-cosmic text-white text-sm px-3 py-1 w-fit">2 Planets</Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => goToSystem(SARAKT_STAR_SYSTEM_ID)}
+                        >
+                          Explore System
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3 flex-1 overflow-y-auto">

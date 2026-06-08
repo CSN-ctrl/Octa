@@ -8,6 +8,7 @@ interface StarSystemViewProps {
     system: any;
     systemPlanets: any[];
     balances: any;
+    gameSymbol?: string;
     onBack: () => void;
     onManageSystem: (systemId: string) => void;
     onSelectPlanet: (planetId: string) => void;
@@ -18,6 +19,7 @@ export function StarSystemView({
     system,
     systemPlanets,
     balances,
+    gameSymbol = "AVAX",
     onBack,
     onManageSystem,
     onSelectPlanet,
@@ -58,7 +60,7 @@ export function StarSystemView({
                                     Tribute: {system.tribute_percent}%
                                 </Badge>
                                 <Badge variant="outline" className="text-sm">
-                                    Treasury: {balances.avax || "0"} AVAX
+                                    Treasury: {balances.avax || "0"} {gameSymbol}
                                 </Badge>
                             </div>
                         </div>

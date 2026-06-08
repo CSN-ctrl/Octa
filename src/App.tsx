@@ -464,10 +464,33 @@ function AppContent() {
                       <Route path="/signup" element={<Login />} />
                       <Route path="/register" element={<Navigate to="/signup" replace />} />
                       <Route path="/login" element={<Login />} />
-                      <Route path="/universe" element={<UnifiedUniverse />} />
                       <Route
                         path="/universe/octavia"
                         element={<Navigate to="/universe?planet=sarakt-prime&city=octavia" replace />}
+                      />
+                      <Route
+                        path="/universe/system/:systemId"
+                        element={
+                          <RouteErrorBoundary routeName="Star System">
+                            <UnifiedUniverse />
+                          </RouteErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/universe/planet/:planetId"
+                        element={
+                          <RouteErrorBoundary routeName="Planet">
+                            <UnifiedUniverse />
+                          </RouteErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/universe"
+                        element={
+                          <RouteErrorBoundary routeName="Unified Universe">
+                            <UnifiedUniverse />
+                          </RouteErrorBoundary>
+                        }
                       />
                       <Route path="/business" element={<Business />} />
                       <Route path="/ilo" element={

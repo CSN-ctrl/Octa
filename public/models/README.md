@@ -15,7 +15,7 @@ public/models/
 
 | File | Source | License | Used in |
 |------|--------|---------|---------|
-| _(none yet)_ | — | — | Procedural R3F only |
+| `landmarks/octavia-gate.glb` | [Kenney Starter Kit City Builder — building-small-a](https://github.com/KenneyNL/Starter-Kit-City-Builder/blob/main/models/building-small-a.glb) | CC0 1.0 | `OctaviaLandmark` in `OctaviaCapitalCity` |
 
 ## Add a model
 
