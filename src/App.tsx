@@ -466,7 +466,15 @@ function AppContent() {
                       <Route path="/login" element={<Login />} />
                       <Route
                         path="/universe/octavia"
-                        element={<Navigate to="/universe?planet=sarakt-prime&city=octavia" replace />}
+                        element={<Navigate to="/universe/planet/sarakt-prime/city/octavia" replace />}
+                      />
+                      <Route
+                        path="/universe/planet/:planetId/city/:citySlug"
+                        element={
+                          <RouteErrorBoundary routeName="Universe City">
+                            <UnifiedUniverse />
+                          </RouteErrorBoundary>
+                        }
                       />
                       <Route
                         path="/universe/system/:systemId"

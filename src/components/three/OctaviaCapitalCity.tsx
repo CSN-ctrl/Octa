@@ -2,6 +2,8 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { plotWorldPosition } from "@/lib/plot-coordinates";
 import { OctaviaLandmark } from "./landmarks/OctaviaLandmark";
+import { OctaviaProp } from "./landmarks/OctaviaProp";
+import { OctaviaTower } from "./landmarks/OctaviaTower";
 
 const TREASURY_GOLD = "#fbbf24";
 const TREASURY_ACCENT = "#a78bfa";
@@ -148,8 +150,10 @@ export function OctaviaCapitalCity({ radius, cityColor }: OctaviaCapitalCityProp
         <meshBasicMaterial color={TREASURY_GOLD} transparent opacity={0.5} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
-      {/* CC0 GLB landmark — plot spiral center, non-interactive */}
+      {/* CC0 GLB landmarks — non-interactive */}
       <OctaviaLandmark radius={radius} />
+      <OctaviaTower radius={radius} />
+      <OctaviaProp radius={radius} />
     </group>
   );
 }
