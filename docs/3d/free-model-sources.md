@@ -43,7 +43,7 @@ Use **downloadable GLB/GLTF** assets from these sites. No modeling software requ
 | View | Procedural (today) | Optional GLB upgrade |
 |------|-------------------|----------------------|
 | `/universe` galaxy | `GalaxyParticles`, `CelestialBody` | Space stations, nebula props (low poly) |
-| Plot grid | `PlotInstancedGrid` | Single landmark GLB at spiral center |
+| Plot grid | `PlotInstancedGrid` | Single landmark GLB at spiral center (`octavia-gate.glb` mounted) |
 | City / purchase UI | 2D + cards | Small tower or gate GLB as preview |
 
 ## Import steps
