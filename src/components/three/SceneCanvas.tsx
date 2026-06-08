@@ -1,5 +1,6 @@
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useCallback, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
+import type { WebGLRenderer } from "three";
 import { Loader2 } from "lucide-react";
 
 type SceneCanvasProps = {
@@ -29,6 +30,18 @@ export function SceneCanvas({
   dpr = [1, 2],
   cameraPosition = [3, 3, 3],
 }: SceneCanvasProps) {
+  const onCreated = useCallback(({ gl }: { gl: WebGLRenderer }) => {
+    const canvas = gl.domElement;
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+    };
+    const onContextRestored = () => {
+      gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    };
+    canvas.addEventListener("webglcontextlost", onContextLost, false);
+    canvas.addEventListener("webglcontextrestored", onContextRestored, false);
+  }, []);
+
   return (
     <div className={className ?? "relative h-full w-full"}>
       <Suspense fallback={<CanvasFallback />}>
@@ -40,6 +53,7 @@ export function SceneCanvas({
             alpha: false,
             powerPreference: "high-performance",
           }}
+          onCreated={onCreated}
           style={{ background: "#030308" }}
         >
           <color attach="background" args={["#030308"]} />
