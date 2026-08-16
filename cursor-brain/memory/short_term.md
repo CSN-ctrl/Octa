@@ -4,20 +4,16 @@
 
 ## Active focus
 
-- Fuji-only production prep: Phase 2 Safe transfer script + Phase 3 pause/Ownable2Step hardening.
-- Keep `requireDigitalID = false`. No mainnet (43114) work.
+- Complete all Fuji-only production-prep phases (1–5). Mainnet deferred. requireDigitalID stays false.
 
 ## Scratch
 
-- Branch: `cursor/fuji-contract-hardening-46ee`
-- Implement transfer-treasury-to-safe.mjs (stub today)
-- Harden SaraktLandV2 + SaraktTreasury (pause, Ownable2Step)
-- Foundry tests; redeploy guidance for Fuji if bytecode changes
+- Branch: cursor/fuji-contract-hardening-46ee (continue) or new work on same PR
+- Phase 3 hardening already merged to branch; need redeploy path, ABI cleanup, docs, verification tooling, ops runbooks
+- Live Safe transfer blocked without SAFE_ADDRESS + deployer key
 
 ## Blockers
 
-- None yet (Safe address may be env-provided; script must work without live Safe for unit path)
+- Live ownership transfer / Safe creation needs operator secrets
 
 ---
-
-_Reset this file at the beginning of each new task._

@@ -138,46 +138,11 @@ export function useLandPlots() {
         }
       }
 
-      // Fetch contract state with individual error handling and timeouts
-      let total: bigint;
+      // SaraktLandV2 has no TOTAL_PLOTS(); Phase-1 capacity is an app constant.
+      const total: bigint = 10_000n;
       let sold: bigint = 0n;
       let price: bigint = 0n;
       let active: boolean = false;
-
-      try {
-        total = await withTimeout(contract.TOTAL_PLOTS(), 10000);
-        // Validate that we got a valid result (not empty)
-        if (total === undefined || total === null) {
-          throw new Error("TOTAL_PLOTS returned empty result");
-        }
-      } catch (error: any) {
-        // If TOTAL_PLOTS fails, check if it's a decode error or timeout (contract might not be deployed)
-        const isTimeout = error.message?.includes("timeout") || error.message?.includes("Contract call timeout");
-        const isBadData = error.code === "BAD_DATA" || error.message?.includes("could not decode");
-
-        if (isBadData || isTimeout) {
-          const contractAddress = contract.target;
-          // Only log once to avoid console spam - use debug level for expected errors
-          if (!contractWarningLoggedRef.current) {
-            if (isTimeout) {
-              console.debug(
-                `Contract call timeout for TOTAL_PLOTS at address ${contractAddress}. ` +
-                `This is expected if the contract hasn't been deployed yet or the RPC is slow.`
-              );
-            } else {
-              console.debug(
-                `Contract may not be deployed at address ${contractAddress} or TOTAL_PLOTS function unavailable. ` +
-                `This is expected if the contract hasn't been deployed yet.`
-              );
-            }
-            contractWarningLoggedRef.current = true;
-          }
-          // Don't show toast for this - it's expected if contract isn't deployed yet
-          setLoading(false);
-          return;
-        }
-        throw error;
-      }
 
       try {
         const priceCall = isOnChainCryptoMode()

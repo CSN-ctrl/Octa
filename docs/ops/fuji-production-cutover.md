@@ -1,7 +1,21 @@
 # Fuji indexer production cutover (octa)
 
-Project: `agqkiwarwxrcemhspxxv`  
-Contracts deployed at Fuji block **55878103** (Snowtrace `0x35362d7`).
+Project: `agqkiwarwxrcemhspxxv`
+
+## Deploy / start-block note
+
+| Source | Block | Notes |
+|--------|------:|-------|
+| Routescan (first txs on current Fuji stack) | **~55796439** | Prefer for historical backfill of the **current** addresses |
+| Prior cutover / code defaults | **55878103** | Cited in earlier docs and `DEFAULT_FUJI_*_START_BLOCK` in edge functions |
+| Snowtrace deploy ref | — | Older note referenced Snowtrace `0x35362d7` alongside `55878103` |
+
+After any **redeploy**, do **not** reuse either number blindly: take the new contracts’ creation / first-tx block from the explorer, then set:
+
+- `FUJI_START_BLOCK`
+- `FUJI_LAND_START_BLOCK`
+
+Reset or advance `treasury_ingest_checkpoints` if you intentionally re-scan.
 
 ## 1. Migrations (applied via Supabase MCP)
 
@@ -28,8 +42,8 @@ Set in Supabase Dashboard → Edge Functions → Secrets (or `supabase secrets s
 | Secret | Value |
 |--------|-------|
 | `ALCHEMY_API_KEY` | Alchemy Fuji RPC key |
-| `FUJI_START_BLOCK` | `55878103` |
-| `FUJI_LAND_START_BLOCK` | `55878103` |
+| `FUJI_START_BLOCK` | First treasury activity block (see note above; update after redeploy) |
+| `FUJI_LAND_START_BLOCK` | First land activity block (update after redeploy) |
 | `FUJI_DEPOSIT_CONFIRMATIONS` | `3` |
 | `INGEST_CRON_SECRET` | (optional) random string; add matching header to cron if used |
 
@@ -59,3 +73,5 @@ Manual trigger:
 curl -X POST https://agqkiwarwxrcemhspxxv.supabase.co/functions/v1/ingest-fuji-deposits
 curl -X POST https://agqkiwarwxrcemhspxxv.supabase.co/functions/v1/ingest-fuji-land-transfers
 ```
+
+Staging ops (rate, pause, smoke): [fuji-staging-ops.md](./fuji-staging-ops.md). Master gates: [fuji-staging-checklist.md](./fuji-staging-checklist.md).

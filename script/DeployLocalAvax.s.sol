@@ -64,7 +64,11 @@ contract DeployLocalAvax is Script {
         land.setUSDC(xbglAddr);
         land.setPhase1Prices(0, plotPriceXbgl);
         land.setTreasuryRouting(payable(address(treasury)), payable(address(treasury)));
-        land.toggleSales(true);
+        // Staging default: sales off until Safe enables (SALES_ACTIVE=true to open at deploy).
+        bool salesOn = vm.envOr("SALES_ACTIVE", false);
+        land.toggleSales(salesOn);
+        // Phase 1 invariant: identity stays off-chain.
+        require(!land.requireDigitalID(), "requireDigitalID must stay false");
 
         uint256 liquidity = vm.envOr("SANDBOX_TREASURY_XBGL_WEI", TREASURY_XBGL_LIQUIDITY);
         XBGLToken(xbglAddr).transfer(address(treasury), liquidity);
@@ -85,6 +89,9 @@ contract DeployLocalAvax is Script {
         console2.log("XBGLToken:", xbglAddr);
         console2.log("SaraktTreasury (plot registry):", address(treasury));
         console2.log("SaraktLandV2:", address(land));
+        console2.log("LocalDigitalID:", address(digitalID));
         console2.log("Phase1PriceXBGL:", plotPriceXbgl);
+        console2.log("SalesActive:", salesOn);
+        console2.log("RequireDigitalID:", land.requireDigitalID());
     }
 }

@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /**
- * Deploy full game contract stack to Avalanche Fuji (43113) via Alchemy RPC.
- * Uses the same DeployLocalAvax.s.sol script as local 1337 deploys.
+ * Deploy full game contract stack to Avalanche Fuji (43113).
+ * Uses DeployFuji.s.sol (chain-id gated) → DeployLocalAvax hardening path.
+ *
+ * Defaults after hardening:
+ *   - SALES_ACTIVE=false (enable later via Safe toggleSales)
+ *   - requireDigitalID remains false (enforced in Solidity deploy)
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
@@ -11,8 +15,7 @@ import { resolveChaosstarXbglAddress } from "./fetch-chaosstar-xbgl.mjs";
 import { resolvePlotPrices } from "./plot-avax-pricing.mjs";
 
 const FUJI_CHAIN_ID = "43113";
-const DEFAULT_FUJI_METADATA =
-  "https://www.sarakt.com/metadata/land/{id}.json";
+const DEFAULT_FUJI_METADATA = "https://www.sarakt.com/metadata/land/{id}.json";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const sandboxDir = join(root, "sandbox");
@@ -59,13 +62,24 @@ function resolveDeployerKey(env) {
   return pk;
 }
 
+function parseBool(v, fallback) {
+  if (v === undefined || v === null || String(v).trim() === "") return fallback;
+  const s = String(v).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(s)) return true;
+  if (["0", "false", "no", "off"].includes(s)) return false;
+  return fallback;
+}
+
 const env = loadSandboxEnv();
 const rpc = resolveFujiRpc(env);
-const chainId = env.SANDBOX_CHAIN_ID || FUJI_CHAIN_ID;
+const chainId = FUJI_CHAIN_ID;
 const forge = forgeBin(env);
 const deployerKey = resolveDeployerKey(env);
+const salesActive = parseBool(env.SALES_ACTIVE, false);
 
 env.XBGL_DEPLOYER_PRIVATE_KEY = deployerKey;
+env.SANDBOX_CHAIN_ID = chainId;
+env.SALES_ACTIVE = salesActive ? "true" : "false";
 env.SANDBOX_METADATA_BASE_URI =
   env.SANDBOX_METADATA_BASE_URI?.trim() || DEFAULT_FUJI_METADATA;
 
@@ -75,12 +89,14 @@ if (chaosRef) {
 }
 
 console.log(`[fuji] deploy → ${rpc.replace(/\/v2\/[^/]+$/, "/v2/***")} chain ${chainId}`);
+console.log(`[fuji] SALES_ACTIVE=${salesActive} (requireDigitalID stays false)`);
 
-const verify = spawnSync(
-  "cast",
-  ["chain-id", "--rpc-url", rpc],
-  { cwd: root, env, encoding: "utf8", shell: false },
-);
+const verify = spawnSync("cast", ["chain-id", "--rpc-url", rpc], {
+  cwd: root,
+  env,
+  encoding: "utf8",
+  shell: false,
+});
 if (verify.status !== 0 || verify.stdout?.trim() !== FUJI_CHAIN_ID) {
   console.error("[fuji] RPC chain-id mismatch — expected 43113, got:", verify.stdout?.trim());
   process.exit(1);
@@ -92,15 +108,12 @@ env.PHASE1_PRICE_AVAX_WEI = "0";
 console.log(
   `[fuji] plot ${prices.plotEur} EUR → ${prices.xbglHuman} xBGL; metadata ${env.SANDBOX_METADATA_BASE_URI}`,
 );
-if (chaosRef) {
-  console.log(`[fuji] ChaosStar xBGL reference (8888): ${chaosRef}`);
-}
 
 const run = spawnSync(
   forge,
   [
     "script",
-    "script/DeployLocalAvax.s.sol",
+    "script/DeployFuji.s.sol:DeployFuji",
     "--rpc-url",
     rpc,
     "--broadcast",
@@ -113,8 +126,12 @@ const run = spawnSync(
 
 if (run.status !== 0) process.exit(run.status ?? 1);
 
-const broadcastPath = join(root, "broadcast", "DeployLocalAvax.s.sol", chainId, "run-latest.json");
-if (!existsSync(broadcastPath)) {
+const broadcastCandidates = [
+  join(root, "broadcast", "DeployFuji.s.sol", chainId, "run-latest.json"),
+  join(root, "broadcast", "DeployLocalAvax.s.sol", chainId, "run-latest.json"),
+];
+const broadcastPath = broadcastCandidates.find((p) => existsSync(p));
+if (!broadcastPath) {
   console.warn("[fuji] deploy ok but no broadcast file to parse");
   process.exit(0);
 }
@@ -132,9 +149,13 @@ const out = {
   chainId: Number(chainId),
   rpc: rpc.replace(/\/v2\/[^/]+$/, "/v2/<ALCHEMY_API_KEY>"),
   deployedAt: new Date().toISOString().slice(0, 10),
-  script: "DeployLocalAvax.s.sol",
+  script: "DeployFuji.s.sol",
   network: "avalanche-fuji",
-  deployer: env.SANDBOX_DEPLOYER || created.DeployLocalAvax || null,
+  hardened: true,
+  ownable2Step: true,
+  pausable: true,
+  requireDigitalID: false,
+  deployer: env.SANDBOX_DEPLOYER || null,
   chaosstarXbglReference: chaosRef || null,
   chaosstarChainId: 8888,
   contracts: {
@@ -152,7 +173,7 @@ const out = {
     eurToXbgl: "1.955833",
     avaxUsdUsed: prices.avaxUsd,
     eurToUsdcUsed: prices.eurToUsdc,
-    salesActive: true,
+    salesActive,
     metadataBaseUri: env.SANDBOX_METADATA_BASE_URI,
   },
 };
@@ -165,16 +186,40 @@ console.log(`[fuji] wrote ${outPath}`);
 
 const publicDir = join(root, "public", "sandbox", "deployments");
 mkdirSync(publicDir, { recursive: true });
-const publicPath = join(publicDir, `${chainId}-latest.json`);
-copyFileSync(outPath, publicPath);
-console.log(`[fuji] copied → ${publicPath}`);
+copyFileSync(outPath, join(publicDir, `${chainId}-latest.json`));
+console.log(`[fuji] copied → public/sandbox/deployments/${chainId}-latest.json`);
+
+// Keep public/addresses.json in sync (canonical Fuji map)
+const addrPath = join(root, "public", "addresses.json");
+writeFileSync(
+  addrPath,
+  JSON.stringify(
+    {
+      _source: "sandbox/deployments/43113-latest.json",
+      chainId: 43113,
+      network: "avalanche-fuji",
+      land: out.contracts.SaraktLandV2 || "",
+      xbglToken: out.contracts.XBGLToken || "",
+      treasury: out.contracts.SaraktTreasury || "",
+      digitalID: out.contracts.LocalDigitalID || "",
+      metadataBaseUri: out.params.metadataBaseUri,
+    },
+    null,
+    2,
+  ) + "\n",
+);
+console.log(`[fuji] synced ${addrPath}`);
 
 if (out.contracts.XBGLToken) {
-  console.log("\n[fuji] Add to .env.local (or Vercel env):");
+  console.log("\n[fuji] Next steps:");
+  console.log("  1. npm run sandbox:verify:fuji");
+  console.log("  2. Create Fuji Safe (2-of-3) → set SAFE_ADDRESS in sandbox/.env");
+  console.log("  3. DRY_RUN=1 npm run sandbox:transfer:safe");
+  console.log("  4. npm run sandbox:transfer:safe  (then Safe acceptOwnership)");
+  console.log("  5. Safe: setXbglPerAvax + toggleSales(true) when ready");
+  console.log("  6. Update Vercel/.env.production addresses + indexer start blocks");
+  console.log("\n[fuji] Env snippet:");
   console.log("VITE_CHAIN_ID=43113");
-  console.log("VITE_NETWORK_NAME=Avalanche Fuji");
-  console.log(`VITE_AVALANCHE_RPC=https://avax-fuji.g.alchemy.com/v2/<ALCHEMY_API_KEY>`);
-  console.log(`VITE_ALCHEMY_API_KEY=<your Alchemy key>`);
   console.log(`VITE_XBGL_TOKEN_ADDRESS=${out.contracts.XBGLToken}`);
   console.log(`VITE_CONTRACT_ADDRESS=${out.contracts.SaraktLandV2}`);
   console.log(`VITE_TREASURY_ADDRESS=${out.contracts.SaraktTreasury}`);

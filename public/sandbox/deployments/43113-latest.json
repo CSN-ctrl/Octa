@@ -4,6 +4,9 @@
   "deployedAt": "2026-05-26",
   "script": "DeployLocalAvax.s.sol",
   "network": "avalanche-fuji",
+  "hardened": false,
+  "redeployRequiredForPause": true,
+  "requireDigitalID": false,
   "deployer": null,
   "chaosstarXbglReference": null,
   "chaosstarChainId": 8888,
@@ -24,5 +27,6 @@
     "eurToUsdcUsed": 1.1,
     "salesActive": true,
     "metadataBaseUri": "https://www.sarakt.com/metadata/land/{id}.json"
-  }
+  },
+  "notes": "Pre-hardening live stack. Redeploy with npm run sandbox:deploy:fuji for Ownable2Step+Pausable, then Safe transfer."
 }
