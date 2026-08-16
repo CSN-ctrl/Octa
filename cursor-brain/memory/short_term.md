@@ -1,19 +1,22 @@
 # Short-term memory
 
-**Current task / session only.** Replace or clear when you start a new item in `tasks.md`.
+**Current task / session only.**
 
 ## Active focus
 
-- Implement Pirate Codex skills for Cursor (2026-05-01).
+- Fuji-only production prep: Phase 2 Safe transfer script + Phase 3 pause/Ownable2Step hardening.
+- Keep `requireDigitalID = false`. No mainnet (43114) work.
 
 ## Scratch
 
-- Build track skill + Marketing track skill under `.cursor/skills/`.
-- Ensure module coverage includes all 12 modules and 72 lesson checkpoints.
+- Branch: `cursor/fuji-contract-hardening-46ee`
+- Implement transfer-treasury-to-safe.mjs (stub today)
+- Harden SaraktLandV2 + SaraktTreasury (pause, Ownable2Step)
+- Foundry tests; redeploy guidance for Fuji if bytecode changes
 
 ## Blockers
 
-- None.
+- None yet (Safe address may be env-provided; script must work without live Safe for unit path)
 
 ---
 

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,8 +11,9 @@ import "./IPlotPurchaseSink.sol";
 /**
  * @title SaraktTreasury
  * @notice Holds AVAX / xBGL and registers plot purchases from SaraktLandV2.
+ * @dev Ownable2Step + Pausable. Owner withdrawals remain available while paused (emergency drain).
  */
-contract SaraktTreasury is Ownable, ReentrancyGuard, IPlotPurchaseSink {
+contract SaraktTreasury is Ownable2Step, Pausable, ReentrancyGuard, IPlotPurchaseSink {
     using SafeERC20 for IERC20;
     struct PlotRecord {
         address buyer;
@@ -50,7 +52,7 @@ contract SaraktTreasury is Ownable, ReentrancyGuard, IPlotPurchaseSink {
         }
     }
 
-    receive() external payable {
+    receive() external payable whenNotPaused {
         emit DepositAVAX(msg.sender, msg.value);
     }
 
@@ -86,7 +88,7 @@ contract SaraktTreasury is Ownable, ReentrancyGuard, IPlotPurchaseSink {
     }
 
     /// @notice Send AVAX; receive xBGL from treasury inventory (no off-chain ledger).
-    function depositAvaxForXbgl(uint256 minXbglOut) external payable nonReentrant {
+    function depositAvaxForXbgl(uint256 minXbglOut) external payable nonReentrant whenNotPaused {
         require(msg.value > 0, "avax=0");
         require(xbglToken != address(0), "xbgl unset");
         require(xbglPerAvaxE18 > 0, "rate unset");
@@ -121,13 +123,14 @@ contract SaraktTreasury is Ownable, ReentrancyGuard, IPlotPurchaseSink {
         emit PlotRegistered(plotId, buyer, amount, paymentToken);
     }
 
-    function depositERC20(address token, uint256 amount) external {
+    function depositERC20(address token, uint256 amount) external whenNotPaused {
         require(supportedTokens[token], "Token not supported");
         require(amount > 0, "Amount > 0");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         emit DepositERC20(msg.sender, token, amount);
     }
 
+    /// @notice Emergency AVAX drain — remains available while paused.
     function withdrawAVAX(address payable to, uint256 amount) external onlyOwner {
         require(amount <= address(this).balance, "Insufficient AVAX");
         (bool success,) = to.call{value: amount}("");
@@ -140,6 +143,14 @@ contract SaraktTreasury is Ownable, ReentrancyGuard, IPlotPurchaseSink {
         require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient balance");
         IERC20(token).safeTransfer(to, amount);
         emit WithdrawalERC20(to, token, amount);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     function balanceAVAX() external view returns (uint256) {

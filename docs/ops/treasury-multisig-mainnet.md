@@ -1,17 +1,24 @@
-# Treasury Multisig — Mainnet Transfer Runbook
+# Treasury Multisig — Fuji Staging Runbook
 
-**Status:** Pre-mainnet checklist  
+**Status:** Fuji (43113) staging checklist — mainnet deferred  
 **Owner:** Core team ops  
-**Last updated:** 2026-06-07
+**Last updated:** 2026-08-16
 
 ---
 
 ## Context
 
-`SaraktTreasury` is deployed on Avalanche Fuji (chain 43113) with a single EOA owner during development.
-Before any mainnet deployment the owner role **must** be transferred to a Gnosis Safe multisig to prevent single-key loss or compromise.
+Phase 1 contracts on Avalanche Fuji use a single EOA owner during early development.
+Before treating Fuji as production-like staging, transfer ownership to a Gnosis Safe.
 
-This document covers the required steps, Safe configuration expectations, and verification checklist.
+Hardened contracts (`SaraktTreasury`, `SaraktLandV2`) use **Ownable2Step** + **Pausable**:
+- Script calls `transferOwnership(safe)` → sets `pendingOwner`
+- Safe must call `acceptOwnership()` to take control
+- `LocalDigitalID` remains plain `Ownable` (1-step) while `requireDigitalID` stays **false**
+
+**Redeploy note:** Pause / Ownable2Step require a **new Fuji deploy** of Land + Treasury before transferring the hardened bytecode. Do not transfer old addresses expecting pause selectors.
+
+Mainnet (43114) is **out of scope**. The transfer script **hard-rejects** `CHAIN_ID=43114`.
 
 ---
 
@@ -19,25 +26,15 @@ This document covers the required steps, Safe configuration expectations, and ve
 
 | Requirement | Notes |
 |---|---|
-| Gnosis Safe deployed on target network | Minimum 2-of-3 signers recommended for testnet; 3-of-5 for mainnet |
-| All signers have hardware wallets (Ledger/Trezor) | Software-only signers are not accepted for treasury operations |
-| Safe address recorded in `sandbox/deployments/<chainId>-latest.json` as `safeAddress` | Add the key before running transfer |
-| Current owner EOA holds enough AVAX for gas | At least 0.1 AVAX on the deployer key |
-| `DEPLOYER_PRIVATE_KEY` env var available in terminal session | Do NOT commit to repo |
+| Gnosis Safe on **Avalanche Fuji** | 2-of-3 recommended for staging |
+| Signers have wallets with Fuji AVAX | Hardware preferred |
+| Current owner EOA has gas | ≥ 0.05 AVAX |
+| Env vars in shell only | Never commit keys |
+| Deployment manifest | `sandbox/deployments/43113-latest.json` |
 
 ---
 
-## 2. Safe Configuration (Mainnet)
-
-Recommended Safe setup for mainnet:
-
-```
-Signers: 5
-Threshold: 3-of-5
-Network: Avalanche C-Chain (chainId 43114)
-```
-
-For Fuji staging:
+## 2. Safe Configuration (Fuji)
 
 ```
 Signers: 3
@@ -45,98 +42,113 @@ Threshold: 2-of-3
 Network: Avalanche Fuji (chainId 43113)
 ```
 
-Create the Safe at [app.safe.global](https://app.safe.global/) → Connect wallet → New Safe → Avalanche network.
+Create at [app.safe.global](https://app.safe.global/) → New Safe → Avalanche / Fuji.
 
 ---
 
 ## 3. Transfer Steps
 
-### 3a. Confirm current owner
+### 3a. Confirm current owners
 
 ```bash
-cast call $VITE_TREASURY_ADDRESS "owner()(address)" \
-  --rpc-url $VITE_AVALANCHE_RPC
+RPC=https://api.avax-test.network/ext/bc/C/rpc
+cast call $VITE_TREASURY_ADDRESS "owner()(address)" --rpc-url $RPC
+cast call $VITE_CONTRACT_ADDRESS "owner()(address)" --rpc-url $RPC
+cast call $VITE_DIGITAL_ID_ADDRESS "owner()(address)" --rpc-url $RPC
 ```
 
-Output should match the deployer EOA address in `sandbox/deployments/43113-latest.json`.
-
-### 3b. Confirm Safe address
+### 3b. Dry-run (no broadcast)
 
 ```bash
-# The Safe address you will transfer ownership to
-SAFE_ADDRESS=<gnosis-safe-address>
-```
-
-Verify the Safe exists and has correct signers:
-
-```bash
-cast call $SAFE_ADDRESS "getOwners()(address[])" \
-  --rpc-url $VITE_AVALANCHE_RPC
-```
-
-### 3c. Run the transfer script
-
-```bash
+DRY_RUN=1 \
 DEPLOYER_PRIVATE_KEY=<key> \
-SAFE_ADDRESS=<safe-address> \
+SAFE_ADDRESS=<fuji-safe> \
 CHAIN_ID=43113 \
+RPC_URL=https://api.avax-test.network/ext/bc/C/rpc \
   node scripts/sandbox/transfer-treasury-to-safe.mjs
 ```
 
-The script will:
-1. Read `sandbox/deployments/<chainId>-latest.json` for the treasury address.
-2. Call `SaraktTreasury.transferOwnership(safeAddress)`.
-3. Wait for receipt and print the transaction hash.
-4. Call `owner()` to confirm the new owner matches `safeAddress`.
-
-### 3d. Accept ownership (OwnableV2 two-step, if applicable)
-
-If the contract uses OpenZeppelin's `Ownable2Step`, the Safe must accept ownership:
-
-1. Open the Safe UI at [app.safe.global](https://app.safe.global/).
-2. Navigate to **New Transaction → Contract Interaction**.
-3. Enter `SaraktTreasury` address and ABI.
-4. Call `acceptOwnership()` — requires threshold signers to approve.
-5. Execute when threshold is reached.
-
-Confirm final owner:
+### 3c. Execute transferOwnership
 
 ```bash
-cast call $VITE_TREASURY_ADDRESS "owner()(address)" \
-  --rpc-url $VITE_AVALANCHE_RPC
+DEPLOYER_PRIVATE_KEY=<key> \
+SAFE_ADDRESS=<fuji-safe> \
+CHAIN_ID=43113 \
+RPC_URL=https://api.avax-test.network/ext/bc/C/rpc \
+  node scripts/sandbox/transfer-treasury-to-safe.mjs
 ```
 
-Must equal `SAFE_ADDRESS`.
+The script:
+1. Rejects mainnet (`43114`) and non-Fuji chain IDs
+2. Loads Treasury (+ Land / DigitalID if in manifest)
+3. Calls `transferOwnership(SAFE)` from the current owner EOA
+4. For Ownable2Step: verifies `pendingOwner == SAFE` (owner unchanged until accept)
+5. For LocalDigitalID (1-step): verifies `owner == SAFE`
+6. Writes `safeAddress` into the deployment manifest
+
+### 3d. Safe accepts Ownable2Step
+
+For **SaraktTreasury** and **SaraktLandV2**:
+
+1. Safe UI → New Transaction → Contract interaction
+2. Address = contract; ABI method = `acceptOwnership()`
+3. Threshold sign + execute
+4. Verify:
+
+```bash
+cast call <treasury> "owner()(address)" --rpc-url $RPC
+cast call <land> "owner()(address)" --rpc-url $RPC
+# both must equal SAFE_ADDRESS
+```
 
 ---
 
-## 4. Post-Transfer Verification Checklist
+## 4. Post-Transfer Checklist
 
-- [ ] `owner()` returns the Safe address (not the deployer EOA)
-- [ ] Deployer EOA can no longer call `onlyOwner` functions (test with `withdrawAvax(0, deployer)` — expect revert)
-- [ ] Safe signers can propose and execute a no-op transaction (`renounceOwnership` with a rejection) to confirm quorum flow
-- [ ] Treasury address and new `safeAddress` recorded in deployment JSON
-- [ ] `.env.production` `VITE_TREASURY_ADDRESS` unchanged (contract address is the same; only the internal owner changes)
-- [ ] Update `cursor-brain/memory/long_term.md` with the Safe address and transfer tx hash
-
----
-
-## 5. Emergency Procedures
-
-**If the Safe becomes inaccessible (signers lost keys):**
-- This is irrecoverable for the treasury owner role if all signers are lost.
-- Maintain off-site encrypted backups of each signer's seed phrase.
-- Consider a time-locked guardian contract as a backstop (future improvement).
-
-**If the transfer is accidentally sent to the wrong address:**
-- If the wrong address is an EOA you control, use that key to call `transferOwnership(safeAddress)` immediately.
-- If the wrong address is a contract without `acceptOwnership`, the treasury is bricked — audit before sending.
+- [ ] Treasury `owner()` == Safe
+- [ ] Land `owner()` == Safe
+- [ ] DigitalID `owner()` == Safe (1-step)
+- [ ] Deployer EOA cannot `pause()` / `withdrawAVAX` (expect revert)
+- [ ] Safe can `pause()` / `unpause()` Land and Treasury
+- [ ] `requireDigitalID()` still `false`
+- [ ] Manifest `safeAddress` recorded
+- [ ] Smoke: deposit AVAX→xBGL + buy plot (while unpaused)
 
 ---
 
-## 6. References
+## 5. Pause policy (hardened contracts)
 
-- [Gnosis Safe Documentation](https://docs.safe.global/)
+**Ops rule:** For a full kill-switch, pause **both** Land and Treasury. Pausing only Treasury does **not** stop ERC-20 plot buys (Land pays routing wallets via `transfer`, not `depositERC20`).
+
+| Surface | While paused |
+|---|---|
+| Land `buyPlotWithAVAX` / `buyPlotWithUSDC` | Blocked |
+| Treasury `depositAvaxForXbgl` / `depositERC20` / `receive` | Blocked |
+| Treasury `withdrawAVAX` / `withdrawERC20` | **Allowed** (emergency drain) |
+| Land owner admin (`toggleSales`, prices, etc.) | Allowed |
+
+---
+
+## 6. Emergency
+
+**Safe inaccessible:** irrecoverable for owner role if all signers lost — keep encrypted seed backups.
+
+**Wrong Safe on 2-step:** cancel by having current owner call `transferOwnership` again to the correct Safe (pending overwritten) before anyone accepts; if already accepted to wrong party, recover only if that party can transfer back.
+
+---
+
+## 7. Deferred (mainnet)
+
+- Avalanche C-Chain `43114` deploy / Safe 3-of-5
+- Mainnet indexer + Vercel env cutover
+- Enabling `requireDigitalID`
+
+---
+
+## 8. References
+
+- `scripts/sandbox/transfer-treasury-to-safe.mjs`
+- `sandbox/deployments/43113-latest.json`
+- `src/contracts/phase1/SaraktTreasury.sol` / `SaraktLandV2.sol`
+- [Safe docs](https://docs.safe.global/)
 - [OpenZeppelin Ownable2Step](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable2Step)
-- `scripts/sandbox/transfer-treasury-to-safe.mjs` — automated transfer script
-- `sandbox/deployments/43113-latest.json` — current Fuji deployment manifest

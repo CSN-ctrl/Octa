@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
-import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "./IPlotPurchaseSink.sol";
@@ -16,7 +17,9 @@ interface IDigitalID {
     function ids(address user) external view returns (string memory username, string memory emailHash, uint256 registeredAt, bool active);
 }
 
-contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
+/// @notice Phase 1 land sales (ERC-1155). Ownable2Step + Pausable for Fuji ops hardening.
+/// @dev `requireDigitalID` stays false for Phase 1 (identity off-chain).
+contract SaraktLandV2 is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public plotsSold = 0;
     uint256 public priceInAVAX = 0.5 ether;
     uint256 public phase1PriceAVAX = 0.5 ether;
@@ -49,7 +52,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
         operationalTreasury = payable(msg.sender);
     }
 
-    function buyPlotWithAVAX(uint256 plotId) external payable nonReentrant {
+    function buyPlotWithAVAX(uint256 plotId) external payable nonReentrant whenNotPaused {
         require(salesActive, "Sales not active");
         require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already sold");
@@ -110,7 +113,7 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
     }
 
     /// @notice Pay for a plot in ERC-20 xBGL (configure token via setUSDC + phase1PriceUSDC).
-    function buyPlotWithUSDC(uint256 plotId, uint256 amount) external nonReentrant {
+    function buyPlotWithUSDC(uint256 plotId, uint256 amount) external nonReentrant whenNotPaused {
         require(salesActive, "Sales not active");
         require(plotId > 0, "Invalid plot");
         require(!plotMinted[plotId], "Already sold");
@@ -172,6 +175,14 @@ contract SaraktLandV2 is ERC1155, Ownable, ReentrancyGuard {
 
     function toggleSales(bool active) external onlyOwner {
         salesActive = active;
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /// @notice Updates the ERC-1155 metadata template (must contain `{id}` per EIP-1155).

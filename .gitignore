@@ -37,3 +37,6 @@ key.txt.pub
 
 # External skills CLI staging (canonical copy lives in .cursor/skills/)
 .agents/
+
+out/
+cache/
