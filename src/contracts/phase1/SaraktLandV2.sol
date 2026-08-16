@@ -17,6 +17,10 @@ interface IDigitalID {
     function ids(address user) external view returns (string memory username, string memory emailHash, uint256 registeredAt, bool active);
 }
 
+interface IPlotResetSink {
+    function adminClearPlotRecord(uint256 plotId) external;
+}
+
 /// @notice Phase 1 land sales (ERC-1155). Ownable2Step + Pausable for Fuji ops hardening.
 /// @dev `requireDigitalID` stays false for Phase 1 (identity off-chain).
 contract SaraktLandV2 is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
@@ -42,6 +46,7 @@ contract SaraktLandV2 is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
     event PlotPurchasePending(
         uint256 indexed plotId, address indexed buyer, uint256 amount, address paymentToken, uint256 timestamp
     );
+    event PlotReset(uint256 indexed plotId, address indexed holder, address indexed operator);
 
     constructor(address _treasury, address _digitalID) ERC1155("ipfs://QmSarakt/{id}.json") Ownable(msg.sender) {
         require(_treasury != address(0), "Invalid treasury");
@@ -183,6 +188,33 @@ contract SaraktLandV2 is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /// @notice Fuji/local testnet only: burn plot NFT and free id for resale. Call while paused.
+    /// @dev Also clears treasury registry when plotRegistrar supports adminClearPlotRecord.
+    function adminResetPlot(uint256 plotId, address holder) external onlyOwner whenPaused {
+        require(
+            block.chainid == 43_113 || block.chainid == 1_337 || block.chainid == 31_337,
+            "testnet only"
+        );
+        require(plotId > 0, "Invalid plot");
+        require(plotMinted[plotId], "Not minted");
+        require(holder != address(0), "holder=0");
+        require(balanceOf(holder, plotId) > 0, "holder balance=0");
+
+        _burn(holder, plotId, 1);
+        plotMinted[plotId] = false;
+        pendingBuyer[plotId] = address(0);
+        if (plotsSold > 0) {
+            plotsSold -= 1;
+        }
+
+        if (plotRegistrar != address(0)) {
+            // optional clear — ignore if registrar has no clear (legacy)
+            try IPlotResetSink(plotRegistrar).adminClearPlotRecord(plotId) {} catch {}
+        }
+
+        emit PlotReset(plotId, holder, msg.sender);
     }
 
     /// @notice Updates the ERC-1155 metadata template (must contain `{id}` per EIP-1155).

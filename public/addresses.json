@@ -1,13 +1,10 @@
 {
   "_source": "sandbox/deployments/43113-latest.json",
-  "_note": "Canonical Fuji addresses. Do not use legacy LAN/sandbox addresses. Updated on npm run sandbox:deploy:fuji.",
   "chainId": 43113,
   "network": "avalanche-fuji",
-  "land": "0xc34a5fcb5621b7755d66db5074069d0bbd68cd42",
-  "xbglToken": "0x6168ebd531c4e3019e91bd39afd7e4c36d2880d9",
-  "treasury": "0xee0ba6de15026d00a707a660123c93686c00df58",
-  "digitalID": "0x613414c056b4219faf436df9ece5cee7de4785c3",
-  "metadataBaseUri": "https://www.sarakt.com/metadata/land/{id}.json",
-  "hardened": false,
-  "redeployRequiredForPause": true
+  "land": "0xa4bad7f3f5d012be9e2deae1085085e1305f44d1",
+  "xbglToken": "0x8c354d902ae485c4d746145b5386a328dfb46334",
+  "treasury": "0xa5402c03c1d4e6d607263c73c468f6ee595ce9d9",
+  "digitalID": "0x1a367b2d2e57aec848f8aee04dbb9d0a58c123b2",
+  "metadataBaseUri": "https://www.sarakt.com/metadata/land/{id}.json"
 }

@@ -109,4 +109,43 @@ contract FujiUserFlowE2ETest is Test {
         vm.stopPrank();
         assertEq(land.balanceOf(user, 201), 1);
     }
+
+    function test_adminResetPlot_allowsRebuy() public {
+        vm.chainId(43_113);
+        xbgl.transfer(user, PLOT_PRICE * 2);
+        vm.startPrank(user);
+        xbgl.approve(address(land), PLOT_PRICE * 2);
+        land.buyPlotWithUSDC(301, PLOT_PRICE);
+        vm.stopPrank();
+        assertTrue(land.plotMinted(301));
+        assertTrue(treasury.isPlotRegistered(301));
+        assertEq(land.plotsSold(), 1);
+
+        land.pause();
+        land.adminResetPlot(301, user);
+
+        assertFalse(land.plotMinted(301));
+        assertEq(land.balanceOf(user, 301), 0);
+        assertEq(land.plotsSold(), 0);
+        assertFalse(treasury.isPlotRegistered(301));
+
+        land.unpause();
+        vm.startPrank(user);
+        land.buyPlotWithUSDC(301, PLOT_PRICE);
+        vm.stopPrank();
+        assertEq(land.balanceOf(user, 301), 1);
+        assertTrue(treasury.isPlotRegistered(301));
+    }
+
+    function test_adminResetPlot_revertsOnMainnetChainId() public {
+        vm.chainId(43_114);
+        xbgl.transfer(user, PLOT_PRICE);
+        vm.startPrank(user);
+        xbgl.approve(address(land), PLOT_PRICE);
+        land.buyPlotWithUSDC(302, PLOT_PRICE);
+        vm.stopPrank();
+        land.pause();
+        vm.expectRevert("testnet only");
+        land.adminResetPlot(302, user);
+    }
 }

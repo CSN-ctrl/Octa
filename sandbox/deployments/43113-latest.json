@@ -1,32 +1,32 @@
 {
   "chainId": 43113,
-  "rpc": "https://avax-fuji.g.alchemy.com/v2/<ALCHEMY_API_KEY>",
-  "deployedAt": "2026-05-26",
-  "script": "DeployLocalAvax.s.sol",
+  "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
+  "deployedAt": "2026-08-16",
+  "script": "DeployFuji.s.sol",
   "network": "avalanche-fuji",
-  "hardened": false,
-  "redeployRequiredForPause": true,
+  "hardened": true,
+  "ownable2Step": true,
+  "pausable": true,
   "requireDigitalID": false,
   "deployer": null,
   "chaosstarXbglReference": null,
   "chaosstarChainId": 8888,
   "contracts": {
-    "SaraktLandV2": "0xc34a5fcb5621b7755d66db5074069d0bbd68cd42",
-    "XBGLToken": "0x6168ebd531c4e3019e91bd39afd7e4c36d2880d9",
-    "ReserveMintController": "0xa4becfa9c110ba1ca6c505b8d608db1ffbba4474",
-    "SaraktTreasury": "0xee0ba6de15026d00a707a660123c93686c00df58",
-    "LocalDigitalID": "0x613414c056b4219faf436df9ece5cee7de4785c3"
+    "SaraktLandV2": "0xa4bad7f3f5d012be9e2deae1085085e1305f44d1",
+    "XBGLToken": "0x8c354d902ae485c4d746145b5386a328dfb46334",
+    "ReserveMintController": "0x2897183e685f8c70740a71f3078c58231a606d12",
+    "SaraktTreasury": "0xa5402c03c1d4e6d607263c73c468f6ee595ce9d9",
+    "LocalDigitalID": "0x1a367b2d2e57aec848f8aee04dbb9d0a58c123b2"
   },
   "params": {
     "phase1PriceXBGL": "195583300000000000000",
     "phase1PriceAVAX": "0",
-    "depositAvaxPerPlotEur100": "11702127660000000000",
+    "depositAvaxPerPlotEur100": "17268445840000000000",
     "plotPriceEur": 100,
     "eurToXbgl": "1.955833",
-    "avaxUsdUsed": 9.4,
+    "avaxUsdUsed": 6.37,
     "eurToUsdcUsed": 1.1,
-    "salesActive": true,
+    "salesActive": false,
     "metadataBaseUri": "https://www.sarakt.com/metadata/land/{id}.json"
-  },
-  "notes": "Pre-hardening live stack. Redeploy with npm run sandbox:deploy:fuji for Ownable2Step+Pausable, then Safe transfer."
+  }
 }

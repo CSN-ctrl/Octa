@@ -69,6 +69,7 @@ export const LAND_CONTRACT_ABI = [
   "function pause()",
   "function unpause()",
   "function paused() view returns (bool)",
+  "function adminResetPlot(uint256 plotId, address holder)",
   "function uri(uint256 id) view returns (string)",
   // ERC1155 functions
   "function balanceOf(address account, uint256 id) view returns (uint256)",
@@ -133,6 +134,7 @@ export const TREASURY_ABI = [
   "function pause()",
   "function unpause()",
   "function paused() view returns (bool)",
+  "function adminClearPlotRecord(uint256 plotId)",
   "function isPlotRegistered(uint256 plotId) view returns (bool)",
   "function getPlotRecord(uint256 plotId) view returns (address buyer, uint256 pricePaid, address paymentToken, uint256 registeredAt, bool registered)",
   "function plots(uint256 plotId) view returns (address buyer, uint256 pricePaid, address paymentToken, uint256 registeredAt, bool registered)",

@@ -44,6 +44,20 @@ Land.toggleSales(true|false)
 
 Deploy default is **false**. Enable only after rate set + Safe owns contracts + smoke passed.
 
+## 3b. Admin plot reset (testnet only)
+
+Free a sold plot for resale (burns NFT, clears treasury registry). **Paused + owner only.** Reverts on chain `43114`.
+
+```bash
+RPC=https://api.avax-test.network/ext/bc/C/rpc
+cast send $VITE_CONTRACT_ADDRESS "pause()" --private-key $PK --rpc-url $RPC
+cast send $VITE_CONTRACT_ADDRESS "adminResetPlot(uint256,address)" <plotId> <holder> \
+  --private-key $PK --rpc-url $RPC
+cast send $VITE_CONTRACT_ADDRESS "unpause()" --private-key $PK --rpc-url $RPC
+```
+
+No purchase refund — staging helper only.
+
 ## 4. Metadata URI
 
 ```bash

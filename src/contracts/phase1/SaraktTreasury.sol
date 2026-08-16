@@ -43,6 +43,7 @@ contract SaraktTreasury is Ownable2Step, Pausable, ReentrancyGuard, IPlotPurchas
     event LandContractUpdated(address indexed land);
     event XbglTokenUpdated(address indexed token);
     event SupportedTokenUpdated(address indexed token, bool supported);
+    event PlotRecordCleared(uint256 indexed plotId, address indexed operator);
 
     constructor(address[] memory _tokens) Ownable(msg.sender) {
         for (uint256 i = 0; i < _tokens.length; i++) {
@@ -163,6 +164,19 @@ contract SaraktTreasury is Ownable2Step, Pausable, ReentrancyGuard, IPlotPurchas
 
     function isPlotRegistered(uint256 plotId) external view returns (bool) {
         return plots[plotId].registered;
+    }
+
+    /// @notice Fuji/local testnet only: clear plot registry so the plot can be sold again.
+    /// @dev Intended to be called from SaraktLandV2.adminResetPlot via plotRegistrar.
+    function adminClearPlotRecord(uint256 plotId) external {
+        require(
+            block.chainid == 43_113 || block.chainid == 1_337 || block.chainid == 31_337,
+            "testnet only"
+        );
+        require(msg.sender == owner() || msg.sender == landContract, "not auth");
+        require(plots[plotId].registered, "not registered");
+        delete plots[plotId];
+        emit PlotRecordCleared(plotId, msg.sender);
     }
 
     function getPlotRecord(uint256 plotId)

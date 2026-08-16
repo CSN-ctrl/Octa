@@ -1,13 +1,13 @@
 # Short-term memory
 
 ## Active focus
-- End-to-end + full user flow testing for Fuji Phase 1 rail (contracts + app).
+- Add Fuji-only admin plot reset (Land + Treasury), Foundry tests, then redeploy to Fuji if keys present.
 
 ## Scratch
 - Branch: cursor/fuji-contract-hardening-46ee
-- Need: forge tests, vitest, verify-fuji, smoke if keys, browser flow if app boots
+- requireDigitalID stays false; chainid 43113 guard on reset
 
 ## Blockers
-- Live smoke/Safe needs FUJI_PRIVATE_KEY / SAFE_ADDRESS if absent
+- Redeploy needs FUJI_PRIVATE_KEY in sandbox/.env
 
 ---
