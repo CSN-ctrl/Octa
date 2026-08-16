@@ -70,7 +70,12 @@ export const LAND_CONTRACT_ABI = [
   "function unpause()",
   "function paused() view returns (bool)",
   "function adminResetPlot(uint256 plotId, address holder)",
+  "function adminGrantPlot(address to, uint256 plotId)",
+  "function adminClearPendingBuyer(uint256 plotId)",
   "function uri(uint256 id) view returns (string)",
+  "event PlotReset(uint256 indexed plotId, address indexed holder, address indexed operator)",
+  "event PlotGranted(uint256 indexed plotId, address indexed to, address indexed operator)",
+  "event PendingBuyerCleared(uint256 indexed plotId, address indexed previousBuyer, address indexed operator)",
   // ERC1155 functions
   "function balanceOf(address account, uint256 id) view returns (uint256)",
   "function balanceOfBatch(address[] calldata accounts, uint256[] calldata ids) view returns (uint256[])",

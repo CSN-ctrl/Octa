@@ -49,6 +49,8 @@ Deploy default is **false**. Enable only after rate set + Safe owns contracts + 
 Free a sold plot for resale (burns NFT, clears treasury registry). **Paused + owner only.** Reverts on chain `43114`.
 
 ```bash
+npm run sandbox:free-test:fuji -- reset <plotId> <holder>
+# or manually:
 RPC=https://api.avax-test.network/ext/bc/C/rpc
 cast send $VITE_CONTRACT_ADDRESS "pause()" --private-key $PK --rpc-url $RPC
 cast send $VITE_CONTRACT_ADDRESS "adminResetPlot(uint256,address)" <plotId> <holder> \
@@ -57,6 +59,31 @@ cast send $VITE_CONTRACT_ADDRESS "unpause()" --private-key $PK --rpc-url $RPC
 ```
 
 No purchase refund — staging helper only.
+
+## 3c. Free-test kit (Fuji / local only)
+
+Owner helpers so you can QA without chasing AVAX or plot inventory:
+
+| Command | What it does |
+|---|---|
+| `adminGrantPlot(to, plotId)` | Free mint + treasury register at 0 price (no pause needed) |
+| `adminResetPlot(plotId, holder)` | Burn + free id (requires pause) |
+| `adminClearPendingBuyer(plotId)` | Unstick a pending activation slot |
+| `toggleSales` / `pause` / `unpause` | Sales + kill-switch |
+
+CLI (reads `sandbox/deployments/43113-latest.json` + `FUJI_PRIVATE_KEY`):
+
+```bash
+npm run sandbox:free-test:fuji -- status
+npm run sandbox:free-test:fuji -- sales on
+npm run sandbox:free-test:fuji -- grant 77                 # mint to operator
+npm run sandbox:free-test:fuji -- grant 77 0xYourWallet
+npm run sandbox:free-test:fuji -- reset 77 0xHolder
+npm run sandbox:free-test:fuji -- loop 77                  # grant→reset→grant
+npm run sandbox:free-test:fuji -- seed-xbgl 0xWallet 1000  # transfer genesis xBGL
+```
+
+All admin* helpers revert on Avalanche mainnet chain id `43114`.
 
 ## 4. Metadata URI
 

@@ -37,7 +37,9 @@ Legend: **Code** = done in repo · **Live** = needs operator keys / Fuji Safe
 | Foundry `SaraktAccessControl` tests | **Code** |
 | Deploy defaults: `SALES_ACTIVE=false`, requireDigitalID false enforced | **Code** |
 | `npm run sandbox:deploy:fuji` via `DeployFuji.s.sol` | **Code** |
-| Redeploy hardened bytecode to Fuji + refresh manifests/env | **Live** (needs `sandbox/.env` with `FUJI_PRIVATE_KEY`) |
+| Redeploy hardened bytecode to Fuji + refresh manifests/env | **Live** ✓ 2026-08-16 |
+| Fuji-only `adminResetPlot` / `adminClearPlotRecord` | **Code** + **Live** (buy→reset→rebuy verified) |
+| Fuji-only `adminGrantPlot` / `adminClearPendingBuyer` + free-test CLI | **Code** (redeploy required) |
 
 ## Phase 4 — Verify & smoke
 | Item | Status |

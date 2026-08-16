@@ -21,6 +21,7 @@
     "sandbox:verify:fuji": "node scripts/sandbox/verify-fuji-status.mjs",
     "sandbox:transfer:safe": "node scripts/sandbox/transfer-treasury-to-safe.mjs",
     "sandbox:smoke:fuji": "node scripts/sandbox/smoke-fuji.mjs",
+    "sandbox:free-test:fuji": "node scripts/sandbox/fuji-free-test.mjs",
     "sandbox:activate": "node scripts/sandbox/activate-game.mjs",
     "sandbox:calc-plot-avax": "node -e \"import('./scripts/sandbox/plot-avax-pricing.mjs').then(m=>m.resolvePlotPrices().then(p=>console.log(JSON.stringify(p,null,2))))\"",
     "sandbox:test": "node scripts/sandbox/test.mjs",

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
+import {StdStorage, stdStorage} from "forge-std/StdStorage.sol";
 import "../src/contracts/phase1/XBGLToken.sol";
 import "../src/contracts/phase1/SaraktTreasury.sol";
 import "../src/contracts/phase1/LocalDigitalID.sol";
@@ -9,6 +10,8 @@ import "../src/contracts/phase1/SaraktLandV2.sol";
 
 /// @notice Full user flow: fund → deposit AVAX→xBGL → buy plot → pause drill.
 contract FujiUserFlowE2ETest is Test {
+    using stdStorage for StdStorage;
+
     XBGLToken internal xbgl;
     SaraktTreasury internal treasury;
     LocalDigitalID internal digitalID;
@@ -147,5 +150,49 @@ contract FujiUserFlowE2ETest is Test {
         land.pause();
         vm.expectRevert("testnet only");
         land.adminResetPlot(302, user);
+    }
+
+    function test_adminGrantPlot_freeMintAndResetLoop() public {
+        vm.chainId(43_113);
+        address tester = address(0xC0FFEE);
+
+        land.adminGrantPlot(tester, 401);
+        assertEq(land.balanceOf(tester, 401), 1);
+        assertTrue(land.plotMinted(401));
+        assertTrue(treasury.isPlotRegistered(401));
+        (address buyer, uint256 pricePaid,,, bool registered) = treasury.getPlotRecord(401);
+        assertTrue(registered);
+        assertEq(buyer, tester);
+        assertEq(pricePaid, 0);
+
+        // Cannot grant twice
+        vm.expectRevert("Already sold");
+        land.adminGrantPlot(tester, 401);
+
+        // Reset + re-grant without paying
+        land.pause();
+        land.adminResetPlot(401, tester);
+        land.unpause();
+        land.adminGrantPlot(tester, 401);
+        assertEq(land.balanceOf(tester, 401), 1);
+        assertEq(land.plotsSold(), 1);
+    }
+
+    function test_adminGrantPlot_revertsOnMainnetChainId() public {
+        vm.chainId(43_114);
+        vm.expectRevert("testnet only");
+        land.adminGrantPlot(user, 402);
+    }
+
+    function test_adminClearPendingBuyer() public {
+        vm.chainId(43_113);
+        stdstore.target(address(land)).sig("pendingBuyer(uint256)").with_key(uint256(501)).checked_write(user);
+        assertEq(land.pendingBuyer(501), user);
+
+        land.adminClearPendingBuyer(501);
+        assertEq(land.pendingBuyer(501), address(0));
+
+        vm.expectRevert("no pending");
+        land.adminClearPendingBuyer(501);
     }
 }

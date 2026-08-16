@@ -47,6 +47,8 @@ contract SaraktLandV2 is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
         uint256 indexed plotId, address indexed buyer, uint256 amount, address paymentToken, uint256 timestamp
     );
     event PlotReset(uint256 indexed plotId, address indexed holder, address indexed operator);
+    event PlotGranted(uint256 indexed plotId, address indexed to, address indexed operator);
+    event PendingBuyerCleared(uint256 indexed plotId, address indexed previousBuyer, address indexed operator);
 
     constructor(address _treasury, address _digitalID) ERC1155("ipfs://QmSarakt/{id}.json") Ownable(msg.sender) {
         require(_treasury != address(0), "Invalid treasury");
@@ -190,13 +192,18 @@ contract SaraktLandV2 is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    /// @notice Fuji/local testnet only: burn plot NFT and free id for resale. Call while paused.
-    /// @dev Also clears treasury registry when plotRegistrar supports adminClearPlotRecord.
-    function adminResetPlot(uint256 plotId, address holder) external onlyOwner whenPaused {
+    /// @dev Fuji / Anvil / Hardhat local — never Avalanche C-Chain mainnet (43114).
+    function _requireTestnet() internal view {
         require(
             block.chainid == 43_113 || block.chainid == 1_337 || block.chainid == 31_337,
             "testnet only"
         );
+    }
+
+    /// @notice Fuji/local testnet only: burn plot NFT and free id for resale. Call while paused.
+    /// @dev Also clears treasury registry when plotRegistrar supports adminClearPlotRecord.
+    function adminResetPlot(uint256 plotId, address holder) external onlyOwner whenPaused {
+        _requireTestnet();
         require(plotId > 0, "Invalid plot");
         require(plotMinted[plotId], "Not minted");
         require(holder != address(0), "holder=0");
@@ -215,6 +222,30 @@ contract SaraktLandV2 is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
         }
 
         emit PlotReset(plotId, holder, msg.sender);
+    }
+
+    /// @notice Fuji/local only: mint a plot for free (no payment). For staging QA loops.
+    /// @dev Registers treasury at zero price when plotRegistrar is set. Does not require pause.
+    function adminGrantPlot(address to, uint256 plotId) external onlyOwner nonReentrant {
+        _requireTestnet();
+        require(to != address(0), "to=0");
+        require(plotId > 0, "Invalid plot");
+        require(!plotMinted[plotId], "Already sold");
+        require(pendingBuyer[plotId] == address(0), "Activation pending");
+
+        _notifyPlotRegistrar(plotId, to, 0, address(0));
+        _finalizeAndMintPlot(plotId, to, 0, address(0));
+        emit PlotGranted(plotId, to, msg.sender);
+    }
+
+    /// @notice Fuji/local only: clear a stuck pendingBuyer so the plot can be sold/granted again.
+    function adminClearPendingBuyer(uint256 plotId) external onlyOwner {
+        _requireTestnet();
+        require(plotId > 0, "Invalid plot");
+        address previous = pendingBuyer[plotId];
+        require(previous != address(0), "no pending");
+        pendingBuyer[plotId] = address(0);
+        emit PendingBuyerCleared(plotId, previous, msg.sender);
     }
 
     /// @notice Updates the ERC-1155 metadata template (must contain `{id}` per EIP-1155).
