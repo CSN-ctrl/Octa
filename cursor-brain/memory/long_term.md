@@ -18,6 +18,7 @@
 
 _Add dated one-liners as you go:_
 
+- 2026-08-16 — Fuji Phase 2+3: Land/Treasury Ownable2Step+Pausable; `requireDigitalID` stays false; Safe transfer script Fuji-only (rejects 43114). Redeploy Fuji before Safe transfer of hardened bytecode.
 - 2025-03-07 — Centralized connections in `src/config/connections.ts`, synced types from MCP, API default `localhost:5001` — one place to match linked Supabase + avoid split defaults.
 - 2026-04-15 — CI now computes risk tier from changed paths and conditionally enforces coverage plus governance hooks (regression guard, chaos/economy simulation, lineage telemetry) using `scripts/governance/*`.
 - 2026-04-15 — Governance control-plane artifacts live in `cursor-brain/governance/` (`policy-gates.yaml`, `skill-routing-map.yaml`, `run-score.schema.json`, `governance-pack.json`); use `decision-log-template.md` for L2/L3 decisions.
