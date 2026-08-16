@@ -39,7 +39,7 @@ Legend: **Code** = done in repo · **Live** = needs operator keys / Fuji Safe
 | `npm run sandbox:deploy:fuji` via `DeployFuji.s.sol` | **Code** |
 | Redeploy hardened bytecode to Fuji + refresh manifests/env | **Live** ✓ 2026-08-16 |
 | Fuji-only `adminResetPlot` / `adminClearPlotRecord` | **Code** + **Live** (buy→reset→rebuy verified) |
-| Fuji-only `adminGrantPlot` / `adminClearPendingBuyer` + free-test CLI | **Code** (redeploy required) |
+| Fuji-only `adminGrantPlot` / `adminClearPendingBuyer` + free-test CLI | **Code** + **Live** (grant→reset→regrant + `loop 99`) |
 
 ## Phase 4 — Verify & smoke
 | Item | Status |

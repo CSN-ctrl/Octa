@@ -70,7 +70,7 @@ const rpc = resolveRpc(env, dep);
 const land = dep.contracts.SaraktLandV2;
 const treasury = dep.contracts.SaraktTreasury;
 const xbgl = dep.contracts.XBGLToken;
-const sendBase = ["--private-key", pk, "--rpc-url", rpc];
+const sendBase = ["--private-key", pk, "--rpc-url", rpc, "--gas-limit", "800000"];
 const wallet = cast(["wallet", "address", pk], env);
 
 const [cmd, ...args] = process.argv.slice(2);

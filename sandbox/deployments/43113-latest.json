@@ -12,19 +12,19 @@
   "chaosstarXbglReference": null,
   "chaosstarChainId": 8888,
   "contracts": {
-    "SaraktLandV2": "0xa4bad7f3f5d012be9e2deae1085085e1305f44d1",
-    "XBGLToken": "0x8c354d902ae485c4d746145b5386a328dfb46334",
-    "ReserveMintController": "0x2897183e685f8c70740a71f3078c58231a606d12",
-    "SaraktTreasury": "0xa5402c03c1d4e6d607263c73c468f6ee595ce9d9",
-    "LocalDigitalID": "0x1a367b2d2e57aec848f8aee04dbb9d0a58c123b2"
+    "SaraktLandV2": "0x60fe424140720400815f068938e473e0a572b282",
+    "XBGLToken": "0x51b8e9d323d51491fff2cb7c7495ef2d92af0192",
+    "ReserveMintController": "0xa336f7abbcb76d9a409e633701e49f0449798d79",
+    "SaraktTreasury": "0x5b468dfa4cdbd11d307fc0221e80ac3e2a50b284",
+    "LocalDigitalID": "0x6e34247a4544bc1cce62c1631ecd83d20db62237"
   },
   "params": {
     "phase1PriceXBGL": "195583300000000000000",
     "phase1PriceAVAX": "0",
-    "depositAvaxPerPlotEur100": "17268445840000000000",
+    "depositAvaxPerPlotEur100": "17295597484000000000",
     "plotPriceEur": 100,
     "eurToXbgl": "1.955833",
-    "avaxUsdUsed": 6.37,
+    "avaxUsdUsed": 6.36,
     "eurToUsdcUsed": 1.1,
     "salesActive": false,
     "metadataBaseUri": "https://www.sarakt.com/metadata/land/{id}.json"
