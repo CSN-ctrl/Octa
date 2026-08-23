@@ -20,6 +20,7 @@ export default tseslint.config(
       "supabase/**",
       "public/**",
       "scripts/**",
+      "subgraph/generated/**",
       "cursor-brain/**",
       "postcss.config.js",
       "*.min.js",
