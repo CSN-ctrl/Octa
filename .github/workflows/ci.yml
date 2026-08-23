@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
 
+# Cloud-agent / GitHub App tokens often lack pull-requests:read, which
+# makes dorny/paths-filter fail with "Resource not accessible by integration".
+permissions:
+  contents: read
+
 jobs:
   contract_changes:
     runs-on: ubuntu-latest
@@ -14,17 +19,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
 
       - name: Detect contract/test changes
-        uses: dorny/paths-filter@v3
         id: filter
-        with:
-          filters: |
-            contracts:
-              - 'src/contracts/**'
-              - 'test/**'
-              - 'foundry.toml'
-              - 'lib/**'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          ZERO='0000000000000000000000000000000000000000'
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags --prune --depth=1 origin "$BASE_REF:$BASE_REF"
+            RANGE="$BASE_REF"
+          elif [ -n "${BEFORE_SHA:-}" ] && [ "$BEFORE_SHA" != "$ZERO" ]; then
+            RANGE="$BEFORE_SHA"
+          else
+            RANGE='HEAD~1'
+          fi
+          if git diff --name-only "$RANGE" HEAD | grep -qE '^(src/contracts/|test/|foundry.toml|lib/)'; then
+            echo "contracts=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "contracts=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Compared $RANGE..HEAD"
 
   foundry:
     needs: contract_changes

@@ -121,7 +121,7 @@ SELECT status, COUNT(*) FROM onchain_deposits GROUP BY 1;
 SELECT COUNT(*) FROM chain_plot_holdings;
 ```
 
-After redeploy, set `FUJI_START_BLOCK` / `FUJI_LAND_START_BLOCK` to the new deploy block (see Routescan first contract tx).
+After redeploy, set `FUJI_START_BLOCK` / `FUJI_LAND_START_BLOCK` to **57793346** (current stack) and apply `20260823160000_fuji_indexer_stack_cutover.sql` so checkpoints do not skip the new contracts. Ingest functions refuse the retired addresses `0xee0ba6de…` / `0xc34a5fcb…`.
 
 ## 7. Monitoring checklist
 

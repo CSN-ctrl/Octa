@@ -6,9 +6,8 @@ Project: `agqkiwarwxrcemhspxxv`
 
 | Source | Block | Notes |
 |--------|------:|-------|
-| Routescan (first txs on current Fuji stack) | **~55796439** | Prefer for historical backfill of the **current** addresses |
-| Prior cutover / code defaults | **55878103** | Cited in earlier docs and `DEFAULT_FUJI_*_START_BLOCK` in edge functions |
-| Snowtrace deploy ref | — | Older note referenced Snowtrace `0x35362d7` alongside `55878103` |
+| **Current stack (2026-08-16 free-test kit)** | **57793346** | Land `0x60FE42…` create tx `0xfc0d6fa1…`; Treasury same block. Edge-function defaults + subgraph `startBlock`. |
+| Retired stack (do not index) | 55878103 / ~55796439 | Land `0xc34a5fcb…`, Treasury `0xee0ba6de…` — ingest functions return 409 if these addresses are still set as secrets |
 
 After any **redeploy**, do **not** reuse either number blindly: take the new contracts’ creation / first-tx block from the explorer, then set:
 
@@ -26,7 +25,7 @@ Reset or advance `treasury_ingest_checkpoints` if you intentionally re-scan.
 | `20260610130000_onchain_deposit_credit_job.sql` | `credit_onchain_deposit`, `user_id` backfill |
 | `20260609140000_fuji_deposit_ingest_schedule.sql` | Deposit ingest pg_cron |
 | `20260611120000_seed_phase1_plots.sql` | Seed plots 1–200 for land indexer |
-| `20260611120100_pause_legacy_usdc_cron.sql` | Pause legacy USDC cron until mainnet rail |
+| `20260823160000_fuji_indexer_stack_cutover.sql` | Reset `fuji` / `fuji-land` checkpoints to 57793345 for the new stack |
 
 ## 2. Edge functions
 
@@ -42,8 +41,10 @@ Set in Supabase Dashboard → Edge Functions → Secrets (or `supabase secrets s
 | Secret | Value |
 |--------|-------|
 | `ALCHEMY_API_KEY` | Alchemy Fuji RPC key |
-| `FUJI_START_BLOCK` | First treasury activity block (see note above; update after redeploy) |
-| `FUJI_LAND_START_BLOCK` | First land activity block (update after redeploy) |
+| `FUJI_TREASURY_ADDRESS` | `0x5b468dfa4cdbd11d307fc0221e80ac3e2a50b284` (optional; code default matches) |
+| `FUJI_LAND_ADDRESS` | `0x60fe424140720400815f068938e473e0a572b282` (optional; code default matches) |
+| `FUJI_START_BLOCK` | `57793346` |
+| `FUJI_LAND_START_BLOCK` | `57793346` |
 | `FUJI_DEPOSIT_CONFIRMATIONS` | `3` |
 | `INGEST_CRON_SECRET` | (optional) random string; add matching header to cron if used |
 

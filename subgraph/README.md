@@ -4,8 +4,8 @@ Indexes two contracts on **Avalanche Fuji (43113)**:
 
 | Contract | Address | Events indexed |
 |---|---|---|
-| `SaraktLandV2` | `0xc34a5fcb5621b7755d66db5074069d0bbd68cd42` | `TransferSingle` |
-| `SaraktTreasury` | `0xee0ba6de15026d00a707a660123c93686c00df58` | `AvaxSwappedForXbgl` |
+| `SaraktLandV2` | `0x60fe424140720400815f068938e473e0a572b282` | `TransferSingle` |
+| `SaraktTreasury` | `0x5b468dfa4cdbd11d307fc0221e80ac3e2a50b284` | `AvaxSwappedForXbgl` |
 
 ## Entities
 
@@ -42,7 +42,7 @@ graph init --product hosted-service --from-contract \
   --network avalanche-fuji \
   --contract-name SaraktLandV2 \
   --abi abis/SaraktLandV2.json \
-  0xc34a5fcb5621b7755d66db5074069d0bbd68cd42
+  0x60fe424140720400815f068938e473e0a572b282
 
 # Or just run codegen against the existing subgraph.yaml
 graph codegen subgraph.yaml --output-dir generated/
