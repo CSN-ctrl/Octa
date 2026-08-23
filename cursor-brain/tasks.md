@@ -4,7 +4,9 @@ Prioritized list for Cursor and humans. **PLAN** mode should start here.
 
 ## Now
 
-- [ ] _(Your next feature / bug)_
+- [x] Retarget Fuji ingest + subgraph to 2026-08-16 stack (57793346)
+- [ ] Apply indexer checkpoint cutover on octa + redeploy edge functions
+- [ ] Create Fuji Safe 2-of-3 and run `sandbox:transfer:safe`
 
 ## Next
 
