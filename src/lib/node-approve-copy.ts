@@ -32,7 +32,11 @@ export const NODE_APPROVE_COPY = {
   submitting: "Submitting approval…",
   domainMismatchTitle: "Unsafe approval link",
   domainMismatchBody:
-    "This page’s host does not match the domain in the sign-in message. Do not sign — restart from your Personal Node app.",
+    "The sign-in message domain does not match this page’s host. Do not sign — open the approval link from your Personal Node app on the same URL you are viewing now.",
+  domainNotAllowedTitle: "This site cannot approve nodes",
+  domainNotAllowedBody:
+    "This browser host is not allowed to approve Personal Node joins on this deployment. Use the production site, an allowed Vercel preview URL, or local dev on localhost:8080 — the same host your node used when creating the challenge.",
+  genericApiError: "Something went wrong. Try again or restart join from your Personal Node app.",
   wrongWalletTitle: "Wrong wallet connected",
   wrongWalletBody:
     "The connected account does not match the wallet that requested to join. Switch accounts in MetaMask or Core, then continue.",

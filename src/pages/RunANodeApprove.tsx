@@ -26,7 +26,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   fetchChallengePublic,
-  NodeApproveApiError,
   postChallengeReplace,
   postChallengeSign,
 } from "@/lib/node-approve-api";
@@ -41,6 +40,7 @@ import {
   secondsUntil,
   shortenHex,
 } from "@/lib/node-approve-safety";
+import { applyNodeApproveApiError } from "@/lib/node-approve-errors";
 import {
   ensureWalletChain,
   personalSignRawMessage,
@@ -60,6 +60,8 @@ type UiPhase =
   | "wrong_wallet"
   | "device_limit";
 
+type DomainBlockKind = "allowlist" | "message_host";
+
 export default function RunANodeApprove() {
   const [searchParams] = useSearchParams();
   const challengeId = searchParams.get("challenge")?.trim() ?? "";
@@ -74,6 +76,7 @@ export default function RunANodeApprove() {
   const [firstSignature, setFirstSignature] = useState<string | null>(null);
   const [awaitingResign, setAwaitingResign] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [domainBlockKind, setDomainBlockKind] = useState<DomainBlockKind>("allowlist");
 
   const pageHost = typeof window !== "undefined" ? window.location.host : "";
 
@@ -107,10 +110,19 @@ export default function RunANodeApprove() {
       if (payload.state === "expired") setPhase("terminal_expired");
       else if (payload.state === "already_used") setPhase("terminal_already_used");
       else if (payload.state === "signed") setPhase("terminal_signed");
-      else if (!domainMatchesPageHost(payload.domain, pageHost)) setPhase("domain_block");
-      else setPhase("main");
-    } catch {
-      setPhase("load_error");
+      else if (!domainMatchesPageHost(payload.domain, pageHost)) {
+        setDomainBlockKind("message_host");
+        setPhase("domain_block");
+      } else setPhase("main");
+    } catch (err) {
+      applyNodeApproveApiError(err, {
+        onPhase: (p, nodes) => {
+          if (p === "domain_block") setDomainBlockKind("allowlist");
+          if (p === "device_limit" && nodes?.length) setCapNodes(nodes);
+          setPhase(p);
+        },
+        onGeneric: () => setPhase("load_error"),
+      }) || setPhase("load_error");
     }
   }, [challengeId, pageHost]);
 
@@ -157,7 +169,10 @@ export default function RunANodeApprove() {
     });
     if (pre.ok === false) {
       if (pre.reason === "wrong_wallet") setPhase("wrong_wallet");
-      else if (pre.reason === "domain_mismatch") setPhase("domain_block");
+      else if (pre.reason === "domain_mismatch") {
+        setDomainBlockKind("message_host");
+        setPhase("domain_block");
+      }
       return;
     }
 
@@ -182,26 +197,17 @@ export default function RunANodeApprove() {
       await postChallengeSign(challengeId, signature);
       setPhase("terminal_signed");
     } catch (err) {
-      if (err instanceof NodeApproveApiError) {
-        if (err.code === "wrong_wallet") {
-          setPhase("wrong_wallet");
-          return;
-        }
-        if (err.code === "device_limit_reached" && err.nodes?.length) {
-          setCapNodes(err.nodes);
-          setPhase("device_limit");
-          return;
-        }
-        if (err.state === "expired" || err.code === "challenge_expired") {
-          setPhase("terminal_expired");
-          return;
-        }
-        if (err.state === "already_used" || err.code === "challenge_consumed") {
-          setPhase("terminal_already_used");
-          return;
-        }
+      const handled = applyNodeApproveApiError(err, {
+        onPhase: (p, nodes) => {
+          if (p === "domain_block") setDomainBlockKind("allowlist");
+          if (p === "device_limit" && nodes?.length) setCapNodes(nodes);
+          setPhase(p);
+        },
+        onGeneric: (message) => toast.error(message),
+      });
+      if (!handled) {
+        toast.error(err instanceof Error ? err.message : NODE_APPROVE_COPY.genericApiError);
       }
-      toast.error(err instanceof Error ? err.message : NODE_APPROVE_COPY.loadError);
     } finally {
       setBusy(false);
     }
@@ -228,7 +234,14 @@ export default function RunANodeApprove() {
       setPhase("main");
       toast.message(NODE_APPROVE_COPY.replaceFlowResign);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : NODE_APPROVE_COPY.loadError);
+      applyNodeApproveApiError(err, {
+        onPhase: (p) => {
+          if (p === "domain_block") setDomainBlockKind("allowlist");
+          setPhase(p);
+        },
+        onGeneric: (message) => toast.error(message),
+      }) ||
+        toast.error(err instanceof Error ? err.message : NODE_APPROVE_COPY.genericApiError);
     } finally {
       setBusy(false);
     }
@@ -285,8 +298,16 @@ export default function RunANodeApprove() {
         {phase === "domain_block" && (
           <TerminalCard
             icon={<ShieldAlert className="h-5 w-5 text-destructive" />}
-            title={NODE_APPROVE_COPY.domainMismatchTitle}
-            body={NODE_APPROVE_COPY.domainMismatchBody}
+            title={
+              domainBlockKind === "message_host"
+                ? NODE_APPROVE_COPY.domainMismatchTitle
+                : NODE_APPROVE_COPY.domainNotAllowedTitle
+            }
+            body={
+              domainBlockKind === "message_host"
+                ? NODE_APPROVE_COPY.domainMismatchBody
+                : NODE_APPROVE_COPY.domainNotAllowedBody
+            }
           />
         )}
 
