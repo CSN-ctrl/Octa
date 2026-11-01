@@ -6,6 +6,7 @@ import {
   resolveNodeOrPendingAuth,
   resolveSupabaseUser,
 } from "../_lib/node-auth";
+import { nodeRouteOpportunisticZt, nodeRouteOpportunisticZtMany } from "../_lib/node-route-zt";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "GET") {
@@ -15,6 +16,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const nodeAuth = await resolveNodeOrPendingAuth(req);
   if (nodeAuth?.kind === "node") {
+    await nodeRouteOpportunisticZt(nodeAuth.node.id);
     jsonSuccess(res, 200, { nodes: [serializeNodePublic(nodeAuth.node)] });
     return;
   }
@@ -22,6 +24,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const supabaseUser = await resolveSupabaseUser(req);
   if (supabaseUser) {
     const nodes = await fetchNodesForUser(supabaseUser.userId);
+    await nodeRouteOpportunisticZtMany(nodes.map((n) => n.id));
     jsonSuccess(res, 200, { nodes: nodes.map(serializeNodePublic) });
     return;
   }

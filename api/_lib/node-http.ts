@@ -12,6 +12,14 @@ export type NodeRow = {
   reason: string | null;
   zt_authorized_at: string | null;
   replaced_by_node_id: string | null;
+  zt_deauth_pending?: boolean;
+  zt_deauth_attempts?: number;
+  zt_deauth_next_attempt_at?: string | null;
+  zt_deauth_last_error?: string | null;
+  zt_authorize_pending?: boolean;
+  zt_authorize_attempts?: number;
+  zt_authorize_next_attempt_at?: string | null;
+  zt_authorize_last_error?: string | null;
   credential_hash: string | null;
   pending_token_hash: string | null;
   pending_token_expires_at: string | null;

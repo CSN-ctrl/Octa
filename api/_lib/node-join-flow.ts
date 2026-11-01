@@ -1,9 +1,14 @@
 import { nodeJoinAutoApproveEnabled } from "./node-constants";
 import { createServiceSupabaseClient } from "./supabase-admin";
 import { generateNodeCredential } from "./node-credential";
-import { authorizeZeroTierMember, deauthorizeZeroTierMember, getZeroTierConfig } from "./node-zerotier";
+import { authorizeZeroTierMember, getZeroTierConfig } from "./node-zerotier";
 import type { NodeRow } from "./node-http";
 import { appendNodeEvent } from "./node-events";
+import {
+  clearZeroTierAuthorizePending,
+  markZeroTierAuthorizePending,
+  requestZeroTierDeauthForNode,
+} from "./node-zt-pending";
 
 export async function issueNodeCredential(nodeId: string): Promise<string | null> {
   const admin = createServiceSupabaseClient();
@@ -62,8 +67,8 @@ export async function approveJoinRequest(
       .from("nodes")
       .update({ status: "pending", reason: null, updated_at: new Date().toISOString() })
       .eq("id", node.id);
+    await markZeroTierAuthorizePending(node.id, "zerotier_not_configured");
     const { data: refreshed } = await admin.from("nodes").select("*").eq("id", node.id).single();
-    await appendNodeEvent(node.id, "zt_auth_failed", { error: "zerotier_not_configured" });
     return {
       ok: false,
       status: "pending_authorization",
@@ -83,8 +88,8 @@ export async function approveJoinRequest(
         updated_at: new Date().toISOString(),
       })
       .eq("id", joinRequestId);
+    await markZeroTierAuthorizePending(node.id, zt.error ?? "zerotier_authorize_failed");
     const { data: refreshed } = await admin.from("nodes").select("*").eq("id", node.id).single();
-    await appendNodeEvent(node.id, "zt_auth_failed", { error: zt.error ?? "zerotier_authorize_failed" });
     return {
       ok: false,
       status: "pending_authorization",
@@ -108,17 +113,8 @@ export async function approveJoinRequest(
     })
     .eq("id", joinRequestId);
 
-  await admin
-    .from("nodes")
-    .update({
-      status: "approved",
-      reason: null,
-      zt_authorized_at: now,
-      updated_at: now,
-    })
-    .eq("id", node.id);
+  await clearZeroTierAuthorizePending(node.id, node.zerotier_node_id, joinRequestId);
 
-  await appendNodeEvent(node.id, "zt_authorized", { zerotier_node_id: node.zerotier_node_id });
   await appendNodeEvent(node.id, "approved", { join_request_id: joinRequestId, reviewer_id: reviewerId });
 
   const { data: approvedNode } = await admin.from("nodes").select("*").eq("id", node.id).single();
@@ -160,11 +156,6 @@ export async function revokeNode(
   const { data: node } = await admin.from("nodes").select("*").eq("id", nodeId).maybeSingle();
   if (!node) return { ok: false, error: "node_not_found" };
 
-  const ztConfig = getZeroTierConfig();
-  if (ztConfig && node.zt_authorized_at) {
-    await deauthorizeZeroTierMember(node.zerotier_node_id, ztConfig);
-  }
-
   const now = new Date().toISOString();
   await admin
     .from("nodes")
@@ -182,6 +173,9 @@ export async function revokeNode(
     .eq("node_id", nodeId);
 
   await appendNodeEvent(nodeId, "revoked", { reason });
+
+  await requestZeroTierDeauthForNode(node as NodeRow);
+
   return { ok: true };
 }
 

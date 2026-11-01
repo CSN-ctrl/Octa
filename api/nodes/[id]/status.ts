@@ -11,6 +11,7 @@ import { rateLimitStatusPoll } from "../_lib/node-rate-limit";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
 import { respondNodeRevoked } from "../_lib/node-revoked";
 import type { NodeRow } from "../_lib/node-http";
+import { nodeRouteOpportunisticZt } from "../_lib/node-route-zt";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   noStore(res);
@@ -40,6 +41,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     jsonError(res, 404, "node_not_found");
     return;
   }
+
+  await nodeRouteOpportunisticZt(nodeId);
 
   const tokenAuth = await resolveNodeOrPendingAuth({ headers: req.headers, nodeId });
   if (tokenAuth) {

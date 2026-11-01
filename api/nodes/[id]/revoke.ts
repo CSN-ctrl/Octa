@@ -7,6 +7,7 @@ import {
   resolveSupabaseUser,
 } from "../_lib/node-auth";
 import { revokeNode } from "../_lib/node-join-flow";
+import { nodeRouteOpportunisticZt } from "../_lib/node-route-zt";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -23,6 +24,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const body = readJsonBody<{ reason?: string }>(req);
   const reason = body.reason?.trim() || "revoked_by_owner";
+
+  await nodeRouteOpportunisticZt(nodeId);
 
   const nodeAuth = await resolveNodeOrPendingAuth({ headers: req.headers, nodeId });
   if (nodeAuth?.kind === "node") {

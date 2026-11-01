@@ -14,7 +14,7 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `SUPABASE_ANON_KEY` | Yes | For optional Supabase user linking |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Node tables (no client `VITE_*`) |
 | `ZEROTIER_API_TOKEN` | For approval | ZeroTier Central API token |
-| `ZEROTIER_NETWORK_ID` | For approval | Network ID to authorize members |
+| `ZEROTIER_NETWORK_ID` | For approval | **Dedicated Personal Node** ZeroTier network ID (not the validator / infra network) |
 | `NODE_JOIN_AUTO_APPROVE` | No | `true` to auto-approve (default **off**) |
 | `NODE_JOIN_DOMAIN` | Prod recommended | SIWE domain + URI host (e.g. `https://www.sarakt.com`). Defaults from request host in dev. |
 | `NODE_JOIN_CHAIN_ID` | Prod recommended | EIP-155 chain ID in SIWE (default `43113` Fuji when unset) |
@@ -32,6 +32,8 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `NODE_APP_MIN_SUPPORTED_VERSION` | Optional | Below this, clients should force upgrade |
 
 Never prefix ZeroTier or service role secrets with `VITE_`.
+
+**Operational notes:** Phone and light clients send heartbeats over **public HTTPS** to `/api/nodes/:id/heartbeat` (not over ZeroTier). ZeroTier is for mesh connectivity after approval; Central authorize/deauthorize is best-effort with retries (below).
 
 ---
 
@@ -140,10 +142,26 @@ Canonical constants live in `api/_lib/node-siwe.ts` (`DOCUMENTED_SIWE_TEST_VECTO
 - Up to **`NODE_MAX_ACTIVE_PER_WALLET`** (default 3) live nodes per wallet (`pending` or `approved`).
 - At cap without replace → **`409`** `{ "success": false, "error": "device_limit_reached", "active_nodes": [ … ] }`.
 - **Replace:** pass `replace_node_id` on **`POST /api/nodes/challenge`**; the SIWE message must include `urn:octa:replace:<same uuid>`. Join must use the same challenge (replace id stored on challenge row).
-- **Atomic join:** `POST /api/nodes/join` deauthorizes ZeroTier for the replaced member when configured, then calls RPC **`complete_personal_node_join`**, which takes a **per-wallet `pg_advisory_xact_lock`** so concurrent joins cannot race past the device cap.
-- **Events (same transaction as new node insert):** on the old node — `replaced` (payload includes `replaced_by_node_id`), `revoked`, then `zt_deauthorized` or `zt_deauth_failed` depending on API ZT deauth outcome; new node row + join request created in the same transaction.
+- **Atomic join:** `POST /api/nodes/join` calls RPC **`complete_personal_node_join`** (per-wallet **`pg_advisory_xact_lock`**). **Replace revokes the old node in Postgres first** (immediate **401** on old credentials); ZeroTier deauthorization runs **after** commit and may retry asynchronously.
+- **Events (same transaction as new node insert):** on the old node — `replaced`, `revoked`; **`zt_deauthorized` / `zt_deauth_failed`** are recorded when Central deauth completes or fails (see retry state below).
 
-Migrations: `20260611180000_node_events_and_challenge_binding.sql`, `20260611190000_node_join_atomic_replace.sql`.
+Migrations: `20260611180000_node_events_and_challenge_binding.sql`, `20260611190000_node_join_atomic_replace.sql`, `20260611210000_zerotier_pending_retry.sql`.
+
+### ZeroTier retry (deauth + authorize)
+
+Revoke/replace **always** updates Postgres first (`status: revoked`, credentials return **401** immediately). If ZeroTier Central deauthorization fails, the node gets `zt_deauth_pending` with `zt_deauth_attempts`, `zt_deauth_next_attempt_at`, and `zt_deauth_last_error`; **`zt_deauth_failed`** is appended to `node_events`. Successful deauth clears pending flags and logs **`zt_deauthorized`**.
+
+Authorize failures set **`zt_authorize_pending`** (same backoff fields) and **`zt_auth_failed`** events; success clears pending and logs **`zt_authorized`**.
+
+Retries use exponential backoff (base **60s**, cap **1h**). Retries run opportunistically when that node hits authenticated `/api/nodes/*` routes, via **`POST /api/nodes/zt-retry`** (governance or `Authorization: Bearer $CRON_SECRET`), and optionally Vercel Cron:
+
+```json
+{
+  "crons": [{ "path": "/api/nodes/zt-retry", "schedule": "*/15 * * * *" }]
+}
+```
+
+**`GET /api/nodes/join-requests/queue`** exposes **`zerotier_alert`** / **`zerotier_alert_active`** on pending reviews.
 
 ### Replaced device — no push
 
@@ -347,6 +365,14 @@ Auth: Supabase + governance reviewer.
 
 Request: `{ "action": "approve" | "reject", "reason": "…" }`  
 If ZeroTier env missing: `{ "pending_authorization": true, "error": "zerotier_not_configured" }` without corrupting approval state.
+
+### `GET /api/nodes/join-requests/queue`
+
+Auth: Supabase + governance reviewer. Lists pending / `pending_authorization` join requests with **`zerotier_alert`** fields for stuck Central operations.
+
+### `POST /api/nodes/zt-retry`
+
+Auth: governance reviewer **or** cron (`Authorization: Bearer $CRON_SECRET`). Query `?force=true` retries all pending rows regardless of `next_attempt_at`. Response includes `{ retry: { deauth_attempted, … } }`.
 
 ### `GET /api/nodes/app-release`
 

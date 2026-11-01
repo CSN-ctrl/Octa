@@ -8,6 +8,7 @@ import { heartbeatMinGapMs, nextHeartbeatPayload } from "../_lib/node-heartbeat-
 import { isNodePlatform } from "../_lib/node-constants";
 import { appendNodeEvent } from "../_lib/node-events";
 import { respondNodeRevoked } from "../_lib/node-revoked";
+import { nodeRouteOpportunisticZt } from "../_lib/node-route-zt";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -41,6 +42,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     jsonError(res, 403, "forbidden", "Node must be approved before heartbeats");
     return;
   }
+
+  await nodeRouteOpportunisticZt(nodeId);
 
   if (!rateLimitHeartbeat(nodeId, heartbeatMinGapMs(nodeAuth.node.platform))) {
     await appendNodeEvent(nodeId, "heartbeat_rejected", { cause: "rate_limited" });

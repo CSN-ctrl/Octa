@@ -12,7 +12,7 @@ import { generatePendingToken } from "../_lib/node-credential";
 import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../_lib/node-auth";
 import { tryAutoApproveJoin } from "../_lib/node-join-flow";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
-import { deauthorizeZeroTierMember, getZeroTierConfig } from "../_lib/node-zerotier";
+import { requestZeroTierDeauthForNode } from "../_lib/node-zt-pending";
 import type { NodeRow } from "../_lib/node-http";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
@@ -88,28 +88,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   const liveNodes = await fetchLiveNodesForWallet(wallet);
-  const replaceId = challenge.replace_node_id as string | null;
+  let replaceId = challenge.replace_node_id as string | null;
   if (!replaceId && liveNodes.length >= maxActiveNodesPerWallet()) {
     jsonError(res, 409, "device_limit_reached", undefined, {
       active_nodes: liveNodes.map(serializeNodePublic),
     });
     return;
-  }
-
-  let ztDeauthOk = true;
-  let ztDeauthError: string | null = null;
-  if (replaceId) {
-    const oldNode = liveNodes.find((n) => n.id === replaceId);
-    if (!oldNode) {
-      jsonError(res, 400, "bad_request", "replace_node_id is not a live node for this wallet");
-      return;
-    }
-    const ztConfig = getZeroTierConfig();
-    if (ztConfig && oldNode.zt_authorized_at) {
-      const zt = await deauthorizeZeroTierMember(oldNode.zerotier_node_id, ztConfig);
-      ztDeauthOk = zt.ok;
-      ztDeauthError = zt.error ?? null;
-    }
   }
 
   const supabaseUser = await resolveSupabaseUser(req);
@@ -132,8 +116,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     p_pending_token_hash: pending.hash,
     p_pending_expires: pendingExpires,
     p_max_devices: maxActiveNodesPerWallet(),
-    p_zt_deauth_ok: ztDeauthOk,
-    p_zt_deauth_error: ztDeauthError,
     p_signature: signature,
   });
 
@@ -160,10 +142,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const nodeId = (rpcResult as { node_id?: string })?.node_id;
   const joinRequestId = (rpcResult as { join_request_id?: string })?.join_request_id;
+  const replacedNodeId = (rpcResult as { replaced_node_id?: string | null })?.replaced_node_id;
   if (!nodeId || !joinRequestId) {
     jsonError(res, 500, "internal_error", "Join RPC returned incomplete payload");
     return;
   }
+
+  if (replacedNodeId) {
+    const { data: oldNode } = await admin.from("nodes").select("*").eq("id", replacedNodeId).single();
+    if (oldNode) {
+      await requestZeroTierDeauthForNode(oldNode as NodeRow);
+    }
+  }
+
+  await nodeRouteOpportunisticZt(nodeId, joinRequestId);
 
   const auto = await tryAutoApproveJoin(joinRequestId);
   const { data: finalNode } = await admin.from("nodes").select("*").eq("id", nodeId).single();
