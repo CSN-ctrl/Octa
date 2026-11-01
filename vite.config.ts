@@ -80,11 +80,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    // Polyfill process for browser compatibility (used by some dependencies like Avalanche SDK)
-    "process.env": JSON.stringify({
-      ...process.env,
-      NODE_ENV: mode,
-    }),
+    // Minimal process shims for browser deps — never inline Node/Vercel build env into the client bundle.
+    "process.env.NODE_ENV": JSON.stringify(mode === "production" ? "production" : "development"),
     global: "globalThis",
     "process.platform": JSON.stringify("browser"),
     "process.browser": JSON.stringify(true),
