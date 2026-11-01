@@ -9,6 +9,7 @@ import { isNodePlatform } from "../_lib/node-constants";
 import { appendNodeEvent } from "../_lib/node-events";
 import { respondNodeRevoked } from "../_lib/node-revoked";
 import { nodeRouteOpportunisticZt } from "../_lib/node-route-zt";
+import { verifyDeviceKeyHeaders } from "../_lib/node-device-key";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -44,6 +45,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   await nodeRouteOpportunisticZt(nodeId);
+
+  const deviceCheck = verifyDeviceKeyHeaders(
+    req,
+    nodeId,
+    nodeAuth.node.device_key_address,
+    "optional",
+  );
+  if (!deviceCheck.ok) {
+    jsonError(res, 401, deviceCheck.error, "Invalid device key signature");
+    return;
+  }
 
   if (!rateLimitHeartbeat(nodeId, heartbeatMinGapMs(nodeAuth.node.platform))) {
     await appendNodeEvent(nodeId, "heartbeat_rejected", { cause: "rate_limited" });

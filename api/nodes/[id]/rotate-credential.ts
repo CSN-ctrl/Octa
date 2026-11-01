@@ -9,6 +9,8 @@ import {
 import { issueNodeCredential } from "../_lib/node-join-flow";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
 import { createServiceSupabaseClient } from "../_lib/supabase-admin";
+import { verifyDeviceKeyHeaders } from "../_lib/node-device-key";
+import { appendNodeEvent } from "../_lib/node-events";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -43,11 +45,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       jsonError(res, 403, "forbidden");
       return;
     }
+    const deviceCheck = verifyDeviceKeyHeaders(
+      req,
+      nodeId,
+      node.device_key_address,
+      node.device_key_address ? "required" : "optional",
+    );
+    if (!deviceCheck.ok) {
+      jsonError(res, 401, deviceCheck.error, "Device key signature required when device is registered");
+      return;
+    }
     const token = await issueNodeCredential(nodeId);
     if (!token) {
       jsonError(res, 500, "internal_error");
       return;
     }
+    await appendNodeEvent(nodeId, "credential_rotated", { auth: "node_credential" });
     jsonSuccess(res, 200, {
       node_credential: token,
       ...nextHeartbeatPayload(node.platform),

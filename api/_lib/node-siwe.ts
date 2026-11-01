@@ -16,6 +16,7 @@ export type SiweChallengeParams = {
   chainId: string;
   environment: JoinEnvironment;
   replaceNodeId?: string | null;
+  deviceKeyAddress?: string | null;
 };
 
 export function siweDomainAndUri(joinDomain: string): { domain: string; uri: string } {
@@ -43,6 +44,9 @@ export function buildSiweResources(params: SiweChallengeParams): string[] {
   ];
   if (params.replaceNodeId) {
     resources.push(`urn:octa:replace:${params.replaceNodeId}`);
+  }
+  if (params.deviceKeyAddress) {
+    resources.push(`urn:octa:device:${params.deviceKeyAddress.toLowerCase()}`);
   }
   return resources;
 }
@@ -84,6 +88,14 @@ export function validateSiweResources(
   if (replaceUrn) {
     if (!resourcePresent(resources, replaceUrn)) return false;
   } else if ((resources ?? []).some((r) => r.startsWith("urn:octa:replace:"))) {
+    return false;
+  }
+  const deviceUrn = expected.deviceKeyAddress
+    ? `urn:octa:device:${expected.deviceKeyAddress.toLowerCase()}`
+    : null;
+  if (deviceUrn) {
+    if (!resourcePresent(resources, deviceUrn)) return false;
+  } else if ((resources ?? []).some((r) => r.startsWith("urn:octa:device:"))) {
     return false;
   }
   return true;

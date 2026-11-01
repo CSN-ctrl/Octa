@@ -22,6 +22,7 @@ export type ChallengeRecord = {
   chain_id: string;
   join_environment: string;
   replace_node_id?: string | null;
+  device_key_address?: string | null;
 };
 
 export function issuedAtFromChallenge(challenge: ChallengeRecord): string {
@@ -46,6 +47,7 @@ export function challengeToSiweParams(challenge: ChallengeRecord): SiweChallenge
     chainId: challenge.chain_id,
     environment: challenge.join_environment as JoinEnvironment,
     replaceNodeId: challenge.replace_node_id ?? null,
+    deviceKeyAddress: challenge.device_key_address ?? null,
   };
 }
 

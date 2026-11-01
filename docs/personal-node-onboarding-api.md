@@ -1,6 +1,12 @@
 # Personal Node onboarding API (Octa Investment Group / Sarakt)
 
-Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, ZeroTier authorization, heartbeats, and Android app release metadata. **Migrations are committed only** — apply `supabase/migrations/20260611170000_personal_node_onboarding.sql` in your environment.
+Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, ZeroTier authorization, heartbeats, and Android app release metadata. **Migrations are committed only** — apply, in order:
+
+1. `supabase/migrations/20260611170000_personal_node_onboarding.sql`
+2. `supabase/migrations/20260611180000_node_events_and_challenge_binding.sql`
+3. `supabase/migrations/20260611190000_node_join_atomic_replace.sql`
+4. `supabase/migrations/20260611210000_zerotier_pending_retry.sql`
+5. `supabase/migrations/20260611220000_device_key_and_node_invites.sql`
 
 **Depends on:** PR #20 (`cursor/sarakt-canonical-product-rules-67fe`) — Supabase bearer conventions, `is_dashboard_admin()`, plots / permits patterns.
 
@@ -50,6 +56,7 @@ Publish release APKs via **GitHub Releases** on `CSN-ctrl/Octa`, attach the APK,
 | Optional Supabase user | `Authorization: Bearer <jwt>` | Link `owner_user_id` + `user_wallets` on challenge/join |
 | Pending poll / credential exchange | `Authorization: Pending <pending_token>` | Status + one-time credential exchange after approval |
 | Running node (Rust core) | `Authorization: Node <node_credential>` | Heartbeat, rotate credential, revoke, `GET /api/nodes/mine` |
+| Device key (optional) | `X-Device-Timestamp`, `X-Device-Signature` | EIP-191 over `` `${node_id}:${unix_ts}` `` (±`NODE_JOIN_CLOCK_SKEW_SECS`); required on rotate when a device key is registered; verified when present on heartbeat |
 | Governance reviewer | Supabase bearer + `is_network_governance_reviewer()` | Review join requests |
 
 **Never trust `wallet_address` without SIWE (EIP-4361) verification or a valid Node credential.**
@@ -81,6 +88,9 @@ Challenges return the exact string from `SiweMessage.prepareMessage()` (UTF-8). 
 - `urn:octa:platform:android|web|desktop`
 - `urn:octa:env:production|staging|dev`
 - Optional on replace: `urn:octa:replace:<node_uuid>` (must match `replace_node_id` on challenge + join body)
+- Optional when `device_pubkey` on challenge: `urn:octa:device:<0x40-hex lowercase>` (derived/stored device key address)
+
+All Octa-specific URNs use the **`urn:octa:*`** namespace (not `urn:sarakt:*`). ZeroTier remains **`urn:zerotier:<id>`**. Challenge/join JSON field for client build version is **`app_version`**.
 
 Verification: parse with `siwe`, recover signer via `ethers.verifyMessage(preparedMessage, signature)`, then check domain, chain ID, nonce, statement, resources, and clock skew (below).
 
@@ -137,6 +147,42 @@ Canonical constants live in `api/_lib/node-siwe.ts` (`DOCUMENTED_SIWE_TEST_VECTO
 
 ---
 
+## Device key (Android Node Infra)
+
+**`POST /api/nodes/challenge`** accepts optional **`device_pubkey`**:
+
+- **20-byte EVM address:** `0x` + 40 hex (checks normalized to lowercase storage), **or**
+- **Uncompressed secp256k1 public key:** `0x04` + 128 hex (server derives the device address via `computeAddress`).
+
+The normalized **`device_key_address`** is stored on the challenge and copied to the **`nodes`** row on join. When present, the SIWE message **must** include **`urn:octa:device:<lowercase 0x address>`**.
+
+After join, the device key signs operational requests (separate from the wallet SIWE join proof):
+
+| Header | Value |
+|--------|--------|
+| `X-Device-Timestamp` | Unix seconds (integer string) |
+| `X-Device-Signature` | EIP-191 `personal_sign` over `` `${node_id}:${unix_ts}` `` |
+
+Clock skew: ± **`NODE_JOIN_CLOCK_SKEW_SECS`** (default 60), same as SIWE.
+
+- **`POST /api/nodes/:id/rotate-credential`** with `Authorization: Node …`: **required** when `device_key_address` is set on the node.
+- **`POST /api/nodes/:id/heartbeat`**: optional; if either header is sent, signature must verify.
+
+Implementation: `api/_lib/node-device-key.ts`.
+
+---
+
+## Governance invite codes
+
+Table **`node_invites`**: `code_hash` (SHA-256 of normalized code; plaintext never stored), `created_by`, `expires_at`, `max_uses`, `uses`, `auto_approve`.
+
+- **`POST /api/nodes/invites`** (governance): create invite; response includes the **plaintext `code` once**.
+- **`POST /api/nodes/challenge`**: optional **`invite_code`** — validated (unexpired, uses remaining), stored on challenge (`invite_code`, `invite_id`).
+- **`POST /api/nodes/join`**: consumes invite use inside **`complete_personal_node_join`**; sets **`invite_id`** on **`node_join_requests`**.
+- If **`auto_approve`** is true, join runs **`approveJoinRequest`** after join (same path as governance approval: device cap already enforced, ZeroTier authorize + retry rules apply). Does **not** bypass env **`NODE_JOIN_AUTO_APPROVE`**.
+
+---
+
 ## Multi-device cap and replace
 
 - Up to **`NODE_MAX_ACTIVE_PER_WALLET`** (default 3) live nodes per wallet (`pending` or `approved`).
@@ -145,7 +191,7 @@ Canonical constants live in `api/_lib/node-siwe.ts` (`DOCUMENTED_SIWE_TEST_VECTO
 - **Atomic join:** `POST /api/nodes/join` calls RPC **`complete_personal_node_join`** (per-wallet **`pg_advisory_xact_lock`**). **Replace revokes the old node in Postgres first** (immediate **401** on old credentials); ZeroTier deauthorization runs **after** commit and may retry asynchronously.
 - **Events (same transaction as new node insert):** on the old node — `replaced`, `revoked`; **`zt_deauthorized` / `zt_deauth_failed`** are recorded when Central deauth completes or fails (see retry state below).
 
-Migrations: `20260611180000_node_events_and_challenge_binding.sql`, `20260611190000_node_join_atomic_replace.sql`, `20260611210000_zerotier_pending_retry.sql`.
+Migrations: through `20260611220000_device_key_and_node_invites.sql` (see top of doc).
 
 ### ZeroTier retry (deauth + authorize)
 
@@ -241,7 +287,9 @@ Request:
   "platform": "android",
   "app_version": "1.0.0",
   "purpose": "join",
-  "replace_node_id": "uuid-optional"
+  "replace_node_id": "uuid-optional",
+  "device_pubkey": "0x04… or 0x wallet address",
+  "invite_code": "octa_…"
 }
 ```
 
@@ -353,7 +401,11 @@ Auth: `Node <credential>`. Node must be `approved`. Revoked nodes (including **r
 
 ### `POST /api/nodes/:id/rotate-credential`
 
-Auth: `Node` or Supabase owner / governance.
+Auth: `Node` or Supabase owner / governance. When the node has **`device_key_address`**, **`X-Device-Timestamp`** + **`X-Device-Signature`** are **required** for Node-credential auth.
+
+### `POST /api/nodes/invites`
+
+Auth: governance reviewer. Body: `{ "expires_at", "max_uses", "auto_approve", "code?" }`. Returns `{ invite: { id, code, … } }` (code shown once).
 
 ### `POST /api/nodes/:id/revoke`
 
@@ -402,5 +454,26 @@ Public. Response:
 
 ## Schema notes
 
-Tables: `node_join_challenges`, `nodes`, `node_join_requests`, `node_heartbeats`, `node_events`.  
+Tables: `node_join_challenges`, `nodes`, `node_join_requests`, `node_heartbeats`, `node_events`, `node_invites`.  
 Future validator fields on `nodes` (nullable, default `node_class = light`): `avalanche_node_id`, `bls_public_key`, `bls_pop`.
+
+---
+
+## Route index (`/api/nodes/*`)
+
+| Method | Path |
+|--------|------|
+| POST | `/api/nodes/challenge` |
+| POST | `/api/nodes/join` |
+| POST | `/api/nodes/by-wallet` |
+| GET | `/api/nodes/mine` |
+| GET | `/api/nodes/app-release` |
+| POST | `/api/nodes/invites` |
+| POST | `/api/nodes/zt-retry` |
+| GET | `/api/nodes/join-requests/queue` |
+| POST | `/api/nodes/join-requests/:id/review` |
+| GET | `/api/nodes/:id/status` |
+| POST | `/api/nodes/:id/heartbeat` |
+| POST | `/api/nodes/:id/exchange-credential` |
+| POST | `/api/nodes/:id/rotate-credential` |
+| POST | `/api/nodes/:id/revoke` |

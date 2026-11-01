@@ -13,6 +13,7 @@ import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "
 import { tryAutoApproveJoin } from "../_lib/node-join-flow";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
 import { requestZeroTierDeauthForNode } from "../_lib/node-zt-pending";
+import { nodeRouteOpportunisticZt } from "../_lib/node-route-zt";
 import type { NodeRow } from "../_lib/node-http";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
@@ -117,6 +118,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     p_pending_expires: pendingExpires,
     p_max_devices: maxActiveNodesPerWallet(),
     p_signature: signature,
+    p_device_key_address: (challenge.device_key_address as string | null) ?? null,
+    p_invite_id: (challenge.invite_id as string | null) ?? null,
   });
 
   if (rpcError) {
@@ -134,6 +137,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     if (msg.includes("zerotier_node_id_in_use")) {
       jsonError(res, 409, "zerotier_node_id_in_use");
+      return;
+    }
+    if (msg.includes("invite_invalid") || msg.includes("invite_mismatch")) {
+      jsonError(res, 400, "bad_request", "invite is no longer valid for this challenge");
+      return;
+    }
+    if (msg.includes("device_key_mismatch")) {
+      jsonError(res, 400, "bad_request", "device key does not match challenge");
       return;
     }
     jsonError(res, 500, "internal_error", msg);

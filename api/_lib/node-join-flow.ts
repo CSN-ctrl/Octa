@@ -9,6 +9,7 @@ import {
   markZeroTierAuthorizePending,
   requestZeroTierDeauthForNode,
 } from "./node-zt-pending";
+import { inviteAutoApproveForJoinRequest } from "./node-invites";
 
 export async function issueNodeCredential(nodeId: string): Promise<string | null> {
   const admin = createServiceSupabaseClient();
@@ -180,7 +181,9 @@ export async function revokeNode(
 }
 
 export async function tryAutoApproveJoin(joinRequestId: string): Promise<{ nodeCredential?: string }> {
-  if (!nodeJoinAutoApproveEnabled()) return {};
+  const envAuto = nodeJoinAutoApproveEnabled();
+  const inviteAuto = await inviteAutoApproveForJoinRequest(joinRequestId);
+  if (!envAuto && !inviteAuto) return {};
   const result = await approveJoinRequest(joinRequestId, null);
   if (!result.ok) return {};
   const token = await issueNodeCredential(result.node.id);
@@ -193,7 +196,9 @@ export async function tryAutoApproveJoin(joinRequestId: string): Promise<{ nodeC
         pending_token_hash: null,
       })
       .eq("id", result.node.id);
-    await appendNodeEvent(result.node.id, "credential_issued", { source: "auto_approve" });
+    await appendNodeEvent(result.node.id, "credential_issued", {
+      source: inviteAuto ? "invite_auto_approve" : "auto_approve",
+    });
   }
   return { nodeCredential: token ?? undefined };
 }

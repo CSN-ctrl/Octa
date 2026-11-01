@@ -13,6 +13,8 @@ import {
 import { challengeExpiryIso, generateNonce, prepareSiweMessage } from "../_lib/node-message";
 import { resolveJoinBindingContext } from "../_lib/node-join-context";
 import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../_lib/node-auth";
+import { normalizeDevicePubkey } from "../_lib/node-device-key";
+import { findValidInviteByCode, normalizeInviteCode } from "../_lib/node-invites";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -35,6 +37,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     app_version?: string;
     purpose?: string;
     replace_node_id?: string;
+    device_pubkey?: string;
+    invite_code?: string;
   }>(req);
 
   const wallet = body.wallet_address ? normalizeWalletAddress(body.wallet_address) : null;
@@ -79,6 +83,32 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
   }
 
+  let deviceKeyAddress: string | null = null;
+  if (body.device_pubkey?.trim()) {
+    deviceKeyAddress = normalizeDevicePubkey(body.device_pubkey);
+    if (!deviceKeyAddress) {
+      jsonError(
+        res,
+        400,
+        "bad_request",
+        "device_pubkey must be a 0x-prefixed EVM address or uncompressed secp256k1 public key (0x04 + 128 hex)",
+      );
+      return;
+    }
+  }
+
+  let inviteId: string | null = null;
+  let inviteCodeStored: string | null = null;
+  if (body.invite_code?.trim()) {
+    const invite = await findValidInviteByCode(body.invite_code);
+    if (!invite) {
+      jsonError(res, 400, "bad_request", "invite_code is invalid, expired, or fully used");
+      return;
+    }
+    inviteId = invite.id;
+    inviteCodeStored = normalizeInviteCode(body.invite_code);
+  }
+
   const supabaseUser = await resolveSupabaseUser(req);
 
   let binding;
@@ -103,6 +133,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     chainId: binding.chainId,
     environment: binding.environment,
     replaceNodeId,
+    deviceKeyAddress,
   });
 
   const { data, error } = await admin
@@ -120,6 +151,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       chain_id: binding.chainId,
       join_environment: binding.environment,
       replace_node_id: replaceNodeId,
+      device_key_address: deviceKeyAddress,
+      invite_code: inviteCodeStored,
+      invite_id: inviteId,
       expires_at: expiresAt,
     })
     .select("id")

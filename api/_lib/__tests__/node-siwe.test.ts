@@ -103,6 +103,26 @@ describe("node-siwe", () => {
     msg.notBefore = new Date(Date.now() + 120_000).toISOString();
     expect(validateSiweClock(msg)).toBe(false);
   });
+
+  it("requires device resource when challenge binds a device key", () => {
+    const parsed = buildSiweMessage({
+      purpose: "join",
+      walletAddress: DOCUMENTED_SIWE_TEST_VECTOR.walletAddress,
+      zerotierNodeId: "a1b2c3d4e5",
+      platform: "android",
+      nonce: "0123456789abcdef0123456789abcdef",
+      issuedAt: new Date().toISOString(),
+      expirationTime: new Date(Date.now() + 300_000).toISOString(),
+      joinDomain: DOCUMENTED_SIWE_TEST_VECTOR.joinDomain,
+      chainId: "43113",
+      environment: "dev",
+      deviceKeyAddress: "0x9ef900738ea2d80bf4d2813f4663391f0382ab52",
+    });
+    expect(parsed.resources?.some((r) => r === "urn:octa:device:0x9ef900738ea2d80bf4d2813f4663391f0382ab52")).toBe(
+      true,
+    );
+    expect(parsed.resources?.every((r) => !r.startsWith("urn:sarakt:"))).toBe(true);
+  });
 });
 
 describe("device cap logic", () => {
