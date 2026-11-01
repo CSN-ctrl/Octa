@@ -71,7 +71,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
-  const appVersionParsed = normalizeAppVersion(body.app_version);
+  const appVersionParsed = normalizeAppVersion(body.app_version, { required: true });
   if (!appVersionParsed.ok) {
     jsonError(res, 400, "app_version_invalid", "app_version is required and must be 1–64 semver-ish characters");
     return;

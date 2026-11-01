@@ -10,6 +10,7 @@ import { appendNodeEvent } from "../_lib/node-events";
 import { respondNodeRevoked } from "../_lib/node-revoked";
 import { nodeRouteOpportunisticZt } from "../_lib/node-route-zt";
 import { verifyDeviceKeyHeaders } from "../_lib/node-device-key";
+import { normalizeAppVersion } from "../_lib/node-app-version";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -80,7 +81,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     block_height?: number | null;
   }>(req);
 
-  const appVersionRaw = (body.app_version ?? body.version)?.trim();
+  const rawVersion = body.app_version ?? body.version;
+  let appVersionRaw: string | undefined;
+  if (rawVersion !== undefined && rawVersion !== null) {
+    const parsed = normalizeAppVersion(rawVersion);
+    if (!parsed.ok) {
+      jsonError(res, 400, "app_version_invalid");
+      return;
+    }
+    appVersionRaw = parsed.value;
+  }
 
   const platform = body.platform?.trim().toLowerCase() ?? nodeAuth.node.platform;
   if (body.platform && !isNodePlatform(platform)) {

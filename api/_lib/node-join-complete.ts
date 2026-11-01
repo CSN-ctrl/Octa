@@ -1,6 +1,7 @@
 import type { ChallengeRecord } from "./node-challenge";
-import { buildMessageFromChallenge, challengeToSiweParams } from "./node-challenge";
-import { maxActiveNodesPerWallet } from "./node-constants";
+import { verifyChallengeSignature, buildMessageFromChallenge, challengeToSiweParams } from "./node-challenge";
+import { maxActiveNodesPerWallet, PENDING_TOKEN_TTL_SECONDS } from "./node-constants";
+import { joinProofErrorStatus } from "./node-join-http";
 import { generatePendingToken } from "./node-credential";
 import { fetchLiveNodesForWallet, linkWalletToUser } from "./node-auth";
 import { tryAutoApproveJoin } from "./node-join-flow";
@@ -9,8 +10,6 @@ import { nodeRouteOpportunisticZt } from "./node-route-zt";
 import { createServiceSupabaseClient } from "./supabase-admin";
 import type { NodeRow } from "./node-http";
 import { serializeNodePublic } from "./node-http";
-import { verifyChallengeSignature, type ChallengeRecord } from "./node-challenge";
-import { maxActiveNodesPerWallet, PENDING_TOKEN_TTL_SECONDS } from "./node-constants";
 
 export type JoinChallengeRow = ChallengeRecord & {
   id: string;
@@ -49,7 +48,7 @@ export async function executePersonalNodeJoin(params: {
       ok: false,
       error: verified.error,
       message: verified.message,
-      statusCode: verified.error === "join_context_mismatch" ? 403 : 401,
+      statusCode: joinProofErrorStatus(verified.error),
     };
   }
 

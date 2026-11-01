@@ -11,6 +11,7 @@ import {
   type BrowserChallengeRow,
 } from "../../../_lib/node-browser-challenge";
 import { executePersonalNodeJoin } from "../../../_lib/node-join-complete";
+import { joinProofErrorStatus, respondIfJoinContextUnconfigured } from "../../../_lib/node-join-http";
 import { rateLimitBrowserChallengeWrite } from "../../../_lib/node-rate-limit";
 
 function challengeIdFromReq(req: ApiRequest): string | null {
@@ -24,6 +25,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   if (req.method !== "POST") {
     methodNotAllowed(res, ["POST"]);
+    return;
+  }
+
+  if (respondIfJoinContextUnconfigured(jsonError, res)) {
     return;
   }
 
@@ -103,7 +108,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     jsonError(
       res,
-      verified.error === "join_context_mismatch" ? 403 : 401,
+      joinProofErrorStatus(verified.error),
       verified.error,
       verified.message,
       { state: "pending" },
@@ -139,7 +144,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     jsonError(
       res,
-      joinResult.statusCode ?? 500,
+      joinResult.statusCode ?? joinProofErrorStatus(joinResult.error),
       joinResult.error,
       joinResult.message,
       { state: challengeState(row) },

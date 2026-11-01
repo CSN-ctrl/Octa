@@ -28,10 +28,11 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `ZEROTIER_ENABLED` | No | Default **`false`** — v1 pilot joins/approves without Central; set `true` to enable authorize/deauth + retry |
 | `NODE_JOIN_AUTO_APPROVE` | No | `true` to auto-approve (default **off** — manual governance approval) |
 | `NODE_JOIN_DOMAIN` | Prod required | Canonical production origin (e.g. `https://www.sarakt.com`). **Production** challenges use this host only (must match request `Host`). |
-| `NODE_JOIN_PREVIEW_HOST_PATTERN` | Preview | Dot-separated host pattern; one `*` per label segment (e.g. `octa-*-csn-ctrl.vercel.app` matches `octa-pr24-csn-ctrl.vercel.app`). |
-| `NODE_JOIN_DEV_HOSTS` | Dev | Comma-separated allowed hosts (default `localhost:8080,127.0.0.1:8080`). |
-| `NODE_JOIN_CHAIN_ID` | Prod required | EIP-155 chain ID in SIWE. **Pilot default `43113` (Avalanche Fuji)** when unset outside production; **must be set in production** (fail closed) |
-| `NODE_JOIN_ENVIRONMENT` | No | `production` \| `staging` \| `dev` — bound in SIWE resource `urn:octa:env:*` (falls back to `VERCEL_ENV`) |
+| `NODE_JOIN_PREVIEW_PROJECT_SLUG` | Preview | Project slug for `{project}-<hash>-{team}.vercel.app` (hash = `[a-z0-9]+` only). |
+| `NODE_JOIN_PREVIEW_TEAM_SLUG` | Preview | Team slug suffix (literal) for preview host pattern. |
+| `NODE_JOIN_DEV_HOSTS` | Dev (`NODE_JOIN_ENVIRONMENT=development`) | Comma-separated allowed hosts (default `localhost:8080,127.0.0.1:8080`). |
+| `NODE_JOIN_CHAIN_ID` | Prod required | EIP-155 chain ID in SIWE. **Pilot default `43113` (Avalanche Fuji)** when unset in **development** only; **must be set in production/staging** (fail closed) |
+| `NODE_JOIN_ENVIRONMENT` | **Required** if `VERCEL_ENV` unset | `production` \| `staging` \| `development` (maps to SIWE `urn:octa:env:*`). Fail closed when neither this nor `VERCEL_ENV` is set. |
 | `NODE_JOIN_CLOCK_SKEW_SECS` | No | Default `60` — allow `issuedAt` up to this many seconds in the future; allow `expirationTime` up to this many seconds in the past; reject `notBefore` beyond this skew when present |
 | `NODE_MAX_ACTIVE_PER_WALLET` | No | Default `3` live (`pending` + `approved` + **`suspended`**) nodes per wallet |
 | `NODE_JOIN_SITE_ORIGIN` | Optional | Override for **`approve_url`** only; default is request origin (`https://` or `http://localhost`). |
@@ -121,12 +122,14 @@ The approve page requires **`message.domain === window.location.host`**. **`POST
 | Deployment | Allowed hosts | Stored `join_domain` |
 |------------|---------------|----------------------|
 | **Production** (`VERCEL_ENV=production`) | **Only** the host of **`NODE_JOIN_DOMAIN`** (fail closed if unset) | `NODE_JOIN_DOMAIN` origin |
-| **Preview** (`VERCEL_ENV=preview`) | `NODE_JOIN_PREVIEW_HOST_PATTERN` **or** host of **`VERCEL_URL` / `VERCEL_BRANCH_URL`** | `https://{Host}` (or `http://` for localhost) |
-| **Development** | **`NODE_JOIN_DEV_HOSTS`** (default `localhost:8080`, `127.0.0.1:8080`) | Request origin |
+| **Preview** (`VERCEL_ENV=preview` or `NODE_JOIN_ENVIRONMENT=staging`) | Exact **`VERCEL_URL` / `VERCEL_BRANCH_URL`** host **or** `{NODE_JOIN_PREVIEW_PROJECT_SLUG}-[a-z0-9]+-{NODE_JOIN_PREVIEW_TEAM_SLUG}.vercel.app` (hash has **no hyphens**) | Request origin |
+| **Development** (`NODE_JOIN_ENVIRONMENT=development` only) | **`NODE_JOIN_DEV_HOSTS`** (default `localhost:8080`, `127.0.0.1:8080`) | Request origin |
 
-Other hosts → **`400`** `{ "success": false, "error": "domain_not_allowed" }`.
+Other hosts on **`POST /api/nodes/challenge`** → **`400`** `{ "success": false, "error": "domain_not_allowed" }`.
 
-**`POST /api/nodes/join`**, **`POST …/sign`**, and **`POST …/replace`** verify the SIWE message **domain** matches the challenge’s stored **`join_domain`** and that host is **still allowlisted** on the current deployment.
+**Forwarded host:** On real Vercel (`VERCEL=1` **and** `x-vercel-id` on the request), use **`x-vercel-forwarded-host`**; otherwise use **`Host`**. Plain **`X-Forwarded-Host`** is never trusted.
+
+**`POST /api/nodes/join`**, **`POST …/sign`**, and **`POST …/replace`** re-check allowlist + stored challenge domain. Any mismatch → **`403`** `{ "error": "join_context_mismatch" }` (not `401`). Missing server join config (`NODE_JOIN_DOMAIN` in production, unset environment, invalid chain) → **`503`** `{ "error": "join_context_unconfigured" }` on all join proof routes.
 
 **Browser `approve_url`:** default `` `{origin}/run-a-node/approve?challenge={id}` `` from the resolved origin; optional **`NODE_JOIN_SITE_ORIGIN`** override when it matches the request host.
 
@@ -599,15 +602,17 @@ All error bodies include `"success": false` unless noted. Governance routes requ
 | **`GET /api/nodes/challenge/:id/result`** without `Authorization: Poll …` | **401** | `unauthorized` |
 | **`GET …/result`** with wrong or unknown poll secret | **401** | `unauthorized` |
 | **`GET …/result`** after credentials already delivered | **409** | `result_already_delivered` |
-| **`POST /api/nodes/challenge`** missing / invalid **`app_version`** | **400** | `app_version_invalid` |
 | **`POST /api/nodes/challenge`** host not allowlisted | **400** | `domain_not_allowed` |
+| Join proof routes with missing **`NODE_JOIN_DOMAIN`** (production) or unset **`NODE_JOIN_ENVIRONMENT` / `VERCEL_ENV`** | **503** | `join_context_unconfigured` |
+| Domain / SIWE context mismatch on **`POST /api/nodes/join`**, **`POST …/sign`**, **`POST …/replace`**, **`POST /api/nodes/by-wallet`** | **403** | `join_context_mismatch` |
+| **`POST /api/nodes/challenge`** or **`POST …/heartbeat`** missing / invalid **`app_version`** (when sent) | **400** | `app_version_invalid` |
 | Expired challenge on **`POST /api/nodes/join`** | **410** | `challenge_expired` |
 | Expired challenge on **`POST …/sign`** | **410** | `challenge_expired` (body includes `"state": "expired"`) |
 | Expired challenge on **`POST …/replace`** | **410** | `challenge_expired` |
 | Expired challenge on **`GET …/result`** poll | **200** | `{ "ready": false, "state": "expired" }` (not an error) |
 | Wrong wallet on **`POST …/sign`** | **400** | `wrong_wallet` |
 
-**`app_version` validation (challenge):** required; **1–64** characters; must match `/^[0-9A-Za-z._+-]{1,64}$/` (semver-ish). Empty, whitespace-only, or invalid characters → **`app_version_invalid`**.
+**`app_version` validation:** required on **`POST /api/nodes/challenge`**; optional on **`POST …/heartbeat`** (if field present). **1–64** characters; `/^[0-9A-Za-z._+-]{1,64}$/`; **no trimming** — leading/trailing whitespace or control characters → **`app_version_invalid`**. Deprecated heartbeat alias **`version`** uses the same rules.
 
 ---
 

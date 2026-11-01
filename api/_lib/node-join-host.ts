@@ -1,6 +1,5 @@
 import type { ApiRequest } from "./types";
 import {
-  isProductionJoinContext,
   resolveJoinBindingContext,
   resolveJoinEnvironment,
   type JoinBindingContext,
@@ -16,18 +15,17 @@ function headerValue(req: ApiRequest, name: string): string | undefined {
   return Array.isArray(raw) ? raw[0] : raw;
 }
 
-/** Host header as seen on this deployment (Vercel-controlled forwarded host when on Vercel). */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Host for join binding: Vercel forwarded host only on real Vercel (VERCEL=1 + x-vercel-id). */
 export function requestHostHeader(req: ApiRequest): string | null {
-  const onVercel = process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV?.trim());
-  let host: string | undefined;
-  if (onVercel) {
-    host =
-      headerValue(req, "x-vercel-forwarded-host") ||
-      headerValue(req, "x-forwarded-host") ||
-      headerValue(req, "host");
-  } else {
-    host = headerValue(req, "host");
-  }
+  const vercelId = headerValue(req, "x-vercel-id");
+  const onRealVercel = process.env.VERCEL === "1" && Boolean(vercelId?.trim());
+  const host = onRealVercel
+    ? headerValue(req, "x-vercel-forwarded-host") || headerValue(req, "host")
+    : headerValue(req, "host");
   if (!host) return null;
   return host.trim().toLowerCase();
 }
@@ -79,37 +77,6 @@ export function devJoinHostsAllowlist(): string[] {
   return ["localhost:8080", "127.0.0.1:8080"];
 }
 
-/** Dot-separated labels; each label is literal or exactly `*` (one DNS label). */
-export function matchPreviewHostPattern(pattern: string, host: string): boolean {
-  const pat = pattern.trim().toLowerCase();
-  const h = host.trim().toLowerCase();
-  if (!pat || !h) return false;
-  const labels = pat.split(".");
-  const hostLabels = h.split(".");
-  if (labels.length !== hostLabels.length) return false;
-  for (let i = 0; i < labels.length; i++) {
-    const pl = labels[i]!;
-    const hl = hostLabels[i]!;
-    if (pl === "*") {
-      if (!hl) return false;
-      continue;
-    }
-    if (pl.includes("*")) {
-      const parts = pl.split("*");
-      if (parts.length !== 2) return false;
-      const [prefix, suffix] = parts;
-      if (!hl.startsWith(prefix) || !hl.endsWith(suffix) || hl.length <= prefix.length + suffix.length) {
-        return false;
-      }
-      const middle = hl.slice(prefix.length, hl.length - suffix.length);
-      if (!middle || middle.includes(".")) return false;
-      continue;
-    }
-    if (pl !== hl) return false;
-  }
-  return true;
-}
-
 function previewAllowlistHosts(): string[] {
   const hosts: string[] = [];
   for (const key of ["VERCEL_URL", "VERCEL_BRANCH_URL"] as const) {
@@ -121,33 +88,51 @@ function previewAllowlistHosts(): string[] {
   return hosts;
 }
 
+/** `<project>-[a-z0-9]+-<team>.vercel.app` (hash segment has no hyphens). */
+export function matchPreviewProjectHashHost(host: string): boolean {
+  const project = process.env.NODE_JOIN_PREVIEW_PROJECT_SLUG?.trim().toLowerCase();
+  const team = process.env.NODE_JOIN_PREVIEW_TEAM_SLUG?.trim().toLowerCase();
+  if (!project || !team) return false;
+  const re = new RegExp(`^${escapeRegExp(project)}-[a-z0-9]+-${escapeRegExp(team)}\\.vercel\\.app$`, "i");
+  return re.test(host.trim().toLowerCase());
+}
+
+/** @deprecated use matchPreviewProjectHashHost */
+export function matchPreviewHostPattern(pattern: string, host: string): boolean {
+  void pattern;
+  return matchPreviewProjectHashHost(host);
+}
+
 export function isHostAllowlistedForJoin(host: string): boolean {
   const h = host.trim().toLowerCase();
   if (!h) return false;
 
-  const vercelEnv = process.env.VERCEL_ENV?.trim();
-  const environment = resolveJoinEnvironment();
+  let environment: ReturnType<typeof resolveJoinEnvironment>;
+  try {
+    environment = resolveJoinEnvironment();
+  } catch {
+    return false;
+  }
 
-  if (vercelEnv === "production" || (environment === "production" && vercelEnv !== "preview")) {
+  if (environment === "production") {
     const domainRaw = process.env.NODE_JOIN_DOMAIN?.trim();
     if (!domainRaw) return false;
     const prodHost = parseHostFromEnvUrl(domainRaw);
     return prodHost === h;
   }
 
-  if (vercelEnv === "preview" || environment === "staging") {
-    const pattern = process.env.NODE_JOIN_PREVIEW_HOST_PATTERN?.trim();
-    if (pattern && matchPreviewHostPattern(pattern, h)) {
+  if (environment === "staging") {
+    if (previewAllowlistHosts().includes(h)) {
       return true;
     }
-    const listed = previewAllowlistHosts();
-    if (listed.includes(h)) {
-      return true;
-    }
-    return false;
+    return matchPreviewProjectHashHost(h);
   }
 
-  return devJoinHostsAllowlist().includes(h);
+  if (environment === "dev") {
+    return devJoinHostsAllowlist().includes(h);
+  }
+
+  return false;
 }
 
 export function resolveJoinBindingFromRequest(req: ApiRequest): JoinHostResolution {
@@ -158,9 +143,9 @@ export function resolveJoinBindingFromRequest(req: ApiRequest): JoinHostResoluti
     return { ok: false, error: "join_context_unconfigured", message: (e as Error).message };
   }
 
-  const vercelEnv = process.env.VERCEL_ENV?.trim();
+  const environment = chainBinding.environment;
 
-  if (vercelEnv === "production" || (isProductionJoinContext() && vercelEnv !== "preview")) {
+  if (environment === "production") {
     const domainRaw = process.env.NODE_JOIN_DOMAIN?.trim();
     if (!domainRaw) {
       return {
@@ -225,6 +210,11 @@ export function challengeBindingMatchesServer(
 
     const challengeHost = hostFromJoinDomain(challenge.join_domain);
     if (!isHostAllowlistedForJoin(challengeHost)) {
+      return false;
+    }
+
+    const { domain: siweDomain } = siweDomainAndUri(challenge.join_domain);
+    if (siweDomain.toLowerCase() !== challengeHost && siweDomain.toLowerCase() !== challengeHost.split(":")[0]) {
       return false;
     }
 

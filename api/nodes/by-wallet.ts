@@ -5,10 +5,15 @@ import { createServiceSupabaseClient } from "../_lib/supabase-admin";
 import { normalizeWalletAddress } from "../_lib/node-constants";
 import { verifyChallengeSignature, type ChallengeRecord } from "../_lib/node-challenge";
 import { fetchNodesForWallet } from "../_lib/node-auth";
+import { joinProofErrorStatus, respondIfJoinContextUnconfigured } from "../_lib/node-join-http";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
     methodNotAllowed(res, ["POST"]);
+    return;
+  }
+
+  if (respondIfJoinContextUnconfigured(jsonError, res)) {
     return;
   }
 
@@ -68,7 +73,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const verified = await verifyChallengeSignature(challenge as ChallengeRecord, signature, wallet, req);
   if (!verified.ok) {
-    jsonError(res, verified.error === "join_context_mismatch" ? 403 : 401, verified.error, verified.message);
+    jsonError(res, joinProofErrorStatus(verified.error), verified.error, verified.message);
     return;
   }
 

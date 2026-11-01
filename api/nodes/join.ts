@@ -6,11 +6,16 @@ import { normalizeWalletAddress } from "../_lib/node-constants";
 import { executePersonalNodeJoin, linkUserIfPresent } from "../_lib/node-join-complete";
 import { resolveSupabaseUser } from "../_lib/node-auth";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
+import { joinProofErrorStatus, respondIfJoinContextUnconfigured } from "../_lib/node-join-http";
 import type { ChallengeRecord } from "../_lib/node-challenge";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
     methodNotAllowed(res, ["POST"]);
+    return;
+  }
+
+  if (respondIfJoinContextUnconfigured(jsonError, res)) {
     return;
   }
 
@@ -90,7 +95,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!joinResult.ok) {
     jsonError(
       res,
-      joinResult.statusCode ?? 500,
+      joinResult.statusCode ?? joinProofErrorStatus(joinResult.error),
       joinResult.error,
       joinResult.message,
       joinResult.active_nodes ? { active_nodes: joinResult.active_nodes } : undefined,

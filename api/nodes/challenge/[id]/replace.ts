@@ -10,6 +10,7 @@ import {
 } from "../../../_lib/node-browser-challenge";
 import { buildMessageFromChallenge } from "../../../_lib/node-challenge";
 import { fetchLiveNodesForWallet } from "../../../_lib/node-auth";
+import { joinProofErrorStatus, respondIfJoinContextUnconfigured } from "../../../_lib/node-join-http";
 import { rateLimitBrowserChallengeWrite } from "../../../_lib/node-rate-limit";
 
 function challengeIdFromReq(req: ApiRequest): string | null {
@@ -23,6 +24,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   if (req.method !== "POST") {
     methodNotAllowed(res, ["POST"]);
+    return;
+  }
+
+  if (respondIfJoinContextUnconfigured(jsonError, res)) {
     return;
   }
 
@@ -98,7 +103,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       jsonError(res, 400, "wrong_wallet");
       return;
     }
-    jsonError(res, 401, verified.error, verified.message);
+    jsonError(res, joinProofErrorStatus(verified.error), verified.error, verified.message);
     return;
   }
 
