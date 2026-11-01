@@ -6,16 +6,15 @@ import {
   isChallengePurpose,
   isChallengeSigningMode,
   isNodePlatform,
-  nodeJoinSiteOrigin,
   normalizeWalletAddress,
   normalizeZeroTierNodeId,
 } from "../../_lib/node-constants";
 import { challengeExpiryIso, generateNonce, prepareSiweMessage } from "../../_lib/node-message";
-import { resolveJoinBindingContext } from "../../_lib/node-join-context";
+import { resolveJoinBindingFromRequest, approveUrlForChallenge } from "../../_lib/node-join-host";
 import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../../_lib/node-auth";
 import { normalizeDevicePubkey } from "../../_lib/node-device-key";
 import { findValidInviteByCode, normalizeInviteCode } from "../../_lib/node-invites";
-import { generateChallengePollSecret } from "../../_lib/node-credential";
+import { normalizeAppVersion } from "../../_lib/node-app-version";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -72,7 +71,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
-  const appVersion = (body.app_version ?? "").trim();
+  const appVersionParsed = normalizeAppVersion(body.app_version);
+  if (!appVersionParsed.ok) {
+    jsonError(res, 400, "app_version_invalid", "app_version is required and must be 1–64 semver-ish characters");
+    return;
+  }
+  const appVersion = appVersionParsed.value;
 
   let zerotierNodeId: string | null = null;
   if (body.zerotier_node_id?.trim()) {
@@ -122,13 +126,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const supabaseUser = await resolveSupabaseUser(req);
 
-  let binding;
-  try {
-    binding = resolveJoinBindingContext();
-  } catch (e) {
-    jsonError(res, 503, "join_context_unconfigured", (e as Error).message);
+  const hostBinding = resolveJoinBindingFromRequest(req);
+  if (!hostBinding.ok) {
+    if (hostBinding.error === "domain_not_allowed") {
+      jsonError(res, 400, "domain_not_allowed");
+      return;
+    }
+    jsonError(res, 503, "join_context_unconfigured", hostBinding.message);
     return;
   }
+  const binding = hostBinding.binding;
 
   const nonce = generateNonce();
   const { issuedAt, expiresAt } = challengeExpiryIso(new Date(), signingRaw);
@@ -153,11 +160,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const poll = generateChallengePollSecret();
     pollSecret = poll.token;
     pollHash = poll.hash;
-    const siteOrigin = nodeJoinSiteOrigin();
-    if (!siteOrigin) {
-      jsonError(res, 503, "join_context_unconfigured", "NODE_JOIN_SITE_ORIGIN is required for browser signing");
-      return;
-    }
   }
 
   const { data, error } = await admin
@@ -202,8 +204,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   };
 
   if (signingRaw === "browser") {
-    const siteOrigin = nodeJoinSiteOrigin()!;
-    response.approve_url = `${siteOrigin}/run-a-node/approve?challenge=${data.id}`;
+    response.approve_url = approveUrlForChallenge(hostBinding.origin, data.id);
     response.poll_secret = pollSecret;
   }
 

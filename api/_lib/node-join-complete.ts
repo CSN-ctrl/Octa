@@ -38,11 +38,12 @@ export async function executePersonalNodeJoin(params: {
   signature: string;
   userId: string | null;
   replaceNodeId?: string | null;
+  req?: import("./types").ApiRequest;
 }): Promise<CompleteJoinResult> {
-  const { challenge, wallet, signature } = params;
+  const { challenge, wallet, signature, req } = params;
   const admin = createServiceSupabaseClient();
 
-  const verified = await verifyChallengeSignature(challenge, signature, wallet);
+  const verified = await verifyChallengeSignature(challenge, signature, wallet, req);
   if (!verified.ok) {
     return {
       ok: false,

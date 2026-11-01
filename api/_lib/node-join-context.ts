@@ -47,23 +47,6 @@ export function resolveJoinBindingContext(): JoinBindingContext {
   return { domain, chainId, environment };
 }
 
-export function challengeBindingMatchesServer(challenge: {
-  join_domain: string;
-  chain_id: string;
-  join_environment: string;
-}): boolean {
-  try {
-    const server = resolveJoinBindingContext();
-    return (
-      challenge.join_domain === server.domain &&
-      challenge.chain_id === server.chainId &&
-      challenge.join_environment === server.environment
-    );
-  } catch {
-    return false;
-  }
-}
-
 /** Fixed bindings for EIP-191 test vector (docs + Rust parity). */
 export const DOCUMENTED_TEST_VECTOR_BINDING: JoinBindingContext = {
   domain: "https://www.sarakt.com",

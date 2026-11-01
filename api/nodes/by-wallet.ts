@@ -66,7 +66,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
-  const verified = await verifyChallengeSignature(challenge as ChallengeRecord, signature, wallet);
+  const verified = await verifyChallengeSignature(challenge as ChallengeRecord, signature, wallet, req);
   if (!verified.ok) {
     jsonError(res, verified.error === "join_context_mismatch" ? 403 : 401, verified.error, verified.message);
     return;

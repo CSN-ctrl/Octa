@@ -27,12 +27,14 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `ZEROTIER_NETWORK_ID` | When `ZEROTIER_ENABLED=true` | **Dedicated Personal Node** network (not validator infra) |
 | `ZEROTIER_ENABLED` | No | Default **`false`** — v1 pilot joins/approves without Central; set `true` to enable authorize/deauth + retry |
 | `NODE_JOIN_AUTO_APPROVE` | No | `true` to auto-approve (default **off** — manual governance approval) |
-| `NODE_JOIN_DOMAIN` | Prod required | SIWE domain + URI host (e.g. `https://www.sarakt.com`). Defaults from request host in dev. |
+| `NODE_JOIN_DOMAIN` | Prod required | Canonical production origin (e.g. `https://www.sarakt.com`). **Production** challenges use this host only (must match request `Host`). |
+| `NODE_JOIN_PREVIEW_HOST_PATTERN` | Preview | Dot-separated host pattern; one `*` per label segment (e.g. `octa-*-csn-ctrl.vercel.app` matches `octa-pr24-csn-ctrl.vercel.app`). |
+| `NODE_JOIN_DEV_HOSTS` | Dev | Comma-separated allowed hosts (default `localhost:8080,127.0.0.1:8080`). |
 | `NODE_JOIN_CHAIN_ID` | Prod required | EIP-155 chain ID in SIWE. **Pilot default `43113` (Avalanche Fuji)** when unset outside production; **must be set in production** (fail closed) |
 | `NODE_JOIN_ENVIRONMENT` | No | `production` \| `staging` \| `dev` — bound in SIWE resource `urn:octa:env:*` (falls back to `VERCEL_ENV`) |
 | `NODE_JOIN_CLOCK_SKEW_SECS` | No | Default `60` — allow `issuedAt` up to this many seconds in the future; allow `expirationTime` up to this many seconds in the past; reject `notBefore` beyond this skew when present |
 | `NODE_MAX_ACTIVE_PER_WALLET` | No | Default `3` live (`pending` + `approved` + **`suspended`**) nodes per wallet |
-| `NODE_JOIN_SITE_ORIGIN` | Browser join | Public site origin for approve URLs (e.g. `https://www.sarakt.com`) when `signing: "browser"` |
+| `NODE_JOIN_SITE_ORIGIN` | Optional | Override for **`approve_url`** only; default is request origin (`https://` or `http://localhost`). |
 | `NODE_JOIN_BROWSER_CHALLENGE_TTL_SECS` | No | Default `600` — TTL for browser-approval challenges (local signing stays **300** / 5 min) |
 | `NODE_HEARTBEAT_INTERVAL_ANDROID` | No | Seconds; default `300` |
 | `NODE_HEARTBEAT_INTERVAL_WEB` | No | Default `300` |
@@ -81,7 +83,7 @@ Challenges return the exact string from `SiweMessage.prepareMessage()` (UTF-8). 
 
 | Field | Source |
 |-------|--------|
-| Domain | Host from `NODE_JOIN_DOMAIN` |
+| Domain | Host from `NODE_JOIN_DOMAIN` (must match request `Host`) |
 | URI | Origin from `NODE_JOIN_DOMAIN` |
 | Chain ID | `NODE_JOIN_CHAIN_ID` (default `43113`) |
 | Statement | `Octa Personal Node Join Request` or `Octa Personal Node Wallet Lookup` |
@@ -111,6 +113,22 @@ Challenge **expires_at** stays short (~5 min). SIWE timestamps use an additional
 - **`notBefore`**: if present, reject when more than skew seconds **in the future**.
 
 Production join verification uses server wall clock at request time (no fixed test time).
+
+### Request host allowlist (preview / dev / production)
+
+The approve page requires **`message.domain === window.location.host`**. **`POST /api/nodes/challenge`** derives SIWE **`domain` / URI** from the incoming request **`Host`** (on Vercel: `x-vercel-forwarded-host` or `x-forwarded-host`, then `host`; locally: `host` only — **never** trust client-supplied `X-Forwarded-Host` off Vercel).
+
+| Deployment | Allowed hosts | Stored `join_domain` |
+|------------|---------------|----------------------|
+| **Production** (`VERCEL_ENV=production`) | **Only** the host of **`NODE_JOIN_DOMAIN`** (fail closed if unset) | `NODE_JOIN_DOMAIN` origin |
+| **Preview** (`VERCEL_ENV=preview`) | `NODE_JOIN_PREVIEW_HOST_PATTERN` **or** host of **`VERCEL_URL` / `VERCEL_BRANCH_URL`** | `https://{Host}` (or `http://` for localhost) |
+| **Development** | **`NODE_JOIN_DEV_HOSTS`** (default `localhost:8080`, `127.0.0.1:8080`) | Request origin |
+
+Other hosts → **`400`** `{ "success": false, "error": "domain_not_allowed" }`.
+
+**`POST /api/nodes/join`**, **`POST …/sign`**, and **`POST …/replace`** verify the SIWE message **domain** matches the challenge’s stored **`join_domain`** and that host is **still allowlisted** on the current deployment.
+
+**Browser `approve_url`:** default `` `{origin}/run-a-node/approve?challenge={id}` `` from the resolved origin; optional **`NODE_JOIN_SITE_ORIGIN`** override when it matches the request host.
 
 ### Rust / QA test vector (Hardhat account #0, **test only**)
 
@@ -562,6 +580,34 @@ Public. Response:
   "min_supported_version": "0.9.0"
 }
 ```
+
+---
+
+## HTTP error codes (QA reference)
+
+All error bodies include `"success": false` unless noted. Governance routes require Supabase bearer **and** `is_network_governance_reviewer()` (dashboard admin or `user_metadata.role = network_governance`).
+
+| Situation | HTTP | `error` |
+|-----------|------|---------|
+| Non-governance caller on **`POST /api/nodes/join-requests/:id/review`** | **403** | `forbidden` |
+| Non-governance caller on **`GET /api/nodes/join-requests/queue`** | **403** | `forbidden` |
+| Non-governance caller on **`POST /api/nodes/invites`** | **403** | `forbidden` |
+| Non-governance caller on **`POST /api/nodes/:id/suspend`** | **403** | `forbidden` |
+| Non-governance caller on **`POST /api/nodes/:id/reinstate`** | **403** | `forbidden` |
+| Non-governance caller on **`POST /api/nodes/zt-retry`** (without valid `CRON_SECRET`) | **403** | `forbidden` |
+| Missing Supabase bearer on governance routes | **401** | `unauthorized` |
+| **`GET /api/nodes/challenge/:id/result`** without `Authorization: Poll …` | **401** | `unauthorized` |
+| **`GET …/result`** with wrong or unknown poll secret | **401** | `unauthorized` |
+| **`GET …/result`** after credentials already delivered | **409** | `result_already_delivered` |
+| **`POST /api/nodes/challenge`** missing / invalid **`app_version`** | **400** | `app_version_invalid` |
+| **`POST /api/nodes/challenge`** host not allowlisted | **400** | `domain_not_allowed` |
+| Expired challenge on **`POST /api/nodes/join`** | **410** | `challenge_expired` |
+| Expired challenge on **`POST …/sign`** | **410** | `challenge_expired` (body includes `"state": "expired"`) |
+| Expired challenge on **`POST …/replace`** | **410** | `challenge_expired` |
+| Expired challenge on **`GET …/result`** poll | **200** | `{ "ready": false, "state": "expired" }` (not an error) |
+| Wrong wallet on **`POST …/sign`** | **400** | `wrong_wallet` |
+
+**`app_version` validation (challenge):** required; **1–64** characters; must match `/^[0-9A-Za-z._+-]{1,64}$/` (semver-ish). Empty, whitespace-only, or invalid characters → **`app_version_invalid`**.
 
 ---
 

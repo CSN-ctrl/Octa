@@ -1,4 +1,4 @@
-import { challengeBindingMatchesServer } from "./node-join-context";
+import { challengeBindingMatchesServer } from "./node-join-host";
 import type { ChallengePurpose } from "./node-constants";
 import type { JoinEnvironment } from "./node-join-context";
 import {
@@ -68,8 +68,10 @@ export async function verifyChallengeSignature(
   challenge: ChallengeRecord,
   signature: string,
   walletAddress: string,
+  req?: import("./types").ApiRequest,
+  referenceTime?: Date,
 ): Promise<VerifyChallengeSignatureResult> {
-  if (!challengeBindingMatchesServer(challenge)) {
+  if (!challengeBindingMatchesServer(challenge, req)) {
     return {
       ok: false,
       error: "join_context_mismatch",
@@ -82,7 +84,7 @@ export async function verifyChallengeSignature(
   }
 
   const prepared = buildMessageFromChallenge(challenge);
-  const verified = await verifySiweSignature(prepared, signature, challengeToSiweParams(challenge));
+  const verified = await verifySiweSignature(prepared, signature, challengeToSiweParams(challenge), referenceTime ?? new Date());
   if (!verified.ok) {
     return verified;
   }

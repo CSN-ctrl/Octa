@@ -71,6 +71,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const row = challenge as BrowserChallengeRow;
   const state = challengeState(row);
+  if (state === "expired") {
+    jsonError(res, 410, "challenge_expired", undefined, { state: "expired" });
+    return;
+  }
   if (state !== "pending") {
     jsonError(res, 409, "challenge_not_pending", undefined, { state });
     return;
@@ -88,7 +92,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   const proofChallenge = { ...row, replace_node_id: null };
-  const verified = await verifyBrowserChallengeSignature(proofChallenge, signature);
+  const verified = await verifyBrowserChallengeSignature(proofChallenge, signature, new Date(), req);
   if (!verified.ok) {
     if (verified.error === "wrong_wallet") {
       jsonError(res, 400, "wrong_wallet");

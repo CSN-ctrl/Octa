@@ -13,6 +13,7 @@ import { generateNonce } from "./node-message";
 import { challengeExpiryIso } from "./node-message";
 import { maxActiveNodesPerWallet } from "./node-constants";
 import { fetchLiveNodesForWallet } from "./node-auth";
+import { challengeBindingMatchesServer } from "./node-join-host";
 
 export type ChallengeState = "pending" | "signed" | "expired" | "already_used";
 
@@ -109,6 +110,7 @@ export async function verifyBrowserChallengeSignature(
   challenge: ChallengeRecord,
   signature: string,
   referenceTime: Date = new Date(),
+  req?: import("./types").ApiRequest,
 ): Promise<VerifyChallengeSignatureResult | { ok: false; error: "wrong_wallet" }> {
   const prepared = buildMessageFromChallenge(challenge);
   let parsed: SiweMessage;
@@ -132,6 +134,14 @@ export async function verifyBrowserChallengeSignature(
 
   if (messageAddress.toLowerCase() !== challenge.wallet_address.toLowerCase()) {
     return { ok: false, error: "wrong_wallet" };
+  }
+
+  if (!challengeBindingMatchesServer(challenge, req)) {
+    return {
+      ok: false,
+      error: "join_context_mismatch",
+      message: "Challenge domain is not allowlisted for this deployment",
+    };
   }
 
   const { domain } = siweDomainAndUri(challenge.join_domain);

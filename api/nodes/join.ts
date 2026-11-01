@@ -84,6 +84,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     signature,
     userId,
     replaceNodeId: (challenge.replace_node_id as string | null) ?? null,
+    req,
   });
 
   if (!joinResult.ok) {

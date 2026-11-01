@@ -95,7 +95,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
-  const verified = await verifyBrowserChallengeSignature(row, signature);
+  const verified = await verifyBrowserChallengeSignature(row, signature, new Date(), req);
   if (!verified.ok) {
     if (verified.error === "wrong_wallet") {
       jsonError(res, 400, "wrong_wallet", undefined, { state: "pending" });
@@ -128,6 +128,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     signature,
     userId: (challenge.user_id as string | null) ?? null,
     replaceNodeId: replaceId,
+    req,
   });
 
   if (!joinResult.ok) {

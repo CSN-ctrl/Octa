@@ -57,6 +57,12 @@ describe("node-browser-challenge", () => {
   });
 
   it("verifyBrowserChallengeSignature returns wrong_wallet for foreign signer", async () => {
+    process.env.NODE_JOIN_DOMAIN = "https://www.sarakt.com";
+    process.env.VERCEL_ENV = "production";
+    process.env.NODE_JOIN_ENVIRONMENT = "production";
+    process.env.NODE_JOIN_CHAIN_ID = "43113";
+    const req = { headers: { host: "www.sarakt.com" } };
+
     const wallet0 = new Wallet(DOCUMENTED_SIWE_TEST_VECTOR.privateKey);
     const wallet1 = new Wallet("0x5de4111afa1a4b94908e93857e087a3eb349e853c0c9eae6e122bae1f6c6d00f");
     const message = prepareSiweMessage({
@@ -69,14 +75,19 @@ describe("node-browser-challenge", () => {
       expirationTime: DOCUMENTED_SIWE_TEST_VECTOR.expirationTime,
       joinDomain: DOCUMENTED_SIWE_TEST_VECTOR.joinDomain,
       chainId: DOCUMENTED_SIWE_TEST_VECTOR.chainId,
-      environment: DOCUMENTED_SIWE_TEST_VECTOR.environment,
+      environment: "production",
     });
     const signature = await wallet1.signMessage(message);
-    const row = baseBrowserChallenge({ nonce: "aaaabbbbccccddddeeeeffffaaaabbbb" });
+    const row = baseBrowserChallenge({
+      nonce: "aaaabbbbccccddddeeeeffffaaaabbbb",
+      join_environment: "production",
+      platform: "desktop",
+    });
     const verified = await verifyBrowserChallengeSignature(
       row,
       signature,
       new Date(DOCUMENTED_SIWE_TEST_VECTOR.referenceTime),
+      req,
     );
     expect(verified.ok).toBe(false);
     if (!verified.ok) {
@@ -87,6 +98,7 @@ describe("node-browser-challenge", () => {
       row,
       goodSig,
       new Date(DOCUMENTED_SIWE_TEST_VECTOR.referenceTime),
+      req,
     );
     expect(ok.ok).toBe(true);
   });
