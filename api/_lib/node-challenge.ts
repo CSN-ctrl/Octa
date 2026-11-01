@@ -12,7 +12,7 @@ import { CHALLENGE_TTL_SECONDS } from "./node-constants";
 export type ChallengeRecord = {
   purpose: string;
   wallet_address: string;
-  zerotier_node_id: string;
+  zerotier_node_id: string | null;
   platform: string;
   app_version: string;
   nonce: string;
@@ -38,7 +38,7 @@ export function challengeToSiweParams(challenge: ChallengeRecord): SiweChallenge
   return {
     purpose: challenge.purpose as ChallengePurpose,
     walletAddress: challenge.wallet_address,
-    zerotierNodeId: challenge.zerotier_node_id,
+    zerotierNodeId: challenge.zerotier_node_id ?? null,
     platform: challenge.platform,
     nonce: challenge.nonce,
     issuedAt: issuedAtFromChallenge(challenge),

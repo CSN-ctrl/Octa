@@ -91,6 +91,7 @@ describe("node-zt-pending deauth retry", () => {
     };
 
     let calls = 0;
+    process.env.ZEROTIER_ENABLED = "true";
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {

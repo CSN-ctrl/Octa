@@ -7,6 +7,9 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 3. `supabase/migrations/20260611190000_node_join_atomic_replace.sql`
 4. `supabase/migrations/20260611210000_zerotier_pending_retry.sql`
 5. `supabase/migrations/20260611220000_device_key_and_node_invites.sql`
+6. `supabase/migrations/20260611230000_optional_zerotier_v1.sql`
+
+**Client:** The headless node / core runtime lives in **[CSN-ctrl/sarakt-node](https://github.com/CSN-ctrl/sarakt-node)**. This **Octa** repo owns the `/api/nodes/*` Vercel routes and Supabase migrations only.
 
 **Depends on:** PR #20 (`cursor/sarakt-canonical-product-rules-67fe`) — Supabase bearer conventions, `is_dashboard_admin()`, plots / permits patterns.
 
@@ -19,11 +22,12 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `SUPABASE_URL` | Yes | Same project as SPA |
 | `SUPABASE_ANON_KEY` | Yes | For optional Supabase user linking |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Node tables (no client `VITE_*`) |
-| `ZEROTIER_API_TOKEN` | For approval | ZeroTier Central API token |
-| `ZEROTIER_NETWORK_ID` | For approval | **Dedicated Personal Node** ZeroTier network ID (not the validator / infra network) |
-| `NODE_JOIN_AUTO_APPROVE` | No | `true` to auto-approve (default **off**) |
-| `NODE_JOIN_DOMAIN` | Prod recommended | SIWE domain + URI host (e.g. `https://www.sarakt.com`). Defaults from request host in dev. |
-| `NODE_JOIN_CHAIN_ID` | Prod recommended | EIP-155 chain ID in SIWE (default `43113` Fuji when unset) |
+| `ZEROTIER_API_TOKEN` | When `ZEROTIER_ENABLED=true` | ZeroTier Central API token |
+| `ZEROTIER_NETWORK_ID` | When `ZEROTIER_ENABLED=true` | **Dedicated Personal Node** network (not validator infra) |
+| `ZEROTIER_ENABLED` | No | Default **`false`** — v1 pilot joins/approves without Central; set `true` to enable authorize/deauth + retry |
+| `NODE_JOIN_AUTO_APPROVE` | No | `true` to auto-approve (default **off** — manual governance approval) |
+| `NODE_JOIN_DOMAIN` | Prod required | SIWE domain + URI host (e.g. `https://www.sarakt.com`). Defaults from request host in dev. |
+| `NODE_JOIN_CHAIN_ID` | Prod required | EIP-155 chain ID in SIWE. **Pilot default `43113` (Avalanche Fuji)** when unset outside production; **must be set in production** (fail closed) |
 | `NODE_JOIN_ENVIRONMENT` | No | `production` \| `staging` \| `dev` — bound in SIWE resource `urn:octa:env:*` (falls back to `VERCEL_ENV`) |
 | `NODE_JOIN_CLOCK_SKEW_SECS` | No | Default `60` — allow `issuedAt` up to this many seconds in the future; allow `expirationTime` up to this many seconds in the past; reject `notBefore` beyond this skew when present |
 | `NODE_MAX_ACTIVE_PER_WALLET` | No | Default `3` live (`pending` + `approved`) nodes per wallet |
@@ -39,7 +43,7 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 
 Never prefix ZeroTier or service role secrets with `VITE_`.
 
-**Operational notes:** Phone and light clients send heartbeats over **public HTTPS** to `/api/nodes/:id/heartbeat` (not over ZeroTier). ZeroTier is for mesh connectivity after approval; Central authorize/deauthorize is best-effort with retries (below).
+**Operational notes:** v1 ships with **`ZEROTIER_ENABLED=false`**. **`zerotier_node_id`** on challenge/join is **optional**; SIWE includes **`urn:zerotier:<id>`** only when a member id is supplied. Node status payloads include **`zerotier`**: `disabled` | `pending_authorization` | `authorized`. When ZeroTier is off or no member id is stored, approval activates the node without Central and without pending retry state. Phone clients send heartbeats over **public HTTPS** (not over ZeroTier).
 
 ---
 
@@ -83,7 +87,7 @@ Challenges return the exact string from `SiweMessage.prepareMessage()` (UTF-8). 
 
 **Resources (order matters for verification)**
 
-- `urn:zerotier:<10 hex>` — device ZeroTier ID (`0000000000` for lookup challenges)
+- `urn:zerotier:<10 hex>` — **optional**; only when `zerotier_node_id` was sent on challenge
 - `urn:octa:purpose:join` or `urn:octa:purpose:lookup`
 - `urn:octa:platform:android|web|desktop`
 - `urn:octa:env:production|staging|dev`
@@ -262,11 +266,9 @@ Response includes `next_heartbeat_secs` (platform-specific from env). Rate limit
 
 ---
 
-## Legacy `sarakt-node` / `claim_node`
+## Legacy `claim_node`
 
-A repo-wide search on this branch found **no** Supabase RPC named `claim_node` or `sarakt-node` heartbeat implementation (may live in another repo, branch, or deployed DB only). **This PR does not modify legacy RPCs.**
-
-**Suggested migration (Node Infra to detail):** map existing rotated tokens to `nodes.credential_hash`, register rows in `nodes` with `node_class = 'light'`, point the Rust core at `POST /api/nodes/:id/heartbeat` + Node credential, and retire `claim_node` after dual-write validation.
+Older **`claim_node`** RPCs (if deployed elsewhere) must not silent-revoke. Migrate to this API explicitly. Runtime client: **CSN-ctrl/sarakt-node**; API + schema: **CSN-ctrl/Octa**.
 
 ---
 
@@ -283,7 +285,7 @@ Request:
 ```json
 {
   "wallet_address": "0x…",
-  "zerotier_node_id": "a1b2c3d4e5",
+  "zerotier_node_id": null,
   "platform": "android",
   "app_version": "1.0.0",
   "purpose": "join",
@@ -330,8 +332,9 @@ Response `201`:
     "id": "uuid",
     "status": "pending",
     "reason": null,
-    "zerotier_node_id": "a1b2c3d4e5",
-    "zt_authorized": false,
+  "zerotier_node_id": "a1b2c3d4e5",
+  "zerotier": "disabled",
+  "zt_authorized": false,
     "last_seen_at": "ISO8601",
     "online": false,
     "app_version": "1.0.0"

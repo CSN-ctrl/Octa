@@ -5,7 +5,6 @@ import { createServiceSupabaseClient } from "../_lib/supabase-admin";
 import {
   isChallengePurpose,
   isNodePlatform,
-  LOOKUP_CHALLENGE_ZT_PLACEHOLDER,
   maxActiveNodesPerWallet,
   normalizeWalletAddress,
   normalizeZeroTierNodeId,
@@ -61,13 +60,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const appVersion = (body.app_version ?? "").trim();
 
-  let zerotierNodeId: string;
-  if (purposeRaw === "lookup") {
-    zerotierNodeId = LOOKUP_CHALLENGE_ZT_PLACEHOLDER;
-  } else {
-    const zt = body.zerotier_node_id ? normalizeZeroTierNodeId(body.zerotier_node_id) : null;
+  let zerotierNodeId: string | null = null;
+  if (body.zerotier_node_id?.trim()) {
+    const zt = normalizeZeroTierNodeId(body.zerotier_node_id);
     if (!zt) {
-      jsonError(res, 400, "bad_request", "zerotier_node_id must be 10 hex characters");
+      jsonError(res, 400, "bad_request", "zerotier_node_id must be 10 hex characters when provided");
       return;
     }
     zerotierNodeId = zt;

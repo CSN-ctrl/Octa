@@ -1,6 +1,7 @@
 import { nodeJoinAutoApproveEnabled } from "./node-constants";
 import { createServiceSupabaseClient } from "./supabase-admin";
 import { generateNodeCredential } from "./node-credential";
+import { shouldUseZeroTierCentral } from "./node-zerotier-policy";
 import { authorizeZeroTierMember, getZeroTierConfig } from "./node-zerotier";
 import type { NodeRow } from "./node-http";
 import { appendNodeEvent } from "./node-events";
@@ -54,6 +55,37 @@ export async function approveJoinRequest(
     return { ok: true, node };
   }
 
+  if (!shouldUseZeroTierCentral(node)) {
+    const now = new Date().toISOString();
+    await admin
+      .from("node_join_requests")
+      .update({
+        status: "approved",
+        reviewer_id: reviewerId,
+        reviewed_at: now,
+        zerotier_member_id: null,
+        zerotier_authorized_at: null,
+        zerotier_last_error: null,
+        updated_at: now,
+      })
+      .eq("id", joinRequestId);
+    await admin
+      .from("nodes")
+      .update({
+        status: "approved",
+        reason: null,
+        updated_at: now,
+      })
+      .eq("id", node.id);
+    await appendNodeEvent(node.id, "approved", {
+      join_request_id: joinRequestId,
+      reviewer_id: reviewerId,
+      zerotier: "disabled",
+    });
+    const { data: approvedNode } = await admin.from("nodes").select("*").eq("id", node.id).single();
+    return { ok: true, node: approvedNode as NodeRow };
+  }
+
   const ztConfig = getZeroTierConfig();
   if (!ztConfig) {
     await admin
@@ -78,8 +110,8 @@ export async function approveJoinRequest(
     };
   }
 
-  const memberName = `octa-${node.wallet_address.slice(2, 10)}-${node.zerotier_node_id}`;
-  const zt = await authorizeZeroTierMember(node.zerotier_node_id, memberName, ztConfig);
+  const memberName = `octa-${node.wallet_address.slice(2, 10)}-${node.zerotier_node_id!}`;
+  const zt = await authorizeZeroTierMember(node.zerotier_node_id!, memberName, ztConfig);
   if (!zt.ok) {
     await admin
       .from("node_join_requests")
@@ -114,7 +146,7 @@ export async function approveJoinRequest(
     })
     .eq("id", joinRequestId);
 
-  await clearZeroTierAuthorizePending(node.id, node.zerotier_node_id, joinRequestId);
+  await clearZeroTierAuthorizePending(node.id, node.zerotier_node_id!, joinRequestId);
 
   await appendNodeEvent(node.id, "approved", { join_request_id: joinRequestId, reviewer_id: reviewerId });
 

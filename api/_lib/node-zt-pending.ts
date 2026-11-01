@@ -1,3 +1,4 @@
+import { shouldUseZeroTierCentral, zerotierEnabled } from "./node-zerotier-policy";
 import { createServiceSupabaseClient } from "./supabase-admin";
 import { appendNodeEvent } from "./node-events";
 import type { NodeRow } from "./node-http";
@@ -159,6 +160,9 @@ export async function requestZeroTierDeauthForNode(
   node: Pick<NodeRow, "id" | "zerotier_node_id" | "zt_authorized_at" | "status">,
   config?: ZeroTierConfig | null,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (!shouldUseZeroTierCentral(node)) {
+    return { ok: true };
+  }
   const resolved = config ?? getZeroTierConfig();
   if (!resolved) {
     await markZeroTierDeauthPending(node.id, "zerotier_not_configured");
@@ -236,6 +240,14 @@ export async function retryAllPendingZeroTier(options?: { force?: boolean }): Pr
   authorize_attempted: number;
   authorize_succeeded: number;
 }> {
+  if (!zerotierEnabled()) {
+    return {
+      deauth_attempted: 0,
+      deauth_succeeded: 0,
+      authorize_attempted: 0,
+      authorize_succeeded: 0,
+    };
+  }
   const admin = createServiceSupabaseClient();
   const force = Boolean(options?.force);
 

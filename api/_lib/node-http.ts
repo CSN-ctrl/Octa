@@ -1,3 +1,4 @@
+import { resolveZeroTierPublicStatus } from "./node-zerotier-policy";
 import { onlineThresholdMs } from "./node-heartbeat-config";
 import type { ApiResponse } from "./types";
 
@@ -5,7 +6,7 @@ export type NodeRow = {
   id: string;
   owner_user_id: string | null;
   wallet_address: string;
-  zerotier_node_id: string;
+  zerotier_node_id: string | null;
   platform: string;
   app_version: string;
   status: string;
@@ -42,14 +43,19 @@ export function nodeIsOnline(row: Pick<NodeRow, "status" | "last_heartbeat_at" |
   return ageMs <= onlineThresholdMs(row.platform);
 }
 
-export function serializeNodePublic(row: NodeRow) {
+export function serializeNodePublic(
+  row: NodeRow,
+  options?: { join_request_status?: string | null },
+) {
   const lastSeen = row.last_heartbeat_at ?? row.updated_at;
+  const zerotier = resolveZeroTierPublicStatus(row, options?.join_request_status);
   return {
     id: row.id,
     status: row.status,
     reason: row.reason ?? null,
-    zerotier_node_id: row.zerotier_node_id,
-    zt_authorized: row.zt_authorized_at != null,
+    zerotier_node_id: row.zerotier_node_id ?? null,
+    zerotier,
+    zt_authorized: zerotier === "authorized",
     last_seen_at: lastSeen,
     online: nodeIsOnline(row),
     app_version: row.last_app_version ?? row.app_version ?? "",

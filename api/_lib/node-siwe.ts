@@ -7,7 +7,8 @@ import type { JoinEnvironment } from "./node-join-context";
 export type SiweChallengeParams = {
   purpose: ChallengePurpose;
   walletAddress: string;
-  zerotierNodeId: string;
+  /** When omitted/null, `urn:zerotier:*` is not included in SIWE resources. */
+  zerotierNodeId?: string | null;
   platform: string;
   nonce: string;
   issuedAt: string;
@@ -36,12 +37,15 @@ export function siweStatementForPurpose(purpose: ChallengePurpose): string {
 }
 
 export function buildSiweResources(params: SiweChallengeParams): string[] {
-  const resources = [
-    `urn:zerotier:${params.zerotierNodeId}`,
+  const resources: string[] = [];
+  if (params.zerotierNodeId) {
+    resources.push(`urn:zerotier:${params.zerotierNodeId}`);
+  }
+  resources.push(
     `urn:octa:purpose:${params.purpose}`,
     `urn:octa:platform:${params.platform}`,
     `urn:octa:env:${params.environment}`,
-  ];
+  );
   if (params.replaceNodeId) {
     resources.push(`urn:octa:replace:${params.replaceNodeId}`);
   }
@@ -80,7 +84,11 @@ export function validateSiweResources(
   resources: string[] | undefined,
   expected: SiweChallengeParams,
 ): boolean {
-  if (!resourcePresent(resources, `urn:zerotier:${expected.zerotierNodeId}`)) return false;
+  if (expected.zerotierNodeId) {
+    if (!resourcePresent(resources, `urn:zerotier:${expected.zerotierNodeId}`)) return false;
+  } else if ((resources ?? []).some((r) => r.startsWith("urn:zerotier:"))) {
+    return false;
+  }
   if (!resourcePresent(resources, `urn:octa:purpose:${expected.purpose}`)) return false;
   if (!resourcePresent(resources, `urn:octa:platform:${expected.platform}`)) return false;
   if (!resourcePresent(resources, `urn:octa:env:${expected.environment}`)) return false;

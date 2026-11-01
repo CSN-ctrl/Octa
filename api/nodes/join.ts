@@ -110,7 +110,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     p_wallet: wallet,
     p_challenge_id: challenge.id,
     p_user_id: userId,
-    p_zt_id: challenge.zerotier_node_id,
+    p_zt_id: (challenge.zerotier_node_id as string | null) ?? null,
     p_platform: challenge.platform,
     p_app_version: challenge.app_version,
     p_replace_node_id: replaceId,
