@@ -16,6 +16,20 @@ describe("node-approve-errors", () => {
     });
   });
 
+  it("maps join_context_mismatch to link-invalid screen", () => {
+    expect(resolveNodeApproveApiError(new NodeApproveApiError(403, "join_context_mismatch"))).toEqual({
+      kind: "phase",
+      phase: "link_invalid_for_site",
+    });
+  });
+
+  it("maps join_context_unconfigured to temporarily unavailable", () => {
+    expect(resolveNodeApproveApiError(new NodeApproveApiError(503, "join_context_unconfigured"))).toEqual({
+      kind: "phase",
+      phase: "temporarily_unavailable",
+    });
+  });
+
   it("maps wrong_wallet and device_limit_reached", () => {
     expect(resolveNodeApproveApiError(new NodeApproveApiError(400, "wrong_wallet"))).toEqual({
       kind: "phase",

@@ -5,6 +5,8 @@ import { NODE_APPROVE_COPY } from "@/lib/node-approve-copy";
 export type NodeApproveTerminalPhase =
   | "terminal_expired"
   | "domain_block"
+  | "link_invalid_for_site"
+  | "temporarily_unavailable"
   | "wrong_wallet"
   | "device_limit"
   | "terminal_already_used";
@@ -30,8 +32,16 @@ export function resolveNodeApproveApiError(err: NodeApproveApiError): ResolveNod
     return { kind: "phase", phase: "terminal_expired" };
   }
 
-  if (err.code === "domain_not_allowed" || err.code === "join_context_mismatch") {
-    // Server host allowlist (see docs + PR dev note) — user copy is generic in NODE_APPROVE_COPY.
+  if (err.code === "join_context_unconfigured") {
+    return { kind: "phase", phase: "temporarily_unavailable" };
+  }
+
+  if (err.code === "join_context_mismatch") {
+    return { kind: "phase", phase: "link_invalid_for_site" };
+  }
+
+  if (err.code === "domain_not_allowed") {
+    // Host not allowlisted at challenge create (see docs + PR dev note).
     return { kind: "phase", phase: "domain_block" };
   }
 

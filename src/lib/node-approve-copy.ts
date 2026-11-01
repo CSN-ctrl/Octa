@@ -36,6 +36,12 @@ export const NODE_APPROVE_COPY = {
   domainNotAllowedTitle: "Unsafe approval link",
   domainNotAllowedBody:
     "This approval link isn't from the official Octa site, so we won't ask you to sign it. Start joining again from your node and open the link it shows.",
+  linkInvalidForSiteTitle: "Approval link not valid here",
+  linkInvalidForSiteBody:
+    "This approval link doesn't work on the site you're viewing. Start joining again from your Personal Node and open the fresh link it shows you.",
+  temporarilyUnavailableTitle: "Temporarily unavailable",
+  temporarilyUnavailableBody:
+    "We can't complete approval right now. Please try again in a few minutes.",
   genericApiError: "Something went wrong. Try again or restart join from your Personal Node app.",
   wrongWalletTitle: "Wrong wallet connected",
   wrongWalletBody:

@@ -202,4 +202,72 @@ describe("RunANodeApprove", () => {
       expect(screen.getByText(/Device approved/i)).toBeInTheDocument();
     });
   });
+
+  it("shows link-invalid screen when sign returns join_context_mismatch", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+        if (url.includes("/public")) {
+          return { ok: true, json: async () => publicPayload({ domain: "localhost" }) };
+        }
+        if (url.includes("/sign") && init?.method === "POST") {
+          return {
+            ok: false,
+            status: 403,
+            json: async () => ({ success: false, error: "join_context_mismatch" }),
+          };
+        }
+        throw new Error(`unexpected fetch ${url}`);
+      }),
+    );
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/Approve this device/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign and approve device/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Approval link not valid here/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Unsafe approval link/i)).not.toBeInTheDocument();
+  });
+
+  it("shows temporarily unavailable with retry when sign returns join_context_unconfigured", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes("/public")) {
+        return { ok: true, json: async () => publicPayload({ domain: "localhost" }) };
+      }
+      if (url.includes("/sign") && init?.method === "POST") {
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ success: false, error: "join_context_unconfigured" }),
+        };
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/Approve this device/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign and approve device/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Temporarily unavailable/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Unsafe approval link/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Try again/i }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes("/public")).length).toBeGreaterThanOrEqual(
+        2,
+      );
+    });
+  });
 });

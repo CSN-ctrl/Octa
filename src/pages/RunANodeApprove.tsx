@@ -56,6 +56,8 @@ type UiPhase =
   | "terminal_already_used"
   | "terminal_signed"
   | "domain_block"
+  | "link_invalid_for_site"
+  | "temporarily_unavailable"
   | "main"
   | "wrong_wallet"
   | "device_limit";
@@ -307,6 +309,27 @@ export default function RunANodeApprove() {
               domainBlockKind === "message_host"
                 ? NODE_APPROVE_COPY.domainMismatchBody
                 : NODE_APPROVE_COPY.domainNotAllowedBody
+            }
+          />
+        )}
+
+        {phase === "link_invalid_for_site" && (
+          <TerminalCard
+            icon={<ShieldAlert className="h-5 w-5 text-destructive" />}
+            title={NODE_APPROVE_COPY.linkInvalidForSiteTitle}
+            body={NODE_APPROVE_COPY.linkInvalidForSiteBody}
+          />
+        )}
+
+        {phase === "temporarily_unavailable" && (
+          <TerminalCard
+            icon={<AlertCircle className="h-5 w-5 text-muted-foreground" />}
+            title={NODE_APPROVE_COPY.temporarilyUnavailableTitle}
+            body={NODE_APPROVE_COPY.temporarilyUnavailableBody}
+            action={
+              <Button variant="outline" onClick={() => void loadChallenge()}>
+                {NODE_APPROVE_COPY.tryAgainButton}
+              </Button>
             }
           />
         )}
