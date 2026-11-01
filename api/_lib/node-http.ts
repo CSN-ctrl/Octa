@@ -11,6 +11,7 @@ export type NodeRow = {
   status: string;
   reason: string | null;
   zt_authorized_at: string | null;
+  replaced_by_node_id: string | null;
   credential_hash: string | null;
   pending_token_hash: string | null;
   pending_token_expires_at: string | null;

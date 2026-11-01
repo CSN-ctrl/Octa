@@ -6,6 +6,8 @@ import { resolveNodeOrPendingAuth } from "../_lib/node-auth";
 import { rateLimitHeartbeat } from "../_lib/node-rate-limit";
 import { heartbeatMinGapMs, nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
 import { isNodePlatform } from "../_lib/node-constants";
+import { appendNodeEvent } from "../_lib/node-events";
+import { respondNodeRevoked } from "../_lib/node-revoked";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -26,12 +28,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
+  if (nodeAuth.node.status === "revoked") {
+    await appendNodeEvent(nodeId, "heartbeat_rejected", {
+      cause: "node_revoked",
+      reason: nodeAuth.node.reason,
+    });
+    respondNodeRevoked(jsonError, res, nodeAuth.node);
+    return;
+  }
+
   if (nodeAuth.node.status !== "approved") {
     jsonError(res, 403, "forbidden", "Node must be approved before heartbeats");
     return;
   }
 
   if (!rateLimitHeartbeat(nodeId, heartbeatMinGapMs(nodeAuth.node.platform))) {
+    await appendNodeEvent(nodeId, "heartbeat_rejected", { cause: "rate_limited" });
     jsonError(res, 429, "rate_limited", "Heartbeat sent too soon");
     return;
   }

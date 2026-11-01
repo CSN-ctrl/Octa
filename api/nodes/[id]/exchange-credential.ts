@@ -5,6 +5,7 @@ import { createServiceSupabaseClient } from "../_lib/supabase-admin";
 import { resolveNodeOrPendingAuth } from "../_lib/node-auth";
 import { issueNodeCredential } from "../_lib/node-join-flow";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
+import { appendNodeEvent } from "../_lib/node-events";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -58,6 +59,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       updated_at: now,
     })
     .eq("id", nodeId);
+
+  await appendNodeEvent(nodeId, "credential_issued", { source: "pending_exchange" });
 
   jsonSuccess(res, 200, {
     node_credential: token,

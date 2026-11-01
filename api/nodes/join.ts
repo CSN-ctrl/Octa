@@ -3,17 +3,16 @@ import { readJsonBody, methodNotAllowed } from "../_lib/http";
 import { jsonError, jsonSuccess, serializeNodePublic } from "../_lib/node-http";
 import { createServiceSupabaseClient } from "../_lib/supabase-admin";
 import {
-  CHALLENGE_TTL_SECONDS,
   maxActiveNodesPerWallet,
   normalizeWalletAddress,
   PENDING_TOKEN_TTL_SECONDS,
 } from "../_lib/node-constants";
-import { buildChallengeSignMessage } from "../_lib/node-message";
-import { recoverWalletFromJoinSignature } from "../_lib/node-signature";
+import { verifyChallengeSignature, type ChallengeRecord } from "../_lib/node-challenge";
 import { generatePendingToken } from "../_lib/node-credential";
-import { countLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../_lib/node-auth";
+import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../_lib/node-auth";
 import { tryAutoApproveJoin } from "../_lib/node-join-flow";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
+import { deauthorizeZeroTierMember, getZeroTierConfig } from "../_lib/node-zerotier";
 import type { NodeRow } from "../_lib/node-http";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
@@ -34,6 +33,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     challenge_id?: string;
     wallet_address?: string;
     signature?: string;
+    replace_node_id?: string;
   }>(req);
 
   const challengeId = body.challenge_id?.trim();
@@ -53,6 +53,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   if (chErr || !challenge) {
     jsonError(res, 404, "challenge_not_found");
+    return;
+  }
+
+  if (body.replace_node_id?.trim() && body.replace_node_id.trim() !== challenge.replace_node_id) {
+    jsonError(res, 400, "bad_request", "replace_node_id must match the challenge");
     return;
   }
 
@@ -76,43 +81,35 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
-  const issuedAt = new Date(
-    new Date(challenge.expires_at).getTime() - CHALLENGE_TTL_SECONDS * 1000,
-  ).toISOString();
-
-  const message = buildChallengeSignMessage({
-    purpose: "join",
-    walletAddress: challenge.wallet_address,
-    zerotierNodeId: challenge.zerotier_node_id,
-    platform: challenge.platform,
-    appVersion: challenge.app_version,
-    nonce: challenge.nonce,
-    issuedAt,
-    expiresAt: challenge.expires_at,
-  });
-
-  const recovered = recoverWalletFromJoinSignature(message, signature);
-  if (!recovered || recovered !== wallet) {
-    jsonError(res, 401, "invalid_signature");
+  const verified = await verifyChallengeSignature(challenge as ChallengeRecord, signature, wallet);
+  if (!verified.ok) {
+    jsonError(res, verified.error === "join_context_mismatch" ? 403 : 401, verified.error, verified.message);
     return;
   }
 
-  const liveCount = await countLiveNodesForWallet(wallet);
-  if (liveCount >= maxActiveNodesPerWallet()) {
-    jsonError(res, 429, "wallet_node_limit", `Maximum ${maxActiveNodesPerWallet()} live nodes per wallet`);
+  const liveNodes = await fetchLiveNodesForWallet(wallet);
+  const replaceId = challenge.replace_node_id as string | null;
+  if (!replaceId && liveNodes.length >= maxActiveNodesPerWallet()) {
+    jsonError(res, 409, "device_limit_reached", undefined, {
+      active_nodes: liveNodes.map(serializeNodePublic),
+    });
     return;
   }
 
-  const { data: ztConflict } = await admin
-    .from("nodes")
-    .select("id")
-    .eq("zerotier_node_id", challenge.zerotier_node_id)
-    .in("status", ["pending", "approved"])
-    .maybeSingle();
-
-  if (ztConflict) {
-    jsonError(res, 409, "zerotier_node_id_in_use");
-    return;
+  let ztDeauthOk = true;
+  let ztDeauthError: string | null = null;
+  if (replaceId) {
+    const oldNode = liveNodes.find((n) => n.id === replaceId);
+    if (!oldNode) {
+      jsonError(res, 400, "bad_request", "replace_node_id is not a live node for this wallet");
+      return;
+    }
+    const ztConfig = getZeroTierConfig();
+    if (ztConfig && oldNode.zt_authorized_at) {
+      const zt = await deauthorizeZeroTierMember(oldNode.zerotier_node_id, ztConfig);
+      ztDeauthOk = zt.ok;
+      ztDeauthError = zt.error ?? null;
+    }
   }
 
   const supabaseUser = await resolveSupabaseUser(req);
@@ -123,54 +120,58 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const pending = generatePendingToken();
   const pendingExpires = new Date(Date.now() + PENDING_TOKEN_TTL_SECONDS * 1000).toISOString();
-  const now = new Date().toISOString();
 
-  const { data: node, error: nodeErr } = await admin
-    .from("nodes")
-    .insert({
-      owner_user_id: userId,
-      wallet_address: wallet,
-      zerotier_node_id: challenge.zerotier_node_id,
-      platform: challenge.platform,
-      app_version: challenge.app_version,
-      status: "pending",
-      pending_token_hash: pending.hash,
-      pending_token_expires_at: pendingExpires,
-    })
-    .select("*")
-    .single();
+  const { data: rpcResult, error: rpcError } = await admin.rpc("complete_personal_node_join", {
+    p_wallet: wallet,
+    p_challenge_id: challenge.id,
+    p_user_id: userId,
+    p_zt_id: challenge.zerotier_node_id,
+    p_platform: challenge.platform,
+    p_app_version: challenge.app_version,
+    p_replace_node_id: replaceId,
+    p_pending_token_hash: pending.hash,
+    p_pending_expires: pendingExpires,
+    p_max_devices: maxActiveNodesPerWallet(),
+    p_zt_deauth_ok: ztDeauthOk,
+    p_zt_deauth_error: ztDeauthError,
+    p_signature: signature,
+  });
 
-  if (nodeErr || !node) {
-    jsonError(res, 500, "internal_error", nodeErr?.message ?? "Failed to create node");
+  if (rpcError) {
+    const msg = rpcError.message ?? "";
+    if (msg.includes("device_limit_reached")) {
+      const active = await fetchLiveNodesForWallet(wallet);
+      jsonError(res, 409, "device_limit_reached", undefined, {
+        active_nodes: active.map(serializeNodePublic),
+      });
+      return;
+    }
+    if (msg.includes("challenge_consumed")) {
+      jsonError(res, 409, "challenge_consumed");
+      return;
+    }
+    if (msg.includes("zerotier_node_id_in_use")) {
+      jsonError(res, 409, "zerotier_node_id_in_use");
+      return;
+    }
+    jsonError(res, 500, "internal_error", msg);
     return;
   }
 
-  const { data: joinRequest, error: jrErr } = await admin
-    .from("node_join_requests")
-    .insert({
-      user_id: userId,
-      wallet_address: wallet,
-      zerotier_node_id: challenge.zerotier_node_id,
-      platform: challenge.platform,
-      app_version: challenge.app_version,
-      challenge_id: challenge.id,
-      signature,
-      status: "pending",
-      node_id: node.id,
-    })
-    .select("id")
-    .single();
-
-  if (jrErr || !joinRequest) {
-    jsonError(res, 500, "internal_error", jrErr?.message ?? "Failed to create join request");
+  const nodeId = (rpcResult as { node_id?: string })?.node_id;
+  const joinRequestId = (rpcResult as { join_request_id?: string })?.join_request_id;
+  if (!nodeId || !joinRequestId) {
+    jsonError(res, 500, "internal_error", "Join RPC returned incomplete payload");
     return;
   }
 
-  await admin.from("node_join_challenges").update({ consumed_at: now }).eq("id", challenge.id);
-
-  const auto = await tryAutoApproveJoin(joinRequest.id);
-  const { data: finalNode } = await admin.from("nodes").select("*").eq("id", node.id).single();
-  const row = (finalNode ?? node) as NodeRow;
+  const auto = await tryAutoApproveJoin(joinRequestId);
+  const { data: finalNode } = await admin.from("nodes").select("*").eq("id", nodeId).single();
+  const row = (finalNode ?? null) as NodeRow | null;
+  if (!row) {
+    jsonError(res, 500, "internal_error", "Node not found after join");
+    return;
+  }
 
   const payload: Record<string, unknown> = {
     node: serializeNodePublic(row),

@@ -9,6 +9,8 @@ import {
 } from "../_lib/node-auth";
 import { rateLimitStatusPoll } from "../_lib/node-rate-limit";
 import { nextHeartbeatPayload } from "../_lib/node-heartbeat-config";
+import { respondNodeRevoked } from "../_lib/node-revoked";
+import type { NodeRow } from "../_lib/node-http";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   noStore(res);
@@ -44,6 +46,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const rateKey = `${nodeId}:${tokenAuth.kind}`;
     if (!rateLimitStatusPoll(rateKey)) {
       jsonError(res, 429, "rate_limited", "Status polling too frequent");
+      return;
+    }
+    if (tokenAuth.node.status === "revoked" || node.status === "revoked") {
+      respondNodeRevoked(jsonError, res, node as NodeRow);
       return;
     }
     jsonSuccess(res, 200, {

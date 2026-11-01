@@ -6,15 +6,13 @@ import {
   isChallengePurpose,
   isNodePlatform,
   LOOKUP_CHALLENGE_ZT_PLACEHOLDER,
+  maxActiveNodesPerWallet,
   normalizeWalletAddress,
   normalizeZeroTierNodeId,
 } from "../_lib/node-constants";
-import {
-  buildChallengeSignMessage,
-  challengeExpiryIso,
-  generateNonce,
-} from "../_lib/node-message";
-import { linkWalletToUser, resolveSupabaseUser } from "../_lib/node-auth";
+import { challengeExpiryIso, generateNonce, prepareSiweMessage } from "../_lib/node-message";
+import { resolveJoinBindingContext } from "../_lib/node-join-context";
+import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../_lib/node-auth";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -36,6 +34,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     platform?: string;
     app_version?: string;
     purpose?: string;
+    replace_node_id?: string;
   }>(req);
 
   const wallet = body.wallet_address ? normalizeWalletAddress(body.wallet_address) : null;
@@ -70,18 +69,40 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     zerotierNodeId = zt;
   }
 
+  let replaceNodeId: string | null = null;
+  if (purposeRaw === "join" && body.replace_node_id?.trim()) {
+    replaceNodeId = body.replace_node_id.trim();
+    const live = await fetchLiveNodesForWallet(wallet);
+    if (!live.some((n) => n.id === replaceNodeId)) {
+      jsonError(res, 400, "bad_request", "replace_node_id must be a live node owned by this wallet");
+      return;
+    }
+  }
+
   const supabaseUser = await resolveSupabaseUser(req);
+
+  let binding;
+  try {
+    binding = resolveJoinBindingContext();
+  } catch (e) {
+    jsonError(res, 503, "join_context_unconfigured", (e as Error).message);
+    return;
+  }
+
   const nonce = generateNonce();
   const { issuedAt, expiresAt } = challengeExpiryIso();
-  const message = buildChallengeSignMessage({
+  const message = prepareSiweMessage({
     purpose: purposeRaw,
     walletAddress: wallet,
     zerotierNodeId,
     platform: platformRaw,
-    appVersion,
     nonce,
     issuedAt,
-    expiresAt,
+    expirationTime: expiresAt,
+    joinDomain: binding.domain,
+    chainId: binding.chainId,
+    environment: binding.environment,
+    replaceNodeId,
   });
 
   const { data, error } = await admin
@@ -94,6 +115,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       purpose: purposeRaw,
       app_version: appVersion,
       nonce,
+      issued_at: issuedAt,
+      join_domain: binding.domain,
+      chain_id: binding.chainId,
+      join_environment: binding.environment,
+      replace_node_id: replaceNodeId,
       expires_at: expiresAt,
     })
     .select("id")

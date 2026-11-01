@@ -60,3 +60,9 @@ export const PENDING_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 /** Min interval between status polls per node id (in-process best effort). */
 export const STATUS_POLL_MIN_INTERVAL_MS = 5000;
+
+export function joinClockSkewSecs(): number {
+  const raw = process.env.NODE_JOIN_CLOCK_SKEW_SECS?.trim();
+  const n = raw ? Number.parseInt(raw, 10) : 60;
+  return Number.isFinite(n) && n >= 0 ? n : 60;
+}

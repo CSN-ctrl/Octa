@@ -3,6 +3,7 @@ import { createServiceSupabaseClient } from "./supabase-admin";
 import { generateNodeCredential } from "./node-credential";
 import { authorizeZeroTierMember, deauthorizeZeroTierMember, getZeroTierConfig } from "./node-zerotier";
 import type { NodeRow } from "./node-http";
+import { appendNodeEvent } from "./node-events";
 
 export async function issueNodeCredential(nodeId: string): Promise<string | null> {
   const admin = createServiceSupabaseClient();
@@ -62,6 +63,7 @@ export async function approveJoinRequest(
       .update({ status: "pending", reason: null, updated_at: new Date().toISOString() })
       .eq("id", node.id);
     const { data: refreshed } = await admin.from("nodes").select("*").eq("id", node.id).single();
+    await appendNodeEvent(node.id, "zt_auth_failed", { error: "zerotier_not_configured" });
     return {
       ok: false,
       status: "pending_authorization",
@@ -82,6 +84,7 @@ export async function approveJoinRequest(
       })
       .eq("id", joinRequestId);
     const { data: refreshed } = await admin.from("nodes").select("*").eq("id", node.id).single();
+    await appendNodeEvent(node.id, "zt_auth_failed", { error: zt.error ?? "zerotier_authorize_failed" });
     return {
       ok: false,
       status: "pending_authorization",
@@ -115,6 +118,9 @@ export async function approveJoinRequest(
     })
     .eq("id", node.id);
 
+  await appendNodeEvent(node.id, "zt_authorized", { zerotier_node_id: node.zerotier_node_id });
+  await appendNodeEvent(node.id, "approved", { join_request_id: joinRequestId, reviewer_id: reviewerId });
+
   const { data: approvedNode } = await admin.from("nodes").select("*").eq("id", node.id).single();
   return { ok: true, node: approvedNode as NodeRow };
 }
@@ -142,6 +148,7 @@ export async function rejectJoinRequest(
     .from("nodes")
     .update({ status: "rejected", reason, updated_at: now })
     .eq("id", jr.node_id);
+  await appendNodeEvent(jr.node_id, "rejected", { reason, join_request_id: joinRequestId });
   return { ok: true };
 }
 
@@ -164,7 +171,6 @@ export async function revokeNode(
     .update({
       status: "revoked",
       reason,
-      credential_hash: null,
       pending_token_hash: null,
       updated_at: now,
     })
@@ -175,6 +181,7 @@ export async function revokeNode(
     .update({ status: "revoked", reason, updated_at: now })
     .eq("node_id", nodeId);
 
+  await appendNodeEvent(nodeId, "revoked", { reason });
   return { ok: true };
 }
 
@@ -192,6 +199,7 @@ export async function tryAutoApproveJoin(joinRequestId: string): Promise<{ nodeC
         pending_token_hash: null,
       })
       .eq("id", result.node.id);
+    await appendNodeEvent(result.node.id, "credential_issued", { source: "auto_approve" });
   }
   return { nodeCredential: token ?? undefined };
 }

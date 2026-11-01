@@ -108,6 +108,18 @@ export async function countLiveNodesForWallet(walletAddress: string): Promise<nu
   return count ?? 0;
 }
 
+export async function fetchLiveNodesForWallet(walletAddress: string): Promise<NodeRow[]> {
+  const admin = createServiceSupabaseClient();
+  const { data, error } = await admin
+    .from("nodes")
+    .select("*")
+    .eq("wallet_address", walletAddress)
+    .in("status", ["pending", "approved"])
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return data as NodeRow[];
+}
+
 export async function fetchNodesForWallet(walletAddress: string): Promise<NodeRow[]> {
   const admin = createServiceSupabaseClient();
   const { data, error } = await admin

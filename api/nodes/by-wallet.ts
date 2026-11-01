@@ -2,9 +2,8 @@ import type { ApiRequest, ApiResponse } from "../_lib/types";
 import { readJsonBody, methodNotAllowed } from "../_lib/http";
 import { jsonError, jsonSuccess, serializeNodePublic } from "../_lib/node-http";
 import { createServiceSupabaseClient } from "../_lib/supabase-admin";
-import { CHALLENGE_TTL_SECONDS, normalizeWalletAddress } from "../_lib/node-constants";
-import { buildChallengeSignMessage } from "../_lib/node-message";
-import { recoverWalletFromJoinSignature } from "../_lib/node-signature";
+import { normalizeWalletAddress } from "../_lib/node-constants";
+import { verifyChallengeSignature, type ChallengeRecord } from "../_lib/node-challenge";
 import { fetchNodesForWallet } from "../_lib/node-auth";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
@@ -67,24 +66,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
-  const issuedAt = new Date(
-    new Date(challenge.expires_at).getTime() - CHALLENGE_TTL_SECONDS * 1000,
-  ).toISOString();
-
-  const message = buildChallengeSignMessage({
-    purpose: "lookup",
-    walletAddress: challenge.wallet_address,
-    zerotierNodeId: challenge.zerotier_node_id,
-    platform: challenge.platform,
-    appVersion: challenge.app_version,
-    nonce: challenge.nonce,
-    issuedAt,
-    expiresAt: challenge.expires_at,
-  });
-
-  const recovered = recoverWalletFromJoinSignature(message, signature);
-  if (!recovered || recovered !== wallet) {
-    jsonError(res, 401, "invalid_signature");
+  const verified = await verifyChallengeSignature(challenge as ChallengeRecord, signature, wallet);
+  if (!verified.ok) {
+    jsonError(res, verified.error === "join_context_mismatch" ? 403 : 401, verified.error, verified.message);
     return;
   }
 

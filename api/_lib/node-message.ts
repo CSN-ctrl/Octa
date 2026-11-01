@@ -1,41 +1,4 @@
-import {
-  CHALLENGE_TTL_SECONDS,
-  type ChallengePurpose,
-} from "./node-constants";
-
-export type ChallengeMessageParams = {
-  purpose: ChallengePurpose;
-  walletAddress: string;
-  zerotierNodeId: string;
-  platform: string;
-  appVersion: string;
-  nonce: string;
-  issuedAt: string;
-  expiresAt: string;
-};
-
-/** Exact UTF-8 string clients must sign via EIP-191 personal_sign (MetaMask-compatible). */
-export function buildChallengeSignMessage(params: ChallengeMessageParams): string {
-  const title =
-    params.purpose === "lookup"
-      ? "Octa Personal Node Wallet Lookup"
-      : "Octa Personal Node Join Request";
-
-  return [
-    title,
-    "",
-    "Organization: Octa Investment Group",
-    "Product: Sarakt Personal Node",
-    `Purpose: ${params.purpose}`,
-    `Wallet: ${params.walletAddress}`,
-    `ZeroTier Node ID: ${params.zerotierNodeId}`,
-    `Platform: ${params.platform}`,
-    `App Version: ${params.appVersion}`,
-    `Nonce: ${params.nonce}`,
-    `Issued At: ${params.issuedAt}`,
-    `Expires At: ${params.expiresAt}`,
-  ].join("\n");
-}
+import { CHALLENGE_TTL_SECONDS } from "./node-constants";
 
 export function challengeExpiryIso(from = new Date()): { issuedAt: string; expiresAt: string } {
   const issuedAt = from.toISOString();
@@ -49,7 +12,5 @@ export function generateNonce(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** @deprecated use buildChallengeSignMessage */
-export const buildNodeJoinMessage = buildChallengeSignMessage;
-
-export type JoinMessageParams = ChallengeMessageParams;
+export { prepareSiweMessage, buildSiweMessage } from "./node-siwe";
+export type { SiweChallengeParams } from "./node-siwe";
