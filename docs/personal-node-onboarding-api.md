@@ -110,12 +110,10 @@ Production join verification uses server wall clock at request time (no fixed te
 
 ### Rust / QA test vector (Hardhat account #0, **test only**)
 
-In this repo’s `ethers` v6, Hardhat mnemonic account **#0** resolves to **`0x9Ef900738ea2D80BF4d2813F4663391F0382Ab52`** (not the classic `0xf39F…` address from older tooling).
-
 | Field | Value |
 |-------|--------|
-| Private key | `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbe14826f6940f7a06973522` |
-| Wallet (in message) | `0x9Ef900738ea2D80BF4d2813F4663391F0382Ab52` |
+| Private key | `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80` |
+| Wallet (in message) | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` |
 | `NODE_JOIN_DOMAIN` | `https://www.sarakt.com` |
 | Chain ID | `43113` |
 | Nonce | `0123456789abcdef0123456789abcdef` |
@@ -124,13 +122,13 @@ In this repo’s `ethers` v6, Hardhat mnemonic account **#0** resolves to **`0x9
 | ZeroTier (resource) | `a1b2c3d4e5` |
 | Platform (resource) | `android` |
 | Environment (resource) | `dev` |
-| Signature | `0x6e6e58f347b7634393f19ef6a86ed898d4748d0ff8f10ef3b6768f85c9352cc3048a8aba63aadfc424b7591390c35c0851a48d0a1fb12b7f691b2e4fb2bd67411b` |
+| Signature | `0xdfd3301821894723d568080ad824252c986762bfd3455f9ad1986173335a3983680368749fd69eacd9e79148f395c0eda7ae40a80b1fb58bc21d74fa2dc8239c1b` |
 
 Full prepared message (copy verbatim):
 
 ```
 www.sarakt.com wants you to sign in with your Ethereum account:
-0x9Ef900738ea2D80BF4d2813F4663391F0382Ab52
+0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 
 Octa Personal Node Join Request
 

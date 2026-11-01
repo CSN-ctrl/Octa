@@ -1,15 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { Wallet } from "ethers";
+import { getAddress, verifyMessage, Wallet } from "ethers";
 import {
   buildSiweMessage,
   documentedSiweTestMessage,
   DOCUMENTED_SIWE_TEST_VECTOR,
+  HARDHAT_ANVIL_ACCOUNT_0_ADDRESS,
   prepareSiweMessage,
   validateSiweClock,
   verifySiweSignature,
 } from "../node-siwe";
 
+const EXPECTED_HARDHAT_0 = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+
 describe("node-siwe", () => {
+  it("Hardhat #0 key, message address, and documented signature match canonical address", async () => {
+    const wallet = new Wallet(DOCUMENTED_SIWE_TEST_VECTOR.privateKey);
+    expect(getAddress(wallet.address)).toBe(getAddress(EXPECTED_HARDHAT_0));
+    expect(HARDHAT_ANVIL_ACCOUNT_0_ADDRESS).toBe(EXPECTED_HARDHAT_0);
+
+    const message = documentedSiweTestMessage();
+    const addressLine = message.split("\n")[1];
+    expect(addressLine).toBe(EXPECTED_HARDHAT_0);
+
+    const recovered = verifyMessage(message, DOCUMENTED_SIWE_TEST_VECTOR.signature);
+    expect(getAddress(recovered)).toBe(getAddress(EXPECTED_HARDHAT_0));
+  });
+
   it("documents fixed SIWE message + signature for Rust (Hardhat #0)", async () => {
     const wallet = new Wallet(DOCUMENTED_SIWE_TEST_VECTOR.privateKey);
     const message = documentedSiweTestMessage();
