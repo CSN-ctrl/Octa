@@ -15,9 +15,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getDepositNetworkId } from "@/config/blockchain-profile";
+import {
+  getDepositCtaLabel,
+  getDirectDepositFeatureTitle,
+  getPersonalFundPaymentsLine,
+} from "@/lib/genesis-product-copy";
+import { depositAssetSymbol } from "@/lib/networks";
 
 const Invest = () => {
   const navigate = useNavigate();
+  const depositNetworkId = getDepositNetworkId();
+  const depositSymbol = depositAssetSymbol(depositNetworkId);
 
   return (
     <div className="app-page-canvas relative overflow-hidden">
@@ -44,7 +53,7 @@ const Invest = () => {
             </span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            All payments go into your personal USDC fund. Build your empire by acquiring assets across the Chaos Star Universe.
+            {getPersonalFundPaymentsLine(depositNetworkId)} Build your empire by acquiring assets across the Chaos Star Universe.
           </p>
         </motion.div>
 
@@ -69,14 +78,14 @@ const Invest = () => {
                 </div>
 
                 <p className="text-muted-foreground mb-6">
-                  Take full control of your investments. Deposit USDC directly and manage your own asset purchases.
+                  Take full control of your investments. Deposit {depositSymbol} directly and manage your own asset purchases.
                 </p>
 
                 <div className="space-y-3 mb-8 flex-grow">
                   <div className="flex items-start gap-3">
                     <Coins className="w-5 h-5 text-accent mt-0.5" />
                     <div>
-                      <p className="font-medium text-sm">Direct USDC Deposit</p>
+                      <p className="font-medium text-sm">{getDirectDepositFeatureTitle(depositNetworkId)}</p>
                       <p className="text-xs text-muted-foreground">Multi-network support (ETH, AVAX, Polygon...)</p>
                     </div>
                   </div>
@@ -101,7 +110,7 @@ const Invest = () => {
                   variant="outline"
                   className="w-full h-12 text-lg font-semibold border-2 hover:bg-accent/10 hover:border-accent transition-all mt-auto"
                 >
-                  Deposit USDC
+                  {getDepositCtaLabel(depositNetworkId)}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </CardContent>

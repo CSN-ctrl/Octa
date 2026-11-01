@@ -13,6 +13,7 @@ import {
 import { motion } from "framer-motion";
 import { Cosmic3dShell } from "@/components/cosmic-3d-shell";
 import { ChaosStarLogo3DLink } from "@/components/chaos-star-logo-3d-link";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -93,7 +94,7 @@ const Footer = () => {
   const resources = [
     { to: "/support", label: "Support", icon: HelpCircle },
     { to: "/faq", label: "FAQ", icon: HelpCircle },
-    { to: "/how-it-works", label: "How It Works", icon: BookOpen },
+    { to: "/docs", label: "How It Works", icon: BookOpen },
     { to: "/lore", label: "Lore", icon: BookOpen },
     { href: "mailto:support@sarakt.com", label: "Contact", icon: Mail },
   ];
@@ -261,7 +262,7 @@ const Footer = () => {
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-2">
                 <p className="text-sm text-muted-foreground">
-                  © {currentYear} <span className="font-semibold text-foreground">Chaos Star Universe</span>. All rights reserved.
+                  © {currentYear} <span className="font-semibold text-foreground">{OFFICIAL_COMPANY_NAME}</span>. All rights reserved.
                 </p>
               </div>
 

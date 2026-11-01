@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Twitter, MessageCircle, Instagram, Check, ExternalLink } from 'lucide-react';
+import { SOCIAL_ACTIONS_BTC_ELIGIBILITY_NOTE } from '@/lib/genesis-product-copy';
 
 const socials = [
   {
@@ -108,6 +109,9 @@ const SocialTasksSection = () => {
             </motion.a>
           ))}
         </div>
+        <p className="text-center text-sm text-muted-foreground mt-10 max-w-2xl mx-auto">
+          {SOCIAL_ACTIONS_BTC_ELIGIBILITY_NOTE}
+        </p>
       </div>
     </section>
   );

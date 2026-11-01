@@ -4,6 +4,11 @@ import { Zap, Sparkles } from 'lucide-react';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import heroBackground from '@/assets/ChatGPT Image Apr 27, 2026, 08_49_47 AM.png';
 import { useILOStats } from '@/hooks/useILOStats';
+import { getDepositNetworkId } from '@/config/blockchain-profile';
+import {
+  getIloDepositButtonLabel,
+  getIloDepositHelperLine,
+} from '@/lib/genesis-product-copy';
 
 const PioneersHeroSection = () => {
   const navigate = useNavigate();
@@ -17,6 +22,9 @@ const PioneersHeroSection = () => {
   const joined = stats.spotsTaken;
   const spotsLeft = stats.spotsRemaining;
   const progress = stats.progressPercentage;
+  const depositNetworkId = getDepositNetworkId();
+  const depositButtonLabel = getIloDepositButtonLabel(depositNetworkId);
+  const depositHelperLine = getIloDepositHelperLine(depositNetworkId);
 
   return (
     <section className="relative min-h-[calc(100vh-6rem)] flex flex-col items-center justify-center px-4 pt-24 pb-20 overflow-hidden">
@@ -121,8 +129,11 @@ const PioneersHeroSection = () => {
             onClick={handleJoinClick}
             className="btn-primary-glow text-lg animate-pulse-glow"
           >
-            Continue to Deposit
+            {depositButtonLabel}
           </button>
+          {depositHelperLine ? (
+            <p className="text-sm text-muted-foreground max-w-md text-center">{depositHelperLine}</p>
+          ) : null}
         </motion.div>
       </motion.div>
     </section>

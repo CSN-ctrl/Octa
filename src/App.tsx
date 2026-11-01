@@ -74,6 +74,8 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Cookies = lazy(() => import("./pages/Cookies"));
 const Compliance = lazy(() => import("./pages/Compliance"));
+const ApplyForPermit = lazy(() => import("./pages/ApplyForPermit"));
+const ExpatPath = lazy(() => import("./pages/ExpatPath"));
 
 // Configure React Query with optimized defaults
 const queryClient = new QueryClient({
@@ -629,6 +631,18 @@ function AppContent() {
                           <Deposit />
                         </RouteErrorBoundary>
                       </ProtectedRoute>
+                    } />
+                    <Route path="/apply-permit" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Apply for permit">
+                          <ApplyForPermit />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/expat" element={
+                      <RouteErrorBoundary routeName="Expat path">
+                        <ExpatPath />
+                      </RouteErrorBoundary>
                     } />
                     <Route path="/affiliate" element={
                       <ProtectedRoute>

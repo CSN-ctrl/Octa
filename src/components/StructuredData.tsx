@@ -4,6 +4,7 @@
  */
 import { useEffect, useMemo } from "react";
 import { getAppOrigin } from "@/lib/app-origin";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 import { useLocation } from "react-router-dom";
 
 interface StructuredDataProps {
@@ -50,10 +51,11 @@ export function DefaultStructuredData() {
         type="Organization"
         id="structured-data-organization"
         data={{
-          name: "Chaos Star Universe",
+          name: OFFICIAL_COMPANY_NAME,
+          alternateName: "Chaos Star Universe",
           url: origin,
           logo: `${origin}/chaos-star-logo.png`,
-          description: "Chaos Star Universe is the overarching universe. Sarakt is its Genesis world where users own land, build infrastructure, and scale through a World-as-a-Service economy.",
+          description: "Octa Investment Group operates Chaos Star Universe. Sarakt is its Genesis world where users own land, build infrastructure, and scale through a World-as-a-Service economy.",
           sameAs: [
             "https://x.com/OIG_CSN",
           ],
@@ -96,8 +98,8 @@ const ROUTE_SCHEMA_CONFIG: RouteSchemaConfig[] = [
   { path: "/lore", name: "Lore", description: "Discover the worldbuilding and narrative foundations of Chaos Star Universe.", indexable: true },
   { path: "/support", name: "Support Center", description: "Get support for account, transaction, and platform usage questions.", indexable: true, schemaType: "WebPage" },
   { path: "/faq", name: "FAQ", description: "Find quick answers about platform access, deposits, and legal navigation.", indexable: true, schemaType: "FAQPage" },
-  { path: "/terms", name: "Terms of Service", description: "Review the terms governing Chaos Star platform usage.", indexable: true, schemaType: "WebPage" },
-  { path: "/privacy", name: "Privacy Policy", description: "Understand data handling and privacy controls in Chaos Star Universe.", indexable: true, schemaType: "WebPage" },
+  { path: "/terms", name: "Terms of Service", description: `Review the terms governing Chaos Star Universe usage, operated by ${OFFICIAL_COMPANY_NAME}.`, indexable: true, schemaType: "WebPage" },
+  { path: "/privacy", name: "Privacy Policy", description: `Understand data handling and privacy controls for ${OFFICIAL_COMPANY_NAME}.`, indexable: true, schemaType: "WebPage" },
   { path: "/cookies", name: "Cookie Policy", description: "Read how cookies and local storage are used for service operations.", indexable: true, schemaType: "WebPage" },
   { path: "/compliance", name: "Compliance", description: "Operational safeguards, auditability, and compliance commitments.", indexable: true, schemaType: "WebPage" },
   { path: "/financial-hub", name: "Financial Hub", description: "Manage assets, portfolio tools, and transactions from the Chaos Star hub.", indexable: false },

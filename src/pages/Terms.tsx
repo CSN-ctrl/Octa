@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 
 export default function Terms() {
   const sections = [
@@ -30,19 +31,19 @@ export default function Terms() {
     },
     {
       title: "7. Service Availability and Enforcement",
-      body: "Chaos Star may restrict, suspend, or terminate access where necessary to protect platform integrity, users, operational security, or legal compliance obligations.",
+      body: `${OFFICIAL_COMPANY_NAME} may restrict, suspend, or terminate access where necessary to protect platform integrity, users, operational security, or legal compliance obligations.`,
     },
     {
       title: "8. Disclaimers and Liability Limitations",
-      body: "Services are provided on an \"as-is\" and \"as-available\" basis to the maximum extent permitted by law. Chaos Star disclaims liability for indirect, incidental, or consequential losses arising from platform use.",
+      body: `Services are provided on an \"as-is\" and \"as-available\" basis to the maximum extent permitted by law. ${OFFICIAL_COMPANY_NAME} disclaims liability for indirect, incidental, or consequential losses arising from platform use.`,
     },
     {
       title: "9. Governing Law and Disputes",
-      body: "These Terms are governed by the law identified in Chaos Star's legal notices. Dispute resolution procedures, including notice and escalation requirements, apply as specified in current legal documentation.",
+      body: `These Terms are governed by the law identified in ${OFFICIAL_COMPANY_NAME}'s legal notices. Dispute resolution procedures, including notice and escalation requirements, apply as specified in current legal documentation.`,
     },
     {
       title: "10. Updates to Terms",
-      body: "Chaos Star may update these Terms as the product evolves. Continued platform use after updates constitutes acceptance of revised Terms.",
+      body: `${OFFICIAL_COMPANY_NAME} may update these Terms as the product evolves. Continued platform use after updates constitutes acceptance of revised Terms.`,
     },
   ];
 

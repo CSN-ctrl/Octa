@@ -115,7 +115,7 @@ export function DashboardSidebarNav({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => navigate("/how-it-works")}>
+                  <SidebarMenuButton onClick={() => navigate("/docs")}>
                     <HelpCircle />
                     <span>How It Works</span>
                   </SidebarMenuButton>

@@ -1,11 +1,18 @@
 import { motion } from 'framer-motion';
 import { Wallet, MapPin, Trophy, ArrowRight } from 'lucide-react';
+import { getDepositNetworkId } from '@/config/blockchain-profile';
+import {
+  getIloDepositStepDescription,
+  getIloDepositStepTitle,
+} from '@/lib/genesis-product-copy';
+
+const depositNetworkId = getDepositNetworkId();
 
 const steps = [
   {
     icon: Wallet,
-    title: 'Activate Capital',
-    description: 'Deposit USDC and receive xBGL to operate inside the Sarakt economic layer',
+    title: getIloDepositStepTitle(depositNetworkId),
+    description: getIloDepositStepDescription(depositNetworkId),
     step: 1,
     gradient: 'from-blue-500 to-cyan-400',
     glow: 'blue-500',

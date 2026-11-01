@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpCircle } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 
 const FAQ_ITEMS = [
   {
@@ -26,7 +27,7 @@ const FAQ_ITEMS = [
   {
     question: "Will support ever ask for private keys or seed phrases?",
     answer:
-      "No. Chaos Star support will never request private keys, seed phrases, or direct custody credentials.",
+      "No. " + OFFICIAL_COMPANY_NAME + " support will never request private keys, seed phrases, or direct custody credentials.",
   },
   {
     question: "Where can I review formal policies?",

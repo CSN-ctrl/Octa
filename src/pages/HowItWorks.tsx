@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ExpatPathLockNotice } from "@/components/expat/ExpatPathLockNotice";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Building2,
@@ -375,6 +376,7 @@ export default function HowItWorks() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <ExpatPathLockNotice />
                     <div className="space-y-3">
                       <div>
                         <h4 className="font-semibold mb-1 text-sm">What You Do</h4>

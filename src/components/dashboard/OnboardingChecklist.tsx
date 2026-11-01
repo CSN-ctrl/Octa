@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,11 +6,12 @@ import { CheckCircle2, Circle, Rocket, X } from "lucide-react";
 import { goldenPathStepFromState, type GoldenPathStep } from "@/lib/golden-path";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { cn } from "@/lib/utils";
+import { listMyPermits } from "@/lib/permits";
 
 const DISMISS_KEY = "octa_phase1_onboarding_dismissed";
 
 type StepDef = {
-  id: GoldenPathStep | "certificate";
+  id: GoldenPathStep | "certificate" | "permit";
   title: string;
   description: string;
   href: string;
@@ -47,6 +48,26 @@ export function OnboardingChecklist({
   onDismiss,
 }: OnboardingChecklistProps) {
   const navigate = useNavigate();
+  const [permitSubmitted, setPermitSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (plotCount <= 0) {
+      setPermitSubmitted(false);
+      return;
+    }
+    let cancelled = false;
+    listMyPermits()
+      .then((rows) => {
+        if (!cancelled) setPermitSubmitted(rows.length > 0);
+      })
+      .catch(() => {
+        if (!cancelled) setPermitSubmitted(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [plotCount]);
+
   const activeStep = goldenPathStepFromState({
     walletConnected,
     xbglBalance,
@@ -79,6 +100,13 @@ export function OnboardingChecklist({
         done: plotCount > 0,
       },
       {
+        id: "permit",
+        title: "Apply for permit",
+        description: "Confirm plot location and submit for land-use approval.",
+        href: "/apply-permit",
+        done: permitSubmitted,
+      },
+      {
         id: "certificate",
         title: "View land certificate",
         description: "Open your title certificate after purchase.",
@@ -86,7 +114,7 @@ export function OnboardingChecklist({
         done: plotCount > 0,
       },
     ];
-  }, [walletConnected, xbglBalance, plotCount]);
+  }, [walletConnected, xbglBalance, plotCount, permitSubmitted]);
 
   const completedCount = steps.filter((s) => s.done).length;
   const allDone = completedCount === steps.length;

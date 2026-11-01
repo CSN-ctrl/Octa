@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Bitcoin, Building2, Check, Sparkles } from 'lucide-react';
+import { SOCIAL_ACTIONS_BTC_ELIGIBILITY_NOTE, BASIC_RESIDENTIAL_PRIZE_DETAIL_ONE, BASIC_RESIDENTIAL_PRIZE_DETAIL_TWO, BASIC_RESIDENTIAL_PRIZE_HEADLINE, BASIC_RESIDENTIAL_PRIZE_LIMITATION } from '@/lib/genesis-product-copy';
 
 const PrizesSection = () => {
   return (
@@ -71,9 +72,7 @@ const PrizesSection = () => {
                 <p className="text-sm text-muted-foreground">
                   <span className="text-foreground font-medium">Eligibility:</span> All 10,000 participants eligible
                 </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Social actions count only toward BTC award eligibility. They are not required for the residential unit.
-                </p>
+                <p className="text-sm text-muted-foreground mt-2">{SOCIAL_ACTIONS_BTC_ELIGIBILITY_NOTE}</p>
               </div>
             </div>
           </motion.div>
@@ -103,7 +102,7 @@ const PrizesSection = () => {
 
               <h3 className="text-3xl font-bold text-success mb-2">Basic Residential Unit</h3>
               <p className="text-muted-foreground mb-6">
-                Included for the first 5,000 land owners
+                {BASIC_RESIDENTIAL_PRIZE_HEADLINE}
               </p>
 
               <div className="space-y-3 mb-6">
@@ -111,11 +110,11 @@ const PrizesSection = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span className="text-muted-foreground">One basic residential unit per qualifying owner</span>
+                    <span className="text-muted-foreground">{BASIC_RESIDENTIAL_PRIZE_DETAIL_ONE}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span className="text-muted-foreground">Automatic for land owners #1-5,000</span>
+                    <span className="text-muted-foreground">{BASIC_RESIDENTIAL_PRIZE_DETAIL_TWO}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-success flex-shrink-0" />
@@ -126,7 +125,7 @@ const PrizesSection = () => {
 
               <div className="pt-4 border-t border-border">
                 <p className="text-sm text-muted-foreground">
-                  <span className="text-foreground font-medium">Limitation:</span> Limited to the first 5,000 land owners
+                  <span className="text-foreground font-medium">Limitation:</span> {BASIC_RESIDENTIAL_PRIZE_LIMITATION}
                 </p>
               </div>
             </div>

@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 
 export default function Privacy() {
   const sections = [
     {
       title: "1. Scope",
-      body: "This Privacy Policy explains how Chaos Star Universe collects, uses, stores, and protects personal and operational information.",
+      body: `This Privacy Policy explains how ${OFFICIAL_COMPANY_NAME} (operator of Chaos Star Universe) collects, uses, stores, and protects personal and operational information.`,
     },
     {
       title: "2. Current Service Phase Processing",
@@ -18,7 +19,7 @@ export default function Privacy() {
     },
     {
       title: "4. Purpose of Processing",
-      body: "Chaos Star processes data to provide services, maintain account security, prevent abuse, fulfill legal and compliance obligations, and improve platform reliability.",
+      body: `${OFFICIAL_COMPANY_NAME} processes data to provide services, maintain account security, prevent abuse, fulfill legal and compliance obligations, and improve platform reliability.`,
     },
     {
       title: "5. Blockchain Transition Notice",
@@ -38,11 +39,11 @@ export default function Privacy() {
     },
     {
       title: "9. Security Commitments",
-      body: "Chaos Star applies technical and organizational safeguards designed to reduce unauthorized access, misuse, or data loss risks.",
+      body: `${OFFICIAL_COMPANY_NAME} applies technical and organizational safeguards designed to reduce unauthorized access, misuse, or data loss risks.`,
     },
     {
       title: "10. Security Reminder",
-      body: "Chaos Star support will never ask for private keys or seed phrases.",
+      body: `${OFFICIAL_COMPANY_NAME} support will never ask for private keys or seed phrases.`,
     },
   ];
 
