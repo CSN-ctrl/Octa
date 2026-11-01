@@ -179,7 +179,7 @@ Table **`node_invites`**: `code_hash` (SHA-256 of normalized code; plaintext nev
 - **`POST /api/nodes/invites`** (governance): create invite; response includes the **plaintext `code` once**.
 - **`POST /api/nodes/challenge`**: optional **`invite_code`** — validated (unexpired, uses remaining), stored on challenge (`invite_code`, `invite_id`).
 - **`POST /api/nodes/join`**: consumes invite use inside **`complete_personal_node_join`**; sets **`invite_id`** on **`node_join_requests`**.
-- If **`auto_approve`** is true, join runs **`approveJoinRequest`** after join (same path as governance approval: device cap already enforced, ZeroTier authorize + retry rules apply). Does **not** bypass env **`NODE_JOIN_AUTO_APPROVE`**.
+- If **`auto_approve`** is true on the invite, join triggers **`approveJoinRequest`** after RPC (same ZeroTier + cap rules as manual approval). This is independent of env **`NODE_JOIN_AUTO_APPROVE`**.
 
 ---
 
