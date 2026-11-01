@@ -15,8 +15,32 @@ export function offlineHeartbeatThresholdSeconds(): number {
 /** Minimum seconds between accepted heartbeats per node. */
 export const HEARTBEAT_MIN_INTERVAL_SECONDS = 30;
 
-/** Challenge TTL in seconds. */
-export const CHALLENGE_TTL_SECONDS = 600;
+/** Default challenge TTL in seconds (5 minutes). */
+export const CHALLENGE_TTL_SECONDS = 300;
+
+/** Optional longer TTL for browser-approval challenges (default 10 minutes). */
+export function browserChallengeTtlSeconds(): number {
+  const raw = process.env.NODE_JOIN_BROWSER_CHALLENGE_TTL_SECS?.trim();
+  const n = raw ? Number.parseInt(raw, 10) : 600;
+  return Number.isFinite(n) && n >= CHALLENGE_TTL_SECONDS ? n : 600;
+}
+
+export function challengeTtlSeconds(signingMode: "local" | "browser" = "local"): number {
+  return signingMode === "browser" ? browserChallengeTtlSeconds() : CHALLENGE_TTL_SECONDS;
+}
+
+export const CHALLENGE_SIGNING_MODES = ["local", "browser"] as const;
+export type ChallengeSigningMode = (typeof CHALLENGE_SIGNING_MODES)[number];
+
+export function isChallengeSigningMode(value: string): value is ChallengeSigningMode {
+  return (CHALLENGE_SIGNING_MODES as readonly string[]).includes(value);
+}
+
+export function nodeJoinSiteOrigin(): string | null {
+  const raw = process.env.NODE_JOIN_SITE_ORIGIN?.trim();
+  if (!raw) return null;
+  return raw.replace(/\/+$/, "");
+}
 
 export const NODE_PLATFORMS = ["android", "web", "desktop"] as const;
 export type NodePlatform = (typeof NODE_PLATFORMS)[number];

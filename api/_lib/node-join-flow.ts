@@ -212,6 +212,70 @@ export async function revokeNode(
   return { ok: true };
 }
 
+export async function suspendNode(
+  nodeId: string,
+  reason: string,
+): Promise<{ ok: boolean; error?: string; node?: NodeRow }> {
+  const admin = createServiceSupabaseClient();
+  const { data: node } = await admin.from("nodes").select("*").eq("id", nodeId).maybeSingle();
+  if (!node) return { ok: false, error: "node_not_found" };
+  const row = node as NodeRow;
+  if (row.status === "revoked") {
+    return { ok: false, error: "node_revoked" };
+  }
+  if (row.status === "suspended") {
+    return { ok: true, node: row };
+  }
+
+  const now = new Date().toISOString();
+  await admin
+    .from("nodes")
+    .update({ status: "suspended", reason, updated_at: now })
+    .eq("id", nodeId);
+
+  await appendNodeEvent(nodeId, "suspended", { reason });
+  await requestZeroTierDeauthForNode(row);
+
+  const { data: refreshed } = await admin.from("nodes").select("*").eq("id", nodeId).single();
+  return { ok: true, node: refreshed as NodeRow };
+}
+
+export async function reinstateNode(
+  nodeId: string,
+  reason: string | null,
+): Promise<{ ok: boolean; error?: string; node?: NodeRow }> {
+  const admin = createServiceSupabaseClient();
+  const { data: node } = await admin.from("nodes").select("*").eq("id", nodeId).maybeSingle();
+  if (!node) return { ok: false, error: "node_not_found" };
+  const row = node as NodeRow;
+  if (row.status === "revoked") {
+    return { ok: false, error: "node_revoked" };
+  }
+  if (row.status !== "suspended") {
+    return { ok: true, node: row };
+  }
+
+  const now = new Date().toISOString();
+  const nextStatus = row.credential_hash ? "approved" : "pending";
+  await admin
+    .from("nodes")
+    .update({
+      status: nextStatus,
+      reason: reason ?? null,
+      updated_at: now,
+    })
+    .eq("id", nodeId);
+
+  await appendNodeEvent(nodeId, "reinstated", { reason: reason ?? null });
+
+  if (shouldUseZeroTierCentral(row) && row.zerotier_node_id) {
+    await markZeroTierAuthorizePending(nodeId, "reinstate_pending");
+  }
+
+  const { data: refreshed } = await admin.from("nodes").select("*").eq("id", nodeId).single();
+  return { ok: true, node: refreshed as NodeRow };
+}
+
 export async function tryAutoApproveJoin(joinRequestId: string): Promise<{ nodeCredential?: string }> {
   const envAuto = nodeJoinAutoApproveEnabled();
   const inviteAuto = await inviteAutoApproveForJoinRequest(joinRequestId);

@@ -7,7 +7,7 @@ import {
   verifySiweSignature,
   type SiweChallengeParams,
 } from "./node-siwe";
-import { CHALLENGE_TTL_SECONDS } from "./node-constants";
+import { challengeTtlSeconds } from "./node-constants";
 
 export type ChallengeRecord = {
   purpose: string;
@@ -23,14 +23,17 @@ export type ChallengeRecord = {
   join_environment: string;
   replace_node_id?: string | null;
   device_key_address?: string | null;
+  signing_mode?: string | null;
 };
 
 export function issuedAtFromChallenge(challenge: ChallengeRecord): string {
   if (challenge.issued_at) {
     return new Date(challenge.issued_at).toISOString();
   }
+  const mode = challenge.signing_mode === "browser" ? "browser" : "local";
+  const ttlSec = challengeTtlSeconds(mode);
   return new Date(
-    new Date(challenge.expires_at).getTime() - CHALLENGE_TTL_SECONDS * 1000,
+    new Date(challenge.expires_at).getTime() - ttlSec * 1000,
   ).toISOString();
 }
 

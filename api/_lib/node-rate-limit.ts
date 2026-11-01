@@ -14,6 +14,14 @@ export function rateLimitStatusPoll(key: string): boolean {
 
 const heartbeatLast = new Map<string, number>();
 
+export function rateLimitBrowserChallengeRead(key: string): boolean {
+  return rateLimitStatusPoll(`browser:${key}`);
+}
+
+export function rateLimitBrowserChallengeWrite(key: string): boolean {
+  return rateLimitStatusPoll(`browser:write:${key}`);
+}
+
 export function rateLimitHeartbeat(nodeId: string, minIntervalMs: number): boolean {
   const now = Date.now();
   const prev = heartbeatLast.get(nodeId) ?? 0;

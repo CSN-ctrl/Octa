@@ -13,6 +13,8 @@ export const NODE_EVENT_TYPES = [
   "revoked",
   "replaced",
   "heartbeat_rejected",
+  "suspended",
+  "reinstated",
 ] as const;
 
 export type NodeEventType = (typeof NODE_EVENT_TYPES)[number];

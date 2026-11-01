@@ -1,19 +1,21 @@
-import type { ApiRequest, ApiResponse } from "../_lib/types";
-import { readJsonBody, methodNotAllowed } from "../_lib/http";
-import { jsonError, jsonSuccess } from "../_lib/node-http";
-import { createServiceSupabaseClient } from "../_lib/supabase-admin";
+import type { ApiRequest, ApiResponse } from "../../_lib/types";
+import { readJsonBody, methodNotAllowed } from "../../_lib/http";
+import { jsonError, jsonSuccess } from "../../_lib/node-http";
+import { createServiceSupabaseClient } from "../../_lib/supabase-admin";
 import {
   isChallengePurpose,
+  isChallengeSigningMode,
   isNodePlatform,
-  maxActiveNodesPerWallet,
+  nodeJoinSiteOrigin,
   normalizeWalletAddress,
   normalizeZeroTierNodeId,
-} from "../_lib/node-constants";
-import { challengeExpiryIso, generateNonce, prepareSiweMessage } from "../_lib/node-message";
-import { resolveJoinBindingContext } from "../_lib/node-join-context";
-import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../_lib/node-auth";
-import { normalizeDevicePubkey } from "../_lib/node-device-key";
-import { findValidInviteByCode, normalizeInviteCode } from "../_lib/node-invites";
+} from "../../_lib/node-constants";
+import { challengeExpiryIso, generateNonce, prepareSiweMessage } from "../../_lib/node-message";
+import { resolveJoinBindingContext } from "../../_lib/node-join-context";
+import { fetchLiveNodesForWallet, linkWalletToUser, resolveSupabaseUser } from "../../_lib/node-auth";
+import { normalizeDevicePubkey } from "../../_lib/node-device-key";
+import { findValidInviteByCode, normalizeInviteCode } from "../../_lib/node-invites";
+import { generateChallengePollSecret } from "../../_lib/node-credential";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
@@ -38,7 +40,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     replace_node_id?: string;
     device_pubkey?: string;
     invite_code?: string;
+    signing?: string;
   }>(req);
+
+  const signingRaw = (body.signing ?? "local").trim().toLowerCase();
+  if (!isChallengeSigningMode(signingRaw)) {
+    jsonError(res, 400, "bad_request", "signing must be local or browser");
+    return;
+  }
 
   const wallet = body.wallet_address ? normalizeWalletAddress(body.wallet_address) : null;
   if (!wallet) {
@@ -49,6 +58,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const purposeRaw = (body.purpose ?? "join").trim().toLowerCase();
   if (!isChallengePurpose(purposeRaw)) {
     jsonError(res, 400, "bad_request", "purpose must be join or lookup");
+    return;
+  }
+
+  if (signingRaw === "browser" && purposeRaw !== "join") {
+    jsonError(res, 400, "bad_request", "browser signing is only supported for join challenges");
     return;
   }
 
@@ -117,7 +131,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   const nonce = generateNonce();
-  const { issuedAt, expiresAt } = challengeExpiryIso();
+  const { issuedAt, expiresAt } = challengeExpiryIso(new Date(), signingRaw);
   const message = prepareSiweMessage({
     purpose: purposeRaw,
     walletAddress: wallet,
@@ -132,6 +146,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     replaceNodeId,
     deviceKeyAddress,
   });
+
+  let pollSecret: string | null = null;
+  let pollHash: string | null = null;
+  if (signingRaw === "browser") {
+    const poll = generateChallengePollSecret();
+    pollSecret = poll.token;
+    pollHash = poll.hash;
+    const siteOrigin = nodeJoinSiteOrigin();
+    if (!siteOrigin) {
+      jsonError(res, 503, "join_context_unconfigured", "NODE_JOIN_SITE_ORIGIN is required for browser signing");
+      return;
+    }
+  }
 
   const { data, error } = await admin
     .from("node_join_challenges")
@@ -152,6 +179,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       invite_code: inviteCodeStored,
       invite_id: inviteId,
       expires_at: expiresAt,
+      signing_mode: signingRaw,
+      poll_token_hash: pollHash,
     })
     .select("id")
     .single();
@@ -165,10 +194,18 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     await linkWalletToUser(supabaseUser.userId, wallet);
   }
 
-  jsonSuccess(res, 201, {
+  const response: Record<string, unknown> = {
     challenge_id: data.id,
     nonce,
     message,
     expires_at: expiresAt,
-  });
+  };
+
+  if (signingRaw === "browser") {
+    const siteOrigin = nodeJoinSiteOrigin()!;
+    response.approve_url = `${siteOrigin}/run-a-node/approve?challenge=${data.id}`;
+    response.poll_secret = pollSecret;
+  }
+
+  jsonSuccess(res, 201, response);
 }

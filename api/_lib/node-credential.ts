@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 const NODE_CREDENTIAL_PREFIX = "octa_node_";
 const PENDING_TOKEN_PREFIX = "octa_pending_";
+const CHALLENGE_POLL_PREFIX = "octa_poll_";
 
 export function generateNodeCredential(): { token: string; hash: string } {
   const secret = randomBytes(32).toString("hex");
@@ -12,6 +13,12 @@ export function generateNodeCredential(): { token: string; hash: string } {
 export function generatePendingToken(): { token: string; hash: string } {
   const secret = randomBytes(32).toString("hex");
   const token = `${PENDING_TOKEN_PREFIX}${secret}`;
+  return { token, hash: hashSecret(token) };
+}
+
+export function generateChallengePollSecret(): { token: string; hash: string } {
+  const secret = randomBytes(32).toString("hex");
+  const token = `${CHALLENGE_POLL_PREFIX}${secret}`;
   return { token, hash: hashSecret(token) };
 }
 
@@ -43,6 +50,16 @@ export function parsePendingTokenHeader(authorization: string | undefined): stri
   return null;
 }
 
+export function parseChallengePollHeader(authorization: string | undefined): string | null {
+  if (!authorization) return null;
+  const trimmed = authorization.trim();
+  if (trimmed.startsWith("Poll ")) {
+    const token = trimmed.slice("Poll ".length).trim();
+    return token.startsWith(CHALLENGE_POLL_PREFIX) ? token : null;
+  }
+  return null;
+}
+
 export function verifySecretHash(token: string, storedHash: string | null | undefined): boolean {
   if (!storedHash || !token) return false;
   const computed = hashSecret(token);
@@ -53,4 +70,4 @@ export function verifySecretHash(token: string, storedHash: string | null | unde
   }
 }
 
-export { NODE_CREDENTIAL_PREFIX, PENDING_TOKEN_PREFIX };
+export { NODE_CREDENTIAL_PREFIX, PENDING_TOKEN_PREFIX, CHALLENGE_POLL_PREFIX };

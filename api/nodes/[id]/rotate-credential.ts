@@ -41,6 +41,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const nodeAuth = await resolveNodeOrPendingAuth({ headers: req.headers, nodeId });
   if (nodeAuth?.kind === "node") {
+    if (node.status === "suspended") {
+      jsonError(res, 403, "node_suspended");
+      return;
+    }
     if (node.status !== "approved") {
       jsonError(res, 403, "forbidden");
       return;
@@ -83,6 +87,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const reviewer = await isNetworkGovernanceReviewer(supabaseUser.accessToken);
   if (node.owner_user_id !== supabaseUser.userId && !reviewer) {
     jsonError(res, 403, "forbidden");
+    return;
+  }
+
+  if (node.status === "suspended") {
+    jsonError(res, 403, "node_suspended");
     return;
   }
 

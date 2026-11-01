@@ -103,7 +103,7 @@ export async function countLiveNodesForWallet(walletAddress: string): Promise<nu
     .from("nodes")
     .select("id", { count: "exact", head: true })
     .eq("wallet_address", walletAddress)
-    .in("status", ["pending", "approved"]);
+    .in("status", ["pending", "approved", "suspended"]);
   if (error) return Number.MAX_SAFE_INTEGER;
   return count ?? 0;
 }

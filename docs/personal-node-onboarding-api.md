@@ -8,6 +8,7 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 4. `supabase/migrations/20260611210000_zerotier_pending_retry.sql`
 5. `supabase/migrations/20260611220000_device_key_and_node_invites.sql`
 6. `supabase/migrations/20260611230000_optional_zerotier_v1.sql`
+7. `supabase/migrations/20260611240000_node_suspended_browser_join.sql`
 
 **Client:** The headless node / core runtime lives in **[CSN-ctrl/sarakt-node](https://github.com/CSN-ctrl/sarakt-node)**. This **Octa** repo owns the `/api/nodes/*` Vercel routes and Supabase migrations only.
 
@@ -30,7 +31,9 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `NODE_JOIN_CHAIN_ID` | Prod required | EIP-155 chain ID in SIWE. **Pilot default `43113` (Avalanche Fuji)** when unset outside production; **must be set in production** (fail closed) |
 | `NODE_JOIN_ENVIRONMENT` | No | `production` \| `staging` \| `dev` — bound in SIWE resource `urn:octa:env:*` (falls back to `VERCEL_ENV`) |
 | `NODE_JOIN_CLOCK_SKEW_SECS` | No | Default `60` — allow `issuedAt` up to this many seconds in the future; allow `expirationTime` up to this many seconds in the past; reject `notBefore` beyond this skew when present |
-| `NODE_MAX_ACTIVE_PER_WALLET` | No | Default `3` live (`pending` + `approved`) nodes per wallet |
+| `NODE_MAX_ACTIVE_PER_WALLET` | No | Default `3` live (`pending` + `approved` + **`suspended`**) nodes per wallet |
+| `NODE_JOIN_SITE_ORIGIN` | Browser join | Public site origin for approve URLs (e.g. `https://www.sarakt.com`) when `signing: "browser"` |
+| `NODE_JOIN_BROWSER_CHALLENGE_TTL_SECS` | No | Default `600` — TTL for browser-approval challenges (local signing stays **300** / 5 min) |
 | `NODE_HEARTBEAT_INTERVAL_ANDROID` | No | Seconds; default `300` |
 | `NODE_HEARTBEAT_INTERVAL_WEB` | No | Default `300` |
 | `NODE_HEARTBEAT_INTERVAL_DESKTOP` | No | Default `60` |
@@ -60,6 +63,7 @@ Publish release APKs via **GitHub Releases** on `CSN-ctrl/Octa`, attach the APK,
 | Optional Supabase user | `Authorization: Bearer <jwt>` | Link `owner_user_id` + `user_wallets` on challenge/join |
 | Pending poll / credential exchange | `Authorization: Pending <pending_token>` | Status + one-time credential exchange after approval |
 | Running node (Rust core) | `Authorization: Node <node_credential>` | Heartbeat, rotate credential, revoke, `GET /api/nodes/mine` |
+| Browser-approval poll | `Authorization: Poll <poll_secret>` | `GET /api/nodes/challenge/:id/result` (node-only secret from challenge create) |
 | Device key (optional) | `X-Device-Timestamp`, `X-Device-Signature` | EIP-191 over `` `${node_id}:${unix_ts}` `` (±`NODE_JOIN_CLOCK_SKEW_SECS`); required on rotate when a device key is registered; verified when present on heartbeat |
 | Governance reviewer | Supabase bearer + `is_network_governance_reviewer()` | Review join requests |
 
@@ -187,9 +191,9 @@ Table **`node_invites`**: `code_hash` (SHA-256 of normalized code; plaintext nev
 
 ## Multi-device cap and replace
 
-- Up to **`NODE_MAX_ACTIVE_PER_WALLET`** (default 3) live nodes per wallet (`pending` or `approved`).
-- At cap without replace → **`409`** `{ "success": false, "error": "device_limit_reached", "active_nodes": [ … ] }`.
-- **Replace:** pass `replace_node_id` on **`POST /api/nodes/challenge`**; the SIWE message must include `urn:octa:replace:<same uuid>`. Join must use the same challenge (replace id stored on challenge row).
+- Up to **`NODE_MAX_ACTIVE_PER_WALLET`** (default 3) live nodes per wallet (`pending`, `approved`, or **`suspended`**).
+- At cap without replace → **`409`** `{ "success": false, "error": "device_limit_reached", "active_nodes": [ … ] }` on **`POST /api/nodes/join`**. On the **browser** path, the same **`409`** is returned **only after** the wallet signature verifies; the challenge stays **unconsumed** (see Browser approval below).
+- **Replace:** pass `replace_node_id` on **`POST /api/nodes/challenge`**; the SIWE message must include `urn:octa:replace:<same uuid>`. Join must use the same challenge (replace id stored on challenge row). **Suspended** nodes count toward the cap but may be replaced.
 - **Atomic join:** `POST /api/nodes/join` calls RPC **`complete_personal_node_join`** (per-wallet **`pg_advisory_xact_lock`**). **Replace revokes the old node in Postgres first** (immediate **401** on old credentials); ZeroTier deauthorization runs **after** commit and may retry asynchronously.
 - **Events (same transaction as new node insert):** on the old node — `replaced`, `revoked`; **`zt_deauthorized` / `zt_deauth_failed`** are recorded when Central deauth completes or fails (see retry state below).
 
@@ -252,7 +256,7 @@ Body (JSON):
 ```json
 {
   "uptime_secs": 12345,
-  "version": "1.2.0",
+  "app_version": "1.2.0",
   "zt_online": true,
   "platform": "android",
   "peers": 4,
@@ -260,7 +264,105 @@ Body (JSON):
 }
 ```
 
+**`app_version`** is the canonical field. **`version`** is accepted as a **deprecated** alias (same value) for older clients.
+
 Response includes `next_heartbeat_secs` (platform-specific from env). Rate limit: minimum gap ≈ `interval × NODE_HEARTBEAT_RATE_LIMIT_FRACTION`. **Online** status uses `last_heartbeat_at` within `interval × NODE_HEARTBEAT_ONLINE_MULTIPLIER`.
+
+**Suspended nodes:** `POST /api/nodes/:id/heartbeat` returns **`403`** `{ "error": "node_suspended", "reason": "…" }` and **does not** insert a heartbeat row.
+
+---
+
+## Suspended status (governance)
+
+- **`POST /api/nodes/:id/suspend`** — governance reviewer only. Body `{ "reason": "…" }`. Sets `status: suspended`, writes `node_events` **`suspended`**. When **`ZEROTIER_ENABLED`**, queues Central **deauthorization** (same pending/retry machinery as revoke).
+- **`POST /api/nodes/:id/reinstate`** — governance only. **Revoked** nodes cannot be reinstated. Restores `approved` (or `pending` if never issued a credential). Writes **`reinstated`**. When ZeroTier is enabled and a member id exists, queues **re-authorization**.
+- While **suspended**: heartbeats rejected (**403** `node_suspended`), **`GET …/status`** shows `status: suspended`, **`rotate-credential`** rejected. Node still counts toward the **3-device cap**; **replace** is allowed.
+
+---
+
+## Desktop browser-approval join
+
+For desktop (and similar) clients that cannot sign SIWE in-process, create a challenge with **`"signing": "browser"`** on **`POST /api/nodes/challenge`**.
+
+Response adds:
+
+- **`approve_url`**: `` `${NODE_JOIN_SITE_ORIGIN}/run-a-node/approve?challenge=<uuid>` ``
+- **`poll_secret`**: shown **once** to the node process only (server stores **SHA-256** hash). The browser never receives node/pending credentials.
+
+Challenge TTL: **5 minutes** for local signing; browser flow defaults to **10 minutes** (`NODE_JOIN_BROWSER_CHALLENGE_TTL_SECS`, must be ≥ 300).
+
+### Challenge state
+
+Both **`GET /api/nodes/challenge/:id/public`** and **`POST /api/nodes/challenge/:id/sign`** expose **`state`**:
+
+| `state` | Meaning |
+|---------|---------|
+| `pending` | Awaiting wallet signature (not expired, not consumed) |
+| `signed` | Browser signature accepted; join completed; node may poll for credentials |
+| `expired` | Past `expires_at` |
+| `already_used` | Poll result already delivered, or non-browser challenge consumed |
+
+### `GET /api/nodes/challenge/:id/public`
+
+Unauthenticated. **`Cache-Control: no-store`**. Rate limited. **No wallet node list** — only SIWE disclosure fields:
+
+`state`, `domain`, `chain_id` (pilot **43113**), `address`, `uri`, `issued_at`, `expiration_time`, `platform`, `app_version`, `device_pubkey`, `resources`, raw **`message`**, `nonce`, `purpose`, `expires_at`.
+
+The approve page compares **`domain`** to `window.location.host`.
+
+### `POST /api/nodes/challenge/:id/sign`
+
+Body: `{ "signature": "0x…", "replace_node_id?": "uuid" }` (replace id must match challenge when set).
+
+- **`400`** `{ "error": "wrong_wallet" }` when the signature recovers to an address **different from the SIWE message address** (or not the bound wallet).
+- **`409`** `device_limit_reached` **only after** signature verifies. Body includes **`nodes`**: wallet **active + suspended** rows with `id`, `platform`, `app_version`, `last_seen_at`, `created_at`, `status`, `label` (always `null` until a name field exists). Challenge **not consumed**.
+- Success **`200`**: `{ "state": "signed", "join_request_id", "node_id" }`.
+
+### Cap → replace rebound
+
+Because replace must appear in SIWE as **`urn:octa:replace:<node_id>`**, after a **`409`** the browser calls:
+
+**`POST /api/nodes/challenge/:id/replace`** with `{ "replace_node_id", "signature" }` using the **first** (pre-replace) signature as proof.
+
+The server reissues the **same** `challenge_id` with a fresh **nonce**, new **message** (including replace resource), and **expiry**. The browser signs again and **`POST …/sign`**. The desktop app keeps polling the **same** challenge id on **`GET …/result`**.
+
+### `GET /api/nodes/challenge/:id/result`
+
+Auth: **`Authorization: Poll <poll_secret>`**. No-store, rate limited.
+
+Until join completes: `{ "state": "pending"|"expired", "ready": false }`.
+
+When ready (once): `{ "ready": true, "state": "signed", "join_request_id", "node_id", "pending_token" }` — **exactly once**; then **`409`** `result_already_delivered` with `state: already_used`.
+
+If auto-approve issued a credential, **`node_credential`** may appear instead of / in addition to pending (same one-time delivery).
+
+### Sequence (desktop + browser)
+
+```mermaid
+sequenceDiagram
+  participant Node as Desktop node
+  participant API as Octa API
+  participant Browser as Wallet browser
+  Node->>API: POST /challenge signing=browser
+  API-->>Node: approve_url, poll_secret, challenge_id
+  Node->>Node: Show QR / print URL
+  Browser->>API: GET /challenge/:id/public
+  API-->>Browser: message, domain, state=pending
+  Browser->>Browser: wallet sign SIWE
+  alt At device cap
+    Browser->>API: POST /challenge/:id/sign
+    API-->>Browser: 409 device_limit_reached + nodes
+    Browser->>API: POST /challenge/:id/replace + first signature
+    API-->>Browser: new message with urn:octa:replace
+    Browser->>Browser: sign again
+  end
+  Browser->>API: POST /challenge/:id/sign
+  API-->>Browser: state=signed (no credentials)
+  loop Poll
+    Node->>API: GET /challenge/:id/result Poll secret
+    API-->>Node: pending_token + node_id (once)
+  end
+```
 
 ---
 
@@ -289,9 +391,12 @@ Request:
   "purpose": "join",
   "replace_node_id": "uuid-optional",
   "device_pubkey": "0x04… or 0x wallet address",
-  "invite_code": "octa_…"
+  "invite_code": "octa_…",
+  "signing": "local"
 }
 ```
+
+`signing`: **`local`** (default) or **`browser`**. Browser mode requires **`NODE_JOIN_SITE_ORIGIN`** and returns **`approve_url`** + **`poll_secret`** (see Browser approval).
 
 Lookup: `"purpose": "lookup"` (omit or placeholder ZT id; server stores `0000000000`).
 
@@ -412,6 +517,23 @@ Auth: governance reviewer. Body: `{ "expires_at", "max_uses", "auto_approve", "c
 
 Auth: `Node` or Supabase owner / governance. Body optional `{ "reason": "…" }`. Sets `node.reason`.
 
+### `POST /api/nodes/:id/suspend`
+
+Auth: Supabase + governance reviewer. Body `{ "reason": "…" }`.
+
+### `POST /api/nodes/:id/reinstate`
+
+Auth: Supabase + governance reviewer. Body optional `{ "reason": "…" }`. **Not** allowed for **revoked** nodes.
+
+### Browser challenge routes
+
+| Method | Path |
+|--------|------|
+| GET | `/api/nodes/challenge/:id/public` |
+| POST | `/api/nodes/challenge/:id/sign` |
+| POST | `/api/nodes/challenge/:id/replace` |
+| GET | `/api/nodes/challenge/:id/result` |
+
 ### `POST /api/nodes/join-requests/:id/review`
 
 Auth: Supabase + governance reviewer.
@@ -478,3 +600,9 @@ Future validator fields on `nodes` (nullable, default `node_class = light`): `av
 | POST | `/api/nodes/:id/exchange-credential` |
 | POST | `/api/nodes/:id/rotate-credential` |
 | POST | `/api/nodes/:id/revoke` |
+| POST | `/api/nodes/:id/suspend` |
+| POST | `/api/nodes/:id/reinstate` |
+| GET | `/api/nodes/challenge/:id/public` |
+| POST | `/api/nodes/challenge/:id/sign` |
+| POST | `/api/nodes/challenge/:id/replace` |
+| GET | `/api/nodes/challenge/:id/result` |

@@ -1,8 +1,12 @@
-import { CHALLENGE_TTL_SECONDS } from "./node-constants";
+import { challengeTtlSeconds, type ChallengeSigningMode } from "./node-constants";
 
-export function challengeExpiryIso(from = new Date()): { issuedAt: string; expiresAt: string } {
+export function challengeExpiryIso(
+  from = new Date(),
+  signingMode: ChallengeSigningMode = "local",
+): { issuedAt: string; expiresAt: string } {
   const issuedAt = from.toISOString();
-  const expiresAt = new Date(from.getTime() + CHALLENGE_TTL_SECONDS * 1000).toISOString();
+  const ttlMs = challengeTtlSeconds(signingMode) * 1000;
+  const expiresAt = new Date(from.getTime() + ttlMs).toISOString();
   return { issuedAt, expiresAt };
 }
 

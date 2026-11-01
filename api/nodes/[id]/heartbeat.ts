@@ -39,6 +39,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
+  if (nodeAuth.node.status === "suspended") {
+    jsonError(res, 403, "node_suspended", nodeAuth.node.reason ?? undefined, {
+      reason: nodeAuth.node.reason ?? null,
+    });
+    return;
+  }
+
   if (nodeAuth.node.status !== "approved") {
     jsonError(res, 403, "forbidden", "Node must be approved before heartbeats");
     return;
@@ -65,12 +72,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const body = readJsonBody<{
     uptime_secs?: number;
+    app_version?: string;
     version?: string;
     zt_online?: boolean;
     platform?: string;
     peers?: number;
     block_height?: number | null;
   }>(req);
+
+  const appVersionRaw = (body.app_version ?? body.version)?.trim();
 
   const platform = body.platform?.trim().toLowerCase() ?? nodeAuth.node.platform;
   if (body.platform && !isNodePlatform(platform)) {
@@ -103,7 +113,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   await admin.from("node_heartbeats").insert({
     node_id: nodeId,
     uptime_secs: uptime,
-    app_version: body.version?.trim() ?? null,
+    app_version: appVersionRaw ?? null,
     zerotier_online: body.zt_online ?? null,
     peers,
     chain_height: blockHeight,
@@ -118,7 +128,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       last_peers: peers,
       last_zerotier_online: body.zt_online ?? null,
       last_chain_height: blockHeight,
-      last_app_version: body.version?.trim() ?? nodeAuth.node.last_app_version,
+      last_app_version: appVersionRaw ?? nodeAuth.node.last_app_version,
       updated_at: now,
     })
     .eq("id", nodeId);
