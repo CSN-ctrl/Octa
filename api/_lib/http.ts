@@ -27,6 +27,13 @@ export function mapRpcError(
     res.status(409).json({ error: "permit_exists" });
     return;
   }
+  if (msg.includes("residential_permit_required") || detail.includes("residential_permit_required")) {
+    res.status(422).json({
+      error: "residential_permit_required",
+      message: "An approved residential permit is required for this plot.",
+    });
+    return;
+  }
   if (msg.includes("basic_residential_ineligible") || detail.includes("basic_residential_ineligible")) {
     res.status(422).json({
       error: "basic_residential_ineligible",

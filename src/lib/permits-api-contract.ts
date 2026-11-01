@@ -65,13 +65,46 @@ export function parsePermitApplication(value: unknown): PermitApplicationRecord 
   return value as PermitApplicationRecord;
 }
 
-export type ExpatAvailability = {
-  plots_sold: number;
-  plots_total: number;
-  expat_open: boolean;
-  temp_units_total: number;
-  temp_units_allocated: number;
+export type BasicResidentialPlotEligibility = {
+  plot_id: number;
+  sale_rank: number;
+  eligible: boolean;
+  approved_residential_permit: boolean;
+  claimed: boolean;
 };
+
+export type BasicResidentialEligibility = {
+  cap: number;
+  wallet_address: string | null;
+  plots: BasicResidentialPlotEligibility[];
+};
+
+export function parseBasicResidentialEligibility(value: unknown): BasicResidentialEligibility | null {
+  if (!value || typeof value !== "object") return null;
+  const o = value as Record<string, unknown>;
+  if (typeof o.cap !== "number") return null;
+  const plotsRaw = o.plots;
+  const plots: BasicResidentialPlotEligibility[] = [];
+  if (Array.isArray(plotsRaw)) {
+    for (const item of plotsRaw) {
+      if (!item || typeof item !== "object") continue;
+      const p = item as Record<string, unknown>;
+      if (typeof p.plot_id !== "number" || typeof p.sale_rank !== "number") continue;
+      plots.push({
+        plot_id: p.plot_id,
+        sale_rank: p.sale_rank,
+        eligible: Boolean(p.eligible),
+        approved_residential_permit: Boolean(p.approved_residential_permit),
+        claimed: Boolean(p.claimed),
+      });
+    }
+  }
+  return {
+    cap: o.cap,
+    wallet_address: typeof o.wallet_address === "string" ? o.wallet_address : null,
+    plots,
+  };
+}
 
 export function parseExpatAvailability(value: unknown): ExpatAvailability | null {
   if (!value || typeof value !== "object") return null;
@@ -88,21 +121,21 @@ export function parseExpatAvailability(value: unknown): ExpatAvailability | null
   return o as ExpatAvailability;
 }
 
-export type BasicResidentialEligibility = {
-  eligible: boolean;
-  owner_rank: number | null;
-  cap: number;
-  wallet_address: string | null;
+export type ExpatTempUnitSummary = {
+  unit_number: number;
+  label: string;
+  is_active: boolean;
+  is_allocated: boolean;
 };
 
-export function parseBasicResidentialEligibility(value: unknown): BasicResidentialEligibility | null {
-  if (!value || typeof value !== "object") return null;
-  const o = value as Record<string, unknown>;
-  if (typeof o.eligible !== "boolean" || typeof o.cap !== "number") return null;
-  return {
-    eligible: o.eligible,
-    owner_rank: typeof o.owner_rank === "number" ? o.owner_rank : o.owner_rank === null ? null : null,
-    cap: o.cap,
-    wallet_address: typeof o.wallet_address === "string" ? o.wallet_address : null,
-  };
-}
+export type ExpatAvailability = {
+  plots_sold: number;
+  plots_total: number;
+  expat_open: boolean;
+  temp_units_total: number;
+  temp_units_allocated: number;
+  temp_units_available?: number;
+  rent_currency_default?: string;
+  rent_period_default?: string;
+  temp_units?: ExpatTempUnitSummary[];
+};

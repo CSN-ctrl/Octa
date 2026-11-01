@@ -63,14 +63,21 @@ describe("permits-api-contract", () => {
     ).toBe(false);
   });
 
-  it("parseBasicResidentialEligibility accepts eligibility RPC shape", () => {
-    expect(
-      parseBasicResidentialEligibility({
-        eligible: true,
-        owner_rank: 42,
-        cap: 5000,
-        wallet_address: "0xabc",
-      })?.eligible,
-    ).toBe(true);
+  it("parseBasicResidentialEligibility accepts per-plot RPC shape", () => {
+    const parsed = parseBasicResidentialEligibility({
+      cap: 5000,
+      wallet_address: "0xabc",
+      plots: [
+        {
+          plot_id: 12,
+          sale_rank: 12,
+          eligible: true,
+          approved_residential_permit: true,
+          claimed: false,
+        },
+      ],
+    });
+    expect(parsed?.plots[0]?.plot_id).toBe(12);
+    expect(parsed?.plots[0]?.eligible).toBe(true);
   });
 });

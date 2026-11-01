@@ -17,6 +17,10 @@ ROLLBACK;
 
 -- 3) basic_residential_unit_claims INSERT for owner_rank > 5000 → basic_residential_ineligible
 
--- Source of truth for plots_sold (documented):
---   public.plots.owner_wallet IS NOT NULL AND btrim(owner_wallet) <> ''
---   via public.count_plots_sold() and public.v_expat_availability.plots_sold
+-- Source of truth for plots_sold:
+--   public.plots.id BETWEEN 1 AND phase1_sellable_plot_id_max() (10,000)
+--   AND owner_wallet IS NOT NULL (non-empty)
+--   via public.count_plots_sold()
+--
+-- Basic residential: sale_rank per PLOT (v_plot_sale_ranks), cap basic_residential_plot_sale_cap() (5000)
+--   + approved residential permit when basic_residential_requires_approved_residential_permit() is true.

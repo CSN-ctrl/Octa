@@ -125,12 +125,13 @@ export async function fetchBasicResidentialEligibility(
 
 export async function claimBasicResidentialUnit(
   accessToken: string,
+  plotId: number,
 ): Promise<{ success: boolean; error?: string }> {
   const base = getApiBaseUrl();
   const res = await fetch(`${base}/api/basic-residential/claim`, {
     method: "POST",
     headers: authHeaders(accessToken),
-    body: JSON.stringify({}),
+    body: JSON.stringify({ plot_id: plotId }),
   });
   const data = (await parseJson(res)) as { success?: boolean; error?: string; message?: string };
   if (!res.ok) {
