@@ -7,6 +7,8 @@ import { goldenPathStepFromState, type GoldenPathStep } from "@/lib/golden-path"
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
 import { cn } from "@/lib/utils";
 import { listMyPermits } from "@/lib/permits";
+import { getDepositNetworkId } from "@/config/blockchain-profile";
+import { getIloDepositStepTitle, PERMIT_STEP_COPY } from "@/lib/genesis-product-copy";
 
 const DISMISS_KEY = "octa_phase1_onboarding_dismissed";
 
@@ -87,7 +89,7 @@ export function OnboardingChecklist({
       },
       {
         id: "deposit",
-        title: "Deposit AVAX → xBGL",
+        title: getIloDepositStepTitle(getDepositNetworkId()),
         description: `Fund your account (~${plotPrice.toFixed(2)} xBGL per plot).`,
         href: "/deposit",
         done: hasFunds,
@@ -101,8 +103,8 @@ export function OnboardingChecklist({
       },
       {
         id: "permit",
-        title: "Apply for permit",
-        description: "Confirm plot location and submit for land-use approval.",
+        title: PERMIT_STEP_COPY.ready.title,
+        description: PERMIT_STEP_COPY.ready.body,
         href: "/apply-permit",
         done: permitSubmitted,
       },

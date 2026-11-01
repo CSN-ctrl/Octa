@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Building2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { basicResidentialPlotStatusMessage } from "@/lib/genesis-product-copy";
+import { BASIC_UNIT_COPY, HOW_IT_WORKS_COPY, PRIZES_COPY } from "@/lib/genesis-product-copy";
 import {
   basicResidentialClaimErrorMessage,
   claimBasicResidentialPlot,
@@ -34,9 +34,25 @@ function statusBadge(row: BasicResidentialPlotEligibility) {
   }
   return (
     <Badge variant="outline" className="border-amber-500/40 text-amber-600">
-      Permit required
+      {PRIZES_COPY.basicUnit.badge}
     </Badge>
   );
+}
+
+function plotCopyBlock(row: BasicResidentialPlotEligibility, cap: number) {
+  if (row.claimed) {
+    return { title: BASIC_UNIT_COPY.claimed.title, body: BASIC_UNIT_COPY.claimed.body };
+  }
+  if (row.eligible) {
+    return { title: BASIC_UNIT_COPY.claimable.title, body: BASIC_UNIT_COPY.claimable.body };
+  }
+  if (row.sale_rank > cap || plotNeedsResidentialPermit(row, cap)) {
+    return { title: `Plot #${row.plot_id}`, body: BASIC_UNIT_COPY.notEligible.body };
+  }
+  return {
+    title: `Plot #${row.plot_id}`,
+    body: `Plot #${row.plot_id} — eligibility pending sale rank from the server.`,
+  };
 }
 
 export function BasicResidentialPlotEligibilityPanel() {
@@ -59,7 +75,7 @@ export function BasicResidentialPlotEligibilityPanel() {
     setClaimingPlotId(plotId);
     try {
       await claimBasicResidentialPlot(plotId);
-      toast.success("Basic residential unit claimed.");
+      toast.success(BASIC_UNIT_COPY.claimed.title);
       await refresh();
     } catch (err: unknown) {
       toast.error(basicResidentialClaimErrorMessage(err));
@@ -73,48 +89,54 @@ export function BasicResidentialPlotEligibilityPanel() {
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Building2 className="h-5 w-5 text-success" />
-          Basic residential unit (per plot)
+          {PRIZES_COPY.basicUnit.title} (per plot)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {eligibility.plots.map((row) => (
-          <div
-            key={row.plot_id}
-            className="rounded-lg border border-border/50 bg-background/40 p-3 space-y-2"
-          >
-            <div className="flex flex-wrap items-center gap-2 justify-between">
-              <span className="text-sm font-medium">Plot #{row.plot_id}</span>
-              {statusBadge(row)}
-            </div>
-            <p className="text-xs text-muted-foreground flex items-start gap-2">
-              {row.claimed || row.eligible ? (
-                <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
-              ) : plotNeedsResidentialPermit(row, eligibility.cap) ? (
-                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-              ) : (
-                <Building2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+        {eligibility.plots.map((row) => {
+          const copy = plotCopyBlock(row, eligibility.cap);
+          return (
+            <div
+              key={row.plot_id}
+              className="rounded-lg border border-border/50 bg-background/40 p-3 space-y-2"
+            >
+              <div className="flex flex-wrap items-center gap-2 justify-between">
+                <span className="text-sm font-medium">Plot #{row.plot_id}</span>
+                {statusBadge(row)}
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium flex items-start gap-2">
+                  {row.claimed || row.eligible ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                  ) : plotNeedsResidentialPermit(row, eligibility.cap) ? (
+                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                  ) : (
+                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  )}
+                  {copy.title}
+                </p>
+                <p className="text-xs text-muted-foreground">{copy.body}</p>
+              </div>
+              {row.claimed ? null : row.eligible ? (
+                <Button
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  disabled={claimingPlotId === row.plot_id}
+                  onClick={() => void handleClaim(row.plot_id)}
+                >
+                  {claimingPlotId === row.plot_id ? "Claiming…" : BASIC_UNIT_COPY.claimable.cta}
+                </Button>
+              ) : null}
+              {plotNeedsResidentialPermit(row, eligibility.cap) && (
+                <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
+                  <Link to={`/apply-permit?plotId=${row.plot_id}`}>
+                    {HOW_IT_WORKS_COPY.steps.applyPermit.title}
+                  </Link>
+                </Button>
               )}
-              {basicResidentialPlotStatusMessage(row, eligibility.cap)}
-            </p>
-            {row.claimed ? (
-              <p className="text-xs text-success font-medium">Claimed</p>
-            ) : row.eligible ? (
-              <Button
-                size="sm"
-                className="w-full sm:w-auto"
-                disabled={claimingPlotId === row.plot_id}
-                onClick={() => void handleClaim(row.plot_id)}
-              >
-                {claimingPlotId === row.plot_id ? "Claiming…" : "Claim basic residential unit"}
-              </Button>
-            ) : null}
-            {plotNeedsResidentialPermit(row, eligibility.cap) && (
-              <Button asChild size="sm" variant="outline" className="w-full sm:w-auto">
-                <Link to={`/apply-permit?plotId=${row.plot_id}`}>Apply for residential permit</Link>
-              </Button>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

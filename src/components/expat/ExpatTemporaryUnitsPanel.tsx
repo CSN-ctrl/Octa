@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 import { useExpatAvailability } from "@/hooks/useExpatAvailability";
+import { EXPAT_OPEN_COPY } from "@/lib/genesis-product-copy";
+
 import type { ExpatTempUnitSummary } from "@/lib/permits-api-contract";
 
 function rentTermsLabel(currency?: string, period?: string): string | null {
@@ -55,6 +57,7 @@ export function ExpatTemporaryUnitsPanel() {
         </CardTitle>
       </CardHeader>
       <CardContent className="text-sm text-muted-foreground space-y-4">
+        <p>{EXPAT_OPEN_COPY.banner}</p>
         <p>
           Expats rent from Sarakt government temporary living/work units (max{" "}
           {availability.temp_units_total.toLocaleString()}).

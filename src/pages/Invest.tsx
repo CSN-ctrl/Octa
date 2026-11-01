@@ -21,12 +21,10 @@ import {
   getDirectDepositFeatureTitle,
   getPersonalFundPaymentsLine,
 } from "@/lib/genesis-product-copy";
-import { depositAssetSymbol } from "@/lib/networks";
 
 const Invest = () => {
   const navigate = useNavigate();
   const depositNetworkId = getDepositNetworkId();
-  const depositSymbol = depositAssetSymbol(depositNetworkId);
 
   return (
     <div className="app-page-canvas relative overflow-hidden">
@@ -78,7 +76,7 @@ const Invest = () => {
                 </div>
 
                 <p className="text-muted-foreground mb-6">
-                  Take full control of your investments. Deposit {depositSymbol} directly and manage your own asset purchases.
+                  Take full control of your investments. {getPersonalFundPaymentsLine(depositNetworkId)}
                 </p>
 
                 <div className="space-y-3 mb-8 flex-grow">

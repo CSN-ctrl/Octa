@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ExpatPathLockNotice } from "@/components/expat/ExpatPathLockNotice";
+import { HOW_IT_WORKS_COPY } from "@/lib/genesis-product-copy";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Building2,
@@ -236,10 +237,7 @@ export default function HowItWorks() {
                 </h1>
               </div>
               <p className="text-lg text-muted-foreground max-w-3xl">
-                Sarakt is a World-as-a-Service (WaaS) platform where ownership, AI populations, and economic systems
-                combine into a persistent universe. You can start at land level, scale into city and planetary
-                governance, and ultimately coordinate full solar-system economies. Human players and AI citizens create
-                the demand that powers every revenue stream.
+                {HOW_IT_WORKS_COPY.intro}
               </p>
             </div>
 

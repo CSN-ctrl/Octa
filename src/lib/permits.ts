@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getApiBaseUrl } from "@/lib/app-origin";
 import { zoneTypeForPlotId } from "@/lib/chain-land-holdings";
+import { permitStatusLabelFromCopy, rejectedPermitMessage } from "@/lib/genesis-product-copy";
 import { isOnboardingApiLive } from "@/lib/onboarding-api-config";
 import {
   isLocationNotConfirmedError,
@@ -73,7 +74,7 @@ function unwrapSuccess<T extends Record<string, unknown>>(data: unknown): T {
   if (data && typeof data === "object" && "success" in (data as object)) {
     return data as T;
   }
-  return { success: true, ...(data as Record<string, unknown>) } as T;
+  return { success: true, ...(data as Record<string, unknown>) } as unknown as T;
 }
 
 async function requireAccessToken(): Promise<string> {
@@ -559,16 +560,10 @@ export async function submitPermitApplication(input: {
 }
 
 export function permitStatusLabel(permit: PermitApplicationRecord): string {
-  if (!permit.location_confirmed && permit.status === "pending") {
-    return "Pending — location not confirmed";
-  }
-  if (permit.status === "pending") return "Pending review";
-  if (permit.status === "approved") {
-    return permit.assigned_type ? `Approved (${permit.assigned_type})` : "Approved";
-  }
-  if (permit.status === "rejected") return "Rejected";
-  return permit.status;
+  return permitStatusLabelFromCopy(permit);
 }
+
+export { rejectedPermitMessage };
 
 export { isLocationNotConfirmedError, isPermitExistsError, OnboardingApiError };
 

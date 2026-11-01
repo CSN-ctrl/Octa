@@ -1,4 +1,9 @@
-import { GENESIS_PLOTS_TOTAL, EXPAT_TEMP_UNITS_TOTAL } from "@/lib/genesis-product-copy";
+import {
+  EXPAT_LOCKED_COPY,
+  EXPAT_TEMP_UNITS_TOTAL,
+  formatExpatProgressCopy,
+  GENESIS_PLOTS_TOTAL,
+} from "@/lib/genesis-product-copy";
 import { isOnboardingApiLive } from "@/lib/onboarding-api-config";
 import { fetchExpatAvailability, type ExpatAvailability } from "@/lib/permits";
 
@@ -40,7 +45,7 @@ async function getExpatAvailabilityMock(): Promise<ExpatAvailability> {
 }
 
 export function expatPathLockedBody(availability: ExpatAvailability): string {
-  return `${availability.plots_sold.toLocaleString()} / ${availability.plots_total.toLocaleString()} Genesis plots sold. The Worker/Expat path stays closed until the platform marks it open. Before any user building, Sarakt government provides up to ${availability.temp_units_total.toLocaleString()} temporary living/work units for expats to rent once the path opens.`;
+  return `${EXPAT_LOCKED_COPY.body} ${formatExpatProgressCopy(availability.plots_sold)}.`;
 }
 
 export async function getExpatAvailability(): Promise<ExpatAvailability> {

@@ -1,2 +1,2 @@
 /** Legal entity operating Sarakt / Chaos Star Universe products. */
-export const OFFICIAL_COMPANY_NAME = "Octa Investment Group";
+export { ORG_NAME, ORG_NAME as OFFICIAL_COMPANY_NAME } from "@/lib/genesis-product-copy";

@@ -8,6 +8,7 @@ describe("isExpatPathLocked", () => {
       plots_total: 10000,
       expat_open: false,
       temp_units_total: 100,
+      temp_units_allocated: 0,
     };
     expect(isExpatPathLocked(almostSold)).toBe(true);
 
@@ -16,6 +17,7 @@ describe("isExpatPathLocked", () => {
       plots_total: 10000,
       expat_open: false,
       temp_units_total: 100,
+      temp_units_allocated: 100,
     };
     expect(isExpatPathLocked(soldOutButClosed)).toBe(true);
 
@@ -24,6 +26,7 @@ describe("isExpatPathLocked", () => {
       plots_total: 10000,
       expat_open: true,
       temp_units_total: 100,
+      temp_units_allocated: 10,
     };
     expect(isExpatPathLocked(openEarly)).toBe(false);
   });

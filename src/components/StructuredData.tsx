@@ -55,7 +55,7 @@ export function DefaultStructuredData() {
           alternateName: "Chaos Star Universe",
           url: origin,
           logo: `${origin}/chaos-star-logo.png`,
-          description: "Octa Investment Group operates Chaos Star Universe. Sarakt is its Genesis world where users own land, build infrastructure, and scale through a World-as-a-Service economy.",
+          description: `${OFFICIAL_COMPANY_NAME} operates Chaos Star Universe. Sarakt is its Genesis world where users own land, build infrastructure, and scale through a World-as-a-Service economy.`,
           sameAs: [
             "https://x.com/OIG_CSN",
           ],

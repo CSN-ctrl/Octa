@@ -26,6 +26,7 @@ import {
   isPermitExistsError,
   listMyPermits,
   permitStatusLabel,
+  rejectedPermitMessage,
   submitPermitApplication,
   type PermitApplication,
 } from "@/lib/permits";
@@ -291,8 +292,8 @@ export default function ApplyForPermit() {
                       Assigned type: {labelForPermitType(permit.assigned_type)}
                     </p>
                   )}
-                  {permit.status === "rejected" && permit.rejection_reason && (
-                    <p className="text-xs text-destructive">Reason: {permit.rejection_reason}</p>
+                  {permit.status === "rejected" && (
+                    <p className="text-xs text-destructive">{rejectedPermitMessage(permit.rejection_reason)}</p>
                   )}
                 </div>
               ))
