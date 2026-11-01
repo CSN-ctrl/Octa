@@ -71,6 +71,9 @@ const PrizesSection = () => {
                 <p className="text-sm text-muted-foreground">
                   <span className="text-foreground font-medium">Eligibility:</span> All 10,000 participants eligible
                 </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Social actions count only toward BTC award eligibility. They are not required for the residential unit.
+                </p>
               </div>
             </div>
           </motion.div>
@@ -98,9 +101,9 @@ const PrizesSection = () => {
                 </span>
               </div>
 
-              <h3 className="text-3xl font-bold text-success mb-2">Income Structure</h3>
+              <h3 className="text-3xl font-bold text-success mb-2">Basic Residential Unit</h3>
               <p className="text-muted-foreground mb-6">
-                Included for the first 5,000 participants
+                Included for the first 5,000 land owners
               </p>
 
               <div className="space-y-3 mb-6">
@@ -108,22 +111,22 @@ const PrizesSection = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span className="text-muted-foreground">Value: <span className="text-foreground">150 EUR</span> (~293 xBGL)</span>
+                    <span className="text-muted-foreground">One basic residential unit per qualifying owner</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span className="text-muted-foreground">Automatic for participants #1-5,000</span>
+                    <span className="text-muted-foreground">Automatic for land owners #1-5,000</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span className="text-muted-foreground">Generates passive income in-game</span>
+                    <span className="text-muted-foreground">No social actions required</span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-border">
                 <p className="text-sm text-muted-foreground">
-                  <span className="text-foreground font-medium">Limitation:</span> Limited to first 5,000 pioneers
+                  <span className="text-foreground font-medium">Limitation:</span> Limited to the first 5,000 land owners
                 </p>
               </div>
             </div>
