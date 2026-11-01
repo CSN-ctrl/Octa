@@ -31,6 +31,7 @@ export function resolveNodeApproveApiError(err: NodeApproveApiError): ResolveNod
   }
 
   if (err.code === "domain_not_allowed" || err.code === "join_context_mismatch") {
+    // Server host allowlist (see docs + PR dev note) — user copy is generic in NODE_APPROVE_COPY.
     return { kind: "phase", phase: "domain_block" };
   }
 
