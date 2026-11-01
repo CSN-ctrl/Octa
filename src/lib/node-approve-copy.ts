@@ -4,8 +4,16 @@ export const NODE_APPROVE_COPY = {
   orgName: "Octa Investment Group",
   pageTitle: "Approve Personal Node",
   pageDescription:
-    "Review and sign to let your desktop Personal Node join your wallet on Octa Investment Group infrastructure.",
-  missingChallenge: "This link is missing a challenge id. Open the approval URL from your Personal Node app.",
+    "Review and sign to let your Personal Node join your wallet on Octa Investment Group infrastructure.",
+  seoTitle: "Approve Personal Node | Chaos Star Universe",
+  seoDescription:
+    "Review and sign in your browser to approve a desktop Personal Node join on Octa Investment Group infrastructure.",
+  loadingApproval: "Loading approval request…",
+  invalidLinkTitle: "Invalid link",
+  unavailableTitle: "Unavailable",
+  tryAgainButton: "Try again",
+  missingChallenge:
+    "This link is missing a challenge id. Open the approval URL from your Personal Node app.",
   loadError: "We could not load this approval request. It may be invalid or no longer available.",
   approveHeading: "Approve this device?",
   platformLabel: "Platform",
@@ -29,8 +37,7 @@ export const NODE_APPROVE_COPY = {
   wrongWalletBody:
     "The connected account does not match the wallet that requested to join. Switch accounts in MetaMask or Core, then continue.",
   chainMismatchTitle: "Wrong network",
-  chainMismatchBody:
-    "Switch your wallet to Avalanche Fuji (chain 43113) before signing.",
+  chainMismatchBody: "Switch your wallet to Avalanche Fuji (chain 43113) before signing.",
   successTitle: "Device approved",
   successBody:
     "Return to your Personal Node app on this computer. It will connect on its own — you do not need to paste anything here.",
@@ -38,7 +45,8 @@ export const NODE_APPROVE_COPY = {
   expiredBody:
     "This approval link timed out. On your desktop node, start the join flow again to get a fresh link.",
   alreadyUsedTitle: "Already handled",
-  alreadyUsedBody: "This approval request was already completed. If your node still cannot connect, start join again from the app.",
+  alreadyUsedBody:
+    "This approval request was already completed. If your node still cannot connect, start join again from the app.",
   deviceLimitTitle: "Device limit reached",
   deviceLimitBody:
     "Your wallet already has the maximum number of active Personal Nodes. Choose one to replace — it will be disconnected immediately after you sign.",
@@ -47,10 +55,40 @@ export const NODE_APPROVE_COPY = {
     "The device you replace will lose access on its next heartbeat. Finish signing on this page to confirm.",
   copyDeviceKey: "Copy device key",
   copied: "Copied",
+  copyClipboardError: "Could not copy to clipboard.",
   lastSeenLabel: "Last seen",
   statusLabel: "Status",
   replaceFlowResign: "Sign the updated message in your wallet to finish replacing the device.",
+  nodeIdSuffixPrefix: "ID …",
 } as const;
+
+/** Known API `platform` values → friendly labels; unknown values pass through. */
+export const NODE_PLATFORM_LABELS: Record<string, string> = {
+  desktop: "Desktop Personal Node",
+  android: "Android Personal Node",
+};
+
+export function friendlyNodePlatform(platform: string): string {
+  const key = platform.trim().toLowerCase();
+  return NODE_PLATFORM_LABELS[key] ?? platform;
+}
+
+export function capNodePickerTitle(node: {
+  label: string | null;
+  platform: string;
+  app_version: string;
+}): string {
+  const label = node.label?.trim();
+  if (label) return label;
+  return `${friendlyNodePlatform(node.platform)} · v${node.app_version}`;
+}
+
+/** Last 6 hex chars of node id (ignoring hyphens) for disambiguation in the picker. */
+export function capNodeIdSuffix(nodeId: string): string {
+  const compact = nodeId.replace(/-/g, "");
+  if (compact.length < 6) return compact.toLowerCase();
+  return compact.slice(-6).toLowerCase();
+}
 
 export type NodeDisplayStatus =
   | "pending"

@@ -30,7 +30,7 @@ import {
   postChallengeReplace,
   postChallengeSign,
 } from "@/lib/node-approve-api";
-import { NODE_APPROVE_COPY } from "@/lib/node-approve-copy";
+import { NODE_APPROVE_COPY, capNodeIdSuffix, capNodePickerTitle, friendlyNodePlatform } from "@/lib/node-approve-copy";
 import type { CapNodeSummary, ChallengePublicPayload } from "@/lib/node-approve-contract";
 import { PILOT_CHAIN_ID } from "@/lib/node-approve-contract";
 import {
@@ -140,7 +140,7 @@ export default function RunANodeApprove() {
       toast.success(NODE_APPROVE_COPY.copied);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Could not copy to clipboard.");
+      toast.error(NODE_APPROVE_COPY.copyClipboardError);
     }
   };
 
@@ -248,7 +248,6 @@ export default function RunANodeApprove() {
     <AppPageShell innerClassName="max-w-lg mx-auto py-10">
       <div className="space-y-6">
         <div className="space-y-1 text-center sm:text-left">
-          <p className="text-sm text-muted-foreground">{NODE_APPROVE_COPY.orgName}</p>
           <h1 className="text-2xl font-semibold tracking-tight">{NODE_APPROVE_COPY.pageTitle}</h1>
           <p className="text-sm text-muted-foreground">{NODE_APPROVE_COPY.pageDescription}</p>
         </div>
@@ -257,7 +256,7 @@ export default function RunANodeApprove() {
           <Card>
             <CardContent className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Loading approval request…
+              {NODE_APPROVE_COPY.loadingApproval}
             </CardContent>
           </Card>
         )}
@@ -265,7 +264,7 @@ export default function RunANodeApprove() {
         {phase === "missing_id" && (
           <TerminalCard
             icon={<AlertCircle className="h-5 w-5 text-destructive" />}
-            title="Invalid link"
+            title={NODE_APPROVE_COPY.invalidLinkTitle}
             body={NODE_APPROVE_COPY.missingChallenge}
           />
         )}
@@ -273,11 +272,11 @@ export default function RunANodeApprove() {
         {phase === "load_error" && (
           <TerminalCard
             icon={<AlertCircle className="h-5 w-5 text-destructive" />}
-            title="Unavailable"
+            title={NODE_APPROVE_COPY.unavailableTitle}
             body={NODE_APPROVE_COPY.loadError}
             action={
               <Button variant="outline" onClick={() => void loadChallenge()}>
-                Try again
+                {NODE_APPROVE_COPY.tryAgainButton}
               </Button>
             }
           />
@@ -329,17 +328,17 @@ export default function RunANodeApprove() {
                 {capNodes.map((node) => (
                   <div key={node.id} className="flex items-start gap-3 rounded-lg border p-3">
                     <RadioGroupItem value={node.id} id={`node-${node.id}`} className="mt-1" />
-                    <Label htmlFor={`node-${node.id}`} className="flex-1 cursor-pointer space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">
-                          {node.label?.trim() || `${node.platform} · v${node.app_version}`}
-                        </span>
-                        <NodeStatusBadge status={node.status} />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
+                    <Label htmlFor={`node-${node.id}`} className="flex-1 cursor-pointer space-y-1.5">
+                      <span className="font-medium block">{capNodePickerTitle(node)}</span>
+                      <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {NODE_APPROVE_COPY.lastSeenLabel}{" "}
                         {formatDistanceToNow(new Date(node.last_seen_at), { addSuffix: true })}
-                      </p>
+                        <NodeStatusBadge status={node.status} />
+                        <span className="font-mono">
+                          {NODE_APPROVE_COPY.nodeIdSuffixPrefix}
+                          {capNodeIdSuffix(node.id)}
+                        </span>
+                      </span>
                     </Label>
                   </div>
                 ))}
@@ -371,7 +370,10 @@ export default function RunANodeApprove() {
             </CardHeader>
             <CardContent className="space-y-4">
               <dl className="grid gap-3 text-sm">
-                <Row label={NODE_APPROVE_COPY.platformLabel} value={challenge.platform} />
+                <Row
+                  label={NODE_APPROVE_COPY.platformLabel}
+                  value={friendlyNodePlatform(challenge.platform)}
+                />
                 <Row label={NODE_APPROVE_COPY.appVersionLabel} value={challenge.app_version} />
                 {challenge.device_pubkey ? (
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -462,7 +464,7 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={mono ? "font-mono text-xs" : "capitalize"}>{value}</dd>
+      <dd className={mono ? "font-mono text-xs" : ""}>{value}</dd>
     </div>
   );
 }

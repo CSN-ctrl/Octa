@@ -21,6 +21,7 @@ import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
 import { initSupabaseAuthRecovery, isStaleSupabaseRefreshError } from "@/lib/supabase-auth-recovery";
 import { getAppOrigin } from "@/lib/app-origin";
 import { isTestRoutesEnabled } from "@/env";
+import { NODE_APPROVE_COPY } from "@/lib/node-approve-copy";
 
 // Lazy load all pages for code splitting
 const UnifiedUniverse = lazy(() => import("./pages/UnifiedUniverse"));
@@ -202,8 +203,8 @@ const ROUTE_SEO_CONFIG: Record<string, RouteSeoConfig> = {
     indexable: true,
   },
   "/run-a-node/approve": {
-    title: "Approve Personal Node | Octa Investment Group",
-    description: "Review and sign to approve a desktop Personal Node join request.",
+    title: NODE_APPROVE_COPY.seoTitle,
+    description: NODE_APPROVE_COPY.seoDescription,
     canonicalPath: "/run-a-node/approve",
     indexable: false,
   },
