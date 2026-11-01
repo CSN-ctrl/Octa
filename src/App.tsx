@@ -76,6 +76,7 @@ const Cookies = lazy(() => import("./pages/Cookies"));
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ApplyForPermit = lazy(() => import("./pages/ApplyForPermit"));
 const ExpatPath = lazy(() => import("./pages/ExpatPath"));
+const RunANodeApprove = lazy(() => import("./pages/RunANodeApprove"));
 
 // Configure React Query with optimized defaults
 const queryClient = new QueryClient({
@@ -199,6 +200,12 @@ const ROUTE_SEO_CONFIG: Record<string, RouteSeoConfig> = {
     description: "Review operational controls, auditability safeguards, and compliance commitments for Chaos Star.",
     canonicalPath: "/compliance",
     indexable: true,
+  },
+  "/run-a-node/approve": {
+    title: "Approve Personal Node | Octa Investment Group",
+    description: "Review and sign to approve a desktop Personal Node join request.",
+    canonicalPath: "/run-a-node/approve",
+    indexable: false,
   },
   "/login": {
     title: "Login - Chaos Star Universe",
@@ -583,6 +590,14 @@ function AppContent() {
                       )}
                       <Route path="/auth/callback" element={<AuthCallback />} />
                       <Route path="/oauth/consent" element={<OAuthConsent />} />
+                      <Route
+                        path="/run-a-node/approve"
+                        element={
+                          <RouteErrorBoundary routeName="Personal Node Approve">
+                            <RunANodeApprove />
+                          </RouteErrorBoundary>
+                        }
+                      />
                       {testRoutesEnabled && (
                         <Route path="/oauth-test-client" element={<OAuthTestClient />} />
                       )}
