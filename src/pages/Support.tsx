@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, MessageSquare, ShieldCheck } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 
 export default function Support() {
   const serviceScopeItems = [
@@ -71,7 +72,7 @@ export default function Support() {
           <CardTitle>Reservation and rollout notice</CardTitle>
         </CardHeader>
         <CardContent className="app-prose">
-          Chaos Star currently operates in Early Access pre-blockchain mode. Reservations represent priority placement rights
+          {OFFICIAL_COMPANY_NAME} operates Chaos Star Universe in Early Access pre-blockchain mode. Reservations represent priority placement rights
           and are subject to phased feature availability and policy updates.
         </CardContent>
       </Card>
@@ -84,7 +85,7 @@ export default function Support() {
           </CardTitle>
         </CardHeader>
         <CardContent className="app-prose">
-          Chaos Star support will never request private keys, seed phrases, or direct custody credentials.
+          {OFFICIAL_COMPANY_NAME} support will never request private keys, seed phrases, or direct custody credentials.
         </CardContent>
       </Card>
 

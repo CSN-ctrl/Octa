@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Twitter, MessageCircle, Instagram, Check, ExternalLink } from 'lucide-react';
+import { PRIZES_COPY, SOCIAL_ACTIONS_BTC_ELIGIBILITY_NOTE } from '@/lib/genesis-product-copy';
 
 const socials = [
   {
@@ -45,12 +46,10 @@ const SocialTasksSection = () => {
           className="text-center mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-gold/10 text-gold text-sm font-medium mb-4">
-            🎯 Qualify for 1 BTC
+            {PRIZES_COPY.btc.title}
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Complete Social Tasks</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Engage with our community to qualify for the 1 BTC prize
-          </p>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">{PRIZES_COPY.social.title}</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{PRIZES_COPY.social.body}</p>
         </motion.div>
 
         {/* Social Cards */}
@@ -108,6 +107,9 @@ const SocialTasksSection = () => {
             </motion.a>
           ))}
         </div>
+        <p className="text-center text-sm text-muted-foreground mt-10 max-w-2xl mx-auto">
+          {SOCIAL_ACTIONS_BTC_ELIGIBILITY_NOTE}
+        </p>
       </div>
     </section>
   );

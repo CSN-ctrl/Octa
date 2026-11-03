@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Cookie } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 
 export default function Cookies() {
   const sections = [
     {
       title: "1. Scope",
-      body: "This Cookie Policy explains how Chaos Star Universe uses cookies and similar technologies in the Early Access pre-blockchain phase.",
+      body: `This Cookie Policy explains how ${OFFICIAL_COMPANY_NAME} (operator of Chaos Star Universe) uses cookies and similar technologies in the Early Access pre-blockchain phase.`,
     },
     {
       title: "2. Essential Cookies",
@@ -30,7 +31,7 @@ export default function Cookies() {
     },
     {
       title: "7. Future Phase Notice",
-      body: "As Chaos Star transitions to future blockchain-integrated phases, cookie and storage usage may be updated to support additional functionality.",
+      body: `As ${OFFICIAL_COMPANY_NAME} transitions Chaos Star Universe to future blockchain-integrated phases, cookie and storage usage may be updated to support additional functionality.`,
     },
   ];
 

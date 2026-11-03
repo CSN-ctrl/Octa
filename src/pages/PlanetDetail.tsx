@@ -9,11 +9,14 @@ import { toast } from "sonner";
 import { usePlotRegistry } from "@/hooks/usePlotRegistry";
 import { useDigitalID } from "@/hooks/useDigitalID";
 import { getPlotPriceInXBGL } from "@/lib/exchange-rates";
+import { useExpatAvailability } from "@/hooks/useExpatAvailability";
+import { ExpatPathLockNotice } from "@/components/expat/ExpatPathLockNotice";
 
 const PlanetDetail = () => {
   const navigate = useNavigate();
   const { systemId, planetId } = useParams();
   const { hasDigitalID, checkDigitalID } = useDigitalID();
+  const { locked: expatLocked } = useExpatAvailability();
   const [plotsToBuy, setPlotsToBuy] = useState(1);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   // Demo data for worker path (could be wired to Supabase later)
@@ -76,20 +79,27 @@ const PlanetDetail = () => {
         {/* Path Selection */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <Card 
-            className={`glass p-8 cursor-pointer transition-all ${
-              selectedPath === 'career' 
-                ? 'border-primary shadow-glow-primary' 
-                : 'border-primary/30 hover:border-primary/60'
+            className={`glass p-8 transition-all ${
+              expatLocked
+                ? "opacity-60 cursor-not-allowed border-muted"
+                : selectedPath === 'career' 
+                ? 'border-primary shadow-glow-primary cursor-pointer' 
+                : 'border-primary/30 hover:border-primary/60 cursor-pointer'
             }`}
-            onClick={() => setSelectedPath('career')}
+            onClick={() => {
+              if (expatLocked) return;
+              setSelectedPath('career');
+            }}
           >
             <div className="flex items-start gap-4 mb-6">
               <div className="p-4 rounded-full bg-primary/10 border border-primary/30">
                 <Briefcase className="h-8 w-8 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-2">Career Path</h3>
-                <p className="text-muted-foreground">Start as a Jobee - no prerequisites required</p>
+                <h3 className="text-2xl font-bold mb-2">Career Path (Worker / Expat)</h3>
+                <p className="text-muted-foreground">
+                  {expatLocked ? "Locked until the Expat path opens on the server." : "Start as a Jobee - no prerequisites required"}
+                </p>
               </div>
             </div>
             <ul className="space-y-2 text-sm text-muted-foreground mb-6">
@@ -101,8 +111,9 @@ const PlanetDetail = () => {
             <Button 
               variant={selectedPath === 'career' ? 'cosmic' : 'outline'} 
               className="w-full"
+              disabled={expatLocked}
             >
-              {selectedPath === 'career' ? 'Selected' : 'Choose Career Path'}
+              {expatLocked ? 'Expat path locked' : selectedPath === 'career' ? 'Selected' : 'Choose Career Path'}
             </Button>
           </Card>
 
@@ -224,7 +235,8 @@ const PlanetDetail = () => {
         )}
 
         {/* Worker Path - Jobs and Rentals */}
-        {selectedPath === 'career' && (
+        {selectedPath === 'career' && expatLocked && <ExpatPathLockNotice className="mb-8" />}
+        {selectedPath === 'career' && !expatLocked && (
           <div className="space-y-8">
             <Card className="glass p-8">
               <div className="flex items-center justify-between mb-6">

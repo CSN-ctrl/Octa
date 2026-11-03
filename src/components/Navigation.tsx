@@ -221,7 +221,7 @@ export const Navigation = () => {
                     variant="ghost"
                     size="sm"
                     className="gap-2 text-muted-foreground hover:text-foreground hover:bg-white/[0.04] font-medium"
-                    onClick={() => navigate("/how-it-works")}
+                    onClick={() => navigate("/docs")}
                   >
                     <HelpCircle className="h-4 w-4 opacity-80" />
                     <span className="hidden sm:inline text-[13px] tracking-wide">How It Works</span>

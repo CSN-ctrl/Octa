@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BadgeCheck } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { OFFICIAL_COMPANY_NAME } from "@/lib/company-branding";
 
 export default function Compliance() {
   const sections = [
     {
       title: "1. Compliance Posture",
-      body: "Chaos Star Universe currently applies a pre-launch compliance model aligned with Early Access pre-blockchain operations.",
+      body: `${OFFICIAL_COMPANY_NAME} currently applies a pre-launch compliance model for Chaos Star Universe, aligned with Early Access pre-blockchain operations.`,
     },
     {
       title: "2. Access and Authorization Controls",
@@ -22,7 +23,7 @@ export default function Compliance() {
     },
     {
       title: "5. Monitoring and Enforcement",
-      body: "Chaos Star applies anomaly monitoring and policy enforcement mechanisms and may restrict access in response to abuse, fraud risk, or compliance breaches.",
+      body: `${OFFICIAL_COMPANY_NAME} applies anomaly monitoring and policy enforcement mechanisms and may restrict access in response to abuse, fraud risk, or compliance breaches.`,
     },
     {
       title: "6. Future Blockchain Readiness",
