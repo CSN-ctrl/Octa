@@ -10,12 +10,15 @@ function patternSegments(pattern: string): string[] {
   return pattern.split("/").filter(Boolean);
 }
 
-export function matchApiRoute(pathSegments: string[]): MatchedApiRoute | null {
+export function matchApiRouteWithDefinitions(
+  pathSegments: string[],
+  definitions: ApiRouteDefinition[],
+): MatchedApiRoute | null {
   if (pathSegments.length === 0) {
     return null;
   }
 
-  for (const route of API_ROUTE_DEFINITIONS) {
+  for (const route of definitions) {
     const matched = matchPattern(route, pathSegments);
     if (matched) {
       return matched;
@@ -25,8 +28,15 @@ export function matchApiRoute(pathSegments: string[]): MatchedApiRoute | null {
   return null;
 }
 
+export function matchApiRoute(pathSegments: string[]): MatchedApiRoute | null {
+  return matchApiRouteWithDefinitions(pathSegments, API_ROUTE_DEFINITIONS);
+}
+
 function matchPattern(route: ApiRouteDefinition, pathSegments: string[]): MatchedApiRoute | null {
   const patternParts = patternSegments(route.pattern);
+  if (patternParts.length === 0) {
+    return pathSegments.length === 0 ? { handler: route.handler, params: {} } : null;
+  }
   if (patternParts.length !== pathSegments.length) {
     return null;
   }
@@ -84,7 +94,7 @@ export async function dispatchApiRoute(
   req: ApiRequest,
   res: ApiResponse,
 ): Promise<void> {
-  const match = matchApiRoute(pathSegments);
+  const match = matchApiRouteWithDefinitions(pathSegments, API_ROUTE_DEFINITIONS);
   if (!match) {
     notFound(res);
     return;

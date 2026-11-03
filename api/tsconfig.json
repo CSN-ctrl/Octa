@@ -16,6 +16,6 @@
     "isolatedModules": true,
     "resolveJsonModule": true
   },
-  "include": ["./index.ts", "../lib/octa-api/**/*.ts"],
+  "include": ["./**/*.ts", "../lib/octa-api/**/*.ts"],
   "exclude": ["../lib/octa-api/**/__tests__/**"]
 }

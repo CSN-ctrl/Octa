@@ -68,3 +68,28 @@ export const API_ROUTE_DEFINITIONS: ApiRouteDefinition[] = [
 
 /** Public paths (with `/api/` prefix) previously implemented as standalone Vercel functions. */
 export const LEGACY_API_PATHS: string[] = API_ROUTE_DEFINITIONS.map((r) => `/api/${r.pattern}`);
+
+function stripPrefix(prefix: string, routes: ApiRouteDefinition[]): ApiRouteDefinition[] {
+  return routes.map((route) => ({
+    ...route,
+    pattern: route.pattern.startsWith(`${prefix}/`)
+      ? route.pattern.slice(prefix.length + 1)
+      : route.pattern === prefix
+        ? ""
+        : route.pattern,
+  }));
+}
+
+export const NODES_API_ROUTE_DEFINITIONS = stripPrefix(
+  "nodes",
+  API_ROUTE_DEFINITIONS.filter((route) => route.pattern.startsWith("nodes/") || route.pattern === "nodes"),
+);
+
+export const PERMITS_API_ROUTE_DEFINITIONS = stripPrefix(
+  "permits",
+  API_ROUTE_DEFINITIONS.filter((route) => route.pattern.startsWith("permits/") || route.pattern === "permits"),
+);
+
+export const MISC_API_ROUTE_DEFINITIONS = API_ROUTE_DEFINITIONS.filter(
+  (route) => !route.pattern.startsWith("nodes/") && route.pattern !== "nodes" && !route.pattern.startsWith("permits/") && route.pattern !== "permits",
+);
