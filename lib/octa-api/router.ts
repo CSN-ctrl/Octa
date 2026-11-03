@@ -1,5 +1,5 @@
 import type { ApiRequest, ApiResponse } from "./types";
-import { API_ROUTE_DEFINITIONS, type ApiRouteDefinition, type ApiRouteHandler } from "./routes";
+import type { ApiRouteDefinition, ApiRouteHandler } from "./route-types";
 
 export type MatchedApiRoute = {
   handler: ApiRouteHandler;
@@ -14,10 +14,6 @@ export function matchApiRouteWithDefinitions(
   pathSegments: string[],
   definitions: ApiRouteDefinition[],
 ): MatchedApiRoute | null {
-  if (pathSegments.length === 0) {
-    return null;
-  }
-
   for (const route of definitions) {
     const matched = matchPattern(route, pathSegments);
     if (matched) {
@@ -26,10 +22,6 @@ export function matchApiRouteWithDefinitions(
   }
 
   return null;
-}
-
-export function matchApiRoute(pathSegments: string[]): MatchedApiRoute | null {
-  return matchApiRouteWithDefinitions(pathSegments, API_ROUTE_DEFINITIONS);
 }
 
 function matchPattern(route: ApiRouteDefinition, pathSegments: string[]): MatchedApiRoute | null {
@@ -87,18 +79,4 @@ export function buildApiRequest(
 
 export function notFound(res: ApiResponse): void {
   res.status(404).json({ error: "not_found" });
-}
-
-export async function dispatchApiRoute(
-  pathSegments: string[],
-  req: ApiRequest,
-  res: ApiResponse,
-): Promise<void> {
-  const match = matchApiRouteWithDefinitions(pathSegments, API_ROUTE_DEFINITIONS);
-  if (!match) {
-    notFound(res);
-    return;
-  }
-  const apiReq = buildApiRequest(req, pathSegments, match);
-  await match.handler(apiReq, res);
 }

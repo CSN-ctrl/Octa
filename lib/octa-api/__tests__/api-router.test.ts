@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { API_ROUTE_DEFINITIONS } from "../routes";
-import { matchApiRoute, normalizePathSegments } from "../router";
+import { PERMITS_API_ROUTE_DEFINITIONS } from "../routes-permits";
+import { matchApiRouteWithDefinitions, normalizePathSegments } from "../router";
+
+function matchApiRoute(pathSegments: string[]) {
+  return matchApiRouteWithDefinitions(pathSegments, API_ROUTE_DEFINITIONS);
+}
 
 const EXPECTED_ROUTES: { path: string; sampleId?: string }[] = [
   { path: "basic-residential/claim" },
@@ -60,7 +65,11 @@ describe("api catch-all router", () => {
 
   it("returns null for unknown paths", () => {
     expect(matchApiRoute(["nodes", "does-not-exist"])).toBeNull();
-    expect(matchApiRoute([])).toBeNull();
+    expect(matchApiRoute(["nodes", "mine", "extra"])).toBeNull();
+  });
+
+  it("matches POST /api/permits root via empty relative pattern", () => {
+    expect(matchApiRouteWithDefinitions([], PERMITS_API_ROUTE_DEFINITIONS)?.handler).toBeDefined();
   });
 
   it("does not let nodes/challenge/:id shadow nodes/challenge", () => {

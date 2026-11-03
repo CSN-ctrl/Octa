@@ -1,5 +1,5 @@
 import type { ApiRequest, ApiResponse } from "./types";
-import type { ApiRouteDefinition } from "./routes";
+import type { ApiRouteDefinition } from "./route-types";
 import {
   buildApiRequest,
   matchApiRouteWithDefinitions,
