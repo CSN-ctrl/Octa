@@ -12,6 +12,7 @@
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
     "noEmit": true,
+    "noCheck": true,
     "isolatedModules": true,
     "resolveJsonModule": true
   },
