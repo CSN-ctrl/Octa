@@ -34,12 +34,38 @@ const defaults: Partial<EnvVars> = {
   VITE_ENABLE_TEST_ROUTES: "false",
 };
 
+function pickEnv(key: keyof EnvVars): string | undefined {
+  switch (key) {
+    case "VITE_API_URL":
+      return import.meta.env.VITE_API_URL || defaults.VITE_API_URL;
+    case "VITE_AVALANCHE_RPC":
+      return import.meta.env.VITE_AVALANCHE_RPC || defaults.VITE_AVALANCHE_RPC;
+    case "VITE_CHAOSSTAR_RPC":
+      return import.meta.env.VITE_CHAOSSTAR_RPC || defaults.VITE_CHAOSSTAR_RPC;
+    case "VITE_STARGATE_RPC":
+      return import.meta.env.VITE_STARGATE_RPC || defaults.VITE_STARGATE_RPC;
+    case "VITE_CHAIN_ID":
+      return import.meta.env.VITE_CHAIN_ID || defaults.VITE_CHAIN_ID;
+    case "VITE_BLOCKCHAIN_ID":
+      return import.meta.env.VITE_BLOCKCHAIN_ID || defaults.VITE_BLOCKCHAIN_ID;
+    case "VITE_NETWORK_NAME":
+      return import.meta.env.VITE_NETWORK_NAME || defaults.VITE_NETWORK_NAME;
+    case "VITE_NATIVE_TOKEN":
+      return import.meta.env.VITE_NATIVE_TOKEN || defaults.VITE_NATIVE_TOKEN;
+    case "VITE_ENABLE_PRIVATE_KEY_CUSTODY":
+      return import.meta.env.VITE_ENABLE_PRIVATE_KEY_CUSTODY || defaults.VITE_ENABLE_PRIVATE_KEY_CUSTODY;
+    case "VITE_ENABLE_TEST_ROUTES":
+      return import.meta.env.VITE_ENABLE_TEST_ROUTES || defaults.VITE_ENABLE_TEST_ROUTES;
+    default:
+      return undefined;
+  }
+}
+
 export const env = (() => {
   const vars: Partial<EnvVars> = {};
 
-  // Load from environment with defaults
   for (const key of Object.keys(defaults) as (keyof EnvVars)[]) {
-    const value = import.meta.env[key] || defaults[key];
+    const value = pickEnv(key);
     if (value) {
       vars[key] = value;
     }
