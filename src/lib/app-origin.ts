@@ -34,3 +34,11 @@ export function getEmailConfirmationRedirectUrl(): string {
   return `${getAppOrigin()}/email-verified`;
 }
 
+/** Same-origin API base for Vercel `/api/*` routes (relative in browser). */
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return getAppOrigin();
+}
+

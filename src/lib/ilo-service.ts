@@ -593,14 +593,12 @@ export async function checkEligibility(walletAddress: string): Promise<void> {
       shares.filter(s => s.platform === 'instagram').length >= 1;
 
     const eligibleForBTC = has3CommentsOnEach && hasSharedAll3;
-    const eligibleForStructure = participant.participation_number && participant.participation_number <= 5000;
 
-    // Update participant eligibility
+    // Octa Investment Group canonical rule: social actions affect BTC award eligibility only.
     await (supabase as any)
       .from("ilo_participants")
       .update({
         eligible_for_btc: eligibleForBTC,
-        eligible_for_structure: eligibleForStructure,
         updated_at: new Date().toISOString(),
       })
       .eq("wallet_address", walletAddress.toLowerCase());
