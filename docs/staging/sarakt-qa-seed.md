@@ -40,10 +40,17 @@ This function refuses to run unless `platform_runtime_config.environment = 'stag
 
 ## 5. Vercel preview env
 
-Set for `/api/*` routes on preview deployments:
+Set for `/api/*` routes on preview deployments (see also `docs/personal-node-onboarding-api.md` deploy checklist):
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NODE_JOIN_ENVIRONMENT=staging` (or rely on `VERCEL_ENV=preview`)
+- `NODE_JOIN_PREVIEW_PROJECT_SLUG` / `NODE_JOIN_PREVIEW_TEAM_SLUG`
+- `NODE_JOIN_CHAIN_ID` (pilot: `43113`)
+- Optional: `NODE_JOIN_DOMAIN`, `NODE_JOIN_SITE_ORIGIN`, `CRON_SECRET`
+
+Sarakt L1 subnet constants (chain **8890**): `docs/ops/sarakt-network-l1.md`.
 
 Frontend calls APIs with `Authorization: Bearer <supabase_access_token>`.
 

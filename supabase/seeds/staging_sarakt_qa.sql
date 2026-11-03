@@ -17,3 +17,7 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 
 COMMENT ON TABLE public.platform_runtime_config IS
   'Octa Investment Group staging flags. environment=staging enables staging_simulate_plots_sold().';
+
+-- SaraktNetwork L1 (chain 8890) — canonical IDs in docs/ops/sarakt-network-l1.md and src/config/sarakt-network.ts
+-- subnet: 8eKB9FkkhuWN9gWGEQ2GLev6kfRZPSzu8EviAwahUbD4MDBK9
+-- blockchain: xg5VhR6SKocvvgHptzUwqUmfBGfgeeze5YncLg4ZmeAPWLi7B

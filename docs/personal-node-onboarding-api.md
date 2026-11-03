@@ -30,12 +30,13 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `NODE_JOIN_DOMAIN` | Prod required | Canonical production origin (e.g. `https://www.sarakt.com`). **Production** challenges use this host only (must match request `Host`). |
 | `NODE_JOIN_PREVIEW_PROJECT_SLUG` | Preview | Project slug for `{project}-<hash>-{team}.vercel.app` (hash = `[a-z0-9]+` only). |
 | `NODE_JOIN_PREVIEW_TEAM_SLUG` | Preview | Team slug suffix (literal) for preview host pattern. |
-| `NODE_JOIN_DEV_HOSTS` | Dev (`NODE_JOIN_ENVIRONMENT=development`) | Comma-separated allowed hosts (default `localhost:8080,127.0.0.1:8080`). |
+| `NODE_JOIN_DEV_HOSTS` | Dev (`NODE_JOIN_ENVIRONMENT=dev` or `development`) | Comma-separated allowed hosts (default `localhost:8080,127.0.0.1:8080`). |
 | `NODE_JOIN_CHAIN_ID` | Prod required | EIP-155 chain ID in SIWE. **Pilot default `43113` (Avalanche Fuji)** when unset in **development** only; **must be set in production/staging** (fail closed) |
-| `NODE_JOIN_ENVIRONMENT` | **Required** if `VERCEL_ENV` unset | `production` \| `staging` \| `development` (maps to SIWE `urn:octa:env:*`). Fail closed when neither this nor `VERCEL_ENV` is set. |
+| `NODE_JOIN_ENVIRONMENT` | **Required** if `VERCEL_ENV` unset | `production` \| `staging` \| `development` \| **`dev`** (alias for `development`; maps to SIWE `urn:octa:env:*`). Fail closed when neither this nor `VERCEL_ENV` is set. |
 | `NODE_JOIN_CLOCK_SKEW_SECS` | No | Default `60` — allow `issuedAt` up to this many seconds in the future; allow `expirationTime` up to this many seconds in the past; reject `notBefore` beyond this skew when present |
 | `NODE_MAX_ACTIVE_PER_WALLET` | No | Default `3` live (`pending` + `approved` + **`suspended`**) nodes per wallet |
 | `NODE_JOIN_SITE_ORIGIN` | Optional | Override for **`approve_url`** only; default is request origin (`https://` or `http://localhost`). |
+| `CRON_SECRET` | Optional | Bearer secret for **`POST /api/nodes/zt-retry`** (Vercel Cron or ops); same header shape as governance bearer |
 | `NODE_JOIN_BROWSER_CHALLENGE_TTL_SECS` | No | Default `600` — TTL for browser-approval challenges (local signing stays **300** / 5 min) |
 | `NODE_HEARTBEAT_INTERVAL_ANDROID` | No | Seconds; default `300` |
 | `NODE_HEARTBEAT_INTERVAL_WEB` | No | Default `300` |
@@ -48,6 +49,26 @@ Server-side Vercel `/api/nodes/*` routes for wallet-signed Personal Node join, Z
 | `NODE_APP_MIN_SUPPORTED_VERSION` | Optional | Below this, clients should force upgrade |
 
 Never prefix ZeroTier or service role secrets with `VITE_`.
+
+### Vercel deploy env checklist (`/api/nodes/*`)
+
+Set on **Production** and **Preview** (server env only — never `VITE_*`):
+
+| Variable | Production | Preview | Dev local |
+|----------|------------|---------|-----------|
+| `SUPABASE_URL` | Required | Required | Required |
+| `SUPABASE_ANON_KEY` | Required (user linking) | Required | Required |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required | Required | Required |
+| `NODE_JOIN_ENVIRONMENT` | `production` (or rely on `VERCEL_ENV=production`) | `staging` or rely on `VERCEL_ENV=preview` | `dev` or `development` |
+| `NODE_JOIN_DOMAIN` | Required (`https://…`) | Optional (preview uses `VERCEL_URL` / pattern) | Optional |
+| `NODE_JOIN_CHAIN_ID` | Required (e.g. `43113` pilot) | Required | Defaults to `43113` when env is dev |
+| `NODE_JOIN_PREVIEW_PROJECT_SLUG` | — | Required for `{project}-<hash>-{team}.vercel.app` | — |
+| `NODE_JOIN_PREVIEW_TEAM_SLUG` | — | Required (team slug suffix) | — |
+| `NODE_JOIN_SITE_ORIGIN` | Optional (`approve_url` override) | Optional | Optional |
+| `CRON_SECRET` | Optional (zt-retry cron) | Optional | Optional |
+| `ZEROTIER_*` | When `ZEROTIER_ENABLED=true` | Same | Same |
+
+Sarakt L1 subnet IDs (chain **8890**) live in `docs/ops/sarakt-network-l1.md` — separate from Fuji `43113` join pilot defaults.
 
 **Operational notes:** v1 ships with **`ZEROTIER_ENABLED=false`**. **`zerotier_node_id`** on challenge/join is **optional**; SIWE includes **`urn:zerotier:<id>`** only when a member id is supplied. Node status payloads include **`zerotier`**: `disabled` | `pending_authorization` | `authorized`. When ZeroTier is off or no member id is stored, approval activates the node without Central and without pending retry state. Phone clients send heartbeats over **public HTTPS** (not over ZeroTier).
 
@@ -123,7 +144,7 @@ The approve page requires **`message.domain === window.location.host`**. **`POST
 |------------|---------------|----------------------|
 | **Production** (`VERCEL_ENV=production`) | **Only** the host of **`NODE_JOIN_DOMAIN`** (fail closed if unset) | `NODE_JOIN_DOMAIN` origin |
 | **Preview** (`VERCEL_ENV=preview` or `NODE_JOIN_ENVIRONMENT=staging`) | Exact **`VERCEL_URL` / `VERCEL_BRANCH_URL`** host **or** `{NODE_JOIN_PREVIEW_PROJECT_SLUG}-[a-z0-9]+-{NODE_JOIN_PREVIEW_TEAM_SLUG}.vercel.app` (hash has **no hyphens**) | Request origin |
-| **Development** (`NODE_JOIN_ENVIRONMENT=development` only) | **`NODE_JOIN_DEV_HOSTS`** (default `localhost:8080`, `127.0.0.1:8080`) | Request origin |
+| **Development** (`NODE_JOIN_ENVIRONMENT=dev` or `development`) | **`NODE_JOIN_DEV_HOSTS`** (default `localhost:8080`, `127.0.0.1:8080`) | Request origin |
 
 Other hosts on **`POST /api/nodes/challenge`** → **`400`** `{ "success": false, "error": "domain_not_allowed" }`.
 
