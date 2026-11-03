@@ -5,15 +5,15 @@
   "functions": {
     "api/nodes.ts": {
       "maxDuration": 60,
-      "includeFiles": "lib/octa-api/**"
+      "includeFiles": "api/_lib/**"
     },
     "api/permits.ts": {
       "maxDuration": 60,
-      "includeFiles": "lib/octa-api/**"
+      "includeFiles": "api/_lib/**"
     },
     "api/misc.ts": {
       "maxDuration": 60,
-      "includeFiles": "lib/octa-api/**"
+      "includeFiles": "api/_lib/**"
     }
   },
   "rewrites": [

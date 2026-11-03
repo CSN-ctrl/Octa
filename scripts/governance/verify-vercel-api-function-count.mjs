@@ -44,7 +44,7 @@ const total = countFunctionEntries(apiRoot);
 if (total > MAX_FUNCTIONS) {
   console.error(
     `Vercel API function count ${total} exceeds Hobby limit ${MAX_FUNCTIONS}. ` +
-      "Consolidate routes under api/index.ts and keep helpers under lib/octa-api/.",
+      "Consolidate routes under api/*.ts entrypoints and keep helpers under api/_lib/.",
   );
   process.exit(1);
 }

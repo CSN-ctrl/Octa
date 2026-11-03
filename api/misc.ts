@@ -1,4 +1,4 @@
-import { createApiEntryHandler } from "../lib/octa-api/create-entry";
-import { MISC_API_ROUTE_DEFINITIONS } from "../lib/octa-api/routes-misc";
+import { createApiEntryHandler } from "./_lib/create-entry";
+import { MISC_API_ROUTE_DEFINITIONS } from "./_lib/routes-misc";
 
 export default createApiEntryHandler(MISC_API_ROUTE_DEFINITIONS);

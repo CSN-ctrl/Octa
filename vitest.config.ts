@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'lib/octa-api/**/*.{test,spec}.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'api/_lib/**/*.{test,spec}.ts'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

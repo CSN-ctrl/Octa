@@ -4,7 +4,7 @@
  * Run: node scripts/governance/print-node-eip191-test-vector.mjs
  */
 import { Wallet } from "ethers";
-import { buildChallengeSignMessage } from "../../lib/octa-api/node-message.ts";
+import { buildChallengeSignMessage } from "../../api/_lib/node-message.ts";
 
 const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbe14826f6940f7a06973522";
 const wallet = new Wallet(privateKey);
