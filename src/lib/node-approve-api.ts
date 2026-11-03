@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@/lib/app-origin";
+import { getOnboardingApiBase } from "@/lib/onboarding-api-config";
 import {
   parseCapNodes,
   parseChallengePublicPayload,
@@ -37,7 +37,7 @@ export class NodeApproveApiError extends Error {
 
 export async function fetchChallengePublic(challengeId: string): Promise<ChallengePublicPayload> {
   const res = await fetch(
-    `${getApiBaseUrl()}/api/nodes/challenge/${encodeURIComponent(challengeId)}/public`,
+    `${getOnboardingApiBase()}/api/nodes/challenge/${encodeURIComponent(challengeId)}/public`,
     { method: "GET", cache: "no-store" },
   );
   const body = await readJson(res);
@@ -62,7 +62,7 @@ export async function postChallengeSign(
   replaceNodeId?: string,
 ): Promise<{ state: string; join_request_id?: string; node_id?: string }> {
   const res = await fetch(
-    `${getApiBaseUrl()}/api/nodes/challenge/${encodeURIComponent(challengeId)}/sign`,
+    `${getOnboardingApiBase()}/api/nodes/challenge/${encodeURIComponent(challengeId)}/sign`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -103,7 +103,7 @@ export async function postChallengeReplace(
   signature: string,
 ): Promise<ReplaceChallengeResult> {
   const res = await fetch(
-    `${getApiBaseUrl()}/api/nodes/challenge/${encodeURIComponent(challengeId)}/replace`,
+    `${getOnboardingApiBase()}/api/nodes/challenge/${encodeURIComponent(challengeId)}/replace`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
