@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import { saraktNetworkExtBcRpc } from "@/config/sarakt-network";
 import { toast } from "sonner";
 
 export interface MockStarSystem {
@@ -56,9 +57,8 @@ function generateMockIp(): string {
   return `10.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
 }
 
-function generateMockRpcUrl(subnetId: string): string {
-  // Always use Chaos Star Network RPC - never use port 9650
-  return "http://127.0.0.1:41773/ext/bc/wtHFpLKd93iiPmBBsCdeTEPz6Quj9MoCL8NpuxoFXHtvTVeT1/rpc";
+function generateMockRpcUrl(_subnetId: string): string {
+  return saraktNetworkExtBcRpc("http://127.0.0.1:41773");
 }
 
 export function useMockCelestialForge() {

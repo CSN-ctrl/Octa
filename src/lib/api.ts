@@ -242,7 +242,12 @@ export async function registerPlotToPortfolio(plotId: number, wallet: string, pr
   }
 }
 
-// Avalanche Subnet API functions (stubs for backward compatibility)
+import {
+  SARAKT_NETWORK_BLOCKCHAIN_ID,
+  SARAKT_NETWORK_CHAIN_ID,
+  SARAKT_NETWORK_SUBNET_ID,
+  saraktNetworkExtBcRpc,
+} from "@/config/sarakt-network";
 export interface AvalancheSubnet {
   name: string;
   subnet_id?: string;
@@ -260,9 +265,10 @@ export async function listAvalancheSubnets(): Promise<AvalancheSubnetsResponse> 
   return {
     subnets: [
       {
-        name: "ChaosStarNetwork",
-        blockchain_id: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
-        rpc_url: "http://127.0.0.1:24362/ext/bc/ChaosStar/rpc",
+        name: "SaraktNetwork",
+        subnet_id: SARAKT_NETWORK_SUBNET_ID,
+        blockchain_id: SARAKT_NETWORK_BLOCKCHAIN_ID,
+        rpc_url: saraktNetworkExtBcRpc("http://127.0.0.1:9654"),
       },
     ],
   };
@@ -280,9 +286,10 @@ export async function describeAvalancheSubnet(subnetName: string): Promise<Avala
   // Stub function - returns default ChaosStar network info
   return {
     name: subnetName,
-    blockchain_id: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
-    rpc_url: "http://127.0.0.1:24362/ext/bc/ChaosStar/rpc",
-    chain_id: 8888,
+    subnet_id: SARAKT_NETWORK_SUBNET_ID,
+    blockchain_id: SARAKT_NETWORK_BLOCKCHAIN_ID,
+    rpc_url: saraktNetworkExtBcRpc("http://127.0.0.1:9654"),
+    chain_id: SARAKT_NETWORK_CHAIN_ID,
   };
 }
 

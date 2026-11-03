@@ -3,6 +3,8 @@
  * Supports both legacy Avalanche RPC and new ChaosStar backend.
  */
 
+import { SARAKT_NETWORK_BLOCKCHAIN_ID } from "@/config/sarakt-network";
+
 interface EnvVars {
   // Legacy (optional)
   VITE_AVALANCHE_RPC?: string;
@@ -27,7 +29,7 @@ const defaults: Partial<EnvVars> = {
   VITE_CHAOSSTAR_RPC: undefined,
   VITE_STARGATE_RPC: undefined,
   VITE_CHAIN_ID: "43113",
-  VITE_BLOCKCHAIN_ID: "ZgQsbJYPaujPcQpF6k8Kfw1GRpnwoaAfVkf435C4R2MRBXLgy",
+  VITE_BLOCKCHAIN_ID: SARAKT_NETWORK_BLOCKCHAIN_ID,
   VITE_NETWORK_NAME: "Avalanche Fuji C-Chain",
   VITE_NATIVE_TOKEN: "AVAX",
   VITE_ENABLE_PRIVATE_KEY_CUSTODY: "false",

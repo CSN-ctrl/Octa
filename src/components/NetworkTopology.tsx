@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Network, Server, Globe, Link2, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import type { StarSystem, Planet } from "@/hooks/useCelestialForge";
 import { SARAKT_STAR_SYSTEM_ID } from "@/config/world-ids";
+import { saraktNetworkExtBcRpc } from "@/config/sarakt-network";
+
+const DEFAULT_SARAKT_L1_RPC = saraktNetworkExtBcRpc("http://127.0.0.1:41773");
 
 interface NetworkTopologyProps {
   starSystems: StarSystem[];
@@ -14,7 +17,7 @@ interface NetworkTopologyProps {
 export function NetworkTopology({ 
   starSystems, 
   planets,
-  chaosStarNetworkRPC = "http://127.0.0.1:41773/ext/bc/wtHFpLKd93iiPmBBsCdeTEPz6Quj9MoCL8NpuxoFXHtvTVeT1/rpc"
+  chaosStarNetworkRPC = DEFAULT_SARAKT_L1_RPC
 }: NetworkTopologyProps) {
   // Find Sarakt Star System (which IS the Chaos Star Network)
   const saraktSystem = useMemo(() => {
