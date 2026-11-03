@@ -95,6 +95,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify Vercel API function count (Hobby limit)
+        run: npm run verify:vercel-api-functions
+
       - name: Validate contract manifest parity
         run: npm run validate:contracts
 

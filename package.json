@@ -34,6 +34,7 @@
     "migrate:auth:zfzs-to-octa": "tsx scripts/migrate-auth-users.ts",
     "migrate:data:zfzs-to-octa": "tsx scripts/migrate-zfzs-data-to-octa.ts",
     "typecheck": "tsc -b --noEmit",
+    "verify:vercel-api-functions": "node scripts/governance/verify-vercel-api-function-count.mjs",
     "governance:risk": "node scripts/governance/risk-assessment.mjs",
     "governance:validate-pack": "node scripts/governance/validate-governance-pack.mjs",
     "governance:check-skill-routing": "node scripts/governance/check-skill-routing-coverage.mjs",
