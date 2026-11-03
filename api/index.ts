@@ -1,9 +1,7 @@
-import type { ApiRequest, ApiResponse } from "./_lib/types";
+import type { ApiRequest, ApiResponse } from "../lib/octa-api/types";
+import { dispatchApiRoute, normalizePathSegments } from "../lib/octa-api/router";
 
-function pathSegmentsFromRequest(
-  req: ApiRequest,
-  normalizePathSegments: (pathQuery: string | string[] | undefined) => string[],
-): string[] {
+function pathSegmentsFromRequest(req: ApiRequest): string[] {
   const fromQuery = normalizePathSegments(req.query?.path as string | string[] | undefined);
   if (fromQuery.length > 0) {
     return fromQuery;
@@ -25,8 +23,7 @@ function pathSegmentsFromRequest(
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   try {
-    const { dispatchApiRoute, normalizePathSegments } = await import("./_lib/router");
-    const segments = pathSegmentsFromRequest(req, normalizePathSegments);
+    const segments = pathSegmentsFromRequest(req);
     await dispatchApiRoute(segments, req, res);
   } catch (error) {
     console.error("api_router_fatal", error);

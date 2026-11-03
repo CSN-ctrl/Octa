@@ -2,7 +2,7 @@
 /**
  * Ensures the Vercel Hobby plan limit (12 serverless functions) is not exceeded.
  * Counts deployable entrypoints under api/ (TypeScript/JavaScript), excluding
- * underscore-prefixed path segments (e.g. api/_lib).
+ * underscore-prefixed path segments (legacy api/_lib layout).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -44,7 +44,7 @@ const total = countFunctionEntries(apiRoot);
 if (total > MAX_FUNCTIONS) {
   console.error(
     `Vercel API function count ${total} exceeds Hobby limit ${MAX_FUNCTIONS}. ` +
-      "Consolidate routes under api/[...path].ts or move helpers under api/_lib/.",
+      "Consolidate routes under api/index.ts and keep helpers under lib/octa-api/.",
   );
   process.exit(1);
 }
