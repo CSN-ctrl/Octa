@@ -1,10 +1,11 @@
 type HeaderBag = Record<string, string | string[] | undefined>;
 
-export function getBearerToken(req: { headers: HeaderBag }): string | null {
+export function getBearerToken(req: { headers?: HeaderBag }): string | null {
+  const headers = req.headers ?? {};
   const raw =
-    req.headers.authorization ??
-    req.headers.Authorization ??
-    req.headers["authorization"];
+    headers.authorization ??
+    headers.Authorization ??
+    headers["authorization"];
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (!value || !value.startsWith("Bearer ")) {
     return null;
