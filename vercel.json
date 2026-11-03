@@ -5,7 +5,8 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 60,
-      "includeFiles": "api/_lib/**"
+      "includeFiles": "api/_lib/**",
+      "runtime": "nodejs20.x"
     }
   },
   "rewrites": [
