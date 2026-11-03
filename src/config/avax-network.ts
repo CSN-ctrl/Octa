@@ -27,13 +27,13 @@ export const LOCAL_AVAX_CHAIN_ID = FUJI_CHAIN_ID;
 export const LOCAL_AVAX_CHAIN_ID_HEX = FUJI_CHAIN_ID_HEX;
 export const LOCAL_AVAX_NETWORK = FUJI_AVAX_NETWORK;
 
-function trimEnv(key: string): string | undefined {
-  const v = import.meta.env[key]?.toString().trim();
+function trimOptional(value: string | undefined): string | undefined {
+  const v = value?.toString().trim();
   return v || undefined;
 }
 
 function paymentChainIdFromEnv(): number {
-  const raw = trimEnv("VITE_CHAIN_ID");
+  const raw = trimOptional(import.meta.env.VITE_CHAIN_ID);
   if (!raw) return FUJI_CHAIN_ID;
   const n = parseInt(raw, 10);
   return Number.isNaN(n) ? FUJI_CHAIN_ID : n;
@@ -41,7 +41,7 @@ function paymentChainIdFromEnv(): number {
 
 /** Alchemy Fuji RPC when VITE_ALCHEMY_API_KEY is set at build time. */
 export function alchemyFujiRpcFromEnv(): string | null {
-  const key = trimEnv("VITE_ALCHEMY_API_KEY");
+  const key = trimOptional(import.meta.env.VITE_ALCHEMY_API_KEY);
   if (!key) return null;
   return `https://avax-fuji.g.alchemy.com/v2/${key}`;
 }
@@ -84,7 +84,7 @@ function resolveExplicitRpc(fromEnv: string): string {
 }
 
 function resolveAvaxRpcUrl(): string {
-  const fromEnv = trimEnv("VITE_AVALANCHE_RPC");
+  const fromEnv = trimOptional(import.meta.env.VITE_AVALANCHE_RPC);
   if (fromEnv) return resolveExplicitRpc(fromEnv);
 
   const alchemy = alchemyFujiRpcFromEnv();
@@ -99,12 +99,12 @@ function resolveAvaxRpcUrl(): string {
 
 /** RPC URL for MetaMask / WalletConnect (direct — no dev proxy). */
 export function getWalletRpcUrl(): string {
-  const fromEnv = trimEnv("VITE_WALLET_RPC");
+  const fromEnv = trimOptional(import.meta.env.VITE_WALLET_RPC);
   if (fromEnv) {
     if (isPrivateLanRpc(fromEnv)) return defaultFujiRpc();
     return fromEnv;
   }
-  const avax = trimEnv("VITE_AVALANCHE_RPC");
+  const avax = trimOptional(import.meta.env.VITE_AVALANCHE_RPC);
   if (avax && !avax.startsWith("/")) {
     if (isPrivateLanRpc(avax)) return defaultFujiRpc();
     return avax;

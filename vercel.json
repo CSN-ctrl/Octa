@@ -2,7 +2,38 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/nodes.ts": {
+      "maxDuration": 60
+    },
+    "api/permits.ts": {
+      "maxDuration": 60
+    },
+    "api/misc.ts": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
+    {
+      "source": "/api/nodes/(.*)",
+      "destination": "/api/nodes?path=$1"
+    },
+    {
+      "source": "/api/permits/(.*)",
+      "destination": "/api/permits?path=$1"
+    },
+    {
+      "source": "/api/basic-residential/(.*)",
+      "destination": "/api/misc?path=basic-residential/$1"
+    },
+    {
+      "source": "/api/expat/(.*)",
+      "destination": "/api/misc?path=expat/$1"
+    },
+    {
+      "source": "/api/permits",
+      "destination": "/api/permits"
+    },
     {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
