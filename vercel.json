@@ -4,16 +4,13 @@
   "outputDirectory": "dist",
   "functions": {
     "api/nodes.ts": {
-      "maxDuration": 60,
-      "includeFiles": "api/_lib/**"
+      "maxDuration": 60
     },
     "api/permits.ts": {
-      "maxDuration": 60,
-      "includeFiles": "api/_lib/**"
+      "maxDuration": 60
     },
     "api/misc.ts": {
-      "maxDuration": 60,
-      "includeFiles": "api/_lib/**"
+      "maxDuration": 60
     }
   },
   "rewrites": [

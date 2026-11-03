@@ -1,4 +1,4 @@
-import { createApiEntryHandler } from "./_lib/create-entry";
-import { MISC_API_ROUTE_DEFINITIONS } from "./_lib/routes-misc";
+// @ts-nocheck
+import handler from "./_lib/bundles/misc.cjs";
 
-export default createApiEntryHandler(MISC_API_ROUTE_DEFINITIONS);
+export default handler;
