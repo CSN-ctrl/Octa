@@ -1,7 +1,9 @@
 import type { ApiRequest, ApiResponse } from "./_lib/types";
-import { dispatchApiRoute, normalizePathSegments } from "./_lib/router";
 
-function pathSegmentsFromRequest(req: ApiRequest): string[] {
+function pathSegmentsFromRequest(
+  req: ApiRequest,
+  normalizePathSegments: (pathQuery: string | string[] | undefined) => string[],
+): string[] {
   const fromQuery = normalizePathSegments(req.query?.path as string | string[] | undefined);
   if (fromQuery.length > 0) {
     return fromQuery;
@@ -22,6 +24,15 @@ function pathSegmentsFromRequest(req: ApiRequest): string[] {
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
-  const segments = pathSegmentsFromRequest(req);
-  await dispatchApiRoute(segments, req, res);
+  try {
+    const { dispatchApiRoute, normalizePathSegments } = await import("./_lib/router");
+    const segments = pathSegmentsFromRequest(req, normalizePathSegments);
+    await dispatchApiRoute(segments, req, res);
+  } catch (error) {
+    console.error("api_router_fatal", error);
+    res.status(500).json({
+      error: "internal_error",
+      message: error instanceof Error ? error.message : "API router failed",
+    });
+  }
 }
