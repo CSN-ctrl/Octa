@@ -4,6 +4,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { scanClientBundleFile } from "./verify-client-bundle-env-lib.mjs";
 
 const workspaceRoot = process.cwd();
 const distRoot = path.join(workspaceRoot, "dist");
@@ -18,24 +19,6 @@ if (fs.existsSync(viteConfigPath)) {
     process.exit(1);
   }
 }
-
-/** Substrings that must never appear in shipped client assets (names only — no values). */
-const FORBIDDEN_SUBSTRINGS = [
-  "VERCEL_OIDC_TOKEN",
-  "VERCEL_ARTIFACTS_TOKEN",
-  "VERCEL_DEPLOYMENT_KEY",
-  "VERCEL_ENV_ENC_KEY",
-  "VERCEL_ENCRYPTED_ENV_CONTENT",
-  "VERCEL_HASH_SALT",
-  "TURBO_TEAM",
-  "TURBO_TOKEN",
-  "TURBO_REMOTE_ONLY",
-  "GITHUB_TOKEN",
-  "SUPABASE_SERVICE_ROLE",
-];
-
-/** Heuristic: a inlined full process.env dump often includes these together with many ALL_CAPS keys. */
-const ENV_DUMP_MARKERS = ["VERCEL_GIT_", "VERCEL_TARGET_ENV", "npm_lifecycle", "INIT_CWD"];
 
 function walkFiles(dir, acc = []) {
   if (!fs.existsSync(dir)) {
@@ -52,11 +35,6 @@ function walkFiles(dir, acc = []) {
   return acc;
 }
 
-function countAllCapsEnvLikeKeys(content) {
-  const matches = content.match(/"[A-Z][A-Z0-9_]{2,}":/g);
-  return matches ? matches.length : 0;
-}
-
 if (!fs.existsSync(distRoot)) {
   console.error("verify-client-bundle-env: dist/ missing — run vite build first.");
   process.exit(1);
@@ -68,25 +46,7 @@ const violations = [];
 for (const file of files) {
   const rel = path.relative(workspaceRoot, file);
   const content = fs.readFileSync(file, "utf8");
-
-  for (const needle of FORBIDDEN_SUBSTRINGS) {
-    if (content.includes(needle)) {
-      violations.push(`${rel}: contains forbidden identifier ${needle}`);
-    }
-  }
-
-  const markerHits = ENV_DUMP_MARKERS.filter((m) => content.includes(m));
-  if (markerHits.length >= 2) {
-    violations.push(
-      `${rel}: looks like a full build env dump (${markerHits.join(", ")})`,
-    );
-  }
-
-  if (file.endsWith(".js") && countAllCapsEnvLikeKeys(content) > 120) {
-    violations.push(
-      `${rel}: excessive inlined env-like keys (${countAllCapsEnvLikeKeys(content)}), possible env object leak`,
-    );
-  }
+  violations.push(...scanClientBundleFile(rel, content));
 }
 
 if (violations.length > 0) {
