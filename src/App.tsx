@@ -21,6 +21,7 @@ import { getAndStoreAffiliateCode } from "@/lib/affiliate-service";
 import { initSupabaseAuthRecovery, isStaleSupabaseRefreshError } from "@/lib/supabase-auth-recovery";
 import { getAppOrigin } from "@/lib/app-origin";
 import { isTestRoutesEnabled } from "@/env";
+import { NODE_APPROVE_COPY } from "@/lib/node-approve-copy";
 
 // Lazy load all pages for code splitting
 const UnifiedUniverse = lazy(() => import("./pages/UnifiedUniverse"));
@@ -76,6 +77,7 @@ const Cookies = lazy(() => import("./pages/Cookies"));
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ApplyForPermit = lazy(() => import("./pages/ApplyForPermit"));
 const ExpatPath = lazy(() => import("./pages/ExpatPath"));
+const RunANodeApprove = lazy(() => import("./pages/RunANodeApprove"));
 
 // Configure React Query with optimized defaults
 const queryClient = new QueryClient({
@@ -199,6 +201,12 @@ const ROUTE_SEO_CONFIG: Record<string, RouteSeoConfig> = {
     description: "Review operational controls, auditability safeguards, and compliance commitments for Chaos Star.",
     canonicalPath: "/compliance",
     indexable: true,
+  },
+  "/run-a-node/approve": {
+    title: NODE_APPROVE_COPY.seoTitle,
+    description: NODE_APPROVE_COPY.seoDescription,
+    canonicalPath: "/run-a-node/approve",
+    indexable: false,
   },
   "/login": {
     title: "Login - Chaos Star Universe",
@@ -583,6 +591,14 @@ function AppContent() {
                       )}
                       <Route path="/auth/callback" element={<AuthCallback />} />
                       <Route path="/oauth/consent" element={<OAuthConsent />} />
+                      <Route
+                        path="/run-a-node/approve"
+                        element={
+                          <RouteErrorBoundary routeName="Personal Node Approve">
+                            <RunANodeApprove />
+                          </RouteErrorBoundary>
+                        }
+                      />
                       {testRoutesEnabled && (
                         <Route path="/oauth-test-client" element={<OAuthTestClient />} />
                       )}
