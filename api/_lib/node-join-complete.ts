@@ -52,7 +52,7 @@ export async function executePersonalNodeJoin(params: {
     };
   }
 
-  let replaceId = (params.replaceNodeId ?? challenge.replace_node_id) as string | null;
+  const replaceId = (params.replaceNodeId ?? challenge.replace_node_id) as string | null;
   const liveNodes = await fetchLiveNodesForWallet(wallet);
   if (!replaceId && liveNodes.length >= maxActiveNodesPerWallet()) {
     return {

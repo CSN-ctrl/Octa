@@ -6,12 +6,13 @@ import { isZeroTierRetryAuthorized, retryAllPendingZeroTier } from "../../node-z
 import { zerotierEnabled } from "../../node-zerotier-policy";
 
 export async function handler(req: ApiRequest, res: ApiResponse) {
-  if (req.method !== "POST") {
-    methodNotAllowed(res, ["POST"]);
+  const cronAuth = isZeroTierRetryAuthorized(req);
+  const allowedMethods = cronAuth.cron ? ["GET", "POST"] : ["POST"];
+  if (!req.method || !allowedMethods.includes(req.method)) {
+    methodNotAllowed(res, allowedMethods);
     return;
   }
 
-  const cronAuth = isZeroTierRetryAuthorized(req);
   if (!cronAuth.cron) {
     const token = requireBearerToken(req);
     if (!token) {
