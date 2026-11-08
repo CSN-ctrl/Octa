@@ -40,7 +40,7 @@ describe("POST /api/nodes/challenge handler", () => {
     };
 
     const { res, statusCode, body } = mockRes();
-    const handler = (await import("../../nodes/challenge/index")).default;
+    const { handler } = await import("../handlers/nodes/challenge/index");
     await handler(req, res);
 
     expect(statusCode()).toBe(503);
