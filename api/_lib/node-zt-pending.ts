@@ -311,11 +311,12 @@ export async function retryAllPendingZeroTier(options?: { force?: boolean }): Pr
   };
 }
 
-export function isZeroTierRetryAuthorized(req: { headers: Record<string, string | string[] | undefined> }): {
+export function isZeroTierRetryAuthorized(req: { headers?: Record<string, string | string[] | undefined> }): {
   cron: boolean;
 } {
   const cronSecret = process.env.CRON_SECRET?.trim();
-  const authHeader = req.headers.authorization;
+  const headers = req.headers ?? {};
+  const authHeader = headers.authorization ?? headers.Authorization;
   const bearer =
     typeof authHeader === "string" && authHeader.startsWith("Bearer ")
       ? authHeader.slice("Bearer ".length).trim()

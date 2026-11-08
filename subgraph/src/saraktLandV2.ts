@@ -5,7 +5,7 @@ import { PlotTransfer } from "../generated/schema";
 export function handleTransferSingle(event: TransferSingle): void {
   const id = event.transaction.hash.toHex() + "-" + event.logIndex.toString();
 
-  let transfer = new PlotTransfer(id);
+  const transfer = new PlotTransfer(id);
   transfer.plotId = event.params.id;
   transfer.operator = event.params.operator;
   transfer.from = event.params.from;

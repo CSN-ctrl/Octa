@@ -52,14 +52,14 @@ export async function executePersonalNodeJoin(params: {
     };
   }
 
-  let replaceId = (params.replaceNodeId ?? challenge.replace_node_id) as string | null;
+  const replaceId = (params.replaceNodeId ?? challenge.replace_node_id) as string | null;
   const liveNodes = await fetchLiveNodesForWallet(wallet);
   if (!replaceId && liveNodes.length >= maxActiveNodesPerWallet()) {
     return {
       ok: false,
       error: "device_limit_reached",
       statusCode: 409,
-      active_nodes: liveNodes.map(serializeNodePublic),
+      active_nodes: liveNodes.map((row) => serializeNodePublic(row)),
     };
   }
 
@@ -90,7 +90,7 @@ export async function executePersonalNodeJoin(params: {
         ok: false,
         error: "device_limit_reached",
         statusCode: 409,
-        active_nodes: active.map(serializeNodePublic),
+        active_nodes: active.map((row) => serializeNodePublic(row)),
       };
     }
     if (msg.includes("challenge_consumed")) {
