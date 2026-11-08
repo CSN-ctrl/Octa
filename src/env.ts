@@ -37,11 +37,24 @@ const defaults: Partial<EnvVars> = {
 };
 
 export const env = (() => {
+  /** Static Vite env reads — avoid `import.meta.env[key]` (inlines entire env on Vercel). */
+  const fromVite: Partial<EnvVars> = {
+    VITE_API_URL: import.meta.env.VITE_API_URL,
+    VITE_AVALANCHE_RPC: import.meta.env.VITE_AVALANCHE_RPC,
+    VITE_CHAOSSTAR_RPC: import.meta.env.VITE_CHAOSSTAR_RPC,
+    VITE_STARGATE_RPC: import.meta.env.VITE_STARGATE_RPC,
+    VITE_CHAIN_ID: import.meta.env.VITE_CHAIN_ID,
+    VITE_BLOCKCHAIN_ID: import.meta.env.VITE_BLOCKCHAIN_ID,
+    VITE_NETWORK_NAME: import.meta.env.VITE_NETWORK_NAME,
+    VITE_NATIVE_TOKEN: import.meta.env.VITE_NATIVE_TOKEN,
+    VITE_ENABLE_PRIVATE_KEY_CUSTODY: import.meta.env.VITE_ENABLE_PRIVATE_KEY_CUSTODY,
+    VITE_ENABLE_TEST_ROUTES: import.meta.env.VITE_ENABLE_TEST_ROUTES,
+  };
+
   const vars: Partial<EnvVars> = {};
 
-  // Load from environment with defaults
   for (const key of Object.keys(defaults) as (keyof EnvVars)[]) {
-    const value = import.meta.env[key] || defaults[key];
+    const value = fromVite[key] || defaults[key];
     if (value) {
       vars[key] = value;
     }

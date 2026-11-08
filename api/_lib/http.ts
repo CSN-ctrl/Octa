@@ -1,5 +1,7 @@
 import type { ApiRequest, ApiResponse } from "./types";
 
+export { requireBearerToken, getBearerToken } from "./auth";
+
 export function methodNotAllowed(res: ApiResponse, allowed: string[]): void {
   res.setHeader("Allow", allowed.join(", "));
   res.status(405).json({ error: "method_not_allowed", allowed });
