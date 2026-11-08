@@ -9,7 +9,7 @@
  * range is processed exactly once across cron invocations.
  *
  * Event: AvaxSwappedForXbgl(address indexed buyer, uint256 avaxIn, uint256 xbglOut)
- * Contract: SaraktTreasury @ 0xee0ba6de15026d00a707a660123c93686c00df58 (Fuji)
+ * Contract: SaraktTreasury @ 0x5b468dfa4cdbd11d307fc0221e80ac3e2a50b284 (Fuji 2026-08-16 stack)
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -19,9 +19,11 @@ import { keccak_256 } from "https://esm.sh/@noble/hashes@1/sha3";
 
 const FUJI_CHAIN_ID = 43113;
 const FUJI_CHAIN_NAME = "fuji";
-const DEFAULT_TREASURY_ADDRESS = "0xee0ba6de15026d00a707a660123c93686c00df58";
-/** SaraktTreasury + SaraktLandV2 Fuji deployment block (Snowtrace 0x35362d7). */
-const DEFAULT_FUJI_START_BLOCK = 55878103;
+/** Free-test kit redeploy 2026-08-16 (Routescan creation tx 0xfc0d6fa1…). */
+const DEFAULT_TREASURY_ADDRESS = "0x5b468dfa4cdbd11d307fc0221e80ac3e2a50b284";
+const DEFAULT_FUJI_START_BLOCK = 57793346;
+/** Pre-redeploy Fuji treasury — refuse so stale secrets cannot keep indexing the old stack. */
+const RETIRED_FUJI_TREASURY = "0xee0ba6de15026d00a707a660123c93686c00df58";
 const DEFAULT_FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
 
 /**
@@ -179,13 +181,23 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("FUJI_TREASURY_ADDRESS") ?? DEFAULT_TREASURY_ADDRESS
   ).toLowerCase();
 
+  if (treasuryAddress === RETIRED_FUJI_TREASURY) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Retired Fuji treasury address. Set FUJI_TREASURY_ADDRESS to 0x5b468dfa4cdbd11d307fc0221e80ac3e2a50b284 (2026-08-16 stack).",
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   /**
-   * FUJI_START_BLOCK – earliest block to scan when no checkpoint exists.
-   * Set this to the SaraktTreasury deployment block to skip scanning
-   * pre-deployment history on first run.
+   * FUJI_START_BLOCK – earliest block to scan when the checkpoint is behind
+   * this stack. Set to the SaraktTreasury creation block after each redeploy.
    */
   const startBlock = Number.parseInt(
     Deno.env.get("FUJI_START_BLOCK") ?? String(DEFAULT_FUJI_START_BLOCK),
+    10,
   );
 
   /**
@@ -219,8 +231,9 @@ Deno.serve(async (req: Request) => {
   const checkpointBlock = Number(checkpoint?.last_ingested_block ?? 0);
   const totalIngestedCount = Number(checkpoint?.total_ingested_count ?? 0);
 
-  // Honour both the operator-configured start block and the stored checkpoint.
-  const fromBlock = checkpointBlock > 0
+  // Floor at this stack's deploy block so a leftover pre-redeploy checkpoint
+  // cannot scan empty history, and a reset checkpoint can backfill from deploy.
+  const fromBlock = checkpointBlock >= startBlock
     ? checkpointBlock + 1
     : Math.max(0, startBlock);
 

@@ -2,13 +2,14 @@
   "chainId": 43113,
   "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
   "deployedAt": "2026-08-16",
+  "deployBlock": 57793346,
   "script": "DeployFuji.s.sol",
   "network": "avalanche-fuji",
   "hardened": true,
   "ownable2Step": true,
   "pausable": true,
   "requireDigitalID": false,
-  "deployer": null,
+  "deployer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
   "chaosstarXbglReference": null,
   "chaosstarChainId": 8888,
   "contracts": {
@@ -26,7 +27,7 @@
     "eurToXbgl": "1.955833",
     "avaxUsdUsed": 6.36,
     "eurToUsdcUsed": 1.1,
-    "salesActive": false,
+    "salesActive": true,
     "metadataBaseUri": "https://www.sarakt.com/metadata/land/{id}.json"
   }
 }

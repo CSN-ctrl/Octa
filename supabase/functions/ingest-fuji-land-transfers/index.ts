@@ -13,7 +13,7 @@
  * via service-role key to keep plots.owner_wallet in sync with on-chain state.
  *
  * Checkpoint: treasury_ingest_checkpoints.chain_id = 'fuji-land'
- * Contract:   SaraktLandV2 @ 0xc34a5fcb5621b7755d66db5074069d0bbd68cd42 (Fuji/43113)
+ * Contract:   SaraktLandV2 @ 0x60fe424140720400815f068938e473e0a572b282 (Fuji 2026-08-16 stack)
  * Auth:       INGEST_CRON_SECRET header guard (same pattern as ingest-fuji-deposits)
  *
  * Event topic hashes (keccak256):
@@ -27,10 +27,12 @@ import { keccak_256 } from "https://esm.sh/@noble/hashes@1/sha3";
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const FUJI_LAND_CHAIN_NAME = "fuji-land";
-const DEFAULT_LAND_ADDRESS = "0xc34a5fcb5621b7755d66db5074069d0bbd68cd42";
+/** Free-test kit redeploy 2026-08-16 (Routescan creation tx 0xfc0d6fa1…). */
+const DEFAULT_LAND_ADDRESS = "0x60fe424140720400815f068938e473e0a572b282";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-/** SaraktLandV2 Fuji deployment block (Snowtrace 0x35362d7). */
-const DEFAULT_FUJI_LAND_START_BLOCK = 55878103;
+const DEFAULT_FUJI_LAND_START_BLOCK = 57793346;
+/** Pre-redeploy Fuji land — refuse so stale secrets cannot keep indexing the old stack. */
+const RETIRED_FUJI_LAND = "0xc34a5fcb5621b7755d66db5074069d0bbd68cd42";
 const DEFAULT_FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
 
 /**
@@ -249,13 +251,23 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("FUJI_LAND_ADDRESS") ?? DEFAULT_LAND_ADDRESS
   ).toLowerCase();
 
+  if (landAddress === RETIRED_FUJI_LAND) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Retired Fuji land address. Set FUJI_LAND_ADDRESS to 0x60fe424140720400815f068938e473e0a572b282 (2026-08-16 stack).",
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   /**
-   * FUJI_LAND_START_BLOCK – earliest block to scan when no checkpoint exists.
-   * Set this to the SaraktLandV2 deployment block to avoid scanning
-   * pre-deployment history on first run.
+   * FUJI_LAND_START_BLOCK – earliest block to scan when the checkpoint is behind
+   * this stack. Set to the SaraktLandV2 creation block after each redeploy.
    */
   const startBlock = Number.parseInt(
     Deno.env.get("FUJI_LAND_START_BLOCK") ?? String(DEFAULT_FUJI_LAND_START_BLOCK),
+    10,
   );
 
   const fujiRpcUrl = alchemyApiKey
@@ -274,7 +286,7 @@ Deno.serve(async (req: Request) => {
   const checkpointBlock = Number(checkpoint?.last_ingested_block ?? 0);
   const totalIngestedCount = Number(checkpoint?.total_ingested_count ?? 0);
 
-  const fromBlock = checkpointBlock > 0
+  const fromBlock = checkpointBlock >= startBlock
     ? checkpointBlock + 1
     : Math.max(0, startBlock);
 

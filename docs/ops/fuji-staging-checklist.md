@@ -2,7 +2,7 @@
 
 **Scope:** Avalanche Fuji (`43113`) only. Mainnet deferred.  
 **Invariant:** `requireDigitalID() == false`  
-**Branch / PR:** `cursor/fuji-contract-hardening-46ee`
+**Branch / PR:** `cursor/fuji-indexer-retarget-fd14` (stack live on `main`)
 
 Legend: **Code** = done in repo · **Live** = needs operator keys / Fuji Safe
 
@@ -20,7 +20,7 @@ Legend: **Code** = done in repo · **Live** = needs operator keys / Fuji Safe
 |---|---|
 | `npm run sandbox:verify:fuji` probes owner, sales, wiring, requireDigitalID | **Code** |
 | Current Fuji stack wired + `requireDigitalID=false` | **Live** (verified read-only) |
-| Indexer start blocks documented (update after redeploy) | **Code** |
+| Indexer start blocks documented (update after redeploy) | **Code** ✓ 57793346 |
 
 ## Phase 2 — Safe ownership
 | Item | Status |
@@ -47,13 +47,13 @@ Legend: **Code** = done in repo · **Live** = needs operator keys / Fuji Safe
 | `npm run sandbox:verify:fuji` | **Code** |
 | `npm run sandbox:smoke:fuji` | **Code** (existing) |
 | Snowtrace verify source | **Live** (after redeploy; optional API key) |
-| Indexer curl/SQL health | See `docs/ops/fuji-staging-ops.md` · **Live** secrets |
+| Indexer curl/SQL health | **Code** retargeted to 2026-08-16 stack · **Live** apply migration + redeploy functions |
 
 ## Phase 5 — Production-like ops (still Fuji)
 | Item | Status |
 |---|---|
 | Rate / pause / metadata / monitoring runbook | **Code** → `docs/ops/fuji-staging-ops.md` |
-| Vercel stays on Fuji envs | **Live** (`npm run vercel:env:fuji` when addresses change) |
+| Vercel stays on Fuji envs | **Live** ✓ production `main@30696af` serves new addresses via `.env.production` + `43113-latest.json`. Dashboard `vercel:env:fuji` still optional. |
 
 ---
 

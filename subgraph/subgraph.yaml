@@ -15,12 +15,10 @@ dataSources:
     name: SaraktLandV2
     network: avalanche-fuji
     source:
-      address: "0xc34a5fcb5621b7755d66db5074069d0bbd68cd42"
+      address: "0x60FE424140720400815F068938E473E0A572b282"
       abi: SaraktLandV2
-      # Index from the deployment block to avoid scanning from genesis.
-      # Run: cast block --rpc-url $VITE_AVALANCHE_RPC `cast tx <deploy_tx> .blockNumber`
-      # Update this value with the actual deployment block number before deploying.
-      startBlock: 0
+      # Free-test kit redeploy 2026-08-16 (Routescan creation tx 0xfc0d6fa1…).
+      startBlock: 57793346
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -42,10 +40,10 @@ dataSources:
     name: SaraktTreasury
     network: avalanche-fuji
     source:
-      address: "0xee0ba6de15026d00a707a660123c93686c00df58"
+      address: "0x5b468DFA4CDBD11d307fc0221e80Ac3E2a50b284"
       abi: SaraktTreasury
-      # Same deployment block as SaraktLandV2 — update before deploying.
-      startBlock: 0
+      # Same creation block as SaraktLandV2 (2026-08-16 stack).
+      startBlock: 57793346
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
