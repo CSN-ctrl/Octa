@@ -22,6 +22,17 @@ export async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
+  const hostBinding = resolveJoinBindingFromRequest(req);
+  if (!hostBinding.ok) {
+    if (hostBinding.error === "domain_not_allowed") {
+      jsonError(res, 400, "domain_not_allowed");
+      return;
+    }
+    jsonError(res, 503, "join_context_unconfigured", hostBinding.message);
+    return;
+  }
+  const binding = hostBinding.binding;
+
   let admin;
   try {
     admin = createServiceSupabaseClient();
@@ -125,17 +136,6 @@ export async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   const supabaseUser = await resolveSupabaseUser(req);
-
-  const hostBinding = resolveJoinBindingFromRequest(req);
-  if (!hostBinding.ok) {
-    if (hostBinding.error === "domain_not_allowed") {
-      jsonError(res, 400, "domain_not_allowed");
-      return;
-    }
-    jsonError(res, 503, "join_context_unconfigured", hostBinding.message);
-    return;
-  }
-  const binding = hostBinding.binding;
 
   const nonce = generateNonce();
   const { issuedAt, expiresAt } = challengeExpiryIso(new Date(), signingRaw);

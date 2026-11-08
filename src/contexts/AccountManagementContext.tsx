@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import { useWallet } from "./WalletContext";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { isPrivateKeyCustodyEnabled } from "@/env";
+import { saraktNetworkExtBcRpc } from "@/config/sarakt-network";
 
 export interface UniversalWallet {
   id: string;
@@ -398,7 +399,7 @@ export function AccountManagementProvider({ children }: { children: ReactNode })
           const code: string = "0x1234"; // Placeholder
           if (!code || code === "0x") {
             // Contract not deployed, need to deploy it
-            const rpcUrl = "http://127.0.0.1:41773/ext/bc/wtHFpLKd93iiPmBBsCdeTEPz6Quj9MoCL8NpuxoFXHtvTVeT1/rpc";
+            const rpcUrl = saraktNetworkExtBcRpc("http://127.0.0.1:41773");
             throw new Error(
               `Account Registry contract not deployed at address ${registryAddress}.\n\n` +
               "To deploy it, run:\n" +
